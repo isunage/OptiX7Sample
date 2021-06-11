@@ -1,0 +1,4 @@
+#ifndef TEST_TEST9_CONFIG_H
+#define TEST_TEST9_CONFIG_H
+#cmakedefine TEST_TEST9_CUDA_PATH "@TEST_TEST9_CUDA_PATH@"
+#endif

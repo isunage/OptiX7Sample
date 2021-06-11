@@ -1,0 +1,15 @@
+[submodule "RTLib/thirdparty/tinyexr"]
+	path = RTLib/thirdparty/tinyexr
+	url = https://github.com/syoyo/tinyexr
+[submodule "RTLib/thirdparty/glfw"]
+	path = RTLib/thirdparty/glfw
+	url = https://github.com/glfw/glfw
+[submodule "RTLib/thirdparty/stb"]
+	path = RTLib/thirdparty/stb
+	url = https://github.com/nothings/stb
+[submodule "RTLib/thirdparty/tinyobjloader"]
+	path = RTLib/thirdparty/tinyobjloader
+	url = https://github.com/syoyo/tinyobjloader
+[submodule "RTLib/thirdparty/glm"]
+	path = RTLib/thirdparty/glm
+	url = https://github.com/g-truc/glm

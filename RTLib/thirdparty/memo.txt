@@ -1,0 +1,4 @@
+glad->webで落としたものを使用
+glfw->git clone(最終的にはgit submodule)
+tinyobjloader->git clone(最終的にはgit submodule)
+tinyexr->git clone(最終的にはgit submodule)
