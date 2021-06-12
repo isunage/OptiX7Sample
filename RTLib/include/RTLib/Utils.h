@@ -1,6 +1,8 @@
 #ifndef RTLIB_UTILS_H
 #define RTLIB_UTILS_H
+#include <glm/glm.hpp>
 #include <tiny_obj_loader.h>
+#include <vector>
 namespace rtlib{
     namespace utils {
         enum AxisFlag {
@@ -16,8 +18,9 @@ namespace rtlib{
             float    z;
             AxisFlag axis;
         public:
-            auto getVertices()const noexcept-> std::array<float3, 4>{
-                std::array<float3, 4> vertices = {};
+            auto getVertices()const noexcept-> std::vector<float3>{
+                std::vector<float3> vertices = {};
+                vertices.resize(4);
                 auto axisX = (axis + 1) % 3;
                 auto axisY = (axis + 2) % 3;
                 auto axisZ = (axis + 3) % 3;
@@ -51,8 +54,9 @@ namespace rtlib{
                 vertices[toIndex(0, 1)].z = vertexY[2];
                 return vertices;
             }
-            auto getIndices()const noexcept-> std::array<uint3, 2> {
-                std::array<uint3, 2> indices = {};
+            auto getIndices()const noexcept-> std::vector<uint3> {
+                std::vector<uint3> indices = {};
+                indices.resize(2);
                 auto i00 = toIndex(0, 0);
                 auto i10 = toIndex(1, 0);
                 auto i11 = toIndex(1, 1);
@@ -77,8 +81,9 @@ namespace rtlib{
             float    y1;
             float    z0;
             float    z1;
-            auto getVertices()const noexcept-> std::array<float3, 8>{
-                std::array<float3, 8> vertices = {};
+            auto getVertices()const noexcept-> std::vector<float3>{
+                std::vector<float3> vertices = {};
+                vertices.resize(8);
                 //z: 0->
                 vertices[toIndex(0, 0, 0)].x = x0;
                 vertices[toIndex(0, 0, 0)].y = y0;
@@ -107,8 +112,9 @@ namespace rtlib{
                 vertices[toIndex(1, 1, 1)].z = z1;
                 return vertices;
             }
-            auto getIndices()const noexcept-> std::array<uint3, 12> {
-                std::array<uint3, 12> indices = {};
+            auto  getIndices()const noexcept-> std::vector<uint3> {
+                std::vector<uint3> indices = {};
+                indices.resize(12);
                 for (uint32_t i = 0; i < 3; ++i) {
                     for (uint32_t j = 0; j < 2; ++j) {
                         uint32_t index[3] = {};
@@ -147,6 +153,7 @@ namespace rtlib{
                 return 4 * z + 2 * y + x;
             }
         };
+        
     }
 }
 #endif

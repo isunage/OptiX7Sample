@@ -1,6 +1,7 @@
 add_subdirectory(glfw)
 add_subdirectory(glad)
 add_subdirectory(tinyexr)
+add_subdirectory(glm)
 add_subdirectory(tinyobjloader)
 if(NOT stb)
     add_library(stb INTERFACE)

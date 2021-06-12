@@ -12,54 +12,66 @@
 #include <RTLib/VectorFunction.h>
 #include <RTLib/Exceptions.h>
 #include <RTLib/Utils.h>
-#include <Test9Config.h>
+#include <Test10Config.h>
 #include <tiny_obj_loader.h>
 #include <iostream>
 #include <fstream>
 #include <algorithm>
 #include <numeric>
+#include <unordered_map>
+#include <unordered_set>
 #include <array>
 #include <string_view>
 #include "cuda/RayTrace.h"
 struct Vertex{
     float3 position;
 };
+struct ShapeInfo {
+    std::vector<uint3> indices = {};
+    uint32_t           matID   =  0;
+};
 int main(){ 
     //static constexpr float3 vertices[] = { float3{-0.5f,-0.5f,0.0f},float3{0.5f,-0.5f,0.0f},float3{0.0f,0.5f,0.0f}};
     //static constexpr uint3   indices[] = {{0,1,2}};
-    std::vector<float3> vertices = {};
-    std::vector<uint3>  indices  = {};
-    float3 aabbMax = make_float3(0.0f, 0.0f, 0.0f);
-    float3 aabbMin = make_float3(FLT_MAX, FLT_MAX, FLT_MAX);
+    std::vector<float3>    vertices   = {};
+    std::vector<uint3>     indices    = {};
+    std::vector<ShapeInfo> shapeInfos = {};
+    float3 aabbMax                    = make_float3(0.0f, 0.0f, 0.0f);
+    float3 aabbMin                    = make_float3(FLT_MAX, FLT_MAX, FLT_MAX);
     {
         std::string                      err       = {};
         std::string                      warn      = {};
         tinyobj::attrib_t                attrib    = {};
         std::vector<tinyobj::shape_t>    shapes    = {};
         std::vector<tinyobj::material_t> materials = {};
-        bool res = tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, 
-            TEST_TEST9_DATA_PATH"/Models/Sponza/sponza.obj",
-            TEST_TEST9_DATA_PATH"/Models/Sponza/");
+        bool res = tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, TEST_TEST10_DATA_PATH"/Models/Sponza/sponza.obj", TEST_TEST10_DATA_PATH"/Models/Sponza/");
         std::cout << warn << "\n";
         std::cout << err  << "\n";
-        
         {
             {
-                size_t numIndices = 0;
                 for (const auto& shape : shapes) {
-                    numIndices += shape.mesh.num_face_vertices.size();
-                }
-                indices.resize(numIndices);
-            }
-            {
-                size_t idxOffset = 0;
-                for (const auto& shape : shapes) {
-                    for (size_t f = 0; f < shape.mesh.num_face_vertices.size(); ++f) {
-                        indices[idxOffset + f].x = shape.mesh.indices[3 * f + 0].vertex_index;
-                        indices[idxOffset + f].y = shape.mesh.indices[3 * f + 1].vertex_index;
-                        indices[idxOffset + f].z = shape.mesh.indices[3 * f + 2].vertex_index;
+                    size_t numMeshes = shape.mesh.num_face_vertices.size();
+                    std::unordered_map<size_t, size_t> materialIDMap = {};
+                    std::vector<ShapeInfo>             tmpShapeInfos = {};
+                    for (size_t f = 0; f < numMeshes; ++f) {
+                        size_t idx = 0;
+                        try {
+                            idx = materialIDMap.at(shape.mesh.material_ids[f]);
+                        }
+                        catch (...) {
+                            idx = tmpShapeInfos.size();
+                            materialIDMap[shape.mesh.material_ids[f]] = idx;
+                            tmpShapeInfos.push_back(ShapeInfo{});
+                            tmpShapeInfos[idx].matID = shape.mesh.material_ids[f];
+                        }
+                        tmpShapeInfos[idx].indices.push_back(make_uint3(shape.mesh.indices[3 * f + 0].vertex_index,
+                                                                        shape.mesh.indices[3 * f + 1].vertex_index,
+                                                                        shape.mesh.indices[3 * f + 2].vertex_index));
+                        
                     }
-                    idxOffset += shape.mesh.num_face_vertices.size();
+                    for (auto&& tmpShapeInfo : tmpShapeInfos) {
+                        shapeInfos.emplace_back(tmpShapeInfo);
+                    }
                 }
             }
             {
@@ -78,7 +90,7 @@ int main(){
                 }
             }
         }
-
+        shapeInfos.resize(100);
     }
     //auto box = rtlib::utils::Box{};
     //box.x0   =-0.5f;
@@ -99,9 +111,13 @@ int main(){
         //OPX型はすべて参照型で対応する実体の参照を保持
         //contextはcopy/move不可
         auto context                                 = rtlib::OPXContext({0,0,OPTIX_DEVICE_CONTEXT_VALIDATION_MODE_ALL,4});
-        auto d_vertices                              = rtlib::CUDABuffer<float3>(std::data(vertices),std::size(vertices));
-        auto d_pVertices                             = reinterpret_cast<CUdeviceptr>(d_vertices.getDevicePtr());
-        auto d_indices                               = rtlib::CUDABuffer<uint3>( std::data(indices),std::size(indices));
+        auto vertexBuffer                              = rtlib::CUDABuffer<float3>(std::data(vertices),std::size(vertices));
+        auto d_pVertices                             = reinterpret_cast<CUdeviceptr>(vertexBuffer.getDevicePtr());
+        auto indexBuffers                            = std::vector< rtlib::CUDABuffer<uint3>>(shapeInfos.size());
+        for (size_t idxBuffID = 0; idxBuffID < indexBuffers.size();++idxBuffID) {
+            indexBuffers[idxBuffID].allocate(shapeInfos[idxBuffID].indices.size());
+            indexBuffers[idxBuffID].upload(shapeInfos[idxBuffID].indices.data(), shapeInfos[idxBuffID].indices.size());
+        }
         auto accelBuildOptions                       = OptixAccelBuildOptions();
         accelBuildOptions.buildFlags                 = OPTIX_BUILD_FLAG_PREFER_FAST_TRACE | OPTIX_BUILD_FLAG_ALLOW_COMPACTION;
         accelBuildOptions.motionOptions              = {};
@@ -109,20 +125,23 @@ int main(){
         auto geometryFlags                           = std::vector<unsigned int>{
             OPTIX_GEOMETRY_FLAG_NONE
         };
-        auto buildInput                              = OptixBuildInput();
-        buildInput.type                              = OPTIX_BUILD_INPUT_TYPE_TRIANGLES;
-        buildInput.triangleArray.vertexBuffers       = &d_pVertices;
-        buildInput.triangleArray.numVertices         = std::size(vertices);
-        buildInput.triangleArray.vertexFormat        = OPTIX_VERTEX_FORMAT_FLOAT3;
-        buildInput.triangleArray.vertexStrideInBytes = sizeof(float3);
-        buildInput.triangleArray.indexBuffer         = reinterpret_cast<CUdeviceptr>(d_indices.getDevicePtr());
-        buildInput.triangleArray.numIndexTriplets    = std::size(indices);
-        buildInput.triangleArray.indexFormat         = OPTIX_INDICES_FORMAT_UNSIGNED_INT3;
-        buildInput.triangleArray.indexStrideInBytes  = sizeof(uint3);
-        buildInput.triangleArray.numSbtRecords       = 1;
-        buildInput.triangleArray.flags               = geometryFlags.data();
-        auto pipelineCompileOptions                  = OptixPipelineCompileOptions{};
-        auto [outputBuffer,  traversableHandle]      = context.buildAccel(accelBuildOptions, buildInput);
+        std::vector<OptixBuildInput> buildInputs(indexBuffers.size());
+        for (size_t idxBuffID = 0; idxBuffID < indexBuffers.size(); ++idxBuffID) {
+            buildInputs[idxBuffID].type = OPTIX_BUILD_INPUT_TYPE_TRIANGLES;
+            buildInputs[idxBuffID].triangleArray.vertexBuffers       = &d_pVertices;
+            buildInputs[idxBuffID].triangleArray.numVertices         = std::size(vertices);
+            buildInputs[idxBuffID].triangleArray.vertexFormat        = OPTIX_VERTEX_FORMAT_FLOAT3;
+            buildInputs[idxBuffID].triangleArray.vertexStrideInBytes = sizeof(float3);
+            buildInputs[idxBuffID].triangleArray.indexBuffer         = reinterpret_cast<CUdeviceptr>(indexBuffers[idxBuffID].getDevicePtr());
+            buildInputs[idxBuffID].triangleArray.numIndexTriplets    = indexBuffers[idxBuffID].getCount();
+            buildInputs[idxBuffID].triangleArray.indexFormat         = OPTIX_INDICES_FORMAT_UNSIGNED_INT3;
+            buildInputs[idxBuffID].triangleArray.indexStrideInBytes  = sizeof(uint3);
+            buildInputs[idxBuffID].triangleArray.numSbtRecords       = 1;
+            buildInputs[idxBuffID].triangleArray.flags               = geometryFlags.data();
+        }
+        
+        auto pipelineCompileOptions                                 = OptixPipelineCompileOptions{};
+        auto [outputBuffer,  traversableHandle]                     = context.buildAccel(accelBuildOptions, buildInputs);
         {            
             pipelineCompileOptions.usesMotionBlur                   = false;
             pipelineCompileOptions.traversableGraphFlags            = OPTIX_TRAVERSABLE_GRAPH_FLAG_ALLOW_SINGLE_GAS;
@@ -134,7 +153,7 @@ int main(){
         }
         auto cuSource   = std::string();
         {
-            auto cuFile = std::ifstream(TEST_TEST9_CUDA_PATH"/RayTrace.cu", std::ios::binary);
+            auto cuFile = std::ifstream(TEST_TEST10_CUDA_PATH"/RayTrace.cu", std::ios::binary);
             cuSource    = std::string((std::istreambuf_iterator<char>(cuFile)), (std::istreambuf_iterator<char>()));
 
         }
@@ -143,7 +162,7 @@ int main(){
         auto program  = rtlib::NVRTCProgram(std::string(cuSource),"sampleProgram");
         {
             const char* nvrtc_options[]      = {RTLIB_NVRTC_OPTIONS };
-            const char* cuda_include_dirs[]  = { TEST_TEST9_CUDA_PATH, RTLIB_CUDA_INCLUDE_DIRS};
+            const char* cuda_include_dirs[]  = { TEST_TEST10_CUDA_PATH, RTLIB_CUDA_INCLUDE_DIRS};
             const char* optix_include_dir    =  RTLIB_OPTIX_INCLUDE_DIR;
             const char* rtlib_include_dir    =  RTLIB_INCLUDE_DIR;
             std::vector<std::string> includeOptions;
@@ -194,20 +213,23 @@ int main(){
         raygenRecord.data.w             = w;
         auto        missRecord          = missPG.getSBTRecord<MissData>();
         missRecord.data.bgColor         = float4{ 1.0f,0.0f,0.0f,1.0f };
-        auto    hitgroupRecord          = hitgroupPG.getSBTRecord<HitgroupData>();
-        hitgroupRecord.data.vertices    = d_vertices.getDevicePtr();
-        hitgroupRecord.data.indices     = d_indices.getDevicePtr();
+        std::vector<rtlib::SBTRecord<HitgroupData>> hitgroupRecords(indexBuffers.size());
+        for (size_t idxBuffID = 0; idxBuffID < indexBuffers.size(); ++idxBuffID) {
+            hitgroupRecords[idxBuffID]               = hitgroupPG.getSBTRecord<HitgroupData>();
+            hitgroupRecords[idxBuffID].data.vertices = vertexBuffer.getDevicePtr();
+            hitgroupRecords[idxBuffID].data.indices  = indexBuffers[idxBuffID].getDevicePtr();
+        }
         auto    d_RaygenBuffer          = rtlib::CUDABuffer<decltype(  raygenRecord)>(raygenRecord);
         auto      d_MissBuffer          = rtlib::CUDABuffer<decltype(    missRecord)>(missRecord);
-        auto  d_HitgroupBuffer          = rtlib::CUDABuffer<decltype(hitgroupRecord)>(hitgroupRecord);
+        auto  d_HitgroupBuffer          = rtlib::CUDABuffer<rtlib::SBTRecord<HitgroupData>>(hitgroupRecords);
         OptixShaderBindingTable sbt     = {};
         sbt.raygenRecord                = reinterpret_cast<CUdeviceptr>(d_RaygenBuffer.getDevicePtr());
-        sbt.missRecordBase              = reinterpret_cast<CUdeviceptr>(d_MissBuffer.getDevicePtr());
+        sbt.missRecordBase              = reinterpret_cast<CUdeviceptr>(  d_MissBuffer.getDevicePtr());
         sbt.missRecordCount             = 1;
         sbt.missRecordStrideInBytes     = sizeof(missRecord);
         sbt.hitgroupRecordBase          = reinterpret_cast<CUdeviceptr>(d_HitgroupBuffer.getDevicePtr());
-        sbt.hitgroupRecordCount         = 1;
-        sbt.hitgroupRecordStrideInBytes = sizeof(hitgroupRecord);
+        sbt.hitgroupRecordCount         = d_HitgroupBuffer.getCount();
+        sbt.hitgroupRecordStrideInBytes = sizeof(rtlib::SBTRecord<HitgroupData>);
         auto d_pixel                    = rtlib::CUDABuffer<uchar4>();
         d_pixel.allocate(width * height);
         auto params                     = Params();

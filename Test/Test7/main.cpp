@@ -125,10 +125,10 @@ int main(){
         auto pipeline = context.createPipeline(pipelineCompileOptions);
         auto program  = rtlib::NVRTCProgram(std::string(cuSource),"sampleProgram");
         {
-            const char* nvrtc_options[]      = {RTLIB_NVRTC_OPTIONS };
+            const char* nvrtc_options[]      = { RTLIB_NVRTC_OPTIONS };
             const char* cuda_include_dirs[]  = { TEST_TEST7_CUDA_PATH, RTLIB_CUDA_INCLUDE_DIRS};
-            const char* optix_include_dir    =  RTLIB_OPTIX_INCLUDE_DIR;
-            const char* rtlib_include_dir    =  RTLIB_INCLUDE_DIR;
+            const char* optix_include_dir    =   RTLIB_OPTIX_INCLUDE_DIR;
+            const char* rtlib_include_dir    =   RTLIB_INCLUDE_DIR;
             std::vector<std::string> includeOptions;
             includeOptions.reserve(2+std::size(cuda_include_dirs));
             includeOptions.push_back(std::string("-I")+optix_include_dir);

@@ -43,7 +43,6 @@ extern "C" __global__ void __closesthit__ch(){
     auto p1          = hgData->vertices[hgData->indices[primitiveId].y];
     auto p2          = hgData->vertices[hgData->indices[primitiveId].z];
     auto normal      = rtlib::normalize(rtlib::cross(p1 - p0, p2 - p0));
-    //normal          *= hgData->emission;
     //printf("%f %f %f\n", normal.x, normal.y, normal.z);
     optixSetPayload_0(float_as_int((0.5f+0.5f*normal.x)));
     optixSetPayload_1(float_as_int((0.5f+0.5f*normal.y)));
