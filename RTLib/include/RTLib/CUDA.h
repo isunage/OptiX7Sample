@@ -289,7 +289,7 @@ namespace rtlib{
     class CUDATexture2D{
         cudaTextureObject_t  m_Handle = 0;
         CUDAArray2D<PixelType> m_Array  = {};
-    private:
+    public:
         void allocateArray(size_t width, size_t height){
             m_Array.allocate(width,height);
         }
@@ -303,7 +303,7 @@ namespace rtlib{
             cudaTextureDesc texDesc             = {};
             texDesc.addressMode[0]              = cudaAddressModeWrap;
             texDesc.addressMode[1]              = cudaAddressModeWrap;
-            texDesc.filterMode                  = cudaFilterModeLinear;
+            texDesc.filterMode                  = cudaFilterModePoint;
             texDesc.readMode                    = readMode;
             texDesc.normalizedCoords            = true;
             texDesc.maxAnisotropy               = 1;
@@ -325,7 +325,7 @@ namespace rtlib{
         CUDATexture2D(const CUDATexture2D&)noexcept = delete;
         CUDATexture2D(CUDATexture2D&& tex)noexcept{
             m_Handle = tex.m_Handle;
-            m_Array  = srd::move(tex.m_Array);
+            m_Array  = std::move(tex.m_Array);
             tex.m_Handle = 0;
         }
         CUDATexture2D& operator=(const CUDATexture2D&)noexcept = delete;
@@ -333,7 +333,7 @@ namespace rtlib{
             if(this!=&arr){
                 this->reset();
                 m_Handle = tex.m_Handle;
-                m_Array  = srd::move(tex.m_Array);
+                m_Array  = std::move(tex.m_Array);
                 tex.m_Handle = 0;
             }
             return *this;

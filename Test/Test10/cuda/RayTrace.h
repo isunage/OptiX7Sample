@@ -30,10 +30,12 @@ struct MissData {
     float4  bgColor;
 };
 struct HitgroupData{
-    float3*  vertices;
-    uint3*   indices;
-    float3   diffuse;
-    float3   emission;
+    float3*             vertices;
+    uint3*              indices;
+    float2*             texCoords;
+    float3              diffuse;
+    cudaTextureObject_t diffuseTex;
+    float3              emission;
 };
 struct RadiancePRD {
     float3       emitted;

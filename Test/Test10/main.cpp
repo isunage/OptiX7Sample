@@ -27,17 +27,24 @@ struct Vertex{
     float3 position;
 };
 struct ShapeInfo {
-    std::vector<uint3> indices = {};
-    uint32_t           matID   =  0;
+    std::vector<uint3> indices      = {};
+    uint32_t           matID        =  0;
 };
-int main(){ 
-    //static constexpr float3 vertices[] = { float3{-0.5f,-0.5f,0.0f},float3{0.5f,-0.5f,0.0f},float3{0.0f,0.5f,0.0f}};
-    //static constexpr uint3   indices[] = {{0,1,2}};
-    std::vector<float3>    vertices   = {};
-    std::vector<uint3>     indices    = {};
-    std::vector<ShapeInfo> shapeInfos = {};
-    float3 aabbMax                    = make_float3(0.0f, 0.0f, 0.0f);
-    float3 aabbMin                    = make_float3(FLT_MAX, FLT_MAX, FLT_MAX);
+struct MaterialInfo{
+    std::string        diffTexName = {};
+    float3             diffColor   = {};
+};
+int main() {
+    //static constexpr float3 vertices[]     = { float3{-0.5f,-0.5f,0.0f},float3{0.5f,-0.5f,0.0f},float3{0.0f,0.5f,0.0f}};
+    //static constexpr uint3   indices[]     = {{0,1,2}};
+    std::vector<float3>        vertices      = {};
+    std::vector<float2>        texCoords     = {};
+    std::vector<uint3>         indices       = {};
+    std::vector<ShapeInfo>     shapeInfos    = {};
+    std::vector<MaterialInfo>  materialInfos = {};
+    std::unordered_map<std::string, size_t>   diffuseTexMap   = {};
+    float3 aabbMax                           = make_float3(0.0f, 0.0f, 0.0f);
+    float3 aabbMin                           = make_float3(FLT_MAX, FLT_MAX, FLT_MAX);
     {
         std::string                      err       = {};
         std::string                      warn      = {};
@@ -47,6 +54,7 @@ int main(){
         bool res = tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, TEST_TEST10_DATA_PATH"/Models/Sponza/sponza.obj", TEST_TEST10_DATA_PATH"/Models/Sponza/");
         std::cout << warn << "\n";
         std::cout << err  << "\n";
+
         {
             {
                 for (const auto& shape : shapes) {
@@ -84,13 +92,55 @@ int main(){
                 }
             }
             {
+                texCoords.resize(vertices.size());
+                for (const auto& shape : shapes) {
+                    for (auto& meshInd:shape.mesh.indices) {
+                        if (meshInd.texcoord_index >= 0) {
+                            texCoords[meshInd.vertex_index] = make_float2(
+                                attrib.texcoords[2 * meshInd.texcoord_index + 0],
+                               -attrib.texcoords[2 * meshInd.texcoord_index + 1]
+                            );
+                        }
+                        else {
+                            texCoords[meshInd.vertex_index] = make_float2(
+                                0.5f,
+                                0.5f
+                            );
+                        }
+                        
+                    }
+                }
+            }
+            {
                 for (size_t v = 0; v < vertices.size(); ++v) {
                     aabbMax = rtlib::max(vertices[v], aabbMax);
                     aabbMin = rtlib::min(vertices[v], aabbMin);
                 }
             }
+            {
+                materialInfos.resize(materials.size());
+                for (size_t i = 0; i < materialInfos.size(); ++i) {
+                    if (!materials[i].diffuse_texname.empty()) {
+                        materialInfos[i].diffTexName = TEST_TEST10_DATA_PATH"/Models/Sponza/" + materials[i].diffuse_texname;
+                        materialInfos[i].diffColor   = make_float3(1.0f);
+                    }
+                    else {
+                        materialInfos[i].diffTexName = TEST_TEST10_DATA_PATH"/Textures/white.png";
+                        materialInfos[i].diffColor   = make_float3(materials[i].diffuse[0], materials[i].diffuse[1], materials[i].diffuse[2]);
+                    }
+                }
+            }
+            {
+                size_t i = 0;
+                for (auto& materialInfo : materialInfos) {
+                    if (diffuseTexMap.count(materialInfo.diffTexName) == 0) {
+                        diffuseTexMap[materialInfo.diffTexName] = i;
+                        ++i;
+                    }
+                }
+            }
         }
-        shapeInfos.resize(100);
+        //shapeInfos.resize(100);
     }
     //auto box = rtlib::utils::Box{};
     //box.x0   =-0.5f;
@@ -111,7 +161,25 @@ int main(){
         //OPX型はすべて参照型で対応する実体の参照を保持
         //contextはcopy/move不可
         auto context                                 = rtlib::OPXContext({0,0,OPTIX_DEVICE_CONTEXT_VALIDATION_MODE_ALL,4});
-        auto vertexBuffer                              = rtlib::CUDABuffer<float3>(std::data(vertices),std::size(vertices));
+        auto vertexBuffer                            = rtlib::CUDABuffer<float3>(vertices);
+        auto texCrdBuffer                            = rtlib::CUDABuffer<float2>(texCoords);
+        auto diffuseTextures                         = std::vector<rtlib::CUDATexture2D<uchar4>>{ diffuseTexMap.size() };
+        {
+            {
+                for (auto& [TexName, TexId] : diffuseTexMap) {
+                    int  width, height, comp;
+                    try {
+                        auto img = stbi_load(TexName.c_str(), &width, &height, &comp, 4);
+                        diffuseTextures[TexId].allocate(width, height,cudaTextureReadMode::cudaReadModeElementType);
+                        diffuseTextures[TexId].upload(img, width, height);
+                        stbi_image_free(img);
+                    }
+                    catch (std::runtime_error& err) {
+                        std::cout << err.what() << "\n";
+                    }
+                }
+            }
+        }
         auto d_pVertices                             = reinterpret_cast<CUdeviceptr>(vertexBuffer.getDevicePtr());
         auto indexBuffers                            = std::vector< rtlib::CUDABuffer<uint3>>(shapeInfos.size());
         for (size_t idxBuffID = 0; idxBuffID < indexBuffers.size();++idxBuffID) {
@@ -139,17 +207,16 @@ int main(){
             buildInputs[idxBuffID].triangleArray.numSbtRecords       = 1;
             buildInputs[idxBuffID].triangleArray.flags               = geometryFlags.data();
         }
-        
-        auto pipelineCompileOptions                                 = OptixPipelineCompileOptions{};
-        auto [outputBuffer,  traversableHandle]                     = context.buildAccel(accelBuildOptions, buildInputs);
+        auto pipelineCompileOptions                                  = OptixPipelineCompileOptions{};
+        auto [outputBuffer,  traversableHandle]                      = context.buildAccel(accelBuildOptions, buildInputs);
         {            
-            pipelineCompileOptions.usesMotionBlur                   = false;
-            pipelineCompileOptions.traversableGraphFlags            = OPTIX_TRAVERSABLE_GRAPH_FLAG_ALLOW_SINGLE_GAS;
-            pipelineCompileOptions.numAttributeValues               = 3;
-            pipelineCompileOptions.numPayloadValues                 = 3;
-            pipelineCompileOptions.pipelineLaunchParamsVariableName = "params";
-            pipelineCompileOptions.usesPrimitiveTypeFlags           = OPTIX_PRIMITIVE_TYPE_FLAGS_TRIANGLE;
-            pipelineCompileOptions.exceptionFlags                   = OPTIX_EXCEPTION_FLAG_NONE;
+            pipelineCompileOptions.usesMotionBlur                    = false;
+            pipelineCompileOptions.traversableGraphFlags             = OPTIX_TRAVERSABLE_GRAPH_FLAG_ALLOW_SINGLE_GAS;
+            pipelineCompileOptions.numAttributeValues                = 3;
+            pipelineCompileOptions.numPayloadValues                  = 3;
+            pipelineCompileOptions.pipelineLaunchParamsVariableName  = "params";
+            pipelineCompileOptions.usesPrimitiveTypeFlags            = OPTIX_PRIMITIVE_TYPE_FLAGS_TRIANGLE;
+            pipelineCompileOptions.exceptionFlags                    = OPTIX_EXCEPTION_FLAG_NONE;
         }
         auto cuSource   = std::string();
         {
@@ -215,9 +282,13 @@ int main(){
         missRecord.data.bgColor         = float4{ 1.0f,0.0f,0.0f,1.0f };
         std::vector<rtlib::SBTRecord<HitgroupData>> hitgroupRecords(indexBuffers.size());
         for (size_t idxBuffID = 0; idxBuffID < indexBuffers.size(); ++idxBuffID) {
-            hitgroupRecords[idxBuffID]               = hitgroupPG.getSBTRecord<HitgroupData>();
-            hitgroupRecords[idxBuffID].data.vertices = vertexBuffer.getDevicePtr();
-            hitgroupRecords[idxBuffID].data.indices  = indexBuffers[idxBuffID].getDevicePtr();
+            hitgroupRecords[idxBuffID]                 = hitgroupPG.getSBTRecord<HitgroupData>();
+            hitgroupRecords[idxBuffID].data.vertices   = vertexBuffer.getDevicePtr();
+            hitgroupRecords[idxBuffID].data.indices    = indexBuffers[idxBuffID].getDevicePtr();
+            hitgroupRecords[idxBuffID].data.texCoords  = texCrdBuffer.getDevicePtr();
+            hitgroupRecords[idxBuffID].data.diffuse    = materialInfos[shapeInfos[idxBuffID].matID].diffColor;
+            auto diffTexName                           = materialInfos[shapeInfos[idxBuffID].matID].diffTexName;
+            hitgroupRecords[idxBuffID].data.diffuseTex = diffuseTextures[diffuseTexMap[diffTexName]].getHandle();
         }
         auto    d_RaygenBuffer          = rtlib::CUDABuffer<decltype(  raygenRecord)>(raygenRecord);
         auto      d_MissBuffer          = rtlib::CUDABuffer<decltype(    missRecord)>(missRecord);
