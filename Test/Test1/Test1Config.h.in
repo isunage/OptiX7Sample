@@ -1,0 +1,4 @@
+#ifndef TEST_TEST1_CONFIG_H
+#define TEST_TEST1_CONFIG_H
+#cmakedefine TEST_TEST1_DATA_PATH "@TEST_TEST1_DATA_PATH@"
+#endif

@@ -1,7 +1,9 @@
+#define STB_IMAGE_IMPLEMENTATION
+#define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
-#include <stb/stb_image.h>
-#include <stb/stb_image_write.h>
+#include <stb_image.h>
+#include <stb_image_write.h>
 #include <cuda.h>
 #include <cuda_runtime.h>
 #include <RTLib/Core.h>

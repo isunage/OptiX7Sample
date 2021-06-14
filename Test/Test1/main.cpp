@@ -1,3 +1,6 @@
+#define STB_IMAGE_IMPLEMENTATION
+#define STB_IMAGE_RESIZE_IMPLEMENTATION
+#define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <stb_image.h>
 #include <stb_image_resize.h>
 #include <stb_image_write.h>
@@ -14,6 +17,7 @@
 #include <RTLib/Math.h>
 #include <RTLib/VectorFunction.h>
 #include <RTLib/Random.h>
+#include <Test1Config.h>
 constexpr std::array<float, 3 * 3> vertices = {
     -1.0f,-1.0f,0.0f,
      1.0f,-1.0f,0.0f,
@@ -89,7 +93,7 @@ int main(){
         int imgHeight = 0;
         int imgComp   = 0;
         {
-            void* imgData = stbi_load("C:\\Users\\shums\\Desktop\\image.png", &imgWidth, &imgHeight, &imgComp, 4);
+            void* imgData = stbi_load(TEST_TEST1_DATA_PATH"/Textures/sample.png", &imgWidth, &imgHeight, &imgComp, 4);
             cuTexture.allocate(imgWidth, imgHeight);
             cuTexture.upload(imgData, cuTexture.getWidth(), cuTexture.getHeight());
             stbi_image_free(imgData);
@@ -106,7 +110,7 @@ int main(){
         int imgHeight = 0;
         int imgComp = 0;
         {
-            unsigned char* imgData_0 = stbi_load("C:\\Users\\shums\\Desktop\\image.png", &imgWidth, &imgHeight, &imgComp, 4);
+            unsigned char* imgData_0 = stbi_load(TEST_TEST1_DATA_PATH"/Textures/white.png", &imgWidth, &imgHeight, &imgComp, 4);
             auto imageBuffer = rtlib::GLBuffer<uchar4>(reinterpret_cast<uchar4*>(imgData_0),imgWidth*imgHeight,GL_PIXEL_UNPACK_BUFFER,GL_STATIC_DRAW);
             glTexture.allocateWithMipLevel({ (size_t)imgWidth, (size_t)imgHeight}, 6);
             glTexture.upload(0,imageBuffer,0,0,glTexture.getViews()[0].width,glTexture.getViews()[0].height);
