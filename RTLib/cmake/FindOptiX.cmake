@@ -79,7 +79,3 @@ if(OptiX_FOUND AND NOT OptiX::OptiX)
         target_include_directories(OptiX::OptiX INTERFACE ${OptiX_INCLUDE_DIR})
     endif()
 endif()
-
-function(CompilePTX IncludeDirs SourceDirs)
-
-endfunction()

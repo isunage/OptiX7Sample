@@ -12,7 +12,7 @@
 #include <RTLib/VectorFunction.h>
 #include <RTLib/Exceptions.h>
 #include <RTLib/Utils.h>
-#include <Test10Config.h>
+#include <Test11Config.h>
 #include <tiny_obj_loader.h>
 #include <iostream>
 #include <fstream>
@@ -51,9 +51,10 @@ int main() {
         tinyobj::attrib_t                attrib    = {};
         std::vector<tinyobj::shape_t>    shapes    = {};
         std::vector<tinyobj::material_t> materials = {};
-        bool res = tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, TEST_TEST10_DATA_PATH"/Models/Sponza/sponza.obj", TEST_TEST10_DATA_PATH"/Models/Sponza/");
+        bool res = tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, TEST_TEST11_DATA_PATH"/Models/CornellBox/CornellBox-Mirror.obj", TEST_TEST11_DATA_PATH"/Models/CornellBox/");
         std::cout << warn << "\n";
         std::cout << err  << "\n";
+        assert(res);
         {
             {
                 for (const auto& shape : shapes) {
@@ -74,7 +75,6 @@ int main() {
                         tmpShapeInfos[idx].indices.push_back(make_uint3(shape.mesh.indices[3 * f + 0].vertex_index,
                                                                         shape.mesh.indices[3 * f + 1].vertex_index,
                                                                         shape.mesh.indices[3 * f + 2].vertex_index));
-                        
                     }
                     for (auto&& tmpShapeInfo : tmpShapeInfos) {
                         shapeInfos.emplace_back(tmpShapeInfo);
@@ -120,11 +120,11 @@ int main() {
                 materialInfos.resize(materials.size());
                 for (size_t i = 0; i < materialInfos.size(); ++i) {
                     if (!materials[i].diffuse_texname.empty()) {
-                        materialInfos[i].diffTexName = TEST_TEST10_DATA_PATH"/Models/Sponza/" + materials[i].diffuse_texname;
+                        materialInfos[i].diffTexName = TEST_TEST11_DATA_PATH"/Models/CornellBox/" + materials[i].diffuse_texname;
                         materialInfos[i].diffColor   = make_float3(1.0f);
                     }
                     else {
-                        materialInfos[i].diffTexName = TEST_TEST10_DATA_PATH"/Textures/white.png";
+                        materialInfos[i].diffTexName = TEST_TEST11_DATA_PATH"/Textures/white.png";
                         materialInfos[i].diffColor   = make_float3(materials[i].diffuse[0], materials[i].diffuse[1], materials[i].diffuse[2]);
                     }
                 }
@@ -138,14 +138,15 @@ int main() {
                     }
                 }
             }
-            shapeInfos.resize(100);
+            //shapeInfos.resize(30);
         }
         //shapeInfos.resize(100);
     }
+
     try{
         int width                                    = 1024;
         int height                                   = 1024;
-        auto camera                                  = rtlib::Camera({ -1293.07f, 154.681f, -0.7304f }, (aabbMin+aabbMax)/2.0f-make_float3(0.0f,400.f,0.0f), { 0.0f,1.0f,0.0f },45.0f,1.0f);
+        auto camera = rtlib::Camera({ 0.0f,1.0f, 5.0f }, { 0.0f,1.0f, 0.0f }, { 0.0f,1.0f,0.0f }, 30.0f, 1.0f);
         //一番最初に呼び出す
         RTLIB_CUDA_CHECK( cudaFree(0));
         RTLIB_OPTIX_CHECK(optixInit());
@@ -211,7 +212,7 @@ int main() {
         }
         auto cuSource   = std::string();
         {
-            auto cuFile = std::ifstream(TEST_TEST10_CUDA_PATH"/RayTrace.cu", std::ios::binary);
+            auto cuFile = std::ifstream(TEST_TEST11_CUDA_PATH"/RayTrace.cu", std::ios::binary);
             cuSource    = std::string((std::istreambuf_iterator<char>(cuFile)), (std::istreambuf_iterator<char>()));
 
         }
@@ -220,7 +221,7 @@ int main() {
         auto program  = rtlib::NVRTCProgram(std::string(cuSource),"sampleProgram");
         {
             const char* nvrtc_options[]      = {RTLIB_NVRTC_OPTIONS };
-            const char* cuda_include_dirs[]  = { TEST_TEST10_CUDA_PATH, RTLIB_CUDA_INCLUDE_DIRS};
+            const char* cuda_include_dirs[]  = { TEST_TEST11_CUDA_PATH, RTLIB_CUDA_INCLUDE_DIRS};
             const char* optix_include_dir    =  RTLIB_OPTIX_INCLUDE_DIR;
             const char* rtlib_include_dir    =  RTLIB_INCLUDE_DIR;
             std::vector<std::string> includeOptions;
