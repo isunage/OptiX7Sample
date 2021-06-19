@@ -63,7 +63,7 @@ int main() {
         tinyobj::attrib_t                attrib    = {};
         std::vector<tinyobj::shape_t>    shapes    = {};
         std::vector<tinyobj::material_t> materials = {};
-        bool res = tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, TEST_TEST12_DATA_PATH"/Models/CornellBox/CornellBox-Mirror.obj", TEST_TEST12_DATA_PATH"/Models/CornellBox/");
+        bool res = tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, TEST_TEST12_DATA_PATH"/Models/CornellBox/CornellBox-Glossy.obj", TEST_TEST12_DATA_PATH"/Models/CornellBox/");
         std::cout << warn << "\n";
         std::cout << err  << "\n";
         assert(res);
@@ -156,6 +156,7 @@ int main() {
                         materialInfos[i].emitTexName = TEST_TEST12_DATA_PATH"/Textures/white.png";
                         materialInfos[i].emitColor   = make_float3(materials[i].emission[0], materials[i].emission[1], materials[i].emission[2]);
                     }
+
                     materialInfos[i].shinness        = materials[i].shininess;
                 }
             }
@@ -370,7 +371,7 @@ int main() {
         params.seed                     = d_seeds.getDevicePtr();
         params.width                    = width;
         params.height                   = height;
-        params.samplePerLaunch          = 100;
+        params.samplePerLaunch          = 1000;
         params.gasHandle                = traversableHandle;
         params.light                    = light;
         auto d_params                   = rtlib::CUDABuffer<Params>(params);

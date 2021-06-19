@@ -131,17 +131,19 @@ extern "C" __global__ void __closesthit__radiance() {
         prd->origin         = position;
         float3 diffuse      = hgData->getDiffuseColor(texCoord);
         float3 specular     = hgData->getSpecularColor(texCoord);
+        float3 reflectDir   = rtlib::normalize(rayDirection - 2.0f * rtlib::dot(rayDirection, normal) * normal);
         float  shinness     = hgData->shinness;
-        if (shinness > 100.f) {
-            float3 reflectDir = rtlib::normalize(rayDirection - 2.0f * rtlib::dot(rayDirection, normal) * normal);
+        if (shinness > 200.f) {
             prd->direction    = reflectDir;
             prd->attenuation *= specular;
             isSpecular        = true;
+            prd->countEmitted = true;
         }
         else {
-            prd->attenuation *= diffuse;
+            float cosine      = fabsf(rtlib::dot(newDirection, reflectDir));
+            prd->attenuation *= diffuse+specular*(shinness+2.0f)* powf(cosine,shinness) /2.0f;
+            prd->countEmitted = false;
         }
-        prd->countEmitted     = false;
     }
     if(!isSpecular){
         const float2 z        = rtlib::random_float2(xor32);
