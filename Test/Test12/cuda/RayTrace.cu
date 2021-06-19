@@ -1,0 +1,170 @@
+#define __CUDACC__
+#include "RayTrace.h"
+extern "C" {
+    __constant__ Params params;
+}
+static __forceinline__ __device__ float3 faceForward(const float3& n, const float3& i, const float3& nref) {
+    return copysignf(1.0f, rtlib::dot(n, i)) * nref;
+}
+static __forceinline__ __device__ void* unpackPointer(unsigned int p0, unsigned int p1) {
+    return reinterpret_cast<void*>(rtlib::to_combine(p0, p1));
+}
+static __forceinline__ __device__ void packPointer(void* ptr,unsigned int& p0, unsigned int& p1) {
+    const unsigned long long llv = reinterpret_cast<const unsigned long long>(ptr);
+    p0 = rtlib::to_upper(llv);
+    p1 = rtlib::to_lower(llv);
+}
+static __forceinline__ __device__ RadiancePRD* getRadiancePRD() {
+    unsigned int p0 = optixGetPayload_0();
+    unsigned int p1 = optixGetPayload_1();
+    return static_cast<RadiancePRD*>(unpackPointer(p0, p1));
+}
+static __forceinline__ __device__ void setRadiancePRD(RadiancePRD* prd) {
+    unsigned int p0;
+    unsigned int p1;
+    packPointer(static_cast<void*>(prd), p0, p1);
+    optixSetPayload_0(p0);
+    optixSetPayload_1(p1);
+}
+static __forceinline__ __device__ void  setPayloadOccluded(bool occluded) {
+    optixSetPayload_0(static_cast<unsigned int>(occluded));
+}
+static __forceinline__ void traceRadiance(
+    OptixTraversableHandle handle,
+    const float3& rayOrigin, 
+    const float3& rayDirection,
+    float tmin, float tmax,
+    RadiancePRD*  prd) {
+    unsigned int p0, p1;
+    packPointer(prd, p0, p1);
+    optixTrace(handle, rayOrigin, rayDirection, tmin, tmax, 0.0f, OptixVisibilityMask(255), OPTIX_RAY_FLAG_NONE, RAY_TYPE_RADIANCE, RAY_TYPE_COUNT, RAY_TYPE_RADIANCE, p0, p1);
+}
+static __forceinline__ bool traceOccluded(
+    OptixTraversableHandle handle,
+    const float3& rayOrigin,
+    const float3& rayDirection,
+    float tmin, float tmax) {
+    unsigned int occluded = false;
+    optixTrace(handle, rayOrigin, rayDirection, tmin, tmax, 0.0f, OptixVisibilityMask(255), OPTIX_RAY_FLAG_NONE, RAY_TYPE_OCCLUSION, RAY_TYPE_COUNT, RAY_TYPE_OCCLUSION, occluded);
+    return occluded;
+}
+extern "C" __global__ void     __raygen__rg(){
+    const uint3 idx        = optixGetLaunchIndex();
+	const uint3 dim        = optixGetLaunchDimensions();
+    auto* rgData           = reinterpret_cast<RayGenData*>(optixGetSbtDataPointer());
+    const float3 u         = rgData->u;
+	const float3 v         = rgData->v;
+	const float3 w         = rgData->w;
+    unsigned int seed      = params.seed[params.width * idx.y + idx.x];
+    float3 result          = make_float3(0.0f, 0.0f, 0.0f);
+    size_t i               = params.samplePerLaunch;
+    do {
+        rtlib::Xorshift32 xor32(seed);
+        const float2 jitter = rtlib::random_float2(xor32);
+        const float2 d = make_float2(
+            ((2.0f * static_cast<float>(idx.x) + jitter.x) / static_cast<float>(dim.x)) - 1.0,
+            ((2.0f * static_cast<float>(idx.y) + jitter.y) / static_cast<float>(dim.y)) - 1.0);
+        seed                = xor32.next();
+        float3 rayOrigin    = rgData->eye;
+        float3 rayDirection = rtlib::normalize(d.x * u + d.y * v + w);
+        RadiancePRD prd;
+        prd.emitted      = make_float3(0.0f, 0.0f, 0.0f);
+        prd.radiance     = make_float3(0.0f, 0.0f, 0.0f);
+        prd.attenuation  = make_float3(1.0f, 1.0f, 1.0f);
+        prd.countEmitted = true;
+        prd.done         = false;
+        prd.seed         = seed;
+        int depth = 0;
+        for (;;) {
+            traceRadiance(params.gasHandle, rayOrigin, rayDirection, 0.01f, 1e16f, &prd);
+            result += prd.emitted;
+            result += prd.radiance * prd.attenuation;
+            if (prd.done || depth >= 2) {
+                break;
+            }
+            rayOrigin    = prd.origin;
+            rayDirection = prd.direction;
+            depth++;
+        }
+    } while (i--);
+    float3 accumColor = result / static_cast<float>(params.samplePerLaunch);
+    accumColor /= (accumColor + make_float3(1.0f, 1.0f, 1.0f));
+    params.image[params.width * idx.y + idx.x] = make_uchar4(static_cast<unsigned char>(255.99 * accumColor.x), static_cast<unsigned char>(255.99 * accumColor.y), static_cast<unsigned char>(255.99 * accumColor.z), 255);
+}
+extern "C" __global__ void       __miss__radiance(){
+    auto* msData = reinterpret_cast<MissData*>(optixGetSbtDataPointer());
+    RadiancePRD* prd = getRadiancePRD();
+    prd->radiance    = make_float3(msData->bgColor.x, msData->bgColor.y, msData->bgColor.z);
+    prd->done        = true;
+}
+extern "C" __global__ void       __miss__occluded() {
+    setPayloadOccluded(false);
+}
+extern "C" __global__ void __closesthit__radiance() {
+    auto*        hgData       = reinterpret_cast<HitgroupData*>(optixGetSbtDataPointer());
+    const float3 rayDirection = optixGetWorldRayDirection();
+    const int    primitiveID  = optixGetPrimitiveIndex();
+    const float3 v0           = hgData->vertices[hgData->indices[primitiveID].x];
+    const float3 v1           = hgData->vertices[hgData->indices[primitiveID].y];
+    const float3 v2           = hgData->vertices[hgData->indices[primitiveID].z];
+    const float3 n0           = rtlib::normalize(rtlib::cross(v1 - v0, v2 - v0));
+    const float3 normal       = faceForward(n0, make_float3(-rayDirection.x,-rayDirection.y,-rayDirection.z), n0);
+    const float2 barycentric  = optixGetTriangleBarycentrics();
+    const auto t0             = hgData->texCoords[hgData->indices[primitiveID].x];
+    const auto t1             = hgData->texCoords[hgData->indices[primitiveID].y];
+    const auto t2             = hgData->texCoords[hgData->indices[primitiveID].z];
+    const auto texCoord       = (1.0f - barycentric.x - barycentric.y) * t0 + barycentric.x * t1 + barycentric.y * t2;
+    const float3 position     = optixGetWorldRayOrigin() + optixGetRayTmax() * rayDirection;
+    RadiancePRD* prd          = getRadiancePRD();
+    if (prd->countEmitted) {
+        prd->emitted          = hgData->getEmissionColor(texCoord);
+    }
+    else {
+        prd->emitted          = make_float3(0.0f, 0.0f, 0.0f);
+    }
+    rtlib::Xorshift32 xor32(prd->seed);
+    bool isSpecular = false;
+    {
+        rtlib::ONB onb(normal);
+        float3 newDirection = onb.local(rtlib::random_cosine_direction(xor32));
+        prd->direction      = newDirection;
+        prd->origin         = position;
+        float3 diffuse      = hgData->getDiffuseColor(texCoord);
+        float3 specular     = hgData->getSpecularColor(texCoord);
+        float  shinness     = hgData->shinness;
+        if (shinness > 100.f) {
+            float3 reflectDir = rtlib::normalize(rayDirection - 2.0f * rtlib::dot(rayDirection, normal) * normal);
+            prd->direction    = reflectDir;
+            prd->attenuation *= specular;
+            isSpecular        = true;
+        }
+        else {
+            prd->attenuation *= diffuse;
+        }
+        prd->countEmitted     = false;
+    }
+    if(!isSpecular){
+        const float2 z        = rtlib::random_float2(xor32);
+        const auto   light    = params.light;
+        const float3 lightPos = light.corner + light.v1 * z.x + light.v2 * z.y;
+        const float  Ldist    = rtlib::distance(lightPos, position);
+        const float3 lightDir = rtlib::normalize(lightPos - position);
+        const float  ndl      = rtlib::dot(normal, lightDir);
+        const float  lndl     =-rtlib::dot(light.normal, lightDir);
+        float weight = 0.0f;
+        if (ndl > 0.0f && lndl > 0.0f) {
+            const bool occluded = traceOccluded(params.gasHandle, position, lightDir, 0.01f, Ldist - 0.01f);
+            if (!occluded) {
+                //printf("not Occluded!\n");
+                const float A = rtlib::length(rtlib::cross(light.v1, light.v2));
+                weight = ndl * lndl * A / (RTLIB_M_PI * Ldist * Ldist);
+            }
+        }
+        prd->radiance += light.emission * weight;
+        
+    }
+    prd->seed = xor32.next();
+}
+extern "C" __global__ void __closesthit__occluded() {
+    setPayloadOccluded(true);
+}

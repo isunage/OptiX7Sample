@@ -384,6 +384,35 @@ namespace rtlib{
             
         }
     };  
+    //NVRTC Options
+    class NVRTCOptions{
+    public:
+        NVRTCOptions& setIncludeDir(const std::string& includeDir) {
+            m_Options.push_back(std::string("-I") + includeDir);
+            return *this;
+        }
+        NVRTCOptions& setIncludeDirs(const std::vector<std::string>& includeDirs) {
+            for (auto& includeDir : includeDirs) {
+                m_Options.push_back(std::string("-I") + includeDir);
+            }
+            return *this;
+        }
+        NVRTCOptions& setOtherOption(const std::string& option) {
+            m_Options.push_back(option);
+            return *this;
+        }
+        NVRTCOptions& setOtherOptions(const std::vector<std::string>& options) {
+            for (auto& option : options) {
+                m_Options.push_back(option);
+            }
+            return *this;
+        }
+        auto get()const->std::vector<std::string> {
+            return m_Options;
+        }
+    private:
+        std::vector<std::string> m_Options = {};
+    };
     //NVRTC Program
     class NVRTCProgram{
         nvrtcProgram m_Handle = nullptr;

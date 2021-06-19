@@ -429,8 +429,10 @@ namespace rtlib{
             OptixProgramGroupDesc    desc    = {};
             OptixProgramGroupOptions options = {};
             desc.kind = OPTIX_PROGRAM_GROUP_KIND_MISS;
-            desc.miss.module = this->getModule()->getHandle();
-            desc.miss.entryFunctionName = this->getEntryName().c_str();
+            if (this->getModule()) {
+                desc.miss.module            = this->getModule()->getHandle();
+                desc.miss.entryFunctionName = this->getEntryName().c_str();
+            }
             char log[1024];
             size_t sizeoflog = sizeof(log);
             OptixProgramGroup ptr = nullptr;
@@ -484,12 +486,18 @@ namespace rtlib{
             OptixProgramGroupDesc    desc    = {};
             OptixProgramGroupOptions options = {};
             desc.kind = OPTIX_PROGRAM_GROUP_KIND_HITGROUP;
-            desc.hitgroup.moduleCH            = this->getCHModule()->getHandle();
-            desc.hitgroup.moduleAH            = this->getAHModule()->getHandle();
-            desc.hitgroup.moduleIS            = this->getISModule()->getHandle();
-            desc.hitgroup.entryFunctionNameCH = this->getCHEntryName();
-            desc.hitgroup.entryFunctionNameAH = this->getAHEntryName();
-            desc.hitgroup.entryFunctionNameIS = this->getISEntryName();
+            if (this->getCHModule()->getHandle()) {
+                desc.hitgroup.moduleCH = this->getCHModule()->getHandle();
+                desc.hitgroup.entryFunctionNameCH = this->getCHEntryName();
+            }
+            if (this->getAHModule()->getHandle()) {
+                desc.hitgroup.moduleAH = this->getAHModule()->getHandle();
+                desc.hitgroup.entryFunctionNameAH = this->getAHEntryName();
+            }
+            if (this->getISModule()->getHandle()) {
+                desc.hitgroup.moduleIS = this->getISModule()->getHandle();
+                desc.hitgroup.entryFunctionNameIS = this->getISEntryName();
+            }
             char log[1024];
             size_t sizeoflog = sizeof(log);
             OptixProgramGroup ptr = nullptr;
@@ -542,8 +550,12 @@ namespace rtlib{
         OPXMissPG missPG;
         //TODO���`�`�F�b�N������
         missPG.m_Impl->setContext(m_Impl->getContext());
-        missPG.m_Impl->setModule(missDesc.module.m_Impl);
-        missPG.m_Impl->setEntryName(missDesc.entryName);
+        if (missDesc.module.m_Impl) {
+            missPG.m_Impl->setModule(missDesc.module.m_Impl);
+            if (missDesc.entryName) {
+                missPG.m_Impl->setEntryName(missDesc.entryName);
+            }
+        }
         missPG.m_Impl->build();
         m_Impl->setProgramGroup(missPG.m_Impl);
         return missPG;

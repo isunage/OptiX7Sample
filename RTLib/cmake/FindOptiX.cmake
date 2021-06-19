@@ -18,6 +18,7 @@ if(NOT OptiX_INSTALL_DIR)
         set(OptiX_INSTALL_DIR $ENV{OptiX_INSTALL_DIR})
     else()
         set(OptiX_INSTALL_DIR_LIST 
+        "C:/ProgramData/NVIDIA Corporation/OptiX SDK 7.3.0"
         "C:/ProgramData/NVIDIA Corporation/OptiX SDK 7.2.0"
         "C:/ProgramData/NVIDIA Corporation/OptiX SDK 7.1.0"
         "C:/ProgramData/NVIDIA Corporation/OptiX SDK 7.0.0")

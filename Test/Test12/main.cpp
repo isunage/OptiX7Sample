@@ -12,7 +12,7 @@
 #include <RTLib/VectorFunction.h>
 #include <RTLib/Exceptions.h>
 #include <RTLib/Utils.h>
-#include <Test11Config.h>
+#include <Test12Config.h>
 #include <tiny_obj_loader.h>
 #include <iostream>
 #include <fstream>
@@ -40,8 +40,11 @@ struct ShapeInfo {
 struct MaterialInfo{
     std::string        diffTexName = {};
     float3             diffColor   = {};
+    std::string        specTexName = {};
+    float3             specColor   = {};
     std::string        emitTexName = {};
     float3             emitColor   = {};
+    float              shinness    = 0.0f;
 };
 int main() {
     //static constexpr float3 vertices[]           = { float3{-0.5f,-0.5f,0.0f},float3{0.5f,-0.5f,0.0f},float3{0.0f,0.5f,0.0f}};
@@ -53,13 +56,14 @@ int main() {
     std::vector<MaterialInfo>  materialInfos       = {};
     std::unordered_map<std::string, size_t> texMap = {};
     AABB                       aabb                = {};
+    ParallelLight              light               = {};
     {
         std::string                      err       = {};
         std::string                      warn      = {};
         tinyobj::attrib_t                attrib    = {};
         std::vector<tinyobj::shape_t>    shapes    = {};
         std::vector<tinyobj::material_t> materials = {};
-        bool res = tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, TEST_TEST11_DATA_PATH"/Models/CornellBox/CornellBox-Original.obj", TEST_TEST11_DATA_PATH"/Models/CornellBox/");
+        bool res = tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, TEST_TEST12_DATA_PATH"/Models/CornellBox/CornellBox-Mirror.obj", TEST_TEST12_DATA_PATH"/Models/CornellBox/");
         std::cout << warn << "\n";
         std::cout << err  << "\n";
         assert(res);
@@ -120,6 +124,7 @@ int main() {
                 }
             }
             {
+                ShapeInfo  lightShapeInfo = {};
                 for (size_t v = 0; v < vertices.size(); ++v) {
                     aabb.Update(vertices[v]);
                 }
@@ -128,21 +133,30 @@ int main() {
                 materialInfos.resize(materials.size());
                 for (size_t i = 0; i < materialInfos.size(); ++i) {
                     if (!materials[i].diffuse_texname.empty()) {
-                        materialInfos[i].diffTexName = TEST_TEST11_DATA_PATH"/Models/CornellBox/" + materials[i].diffuse_texname;
+                        materialInfos[i].diffTexName = TEST_TEST12_DATA_PATH"/Models/CornellBox/" + materials[i].diffuse_texname;
                         materialInfos[i].diffColor   = make_float3(1.0f);
                     }
                     else {
-                        materialInfos[i].diffTexName = TEST_TEST11_DATA_PATH"/Textures/white.png";
+                        materialInfos[i].diffTexName = TEST_TEST12_DATA_PATH"/Textures/white.png";
                         materialInfos[i].diffColor   = make_float3(materials[i].diffuse[0], materials[i].diffuse[1], materials[i].diffuse[2]);
                     }
+                    if (!materials[i].specular_texname.empty()) {
+                        materialInfos[i].specTexName = TEST_TEST12_DATA_PATH"/Models/CornellBox/" + materials[i].specular_texname;
+                        materialInfos[i].specColor = make_float3(1.0f);
+                    }
+                    else {
+                        materialInfos[i].specTexName = TEST_TEST12_DATA_PATH"/Textures/white.png";
+                        materialInfos[i].specColor   = make_float3(materials[i].specular[0], materials[i].specular[1], materials[i].specular[2]);
+                    }
                     if (!materials[i].emissive_texname.empty()) {
-                        materialInfos[i].emitTexName = TEST_TEST11_DATA_PATH"/Models/CornellBox/" + materials[i].emissive_texname;
+                        materialInfos[i].emitTexName = TEST_TEST12_DATA_PATH"/Models/CornellBox/" + materials[i].emissive_texname;
                         materialInfos[i].emitColor   = make_float3(1.0f);
                     }
                     else {
-                        materialInfos[i].emitTexName = TEST_TEST11_DATA_PATH"/Textures/white.png";
+                        materialInfos[i].emitTexName = TEST_TEST12_DATA_PATH"/Textures/white.png";
                         materialInfos[i].emitColor   = make_float3(materials[i].emission[0], materials[i].emission[1], materials[i].emission[2]);
                     }
+                    materialInfos[i].shinness        = materials[i].shininess;
                 }
             }
             {
@@ -150,6 +164,10 @@ int main() {
                 for (auto& materialInfo : materialInfos) {
                     if (texMap.count(materialInfo.diffTexName) == 0) {
                         texMap[materialInfo.diffTexName] = i;
+                        ++i;
+                    }
+                    if (texMap.count(materialInfo.specTexName) == 0) {
+                        texMap[materialInfo.specTexName] = i;
                         ++i;
                     }
                     if (texMap.count(materialInfo.emitTexName) == 0) {
@@ -160,6 +178,32 @@ int main() {
             }
             //shapeInfos.resize(30);
         }
+        {
+            AABB      lightAABB = {};
+            ShapeInfo lightShapeInfo = {};
+            for (size_t i = 0; i < shapeInfos.size(); ++i) {
+                if (shapeInfos[i].name == "light0") {
+                    lightShapeInfo = shapeInfos[i];
+                }
+            }
+            for (size_t i = 0; i < lightShapeInfo.indices.size(); ++i) {
+                auto idx0 = lightShapeInfo.indices[i].x;
+                auto idx1 = lightShapeInfo.indices[i].y;
+                auto idx2 = lightShapeInfo.indices[i].z;
+                auto v0   = vertices[idx0];
+                auto v1   = vertices[idx1];
+                auto v2   = vertices[idx2];
+                lightAABB.Update(v0);
+                lightAABB.Update(v1);
+                lightAABB.Update(v2);
+            }
+            light.corner   = lightAABB.min;
+            light.v1       = make_float3(lightAABB.max.x - lightAABB.min.x, 0.0f, 0.0f);
+            light.v2       = make_float3(0.0f, 0.0f, lightAABB.max.z - lightAABB.min.z);
+            light.normal   = make_float3(0.0f, -1.0f, 0.0f);
+            light.emission = materialInfos[lightShapeInfo.matID].emitColor;
+        }
+
         //shapeInfos.resize(100);
     }
     try{
@@ -231,7 +275,7 @@ int main() {
         }
         auto cuSource   = std::string();
         {
-            auto cuFile = std::ifstream(TEST_TEST11_CUDA_PATH"/RayTrace.cu", std::ios::binary);
+            auto cuFile = std::ifstream(TEST_TEST12_CUDA_PATH"/RayTrace.cu", std::ios::binary);
             cuSource    = std::string((std::istreambuf_iterator<char>(cuFile)), (std::istreambuf_iterator<char>()));
 
         }
@@ -240,24 +284,11 @@ int main() {
         auto program  = rtlib::NVRTCProgram(std::string(cuSource),"sampleProgram");
         {
             const char* nvrtc_options[]      = {RTLIB_NVRTC_OPTIONS };
-            const char* cuda_include_dirs[]  = { TEST_TEST11_CUDA_PATH, RTLIB_CUDA_INCLUDE_DIRS};
+            const char* cuda_include_dirs[]  = { TEST_TEST12_CUDA_PATH, RTLIB_CUDA_INCLUDE_DIRS};
             const char* optix_include_dir    =  RTLIB_OPTIX_INCLUDE_DIR;
             const char* rtlib_include_dir    =  RTLIB_INCLUDE_DIR;
-            std::vector<std::string> includeOptions;
-            includeOptions.reserve(2+std::size(cuda_include_dirs));
-            includeOptions.push_back(std::string("-I")+optix_include_dir);
-            includeOptions.push_back(std::string("-I")+rtlib_include_dir);
-            for(const auto& cuda_include_dir:cuda_include_dirs){
-                includeOptions.push_back(std::string("-I")+cuda_include_dir);
-            }
-            std::vector<std::string> options = {};
-            options.reserve(includeOptions.size()+options.size());
-            for(const auto& nvrtc_option:nvrtc_options){
-                options.push_back(std::string(nvrtc_option));
-            }
-            std::copy(includeOptions.begin(),includeOptions.end(),std::back_inserter(options));
             try{
-                program.compile(options);
+                program.compile(rtlib::NVRTCOptions().setIncludeDirs({ RTLIB_INCLUDE_DIR ,RTLIB_OPTIX_INCLUDE_DIR, TEST_TEST12_CUDA_PATH, RTLIB_CUDA_INCLUDE_DIRS }).setOtherOptions({RTLIB_NVRTC_OPTIONS}).get());
             }catch(rtlib::NVRTCException& nvrtcErr){
                 std::cerr << "Failed To NVRTC Compile Program!\n";
                 std::cout << program.getLog() << std::endl;
@@ -275,11 +306,13 @@ int main() {
         }
         auto module                     = pipeline.createModule(program.getPTX(),moduleCompileOptions);
         auto raygenPG                   = pipeline.createRaygenPG({ module,"__raygen__rg" });
-        auto missPG                     = pipeline.createMissPG({ module,"__miss__ms" });
-        auto hitgroupPG                 = pipeline.createHitgroupPG({ module,"__closesthit__ch" },{ module,    "__anyhit__ah" },{});
+        auto missPGForRadiance          = pipeline.createMissPG(  { module,"__miss__radiance" });
+        auto missPGForOccluded          = pipeline.createMissPG(  { module,"__miss__occluded"});
+        auto hitgroupPGForRadiance      = pipeline.createHitgroupPG({ module,"__closesthit__radiance" }, {}, {});
+        auto hitgroupPGForOccluded      = pipeline.createHitgroupPG({ module,"__closesthit__occluded" }, {}, {});
         auto pipelineLinkOptions        = OptixPipelineLinkOptions{};
         {
-            pipelineLinkOptions.maxTraceDepth = 1;
+            pipelineLinkOptions.maxTraceDepth = 2;
             pipelineLinkOptions.debugLevel    = OPTIX_COMPILE_DEBUG_LEVEL_LINEINFO;
         }
         pipeline.link(pipelineLinkOptions);
@@ -289,29 +322,36 @@ int main() {
         raygenRecord.data.u             = u;
         raygenRecord.data.v             = v;
         raygenRecord.data.w             = w;
-        auto        missRecord          = missPG.getSBTRecord<MissData>();
-        missRecord.data.bgColor         = float4{ 0.0f,0.0f,0.0f,1.0f };
-        std::vector<rtlib::SBTRecord<HitgroupData>> hitgroupRecords(indexBuffers.size());
+        std::vector<rtlib::SBTRecord<MissData>> missRecords(RAY_TYPE_COUNT);
+        missRecords[RAY_TYPE_RADIANCE]  = missPGForRadiance.getSBTRecord<MissData>();
+        missRecords[RAY_TYPE_RADIANCE].data.bgColor = float4{ 0.0f,0.0f,0.0f,1.0f };
+        missRecords[RAY_TYPE_OCCLUSION] = missPGForOccluded.getSBTRecord<MissData>();
+        std::vector<rtlib::SBTRecord<HitgroupData>> hitgroupRecords(indexBuffers.size()*RAY_TYPE_COUNT);
         for (size_t idxBuffID = 0; idxBuffID < indexBuffers.size(); ++idxBuffID) {
-            hitgroupRecords[idxBuffID]                 = hitgroupPG.getSBTRecord<HitgroupData>();
-            hitgroupRecords[idxBuffID].data.vertices   = vertexBuffer.getDevicePtr();
-            hitgroupRecords[idxBuffID].data.indices    = indexBuffers[idxBuffID].getDevicePtr();
-            hitgroupRecords[idxBuffID].data.texCoords  = texCrdBuffer.getDevicePtr();
-            hitgroupRecords[idxBuffID].data.diffuse    = materialInfos[shapeInfos[idxBuffID].matID].diffColor;
-            auto diffTexName                           = materialInfos[shapeInfos[idxBuffID].matID].diffTexName;
-            hitgroupRecords[idxBuffID].data.diffuseTex = textures[texMap[diffTexName]].getHandle();
-            hitgroupRecords[idxBuffID].data.emission   = materialInfos[shapeInfos[idxBuffID].matID].emitColor;
-            auto emitTexName                           = materialInfos[shapeInfos[idxBuffID].matID].emitTexName;
-            hitgroupRecords[idxBuffID].data.emissionTex= textures[texMap[emitTexName]].getHandle();
+            hitgroupRecords[RAY_TYPE_COUNT * idxBuffID + RAY_TYPE_RADIANCE]                 = hitgroupPGForRadiance.getSBTRecord<HitgroupData>();
+            hitgroupRecords[RAY_TYPE_COUNT * idxBuffID + RAY_TYPE_RADIANCE].data.vertices   = vertexBuffer.getDevicePtr();
+            hitgroupRecords[RAY_TYPE_COUNT * idxBuffID + RAY_TYPE_RADIANCE].data.indices    = indexBuffers[idxBuffID].getDevicePtr();
+            hitgroupRecords[RAY_TYPE_COUNT * idxBuffID + RAY_TYPE_RADIANCE].data.texCoords  = texCrdBuffer.getDevicePtr();
+            hitgroupRecords[RAY_TYPE_COUNT * idxBuffID + RAY_TYPE_RADIANCE].data.diffuse    = materialInfos[shapeInfos[idxBuffID].matID].diffColor;
+            auto diffTexName                                                                = materialInfos[shapeInfos[idxBuffID].matID].diffTexName;
+            hitgroupRecords[RAY_TYPE_COUNT * idxBuffID + RAY_TYPE_RADIANCE].data.diffuseTex = textures[texMap[diffTexName]].getHandle();
+            hitgroupRecords[RAY_TYPE_COUNT * idxBuffID + RAY_TYPE_RADIANCE].data.specular   = materialInfos[shapeInfos[idxBuffID].matID].specColor;
+            auto specTexName                                                                = materialInfos[shapeInfos[idxBuffID].matID].specTexName;
+            hitgroupRecords[RAY_TYPE_COUNT * idxBuffID + RAY_TYPE_RADIANCE].data.specularTex= textures[texMap[specTexName]].getHandle();
+            hitgroupRecords[RAY_TYPE_COUNT * idxBuffID + RAY_TYPE_RADIANCE].data.shinness   = materialInfos[shapeInfos[idxBuffID].matID].shinness;
+            hitgroupRecords[RAY_TYPE_COUNT * idxBuffID + RAY_TYPE_RADIANCE].data.emission   = materialInfos[shapeInfos[idxBuffID].matID].emitColor;
+            auto emitTexName                                                                = materialInfos[shapeInfos[idxBuffID].matID].emitTexName;
+            hitgroupRecords[RAY_TYPE_COUNT * idxBuffID + RAY_TYPE_RADIANCE].data.emissionTex= textures[texMap[emitTexName]].getHandle();
+            hitgroupRecords[RAY_TYPE_COUNT * idxBuffID + RAY_TYPE_OCCLUSION]                = hitgroupPGForOccluded.getSBTRecord<HitgroupData>();
         }
         auto    d_RaygenBuffer          = rtlib::CUDABuffer<rtlib::SBTRecord<RayGenData>>(raygenRecord);
-        auto      d_MissBuffer          = rtlib::CUDABuffer<rtlib::SBTRecord<MissData>>(missRecord);
+        auto      d_MissBuffer          = rtlib::CUDABuffer<rtlib::SBTRecord<MissData>>(missRecords);
         auto  d_HitgroupBuffer          = rtlib::CUDABuffer<rtlib::SBTRecord<HitgroupData>>(hitgroupRecords);
         OptixShaderBindingTable sbt     = {};
         sbt.raygenRecord                = reinterpret_cast<CUdeviceptr>(d_RaygenBuffer.getDevicePtr());
         sbt.missRecordBase              = reinterpret_cast<CUdeviceptr>(  d_MissBuffer.getDevicePtr());
-        sbt.missRecordCount             = 1;
-        sbt.missRecordStrideInBytes     = sizeof(missRecord);
+        sbt.missRecordCount             = d_MissBuffer.getCount();
+        sbt.missRecordStrideInBytes     = sizeof(rtlib::SBTRecord<MissData>);
         sbt.hitgroupRecordBase          = reinterpret_cast<CUdeviceptr>(d_HitgroupBuffer.getDevicePtr());
         sbt.hitgroupRecordCount         = d_HitgroupBuffer.getCount();
         sbt.hitgroupRecordStrideInBytes = sizeof(rtlib::SBTRecord<HitgroupData>);
@@ -330,11 +370,13 @@ int main() {
         params.seed                     = d_seeds.getDevicePtr();
         params.width                    = width;
         params.height                   = height;
+        params.samplePerLaunch          = 100;
         params.gasHandle                = traversableHandle;
+        params.light                    = light;
         auto d_params                   = rtlib::CUDABuffer<Params>(params);
         CUstream stream;
         RTLIB_CU_CHECK(cuStreamCreate(&stream, CU_STREAM_DEFAULT));
-        pipeline.launch(stream, d_params.getDevicePtr(), sbt, width, height, 1);
+        pipeline.launch(stream, d_params.getDevicePtr(), sbt, width, height, 2);
         cuStreamSynchronize(stream);
         RTLIB_CU_CHECK(cuStreamDestroy(stream));
         auto img_pixels = std::vector<uchar4>();

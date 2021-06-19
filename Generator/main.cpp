@@ -201,7 +201,7 @@ public:
 
 };
 constexpr TypeSymbol typeSymbols[] = {
-    TypeSymbol("signed char","char"),TypeSymbol{"short"},TypeSymbol{"int"},TypeSymbol{"long"},TypeSymbol{"long long","longlong"},
+    TypeSymbol("signed char","char")   ,TypeSymbol{"short"},TypeSymbol{"int"},TypeSymbol{"long"},TypeSymbol{"long long","longlong"},
     TypeSymbol("unsigned char","uchar"),TypeSymbol{"unsigned short","ushort"},TypeSymbol{"unsigned int","uint"},
     TypeSymbol{"unsigned long","ulong"},TypeSymbol{"unsigned long long","ulonglong"},
     TypeSymbol{"float"},

@@ -294,6 +294,7 @@ int main() {
         sbt.hitgroupRecordStrideInBytes = sizeof(rtlib::SBTRecord<HitgroupData>);
         auto d_pixel                    = rtlib::CUDABuffer<uchar4>();
         d_pixel.allocate(width * height);
+
         auto params                     = Params();
         params.image                    = d_pixel.getDevicePtr();
         params.width                    = width;

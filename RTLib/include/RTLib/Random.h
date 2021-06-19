@@ -16,12 +16,25 @@ namespace rtlib{
     struct SplitMin64{
         unsigned long long m_seed;
     public:
+        using result_type = unsigned long long;
         RTLIB_INLINE RTLIB_HOST_DEVICE explicit SplitMin64(const unsigned long long s):m_seed{s}{}
         RTLIB_INLINE RTLIB_HOST_DEVICE unsigned long long  next(){
             unsigned long long  z = (m_seed+=0x9e3779b97f4a7c15);
             z = (z^(z>>30))*0xbf58476d1ce4e5b9;
             z = (z^(z>>27))*0x94d049bb133111eb;
             return m_seed = z^(z>>31);
+        }
+    };
+    //Xorshift32
+    struct Xorshift32 {
+        unsigned int m_seed;
+    public:
+        using result_type = unsigned int;
+        RTLIB_INLINE RTLIB_HOST_DEVICE explicit Xorshift32(const unsigned int s) :m_seed{ s } {}
+        RTLIB_INLINE RTLIB_HOST_DEVICE result_type  next() {
+            unsigned int y = m_seed;
+            y = y ^ (y << 13); y = y ^ (y >> 17);
+            return m_seed = y ^ (y << 5);
         }
     };
     //Xorshift128
@@ -235,6 +248,21 @@ namespace rtlib{
         const float  t   = rnd.y * RTLIB_M_PI;
         return make_float3(z * ::cosf(t), z * ::sinf(t), r);
     }
+    template<typename RNG>
+    RTLIB_INLINE RTLIB_HOST_DEVICE float3 random_cosine_direction(RNG& rng) {
+        //r=(1.0f,-1.0f)
+        //t=(0.0f, 2.0fPI)
+#if defined(__cplusplus) && !defined(__CUDA_ARCH__)
+        using std::cosf;
+        using std::sinf;
+        using std::sqrtf;
+#endif
+        const float2 rnd = random_float2(rng);
+        const float  r   = sqrtf(rnd.x);
+        const float  z   = sqrtf(1.0f-rnd.x);
+        const float  t   = 2.0f*rnd.y * RTLIB_M_PI;
+        return make_float3(r * ::cosf(t), r * ::sinf(t), z);
+    }
     //fastの場合、得られたbit長を最大限利用することで乱数の呼び出しを最小限にとどめる
     //そのため精度は保証できず、場合によっては単精度になる可能性あり
     //double
@@ -305,6 +333,21 @@ namespace rtlib{
         const float  z = sqrtf(1.0f - r * r);
         const float  t = rnd.y * RTLIB_M_PI;
         return make_float3(z * ::cosf(t), z * ::sinf(t), r);
+    }
+    template<typename RNG>
+    RTLIB_INLINE RTLIB_HOST_DEVICE float3 random_cosine_direction_fast(RNG& rng) {
+        //r=(1.0f,-1.0f)
+        //t=(0.0f, 2.0fPI)
+#if defined(__cplusplus) && !defined(__CUDA_ARCH__)
+        using std::cosf;
+        using std::sinf;
+        using std::sqrtf;
+#endif
+        const float2 rnd = random_float2_fast(rng);
+        const float  r   = sqrtf(rnd.x);
+        const float  z   = sqrtf(1.0f-rnd.x);
+        const float  t   = 2.0f*rnd.y * RTLIB_M_PI;
+        return make_float3(r * ::cosf(t), r * ::sinf(t), z);
     }
 }
 #endif

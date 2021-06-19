@@ -25,6 +25,7 @@ struct Params {
     unsigned int*          seed;
     unsigned int           width;
     unsigned int           height;
+    unsigned int           samplePerLaunch;
     OptixTraversableHandle gasHandle;
     ParallelLight          light;
 };
@@ -43,12 +44,21 @@ struct HitgroupData{
     cudaTextureObject_t diffuseTex;
     float3              emission;
     cudaTextureObject_t emissionTex;
+    float3              specular;
+    cudaTextureObject_t specularTex;
+    float               shinness;
 #ifdef __CUDACC__
     float3 getDiffuseColor(const float2& uv)const noexcept{
         auto diffTC      = tex2D<uchar4>(this->diffuseTex, uv.x, uv.y);
         auto diffBC      = this->diffuse;
         auto diffColor   = diffBC*make_float3(float(diffTC.x)/ 255.99f,float(diffTC.y)/ 255.99f,float(diffTC.z)/ 255.99f);
         return diffColor;
+    }
+    float3 getSpecularColor(const float2& uv)const noexcept {
+        auto specTC      = tex2D<uchar4>(this->specularTex, uv.x, uv.y);
+        auto specBC      = this->specular;
+        auto specColor   = specBC * make_float3(float(specTC.x) / 255.99f, float(specTC.y) / 255.99f, float(specTC.z) / 255.99f);
+        return specColor;
     }
     float3 getEmissionColor(const float2& uv)const noexcept {
         auto emitTC = tex2D<uchar4>(this->emissionTex, uv.x, uv.y);

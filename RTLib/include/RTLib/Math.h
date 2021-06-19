@@ -510,7 +510,7 @@ namespace rtlib {
         return (v<=0.0556f)?(v/32.f):(::powf(v,2.2f));
     }
     RTLIB_INLINE RTLIB_HOST_DEVICE unsigned short to_combine(unsigned char upper, unsigned char lower) {
-        return (static_cast<unsigned short>(upper) << 8) | static_cast<unsigned short>(lower);
+        return (static_cast<unsigned short>(upper) << 8)|static_cast<unsigned short>(lower);
     }
     RTLIB_INLINE RTLIB_HOST_DEVICE unsigned int   to_combine(unsigned short upper, unsigned short lower) {
         return (static_cast<unsigned int>(upper) << 16) | static_cast<unsigned int>(lower);

@@ -110,7 +110,7 @@ int main(){
         int imgHeight = 0;
         int imgComp = 0;
         {
-            unsigned char* imgData_0 = stbi_load(TEST_TEST1_DATA_PATH"/Textures/white.png", &imgWidth, &imgHeight, &imgComp, 4);
+            unsigned char* imgData_0 = stbi_load(TEST_TEST1_DATA_PATH"/Textures/sample.png", &imgWidth, &imgHeight, &imgComp, 4);
             auto imageBuffer = rtlib::GLBuffer<uchar4>(reinterpret_cast<uchar4*>(imgData_0),imgWidth*imgHeight,GL_PIXEL_UNPACK_BUFFER,GL_STATIC_DRAW);
             glTexture.allocateWithMipLevel({ (size_t)imgWidth, (size_t)imgHeight}, 6);
             glTexture.upload(0,imageBuffer,0,0,glTexture.getViews()[0].width,glTexture.getViews()[0].height);
