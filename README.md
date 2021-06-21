@@ -1,8 +1,8 @@
 # OptiX7Sample
 NVIDIA OptiX7.3を用いたpath tracing実装
 # 前提ライブラリ
-NVIDIA OptiX 7.3 SDK
-NVIDIA CUDA ToolKit
+- NVIDIA OptiX 7.3 SDK
+- NVIDIA CUDA ToolKit
 # Data
 ルートディレクトリ上に以下のディレクトリとファイルを作成
 Data/
