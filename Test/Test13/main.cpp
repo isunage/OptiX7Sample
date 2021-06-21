@@ -33,9 +33,9 @@ struct AABB {
     }
 };
 struct ShapeInfo {
-    std::string        name = {};
+    std::string        name    = {};
     std::vector<uint3> indices = {};
-    uint32_t           matID = 0;
+    uint32_t           matID   = 0;
 };
 struct MaterialInfo {
     std::string        diffTexName = {};
@@ -45,6 +45,12 @@ struct MaterialInfo {
     std::string        emitTexName = {};
     float3             emitColor = {};
     float              shinness = 0.0f;
+};
+struct WindowState {
+    float  curTime   = 0.0f;
+    float  delTime   = 0.0f;
+    float2 curCurPos = {};
+    float2 delCurPos = {};
 };
 int main() {
     //static constexpr float3 vertices[]           = { float3{-0.5f,-0.5f,0.0f},float3{0.5f,-0.5f,0.0f},float3{0.0f,0.5f,0.0f}};
@@ -58,12 +64,12 @@ int main() {
     AABB                                    aabb          = {};
     ParallelLight                           light         = {};
     {
-        std::string                         err         = {};
-        std::string                         warn        = {};
-        tinyobj::attrib_t                   attrib      = {};
-        std::vector<tinyobj::shape_t>       shapes      = {};
-        std::vector<tinyobj::material_t>    materials   = {};
-        bool res = tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, TEST_TEST13_DATA_PATH"/Models/CornellBox/CornellBox-Original.obj", TEST_TEST13_DATA_PATH"/Models/CornellBox/");
+        std::string                         err           = {};
+        std::string                         warn          = {};
+        tinyobj::attrib_t                   attrib        = {};
+        std::vector<tinyobj::shape_t>       shapes        = {};
+        std::vector<tinyobj::material_t>    materials     = {};
+        bool res = tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, TEST_TEST13_DATA_PATH"/Models/CornellBox/CornellBox-Mirror.obj", TEST_TEST13_DATA_PATH"/Models/CornellBox/");
         std::cout << warn << "\n";
         std::cout << err << "\n";
         assert(res);
@@ -208,9 +214,9 @@ int main() {
         //shapeInfos.resize(100);
     }
     {
-        int width   = 512;
-        int height  = 512;
-        auto camera = rtlib::Camera({ 0.0f,1.0f, 5.0f }, { 0.0f,1.0f, 0.0f }, { 0.0f,1.0f,0.0f }, 30.0f, 1.0f);
+        int width   = 768;
+        int height  = 768;
+        auto cameraController = rtlib::CameraController({ 0.0f,1.0f, 5.0f });
         //ˆê”ÔÅ‰‚ÉŒÄ‚Ño‚·
         RTLIB_CUDA_CHECK(cudaFree(0));
         RTLIB_OPTIX_CHECK(optixInit());
@@ -327,6 +333,7 @@ int main() {
         pipeline.link(pipelineLinkOptions);
         auto      raygenRecord = raygenPG.getSBTRecord<RayGenData>();
         {
+            auto camera = cameraController.GetCamera(30.0f, 1.0f);
             raygenRecord.data.eye = camera.getEye();
             auto [u, v, w]        = camera.getUVW();
             raygenRecord.data.u   = u;
@@ -342,18 +349,18 @@ int main() {
         std::vector<rtlib::SBTRecord<HitgroupData>> hitgroupRecords(indexBuffers.size() * RAY_TYPE_COUNT);
         {
             for (size_t idxBuffID = 0; idxBuffID < indexBuffers.size(); ++idxBuffID) {
-                hitgroupRecords[RAY_TYPE_COUNT * idxBuffID + RAY_TYPE_RADIANCE] = hitgroupPGForRadiance.getSBTRecord<HitgroupData>();
-                hitgroupRecords[RAY_TYPE_COUNT * idxBuffID + RAY_TYPE_RADIANCE].data.vertices = vertexBuffer.getDevicePtr();
-                hitgroupRecords[RAY_TYPE_COUNT * idxBuffID + RAY_TYPE_RADIANCE].data.indices = indexBuffers[idxBuffID].getDevicePtr();
+                hitgroupRecords[RAY_TYPE_COUNT * idxBuffID + RAY_TYPE_RADIANCE]                = hitgroupPGForRadiance.getSBTRecord<HitgroupData>();
+                hitgroupRecords[RAY_TYPE_COUNT * idxBuffID + RAY_TYPE_RADIANCE].data.vertices  = vertexBuffer.getDevicePtr();
+                hitgroupRecords[RAY_TYPE_COUNT * idxBuffID + RAY_TYPE_RADIANCE].data.indices   = indexBuffers[idxBuffID].getDevicePtr();
                 hitgroupRecords[RAY_TYPE_COUNT * idxBuffID + RAY_TYPE_RADIANCE].data.texCoords = texCrdBuffer.getDevicePtr();
-                hitgroupRecords[RAY_TYPE_COUNT * idxBuffID + RAY_TYPE_RADIANCE].data.diffuse = materialInfos[shapeInfos[idxBuffID].matID].diffColor;
+                hitgroupRecords[RAY_TYPE_COUNT * idxBuffID + RAY_TYPE_RADIANCE].data.diffuse   = materialInfos[shapeInfos[idxBuffID].matID].diffColor;
                 auto diffTexName = materialInfos[shapeInfos[idxBuffID].matID].diffTexName;
                 hitgroupRecords[RAY_TYPE_COUNT * idxBuffID + RAY_TYPE_RADIANCE].data.diffuseTex = textures[texMap[diffTexName]].getHandle();
-                hitgroupRecords[RAY_TYPE_COUNT * idxBuffID + RAY_TYPE_RADIANCE].data.specular = materialInfos[shapeInfos[idxBuffID].matID].specColor;
+                hitgroupRecords[RAY_TYPE_COUNT * idxBuffID + RAY_TYPE_RADIANCE].data.specular   = materialInfos[shapeInfos[idxBuffID].matID].specColor;
                 auto specTexName = materialInfos[shapeInfos[idxBuffID].matID].specTexName;
                 hitgroupRecords[RAY_TYPE_COUNT * idxBuffID + RAY_TYPE_RADIANCE].data.specularTex = textures[texMap[specTexName]].getHandle();
-                hitgroupRecords[RAY_TYPE_COUNT * idxBuffID + RAY_TYPE_RADIANCE].data.shinness = materialInfos[shapeInfos[idxBuffID].matID].shinness;
-                hitgroupRecords[RAY_TYPE_COUNT * idxBuffID + RAY_TYPE_RADIANCE].data.emission = materialInfos[shapeInfos[idxBuffID].matID].emitColor;
+                hitgroupRecords[RAY_TYPE_COUNT * idxBuffID + RAY_TYPE_RADIANCE].data.shinness    = materialInfos[shapeInfos[idxBuffID].matID].shinness;
+                hitgroupRecords[RAY_TYPE_COUNT * idxBuffID + RAY_TYPE_RADIANCE].data.emission    = materialInfos[shapeInfos[idxBuffID].matID].emitColor;
                 auto emitTexName = materialInfos[shapeInfos[idxBuffID].matID].emitTexName;
                 hitgroupRecords[RAY_TYPE_COUNT * idxBuffID + RAY_TYPE_RADIANCE].data.emissionTex = textures[texMap[emitTexName]].getHandle();
                 hitgroupRecords[RAY_TYPE_COUNT * idxBuffID + RAY_TYPE_OCCLUSION] = hitgroupPGForOccluded.getSBTRecord<HitgroupData>();
@@ -422,6 +429,8 @@ int main() {
             if (!window) {
                 throw std::runtime_error("Failed To Create Window!");
             }
+            WindowState windowState = {};
+            glfwSetWindowUserPointer(window, &windowState);
             glfwMakeContextCurrent(window);
             if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
                 throw std::runtime_error("Failed To Load GLAD!");
@@ -480,27 +489,29 @@ int main() {
             params.samplePerALL    = 0;
             params.gasHandle       = traversableHandle;
             params.light           = light;
-            bool   isResized       = false;
-            bool   isUpdated       = true;
-            //DEBUG INFORMATION
+            glfwSetCursorPosCallback(window, [](GLFWwindow* wnd,double xPos, double yPos) {
+                WindowState* pWindowState = (WindowState*)glfwGetWindowUserPointer(wnd);
+                pWindowState->delCurPos.x = xPos - pWindowState->curCurPos.x;
+                pWindowState->delCurPos.y = yPos - pWindowState->curCurPos.y;;
+                pWindowState->curCurPos.x = xPos;
+                pWindowState->curCurPos.y = yPos;
+            });
             glfwSetTime(0.0f);
+            {
+                double xPos, yPos;
+                glfwGetCursorPos(window, &xPos, &yPos);
+                windowState.curCurPos.x = xPos;
+                windowState.curCurPos.y = yPos;
+                windowState.delCurPos.x = 0.0f;
+                windowState.delCurPos.y = 0.0f;
+            }
+            bool   isResized     = false;
+            bool   isUpdated     = false;
+            bool   isFixedLight  = false;
+            bool   isMovedCamera = false;
             while (!glfwWindowShouldClose(window)) {
-                {
-                    int tWidth, tHeight;
-                    glfwGetWindowSize(window, &tWidth, &tHeight);
-                    if (width != tWidth || height != tHeight) {
-                        std::cout << width << "->" << tWidth  << "\n";
-                        std::cout << height<< "->" << tHeight << "\n";
-                        width     = tWidth;
-                        height    = tHeight;
-                        isResized = true;
-                        isUpdated = true;
-                    }
-                    else {
-                        isResized = false;
-                    }
-                }
-                if(isResized){
+                
+                if (isResized) {
                     {
                         std::random_device rd;
                         std::mt19937 mt(rd());
@@ -511,19 +522,33 @@ int main() {
                     d_frames.resize(width * height);
                     d_accums.resize(width * height);
                     params.accumBuffer = d_accums.getDevicePtr();
-                    params.seed        = d_seeds.getDevicePtr();
-                    params.width       = width;
-                    params.height      = height;
+                    params.seed = d_seeds.getDevicePtr();
+                    params.width = width;
+                    params.height = height;
                 }
-                if (isUpdated) {
-                    float emissionRate = (1.0f + std::sin(RTLIB_M_2PI * glfwGetTime() / 10.0f)) / 2.0f;
-                    rtlib::SBTRecord<HitgroupData>* d_lightHGPtr = d_HitgroupBuffer.getDevicePtr()+(RAY_TYPE_COUNT * 7 + RAY_TYPE_RADIANCE);
-                    rtlib::SBTRecord<HitgroupData>  lightHGData  = hitgroupRecords[RAY_TYPE_COUNT * 7 + RAY_TYPE_RADIANCE];
+                if (isFixedLight) {
+                    float  emissionRate = fabsf(fmodf(glfwGetTime(), 20.f) - 10.f) / 10.0f;
+                    size_t lightSbtOffset = RAY_TYPE_COUNT * 7 + RAY_TYPE_RADIANCE;
+                    rtlib::SBTRecord<HitgroupData>* d_lightHGPtr = d_HitgroupBuffer.getDevicePtr() + lightSbtOffset;
+                    rtlib::SBTRecord<HitgroupData>   lightHGData = hitgroupRecords[lightSbtOffset];
                     lightHGData.data.emission *= emissionRate;
                     cudaMemcpy(d_lightHGPtr, &lightHGData, sizeof(rtlib::SBTRecord<HitgroupData>), cudaMemcpyHostToDevice);
+                    params.light.emission = light.emission * emissionRate;
+                    isUpdated = true;
+                }
+                if (isMovedCamera) {
+                    auto camera = cameraController.GetCamera(30.0f, 1.0f);
+                    raygenRecord.data.eye = camera.getEye();
+                    auto [u, v, w] = camera.getUVW();
+                    raygenRecord.data.u = u;
+                    raygenRecord.data.v = v;
+                    raygenRecord.data.w = w;
+                    d_RaygenBuffer.upload(&raygenRecord, 1);
+                    isUpdated = true;
+                }
+                if (isUpdated) {
                     d_frames.upload(std::vector<uchar4>(width * height));
                     d_accums.upload(std::vector<float3>(width * height));
-                    params.light.emission = light.emission * emissionRate;
                     params.samplePerALL = 0;
                 }
                 {
@@ -557,6 +582,64 @@ int main() {
                     glBindVertexArray(screenVAO);
                     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
                     glfwSwapBuffers(window);
+                    isUpdated            = false;
+                    isResized            = false;
+                    isMovedCamera        = false;
+                    {
+                        int tWidth, tHeight;
+                        glfwGetWindowSize(window, &tWidth, &tHeight);
+                        if (width != tWidth || height != tHeight) {
+                            std::cout << width << "->" << tWidth << "\n";
+                            std::cout << height << "->" << tHeight << "\n";
+                            width = tWidth;
+                            height = tHeight;
+                            isResized = true;
+                            isUpdated = true;
+                        }
+                        else {
+                            isResized = false;
+                        }
+                        float prevTime = glfwGetTime();
+                        windowState.delTime = windowState.curTime - prevTime;
+                        windowState.curTime = prevTime;
+                        if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
+                            cameraController.ProcessKeyboard(rtlib::CameraMovement::eForward, windowState.delTime);
+                            isMovedCamera = true;
+                        }
+                        if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
+                            cameraController.ProcessKeyboard(rtlib::CameraMovement::eBackward, windowState.delTime);
+                            isMovedCamera = true;
+                        }
+                        if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
+                            cameraController.ProcessKeyboard(rtlib::CameraMovement::eLeft, windowState.delTime);
+                            isMovedCamera = true;
+                        }
+                        if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
+                            cameraController.ProcessKeyboard(rtlib::CameraMovement::eRight, windowState.delTime);
+                            isMovedCamera = true;
+                        }
+                        if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS) {
+                            cameraController.ProcessKeyboard(rtlib::CameraMovement::eLeft, windowState.delTime);
+                            isMovedCamera = true;
+                        }
+                        if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS) {
+                            cameraController.ProcessKeyboard(rtlib::CameraMovement::eRight, windowState.delTime);
+                            isMovedCamera = true;
+                        }
+                        if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) {
+                            cameraController.ProcessKeyboard(rtlib::CameraMovement::eUp, windowState.delTime);
+                            isMovedCamera = true;
+                        }
+                        if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) {
+                            cameraController.ProcessKeyboard(rtlib::CameraMovement::eDown, windowState.delTime);
+                            isMovedCamera = true;
+                        }
+                        if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) {
+                            cameraController.ProcessMouseMovement(-windowState.delCurPos.x, windowState.delCurPos.y);
+                            isMovedCamera = true;
+                        }
+                    }
+                    
                 }
             }
             auto img_pixels = std::vector<uchar4>();

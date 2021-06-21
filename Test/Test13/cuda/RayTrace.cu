@@ -79,7 +79,7 @@ extern "C" __global__ void     __raygen__rg(){
             traceRadiance(params.gasHandle, rayOrigin, rayDirection, 0.01f, 1e16f, &prd);
             result += prd.emitted;
             result += prd.radiance * prd.attenuation;
-            if (prd.done || depth >= 5) {
+            if (prd.done || depth >= 1) {
                 break;
             }
             rayOrigin    = prd.origin;

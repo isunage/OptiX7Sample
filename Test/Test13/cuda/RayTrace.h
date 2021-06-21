@@ -7,7 +7,6 @@
 #include <RTLib/VectorFunction.h>
 #include <RTLib/Math.h>
 #define TEST_SKIP_TEXTURE_SAMPLE
-#define TEST11_SHOW_DIFFUSE_COLOR
 //#define   TEST11_SHOW_EMISSON_COLOR
 //#define TEST11_SHOW_NORMAL
 enum RayType   {
