@@ -18,4 +18,5 @@ NVIDIA OptiX7.3を用いたpath tracing実装
 # Install
 レポジトリのクローン後、git submodule init && git submodule updateを実行 
 # Build 
+OS Windows, CMake Version 3.19 以上, Visual Studio 2019を前提
 ルートディレクトリ上でbuildディレクトリを作成し、そのディレクトリで cmake ../ -G "Visual Studio 16 2019"を実行
