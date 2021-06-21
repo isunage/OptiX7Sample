@@ -74,6 +74,12 @@ namespace rtlib{
         void  upload(const T* hostPtr, size_t count, bool isBinded = true) {
             m_Handle.upload(hostPtr, count, isBinded);
         }
+        void  upload(const std::vector<T>& hostArray, bool isBinded = true) {
+            if (isBinded) {
+                this->bind();
+            }
+            m_Handle.upload(hostArray,isBinded);
+        }
         //download
         void  download(T* hostPtr, size_t count, bool isBinded = true) {
             m_Handle.download(hostPtr, count, isBinded);
@@ -84,9 +90,14 @@ namespace rtlib{
         //Member(Unique)
         bool resize(size_t count) {
             if (getCount() != count) {
+                GLenum target = this->getHandle().getTarget();
+                GLenum usage  = this->getHandle().getUsage();
                 this->reset();
+                this->m_Handle.setTarget(target);
+                this->m_Handle.setUsage(usage);
                 this->allocate(count);
                 return true;
+
             }
             return false;
         }
@@ -109,7 +120,7 @@ namespace rtlib{
             m_DevicePtr = nullptr;
         }
         void reset() {
-            m_Stream = nullptr;
+            //m_Stream = nullptr;
             m_DevicePtr = nullptr;
             this->unregisterResource();
             this->m_Handle.reset();

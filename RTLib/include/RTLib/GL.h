@@ -99,6 +99,12 @@ namespace rtlib{
             }
             this->upload_unsafe(hostPtr,std::min(count,m_Count));
         }
+        void  upload(const std::vector<T>& hostArray, bool isBinded = true) {
+            if (isBinded) {
+                this->bind();
+            }
+            this->upload_unsafe(hostArray.data(), std::min(hostArray.size(), m_Count));
+        }
         //download
         void  download(    T* hostPtr,size_t count,bool isBinded = true){
             if(isBinded){

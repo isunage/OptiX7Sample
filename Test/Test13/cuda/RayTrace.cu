@@ -49,15 +49,15 @@ static __forceinline__ bool traceOccluded(
     return occluded;
 }
 extern "C" __global__ void     __raygen__rg(){
-    const uint3 idx        = optixGetLaunchIndex();
-	const uint3 dim        = optixGetLaunchDimensions();
-    auto* rgData           = reinterpret_cast<RayGenData*>(optixGetSbtDataPointer());
-    const float3 u         = rgData->u;
-	const float3 v         = rgData->v;
-	const float3 w         = rgData->w;
-    unsigned int seed      = params.seed[params.width * idx.y + idx.x];
-    float3 result          = make_float3(0.0f, 0.0f, 0.0f);
-    size_t i               = params.samplePerLaunch;
+    const uint3 idx             = optixGetLaunchIndex();
+	const uint3 dim             = optixGetLaunchDimensions();
+    auto* rgData                = reinterpret_cast<RayGenData*>(optixGetSbtDataPointer());
+    const float3 u              = rgData->u;
+	const float3 v              = rgData->v;
+	const float3 w              = rgData->w;
+    unsigned int seed           = params.seed[params.width * idx.y + idx.x];
+    float3 result               = make_float3(0.0f, 0.0f, 0.0f);
+    size_t i                    = params.samplePerLaunch;
     do {
         rtlib::Xorshift32 xor32(seed);
         const float2 jitter = rtlib::random_float2(xor32);
@@ -68,28 +68,36 @@ extern "C" __global__ void     __raygen__rg(){
         float3 rayOrigin    = rgData->eye;
         float3 rayDirection = rtlib::normalize(d.x * u + d.y * v + w);
         RadiancePRD prd;
-        prd.emitted      = make_float3(0.0f, 0.0f, 0.0f);
-        prd.radiance     = make_float3(0.0f, 0.0f, 0.0f);
-        prd.attenuation  = make_float3(1.0f, 1.0f, 1.0f);
-        prd.countEmitted = true;
-        prd.done         = false;
-        prd.seed         = seed;
+        prd.emitted         = make_float3(0.0f, 0.0f, 0.0f);
+        prd.radiance        = make_float3(0.0f, 0.0f, 0.0f);
+        prd.attenuation     = make_float3(1.0f, 1.0f, 1.0f);
+        prd.countEmitted    = true;
+        prd.done            = false;
+        prd.seed            = seed;
         int depth = 0;
         for (;;) {
             traceRadiance(params.gasHandle, rayOrigin, rayDirection, 0.01f, 1e16f, &prd);
             result += prd.emitted;
             result += prd.radiance * prd.attenuation;
-            if (prd.done || depth >= 2) {
+            if (prd.done || depth >= 5) {
                 break;
             }
             rayOrigin    = prd.origin;
             rayDirection = prd.direction;
             depth++;
         }
+        seed = prd.seed;
     } while (i--);
-    float3 accumColor = result / static_cast<float>(params.samplePerLaunch);
-    accumColor /= (accumColor + make_float3(1.0f, 1.0f, 1.0f));
-    params.image[params.width * idx.y + idx.x] = make_uchar4(static_cast<unsigned char>(255.99 * accumColor.x), static_cast<unsigned char>(255.99 * accumColor.y), static_cast<unsigned char>(255.99 * accumColor.z), 255);
+    const float3 prevAccumColor = params.accumBuffer[params.width * idx.y + idx.x];
+    const float3 accumColor     = prevAccumColor + result;
+    float3 frameColor           = accumColor / (static_cast<float>(params.samplePerALL + params.samplePerLaunch));
+    frameColor                  = frameColor / (make_float3(1.0f, 1.0f, 1.0f) + frameColor);
+    //if (idx.x == 500 && idx.y  == 500) {
+        //printf("%f %f %f\n", frameColor.x, frameColor.y, frameColor.z);
+    //}
+    params.frameBuffer[params.width * idx.y + idx.x] = make_uchar4(static_cast<unsigned char>(255.99 * frameColor.x), static_cast<unsigned char>(255.99 * frameColor.y), static_cast<unsigned char>(255.99 * frameColor.z), 255);
+    params.accumBuffer[params.width * idx.y + idx.x] = accumColor;
+    params.seed[params.width * idx.y + idx.x]        = seed;
 }
 extern "C" __global__ void       __miss__radiance(){
     auto* msData = reinterpret_cast<MissData*>(optixGetSbtDataPointer());
@@ -117,7 +125,7 @@ extern "C" __global__ void __closesthit__radiance() {
     const float3 position     = optixGetWorldRayOrigin() + optixGetRayTmax() * rayDirection;
     RadiancePRD* prd          = getRadiancePRD();
     if (prd->countEmitted) {
-        prd->emitted          = hgData->getEmissionColor(texCoord);
+        prd->emitted          = hgData->getEmissionColor(texCoord) * prd->attenuation;
     }
     else {
         prd->emitted          = make_float3(0.0f, 0.0f, 0.0f);

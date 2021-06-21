@@ -84,6 +84,9 @@ namespace rtlib{
         void upload(const T* hostPtr, size_t count){
             this->upload_unsafe(hostPtr, std::min(count,m_Count));
         }
+        void upload(const std::vector<T>& hostData) {
+            this->upload_unsafe(hostData.data(), std::min(hostData.size(), m_Count));
+        }
         void download(T* hostPtr,size_t count){
             this->download_unsafe(hostPtr, std::min(count,m_Count));
         }
