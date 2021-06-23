@@ -29,7 +29,7 @@ static __forceinline__ __device__ void setRadiancePRD(RadiancePRD* prd) {
 static __forceinline__ __device__ void  setPayloadOccluded(bool occluded) {
     optixSetPayload_0(static_cast<unsigned int>(occluded));
 }
-static __forceinline__ void traceRadiance(
+static __forceinline__ __device__ void traceRadiance(
     OptixTraversableHandle handle,
     const float3& rayOrigin, 
     const float3& rayDirection,
@@ -39,7 +39,7 @@ static __forceinline__ void traceRadiance(
     packPointer(prd, p0, p1);
     optixTrace(handle, rayOrigin, rayDirection, tmin, tmax, 0.0f, OptixVisibilityMask(255), OPTIX_RAY_FLAG_NONE, RAY_TYPE_RADIANCE, RAY_TYPE_COUNT, RAY_TYPE_RADIANCE, p0, p1);
 }
-static __forceinline__ bool traceOccluded(
+static __forceinline__ __device__ bool traceOccluded(
     OptixTraversableHandle handle,
     const float3& rayOrigin,
     const float3& rayDirection,
@@ -61,7 +61,7 @@ extern "C" __global__ void     __raygen__rg(){
     do {
         rtlib::Xorshift32 xor32(seed);
         const float2 jitter = rtlib::random_float2(xor32);
-        const float2 d = make_float2(
+        const float2 d      = make_float2(
             ((2.0f * static_cast<float>(idx.x) + jitter.x) / static_cast<float>(dim.x)) - 1.0,
             ((2.0f * static_cast<float>(idx.y) + jitter.y) / static_cast<float>(dim.y)) - 1.0);
         seed                = xor32.m_seed;
@@ -108,7 +108,7 @@ extern "C" __global__ void       __miss__radiance(){
 extern "C" __global__ void       __miss__occluded() {
     setPayloadOccluded(false);
 }
-extern "C" __global__ void __closesthit__radiance() {
+extern "C" __global__ void __closesthit__radiance_for_diffuse()  {
     auto*        hgData       = reinterpret_cast<HitgroupData*>(optixGetSbtDataPointer());
     const float3 rayDirection = optixGetWorldRayDirection();
     const int    primitiveID  = optixGetPrimitiveIndex();
@@ -124,14 +124,8 @@ extern "C" __global__ void __closesthit__radiance() {
     const auto texCoord       = (1.0f - barycentric.x - barycentric.y) * t0 + barycentric.x * t1 + barycentric.y * t2;
     const float3 position     = optixGetWorldRayOrigin() + optixGetRayTmax() * rayDirection;
     RadiancePRD* prd          = getRadiancePRD();
-    if (prd->countEmitted) {
-        prd->emitted          = hgData->getEmissionColor(texCoord) * prd->attenuation;
-    }
-    else {
-        prd->emitted          = make_float3(0.0f, 0.0f, 0.0f);
-    }
+    prd->emitted              = make_float3(0.0f, 0.0f, 0.0f);
     rtlib::Xorshift32 xor32(prd->seed);
-    bool isSpecular = false;
     {
         rtlib::ONB onb(normal);
         float3 newDirection = onb.local(rtlib::random_cosine_direction(xor32));
@@ -141,19 +135,11 @@ extern "C" __global__ void __closesthit__radiance() {
         float3 specular     = hgData->getSpecularColor(texCoord);
         float3 reflectDir   = rtlib::normalize(rayDirection - 2.0f * rtlib::dot(rayDirection, normal) * normal);
         float  shinness     = hgData->shinness;
-        if (shinness > 200.f) {
-            prd->direction    = reflectDir;
-            prd->attenuation *= specular;
-            isSpecular        = true;
-            prd->countEmitted = true;
-        }
-        else {
-            float cosine      = fabsf(rtlib::dot(newDirection, reflectDir));
-            prd->attenuation *= diffuse+specular*(shinness+2.0f)* powf(cosine,shinness) /2.0f;
-            prd->countEmitted = false;
-        }
+        float cosine        = fabsf(rtlib::dot(newDirection, reflectDir));
+        prd->attenuation   *= diffuse + specular * (shinness + 2.0f) * powf(cosine, shinness) / 2.0f;
+        prd->countEmitted   = false;
     }
-    if(!isSpecular){
+    {
         const float2 z        = rtlib::random_float2(xor32);
         const auto   light    = params.light;
         const float3 lightPos = light.corner + light.v1 * z.x + light.v2 * z.y;
@@ -174,6 +160,60 @@ extern "C" __global__ void __closesthit__radiance() {
         
     }
     prd->seed = xor32.m_seed;
+}
+extern "C" __global__ void __closesthit__radiance_for_specular() {
+    auto* hgData = reinterpret_cast<HitgroupData*>(optixGetSbtDataPointer());
+    const float3 rayDirection = optixGetWorldRayDirection();
+    const int    primitiveID  = optixGetPrimitiveIndex();
+    const float3 v0 = hgData->vertices[hgData->indices[primitiveID].x];
+    const float3 v1 = hgData->vertices[hgData->indices[primitiveID].y];
+    const float3 v2 = hgData->vertices[hgData->indices[primitiveID].z];
+    const float3 n0 = rtlib::normalize(rtlib::cross(v1 - v0, v2 - v0));
+    const float3 normal = faceForward(n0, make_float3(-rayDirection.x, -rayDirection.y, -rayDirection.z), n0);
+    const float2 barycentric = optixGetTriangleBarycentrics();
+    const auto t0 = hgData->texCoords[hgData->indices[primitiveID].x];
+    const auto t1 = hgData->texCoords[hgData->indices[primitiveID].y];
+    const auto t2 = hgData->texCoords[hgData->indices[primitiveID].z];
+    const auto texCoord = (1.0f - barycentric.x - barycentric.y) * t0 + barycentric.x * t1 + barycentric.y * t2;
+    const float3 position = optixGetWorldRayOrigin() + optixGetRayTmax() * rayDirection;
+    RadiancePRD* prd = getRadiancePRD();
+    prd->emitted     = make_float3(0.0f, 0.0f, 0.0f);
+    rtlib::Xorshift32 xor32(prd->seed);
+    {
+        rtlib::ONB onb(normal);
+        float3 newDirection = onb.local(rtlib::random_cosine_direction(xor32));
+        prd->direction = newDirection;
+        prd->origin = position;
+        float3 diffuse = hgData->getDiffuseColor(texCoord);
+        float3 specular = hgData->getSpecularColor(texCoord);
+        float3 reflectDir = rtlib::normalize(rayDirection - 2.0f * rtlib::dot(rayDirection, normal) * normal);
+        float  shinness   = hgData->shinness;
+        prd->direction    = reflectDir;
+        prd->attenuation *= specular;
+        prd->countEmitted = true;
+    }
+    prd->seed = xor32.m_seed;
+}
+extern "C" __global__ void __closesthit__radiance_for_emission() {
+    auto* hgData = reinterpret_cast<HitgroupData*>(optixGetSbtDataPointer());
+    const float3 rayDirection = optixGetWorldRayDirection();
+    const int    primitiveID = optixGetPrimitiveIndex();
+    const float3 v0 = hgData->vertices[hgData->indices[primitiveID].x];
+    const float3 v1 = hgData->vertices[hgData->indices[primitiveID].y];
+    const float3 v2 = hgData->vertices[hgData->indices[primitiveID].z];
+    //const float3 n0 = rtlib::normalize(rtlib::cross(v1 - v0, v2 - v0));
+    //const float3 normal = faceForward(n0, make_float3(-rayDirection.x, -rayDirection.y, -rayDirection.z), n0);
+    const float2 barycentric = optixGetTriangleBarycentrics();
+    const auto t0 = hgData->texCoords[hgData->indices[primitiveID].x];
+    const auto t1 = hgData->texCoords[hgData->indices[primitiveID].y];
+    const auto t2 = hgData->texCoords[hgData->indices[primitiveID].z];
+    const auto texCoord   = (1.0f - barycentric.x - barycentric.y) * t0 + barycentric.x * t1 + barycentric.y * t2;
+    const float3 position = optixGetWorldRayOrigin() + optixGetRayTmax() * rayDirection;
+    RadiancePRD* prd      = getRadiancePRD();
+    if (prd->countEmitted) {
+        prd->emitted = hgData->getEmissionColor(texCoord) * prd->attenuation;
+    }
+    prd->countEmitted = false;
 }
 extern "C" __global__ void __closesthit__occluded() {
     setPayloadOccluded(true);

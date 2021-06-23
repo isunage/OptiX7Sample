@@ -98,10 +98,10 @@ namespace rtlib{
                 m_Position += m_Right * velocity;
             }
             if (mode == CameraMovement::eUp) {
-                m_Position += m_Up    * velocity;
+                m_Position -= m_Up    * velocity;
             }
             if (mode == CameraMovement::eDown) {
-                m_Position -= m_Up    * velocity;
+                m_Position += m_Up    * velocity;
             }
         }
         void ProcessMouseMovement(float xoffset, float yoffset, bool constrainPitch = true)noexcept {

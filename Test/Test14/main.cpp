@@ -12,7 +12,7 @@
 #include <RTLib/VectorFunction.h>
 #include <RTLib/Exceptions.h>
 #include <RTLib/Utils.h>
-#include <Test13Config.h>
+#include <Test14Config.h>
 #include <tiny_obj_loader.h>
 #include <iostream>
 #include <fstream>
@@ -22,7 +22,6 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <array>
-#include <chrono>
 #include <string_view>
 #include "cuda/RayTrace.h"
 struct AABB {
@@ -72,7 +71,7 @@ int main() {
         tinyobj::attrib_t                   attrib        = {};
         std::vector<tinyobj::shape_t>       shapes        = {};
         std::vector<tinyobj::material_t>    materials     = {};
-        bool res = tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, TEST_TEST13_DATA_PATH"/Models/CornellBox/CornellBox-Mirror.obj", TEST_TEST13_DATA_PATH"/Models/CornellBox/");
+        bool res = tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, TEST_TEST14_DATA_PATH"/Models/CornellBox/CornellBox-Mirror.obj", TEST_TEST14_DATA_PATH"/Models/CornellBox/");
         std::cout << warn << "\n";
         std::cout << err << "\n";
         assert(res);
@@ -142,27 +141,27 @@ int main() {
                 materialInfos.resize(materials.size());
                 for (size_t i = 0; i < materialInfos.size(); ++i) {
                     if (!materials[i].diffuse_texname.empty()) {
-                        materialInfos[i].diffTexName = TEST_TEST13_DATA_PATH"/Models/CornellBox/" + materials[i].diffuse_texname;
+                        materialInfos[i].diffTexName = TEST_TEST14_DATA_PATH"/Models/CornellBox/" + materials[i].diffuse_texname;
                         materialInfos[i].diffColor = make_float3(1.0f);
                     }
                     else {
-                        materialInfos[i].diffTexName = TEST_TEST13_DATA_PATH"/Textures/white.png";
+                        materialInfos[i].diffTexName = TEST_TEST14_DATA_PATH"/Textures/white.png";
                         materialInfos[i].diffColor   = make_float3(materials[i].diffuse[0], materials[i].diffuse[1], materials[i].diffuse[2]);
                     }
                     if (!materials[i].specular_texname.empty()) {
-                        materialInfos[i].specTexName = TEST_TEST13_DATA_PATH"/Models/CornellBox/" + materials[i].specular_texname;
+                        materialInfos[i].specTexName = TEST_TEST14_DATA_PATH"/Models/CornellBox/" + materials[i].specular_texname;
                         materialInfos[i].specColor = make_float3(1.0f);
                     }
                     else {
-                        materialInfos[i].specTexName = TEST_TEST13_DATA_PATH"/Textures/white.png";
+                        materialInfos[i].specTexName = TEST_TEST14_DATA_PATH"/Textures/white.png";
                         materialInfos[i].specColor = make_float3(materials[i].specular[0], materials[i].specular[1], materials[i].specular[2]);
                     }
                     if (!materials[i].emissive_texname.empty()) {
-                        materialInfos[i].emitTexName = TEST_TEST13_DATA_PATH"/Models/CornellBox/" + materials[i].emissive_texname;
+                        materialInfos[i].emitTexName = TEST_TEST14_DATA_PATH"/Models/CornellBox/" + materials[i].emissive_texname;
                         materialInfos[i].emitColor = make_float3(1.0f);
                     }
                     else {
-                        materialInfos[i].emitTexName = TEST_TEST13_DATA_PATH"/Textures/white.png";
+                        materialInfos[i].emitTexName = TEST_TEST14_DATA_PATH"/Textures/white.png";
                         materialInfos[i].emitColor   = make_float3(materials[i].emission[0], materials[i].emission[1], materials[i].emission[2]);
                     }
 
@@ -297,16 +296,21 @@ int main() {
         }
         auto cuSource = std::string();
         {
-            auto cuFile = std::ifstream(TEST_TEST13_CUDA_PATH"/RayTrace.cu", std::ios::binary);
+            auto cuFile = std::ifstream(TEST_TEST14_CUDA_PATH"/RayTrace.cu", std::ios::binary);
             cuSource = std::string((std::istreambuf_iterator<char>(cuFile)), (std::istreambuf_iterator<char>()));
 
         }
+        auto ptxSource = std::string();
+        {
+            auto ptxFile = std::ifstream(TEST_TEST14_CUDA_PATH"/RayTrace.ptx", std::ios::binary);
+            ptxSource = std::string((std::istreambuf_iterator<char>(ptxFile)), (std::istreambuf_iterator<char>()));
+        }
         //context��copy�s��
-        auto pipeline = context.createPipeline(pipelineCompileOptions);
-        auto program = rtlib::NVRTCProgram(std::string(cuSource), "sampleProgram");
+        auto pipeline  = context.createPipeline(pipelineCompileOptions);
+        auto program   = rtlib::NVRTCProgram(std::string(cuSource), "sampleProgram");
         {
             try {
-                program.compile(rtlib::NVRTCOptions().setIncludeDirs({ RTLIB_INCLUDE_DIR ,RTLIB_OPTIX_INCLUDE_DIR, TEST_TEST13_CUDA_PATH, RTLIB_CUDA_INCLUDE_DIRS }).setOtherOptions({ RTLIB_NVRTC_OPTIONS }).get());
+                program.compile(rtlib::NVRTCOptions().setIncludeDirs({ RTLIB_INCLUDE_DIR ,RTLIB_OPTIX_INCLUDE_DIR, TEST_TEST14_CUDA_PATH, RTLIB_CUDA_INCLUDE_DIRS }).setOtherOptions({ RTLIB_NVRTC_OPTIONS }).get());
             }
             catch (rtlib::NVRTCException& nvrtcErr) {
                 std::cerr << "Failed To NVRTC Compile Program!\n";
@@ -315,7 +319,7 @@ int main() {
             }
             //std::cout << program.getPTX() << "\n";
         }
-        auto moduleCompileOptions  = OptixModuleCompileOptions{};
+        auto moduleCompileOptions = OptixModuleCompileOptions{};
         {
             moduleCompileOptions.optLevel = OPTIX_COMPILE_OPTIMIZATION_DEFAULT;
             moduleCompileOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_LINEINFO;
@@ -323,19 +327,21 @@ int main() {
             moduleCompileOptions.numBoundValues = 0;
             moduleCompileOptions.boundValues = 0;
         }
-        auto module                = pipeline.createModule(program.getPTX(), moduleCompileOptions);
-        auto raygenPG              = pipeline.createRaygenPG({ module,"__raygen__rg" });
-        auto missPGForRadiance     = pipeline.createMissPG({ module,"__miss__radiance" });
-        auto missPGForOccluded     = pipeline.createMissPG({ module,"__miss__occluded" });
-        auto hitgroupPGForRadiance = pipeline.createHitgroupPG({ module,"__closesthit__radiance" }, {}, {});
-        auto hitgroupPGForOccluded = pipeline.createHitgroupPG({ module,"__closesthit__occluded" }, {}, {});
-        auto pipelineLinkOptions   = OptixPipelineLinkOptions{};
+        auto module                       = pipeline.createModule(ptxSource, moduleCompileOptions);
+        auto raygenPG                     = pipeline.createRaygenPG({ module,"__raygen__rg" });
+        auto missPGForRadiance            = pipeline.createMissPG(  { module,"__miss__radiance" });
+        auto missPGForOccluded            = pipeline.createMissPG(  { module,"__miss__occluded" });
+        auto hitgroupPGForRadianceDiffuse = pipeline.createHitgroupPG({ module,"__closesthit__radiance_for_diffuse"  }, {}, {});
+        auto hitgroupPGForRadianceSpecular= pipeline.createHitgroupPG({ module,"__closesthit__radiance_for_specular" }, {}, {});
+        auto hitgroupPGForRadianceEmission= pipeline.createHitgroupPG({ module,"__closesthit__radiance_for_emission" }, {}, {});
+        auto hitgroupPGForOccluded        = pipeline.createHitgroupPG({ module,"__closesthit__occluded" }, {}, {});
+        auto pipelineLinkOptions          = OptixPipelineLinkOptions{};
         {
             pipelineLinkOptions.maxTraceDepth = 2;
             pipelineLinkOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_LINEINFO;
         }
         pipeline.link(pipelineLinkOptions);
-        auto      raygenRecord     = raygenPG.getSBTRecord<RayGenData>();
+        auto      raygenRecord = raygenPG.getSBTRecord<RayGenData>();
         {
             auto camera = cameraController.GetCamera(30.0f, 1.0f);
             raygenRecord.data.eye = camera.getEye();
@@ -353,7 +359,15 @@ int main() {
         std::vector<rtlib::SBTRecord<HitgroupData>> hitgroupRecords(indexBuffers.size() * RAY_TYPE_COUNT);
         {
             for (size_t idxBuffID = 0; idxBuffID < indexBuffers.size(); ++idxBuffID) {
-                hitgroupRecords[RAY_TYPE_COUNT * idxBuffID + RAY_TYPE_RADIANCE]                = hitgroupPGForRadiance.getSBTRecord<HitgroupData>();
+                if (materialInfos[shapeInfos[idxBuffID].matID].shinness > 200.0f) {
+                    hitgroupRecords[RAY_TYPE_COUNT * idxBuffID + RAY_TYPE_RADIANCE] = hitgroupPGForRadianceSpecular.getSBTRecord<HitgroupData>();
+                }else if(idxBuffID==7){
+                    hitgroupRecords[RAY_TYPE_COUNT * idxBuffID + RAY_TYPE_RADIANCE] = hitgroupPGForRadianceEmission.getSBTRecord<HitgroupData>();
+                }
+                else {
+                    hitgroupRecords[RAY_TYPE_COUNT * idxBuffID + RAY_TYPE_RADIANCE] = hitgroupPGForRadianceDiffuse.getSBTRecord<HitgroupData>();
+                }
+                
                 hitgroupRecords[RAY_TYPE_COUNT * idxBuffID + RAY_TYPE_RADIANCE].data.vertices  = vertexBuffer.getDevicePtr();
                 hitgroupRecords[RAY_TYPE_COUNT * idxBuffID + RAY_TYPE_RADIANCE].data.indices   = indexBuffers[idxBuffID].getDevicePtr();
                 hitgroupRecords[RAY_TYPE_COUNT * idxBuffID + RAY_TYPE_RADIANCE].data.texCoords = texCrdBuffer.getDevicePtr();
@@ -489,7 +503,7 @@ int main() {
             params.seed            = d_seeds.getDevicePtr();
             params.width           = width;
             params.height          = height;
-            params.samplePerLaunch = 5;
+            params.samplePerLaunch = 10;
             params.samplePerALL    = 0;
             params.gasHandle       = traversableHandle;
             params.light           = light;
@@ -526,8 +540,8 @@ int main() {
                     d_frames.resize(width * height);
                     d_accums.resize(width * height);
                     params.accumBuffer = d_accums.getDevicePtr();
-                    params.seed = d_seeds.getDevicePtr();
-                    params.width = width;
+                    params.seed   = d_seeds.getDevicePtr();
+                    params.width  = width;
                     params.height = height;
                 }
                 if (isFixedLight) {
@@ -556,14 +570,11 @@ int main() {
                     params.samplePerALL = 0;
                 }
                 {
-                    //auto beg = std::chrono::system_clock::now();
                     params.frameBuffer = d_frames.map();
                     d_params.upload(&params, 1);
                     pipeline.launch(stream, d_params.getDevicePtr(), sbt, width, height, 2);
                     cuStreamSynchronize(stream);
                     d_frames.unmap();
-                    //auto end = std::chrono::system_clock::now();
-                    //std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(end - beg).count() << "ms"  << std::endl;
                     params.samplePerALL += params.samplePerLaunch;
                 }
                 
