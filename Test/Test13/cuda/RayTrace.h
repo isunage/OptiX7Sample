@@ -50,7 +50,7 @@ struct HitgroupData{
     cudaTextureObject_t specularTex;
     float               shinness;
 #ifdef __CUDACC__
-    float3 getDiffuseColor(const float2& uv)const noexcept{ 
+    __forceinline__ __device__ float3 getDiffuseColor(const float2& uv)const noexcept{ 
     #if defined(TEST_SKIP_TEXTURE_SAMPLE)
         return this->diffuse;
     #else
@@ -60,7 +60,7 @@ struct HitgroupData{
         return diffColor;
     #endif
     }
-    float3 getSpecularColor(const float2& uv)const noexcept {
+    __forceinline__ __device__ float3 getSpecularColor(const float2& uv)const noexcept {
     #if defined(TEST_SKIP_TEXTURE_SAMPLE)
         return this->specular;
     #else
@@ -70,7 +70,7 @@ struct HitgroupData{
         return specColor;
     #endif
     }
-    float3 getEmissionColor(const float2& uv)const noexcept {
+    __forceinline__ __device__ float3 getEmissionColor(const float2& uv)const noexcept {
     #if defined(TEST_SKIP_TEXTURE_SAMPLE)
         return this->emission;
     #else

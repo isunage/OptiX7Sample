@@ -29,7 +29,7 @@ static __forceinline__ __device__ void setRadiancePRD(RadiancePRD* prd) {
 static __forceinline__ __device__ void  setPayloadOccluded(bool occluded) {
     optixSetPayload_0(static_cast<unsigned int>(occluded));
 }
-static __forceinline__ void traceRadiance(
+static __forceinline__ __device__ void traceRadiance(
     OptixTraversableHandle handle,
     const float3& rayOrigin, 
     const float3& rayDirection,
@@ -39,7 +39,7 @@ static __forceinline__ void traceRadiance(
     packPointer(prd, p0, p1);
     optixTrace(handle, rayOrigin, rayDirection, tmin, tmax, 0.0f, OptixVisibilityMask(255), OPTIX_RAY_FLAG_NONE, RAY_TYPE_RADIANCE, RAY_TYPE_COUNT, RAY_TYPE_RADIANCE, p0, p1);
 }
-static __forceinline__ bool traceOccluded(
+static __forceinline__ __device__ bool traceOccluded(
     OptixTraversableHandle handle,
     const float3& rayOrigin,
     const float3& rayDirection,
@@ -48,7 +48,7 @@ static __forceinline__ bool traceOccluded(
     optixTrace(handle, rayOrigin, rayDirection, tmin, tmax, 0.0f, OptixVisibilityMask(255), OPTIX_RAY_FLAG_NONE, RAY_TYPE_OCCLUSION, RAY_TYPE_COUNT, RAY_TYPE_OCCLUSION, occluded);
     return occluded;
 }
-extern "C" __global__ void     __raygen__rg(){
+extern "C" __global__  void     __raygen__rg(){
     const uint3 idx             = optixGetLaunchIndex();
 	const uint3 dim             = optixGetLaunchDimensions();
     auto* rgData                = reinterpret_cast<RayGenData*>(optixGetSbtDataPointer());
@@ -79,7 +79,7 @@ extern "C" __global__ void     __raygen__rg(){
             traceRadiance(params.gasHandle, rayOrigin, rayDirection, 0.01f, 1e16f, &prd);
             result += prd.emitted;
             result += prd.radiance * prd.attenuation;
-            if (prd.done || depth >= 1) {
+            if (prd.done || depth >= 4) {
                 break;
             }
             rayOrigin    = prd.origin;

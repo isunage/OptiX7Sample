@@ -301,6 +301,12 @@ int main() {
             cuSource = std::string((std::istreambuf_iterator<char>(cuFile)), (std::istreambuf_iterator<char>()));
 
         }
+        auto ptxSource = std::string();
+        {
+            auto ptxFile = std::ifstream(TEST_TEST13_CUDA_PATH"/RayTrace.ptx", std::ios::binary);
+            ptxSource = std::string((std::istreambuf_iterator<char>(ptxFile)), (std::istreambuf_iterator<char>()));
+
+        }
         //context��copy�s��
         auto pipeline = context.createPipeline(pipelineCompileOptions);
         auto program = rtlib::NVRTCProgram(std::string(cuSource), "sampleProgram");
@@ -323,7 +329,7 @@ int main() {
             moduleCompileOptions.numBoundValues = 0;
             moduleCompileOptions.boundValues = 0;
         }
-        auto module                = pipeline.createModule(program.getPTX(), moduleCompileOptions);
+        auto module                = pipeline.createModule(ptxSource, moduleCompileOptions);
         auto raygenPG              = pipeline.createRaygenPG({ module,"__raygen__rg" });
         auto missPGForRadiance     = pipeline.createMissPG({ module,"__miss__radiance" });
         auto missPGForOccluded     = pipeline.createMissPG({ module,"__miss__occluded" });
