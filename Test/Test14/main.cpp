@@ -4,6 +4,7 @@
 #include <GLFW/glfw3.h>
 #include <stb_image.h>
 #include <stb_image_write.h>
+#include <tiny_obj_loader.h>
 #include <cuda.h>
 #include <cuda_runtime.h>
 #include <RTLib/Camera.h>
@@ -13,7 +14,6 @@
 #include <RTLib/Exceptions.h>
 #include <RTLib/Utils.h>
 #include <Test14Config.h>
-#include <tiny_obj_loader.h>
 #include <iostream>
 #include <fstream>
 #include <algorithm>

@@ -155,6 +155,13 @@ namespace rtlib{
             RTLIB_OPTIX_CHECK(optixSbtRecordPackHeader(this->getHandle(),record.header));
             return record;
         }
+        template<typename T>
+        auto getSBTRecord(const T& value)const -> SBTRecord<T> {
+            SBTRecord<T> record;
+            record.data = value;
+            RTLIB_OPTIX_CHECK(optixSbtRecordPackHeader(this->getHandle(), record.header));
+            return record;
+        }
         ~OPXRaygenPG()noexcept{}
     private:
         auto getHandle()const -> OptixProgramGroup;
@@ -175,6 +182,13 @@ namespace rtlib{
             RTLIB_OPTIX_CHECK(optixSbtRecordPackHeader(this->getHandle(),record.header));
             return record;
         }
+        template<typename T>
+        auto getSBTRecord(const T& value)const -> SBTRecord<T> {
+            SBTRecord<T> record;
+            record.data = value;
+            RTLIB_OPTIX_CHECK(optixSbtRecordPackHeader(this->getHandle(), record.header));
+            return record;
+        }
         ~OPXMissPG()noexcept{}
     private:
         auto getHandle()const -> OptixProgramGroup;
@@ -193,6 +207,13 @@ namespace rtlib{
         auto getSBTRecord()const -> SBTRecord<T>{
             SBTRecord<T> record;
             RTLIB_OPTIX_CHECK(optixSbtRecordPackHeader(this->getHandle(),record.header));
+            return record;
+        }
+        template<typename T>
+        auto getSBTRecord(const T& value)const -> SBTRecord<T> {
+            SBTRecord<T> record;
+            record.data = value;
+            RTLIB_OPTIX_CHECK(optixSbtRecordPackHeader(this->getHandle(), record.header));
             return record;
         }
         ~OPXHitgroupPG()noexcept{}
