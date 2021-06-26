@@ -2,6 +2,7 @@
 #define RTLIB_GL_H
 #include <glad/glad.h>
 #include <string>
+#include <vector>
 #include <array>
 #include "Preprocessors.h"
 #include "PixelFormat.h"

@@ -32,6 +32,6 @@ if(NOT imgui-glfw)
     ${Imgui_INCLUDE_DIR}/backends/imgui_impl_glfw.cpp
     ${Imgui_INCLUDE_DIR}/backends/imgui_impl_opengl3.h
     ${Imgui_INCLUDE_DIR}/backends/imgui_impl_opengl3.cpp)
-    target_include_directories(imgui PUBLIC ${Imgui_INCLUDE_DIR} ${Imgui_INCLUDE_DIR}/backends)
+    target_include_directories(imgui-glfw PUBLIC ${Imgui_INCLUDE_DIR} ${Imgui_INCLUDE_DIR}/backends)
     target_link_libraries(imgui-glfw imgui glfw glad)
 endif()
