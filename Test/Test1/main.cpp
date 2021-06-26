@@ -1,23 +1,21 @@
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_RESIZE_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
-#include <stb_image.h>
-#include <stb_image_resize.h>
-#include <stb_image_write.h>
-#include <glad/glad.h>
-#include <GLFW/glfw3.h>
-#include <cuda.h>
-#include <cuda_runtime.h>
-#include <iostream>
-#include <string_view>
-#include <random>
-#include <array>
-#include <RTLib/Core.h>
+#include <RTLib/CUDA.h>
+#include <RTLib/CUDA_GL.h>
 #include <RTLib/Utils.h>
 #include <RTLib/Math.h>
 #include <RTLib/VectorFunction.h>
 #include <RTLib/Random.h>
+#include <GLFW/glfw3.h>
+#include <stb_image.h>
+#include <stb_image_resize.h>
+#include <stb_image_write.h>
 #include <Test1Config.h>
+#include <iostream>
+#include <string_view>
+#include <random>
+#include <array>
 constexpr std::array<float, 3 * 3> vertices = {
     -1.0f,-1.0f,0.0f,
      1.0f,-1.0f,0.0f,

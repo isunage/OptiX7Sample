@@ -1,8 +1,4 @@
-#include <glad/glad.h>
-#include <GLFW/glfw3.h>
-#include <cuda.h>
-#include <cuda_runtime.h>
-#include <RTLib/Core.h>
+#include <RTLib/CUDA.h>
 #include <RTLib/Config.h>
 #include <RTLib/Exceptions.h>
 #include <RTLib/Math.h>

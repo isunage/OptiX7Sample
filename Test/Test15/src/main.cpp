@@ -1,6 +1,6 @@
 #include <Test15Config.h>
 #include <cuda/RayTrace.h>
-#include <RTLib/Core.h>
+#include <RTLib/Optix.h>
 #include "../include/PathTracer.h"
 int main(){
     test::PathTracer tracer = {};
@@ -48,6 +48,5 @@ int main(){
         accelOptions.operation  = OPTIX_BUILD_OPERATION_BUILD;
         tracer.m_IASHandle->Build(tracer.m_OPXContext.get(), accelOptions);
     }
-    tracer.m_OPXModules["M_RayTrace"] = tracer.m_Pipelines["P_RayTrace"].pipeline.createModule()
     return 0;
 }

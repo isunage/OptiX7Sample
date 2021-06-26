@@ -1,15 +1,14 @@
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
-#include <glad/glad.h>
-#include <GLFW/glfw3.h>
 #include <stb_image.h>
 #include <stb_image_write.h>
-#include <cuda.h>
-#include <cuda_runtime.h>
-#include <RTLib/Core.h>
+#include <RTLib/Optix.h>
 #include <RTLib/Config.h>
 #include <RTLib/VectorFunction.h>
 #include <RTLib/Exceptions.h>
+#include <glfw/glfw.h>
+#include <stb_image.h>
+#include <stb_image_write.h>
 #include <iostream>
 #include <string_view>
 static constexpr std::string_view vsSource =

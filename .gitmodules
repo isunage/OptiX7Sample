@@ -13,3 +13,6 @@
 [submodule "RTLib/thirdparty/glm"]
 	path = RTLib/thirdparty/glm
 	url = https://github.com/g-truc/glm
+[submodule "RTLib/thirdparty/imgui"]
+	path = RTLib/thirdparty/imgui
+	url = https://github.com/ocornut/imgui.git

@@ -24,13 +24,13 @@ set(RTLIB_NVCC_OPTIONS -arch compute_${RTLIB_CUDA_SM_VERSION} -use_fast_math -li
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/include/RTLib/Config.h.in ${CMAKE_CURRENT_BINARY_DIR}/RTLib/Config.h @ONLY)
 ##add library
 add_library(RTLib STATIC 
-${CMAKE_CURRENT_SOURCE_DIR}/src/Core.cpp 
+${CMAKE_CURRENT_SOURCE_DIR}/src/Optix.cpp 
 ${CMAKE_CURRENT_SOURCE_DIR}/src/Exceptions.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/src/Camera.cpp)
 ##include directories
 target_include_directories(RTLib PUBLIC ${RTLIB_INCLUDE_DIR} ${CMAKE_CURRENT_BINARY_DIR})
 ##link libraries
-target_link_libraries(RTLib PUBLIC CUDA::cudart CUDA::nvrtc glad glm::glm stb glfw tinyobjloader OptiX::OptiX)
+target_link_libraries(RTLib PUBLIC CUDA::cudart CUDA::nvrtc glad glm::glm stb glfw tinyobjloader OptiX::OptiX imgui imgui-glfw)
 
 set(RTLIB_OPTIX_INCLUDE_DIR ${RTLIB_OPTIX_INCLUDE_DIR} PARENT_SCOPE)
 set(RTLIB_INCLUDE_DIR       ${RTLIB_INCLUDE_DIR}       PARENT_SCOPE)

@@ -7,7 +7,7 @@
 #include <cuda.h>
 #include <cuda_runtime.h>
 #include <RTLib/Camera.h>
-#include <RTLib/Core.h>
+#include <RTLib/Optix.h>
 #include <RTLib/Config.h>
 #include <RTLib/VectorFunction.h>
 #include <RTLib/Exceptions.h>
