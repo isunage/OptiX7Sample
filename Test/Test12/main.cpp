@@ -203,6 +203,7 @@ int main() {
             light.v2       = make_float3(0.0f, 0.0f, lightAABB.max.z - lightAABB.min.z);
             light.normal   = make_float3(0.0f, -1.0f, 0.0f);
             light.emission = materialInfos[lightShapeInfo.matID].emitColor;
+
         }
 
         //shapeInfos.resize(100);

@@ -17,5 +17,6 @@ ${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/cuda/RayTrace.cu)
 add_custom_command(TARGET Test15 POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/cuda/RayTrace.h  ${TEST_TEST15_CUDA_PATH}/RayTrace.h )
 add_custom_command(TARGET Test15 POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/cuda/RayTrace.cu ${TEST_TEST15_CUDA_PATH}/RayTrace.cu)
+rtlib_compile_ptx(Test15 ${TEST_TEST15_CUDA_PATH}/RayTrace.cu ${TEST_TEST15_CUDA_PATH}/RayTrace.h)
 target_include_directories(Test15 PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include ${CMAKE_CURRENT_BINARY_DIR})
 target_link_libraries(Test15 RTLib)

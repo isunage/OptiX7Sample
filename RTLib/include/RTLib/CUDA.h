@@ -332,8 +332,8 @@ namespace rtlib{
             tex.m_Handle = 0;
         }
         CUDATexture2D& operator=(const CUDATexture2D&)noexcept = delete;
-        CUDATexture2D& operator=(CUDATexture2D&&  arr){
-            if(this!=&arr){
+        CUDATexture2D& operator=(CUDATexture2D&&  tex){
+            if(this!=&tex){
                 this->reset();
                 m_Handle = tex.m_Handle;
                 m_Array  = std::move(tex.m_Array);

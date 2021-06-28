@@ -33,6 +33,10 @@ public:
 			return false;
 		}
 		glfwMakeContextCurrent(m_Window);
+		glfwSetMouseButtonCallback(m_Window,ImGui_ImplGlfw_MouseButtonCallback);
+		glfwSetKeyCallback(m_Window,ImGui_ImplGlfw_KeyCallback);
+		glfwSetCharCallback(m_Window,ImGui_ImplGlfw_CharCallback);
+		glfwSetScrollCallback(m_Window,ImGui_ImplGlfw_ScrollCallback);
 		return true;
 	}
 	bool InitGLAD() {
@@ -65,11 +69,52 @@ public:
 			ImGui_ImplOpenGL3_NewFrame();
 			ImGui_ImplGlfw_NewFrame();
 			ImGui::NewFrame();
-			ImGui::Begin("Hello, world!");
-			ImGui::Text("This is some useful text.");
-			ImGui::DragFloat("x", &x);
-			ImGui::DragFloat("y", &y);
+			ImGui::PushStyleColor(ImGuiCol_TitleBgActive, ImVec4(0.0f, 0.7f, 0.2f, 1.0f));
+			ImGui::PushStyleColor(ImGuiCol_TitleBg, ImVec4(0.0f, 0.3f, 0.1f, 1.0f));
+			ImGui::SetNextWindowPos(ImVec2(20, 20));
+			ImGui::SetNextWindowSize(ImVec2(280, 300));
+
+			ImGui::Begin("config 1", nullptr, ImGuiWindowFlags_MenuBar);
+
+			if (ImGui::BeginMenuBar()) {
+				if (ImGui::BeginMenu("File"))
+				{
+					if (ImGui::MenuItem("Save")) {
+
+					}
+					if (ImGui::MenuItem("Load")) {
+
+					}
+
+					ImGui::EndMenu();
+				}
+				ImGui::EndMenuBar();
+			}
+
+
+			static std::vector<float> items(10);
+
+			if (ImGui::Button("add")) {
+				items.push_back(0.0f);
+			}
+			if (ImGui::Button("remove")) {
+				if (items.empty() == false) {
+					items.pop_back();
+				}
+			}
+
+			ImGui::BeginChild(ImGui::GetID((void*)0), ImVec2(250, 100), ImGuiWindowFlags_NoTitleBar);
+			for (int i = 0; i < items.size() ; ++i) {
+				char name[16];
+				sprintf(name, "item %d", i);
+				ImGui::SliderFloat(name, &items[i], 0.0f, 10.0f);
+			}
+			ImGui::EndChild();
+
 			ImGui::End();
+
+			ImGui::PopStyleColor();
+			ImGui::PopStyleColor();
 			// Rendering
 			ImGui::Render();
 			int display_w, display_h;
@@ -94,11 +139,11 @@ public:
 		glfwTerminate();
 	}
 private:
-	GLFWwindow*                  m_Window         = nullptr;
-	int							 m_Width          = 0;
-	int                          m_Height         = 0;
-	std::string                  m_Title          = {};
-	std::string                  m_GlslVersion    = {};
+	GLFWwindow*        m_Window         = nullptr;
+	int				   m_Width          = 0;
+	int                m_Height         = 0;
+	std::string        m_Title          = {};
+	std::string        m_GlslVersion    = {};
 };
 int main() {
 	ImGUIApplication app = {};

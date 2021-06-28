@@ -1,7 +1,7 @@
 #ifndef TEST15_SCENE_BUILDER_H
 #define TEST15_SCENE_BUILDER_H
 #include <tiny_obj_loader.h>
-#include <RTLib/Core.h>
+#include <RTLib/Optix.h>
 #include <RTLib/CUDA.h>
 #include <RTLib/VectorFunction.h>
 #include <string>
@@ -10,17 +10,24 @@
 #include <unordered_map>
 #include <memory>
 namespace test {
+	enum class PhongMaterialType {
+		eDiffuse = 0,
+		eSpecular,
+		eEmission,
+	};
 	struct PhongMaterial {
-		std::string name;
-		float3      diffCol;
-		float3      specCol;
-		float3      emitCol;
-		float       shinness;
-		float       refrInd;
-		std::string diffTex;
-		std::string specTex;
-		std::string emitTex;
-		std::string shinTex;
+		using Materialtype = PhongMaterialType;
+		Materialtype type;
+		std::string  name;
+		float3       diffCol;
+		float3       specCol;
+		float3       emitCol;
+		float        shinness;
+		float        refrInd;
+		std::string  diffTex;
+		std::string  specTex;
+		std::string  emitTex;
+		std::string  shinTex;
 	};
 	struct MaterialSet {
 		std::vector<PhongMaterial>        materials = {};
@@ -29,6 +36,11 @@ namespace test {
 	struct ArrayBuffer {
 		std::vector<T>       cpuHandle   = {};
 		rtlib::CUDABuffer<T> gpuHandle   = {};
+	public:
+		void Upload() {
+			gpuHandle.allocate(cpuHandle.size());
+			gpuHandle.upload(cpuHandle);
+		}
 	};
 	struct MeshSharedResource {
 		std::string         name         = {};
@@ -97,19 +109,19 @@ namespace test {
 			size_t sbtCount = 0;
 			for (auto& mesh : this->meshes) {
 				if (mesh->GetSharedResource()->vertexBuffer.gpuHandle.getSizeInBytes() == 0) {
-					mesh->GetSharedResource()->vertexBuffer.gpuHandle = rtlib::CUDABuffer<float3>(mesh->GetSharedResource()->vertexBuffer.cpuHandle);
+					mesh->GetSharedResource()->vertexBuffer.Upload();
 				}
 				if (mesh->GetSharedResource()->normalBuffer.gpuHandle.getSizeInBytes() == 0) {
-					mesh->GetSharedResource()->normalBuffer.gpuHandle = rtlib::CUDABuffer<float3>(mesh->GetSharedResource()->normalBuffer.cpuHandle);
+					mesh->GetSharedResource()->normalBuffer.Upload();
 				}
 				if (mesh->GetSharedResource()->texCrdBuffer.gpuHandle.getSizeInBytes() == 0) {
-					mesh->GetSharedResource()->texCrdBuffer.gpuHandle = rtlib::CUDABuffer<float2>(mesh->GetSharedResource()->texCrdBuffer.cpuHandle);
+					mesh->GetSharedResource()->texCrdBuffer.Upload();
 				}
 				if (mesh->GetUniqueResource()->triIndBuffer.gpuHandle.getSizeInBytes() == 0) {
-					mesh->GetUniqueResource()->triIndBuffer.gpuHandle = rtlib::CUDABuffer<uint3>(mesh->GetUniqueResource()->triIndBuffer.cpuHandle);
+					mesh->GetUniqueResource()->triIndBuffer.Upload();
 				}
 				if (mesh->GetUniqueResource()->matIndBuffer.gpuHandle.getSizeInBytes() == 0) {
-					mesh->GetUniqueResource()->matIndBuffer.gpuHandle = rtlib::CUDABuffer<uint32_t>(mesh->GetUniqueResource()->matIndBuffer.cpuHandle);
+					mesh->GetUniqueResource()->matIndBuffer.Upload();
 				}
 				vertexBuffers[i] = reinterpret_cast<CUdeviceptr>(mesh->GetSharedResource()->vertexBuffer.gpuHandle.getDevicePtr());
 				buildFlags[i].resize(mesh->GetUniqueResource()->materials.size());
@@ -138,7 +150,8 @@ namespace test {
 		}
 	};
 	struct InstanceSet {
-		test::ArrayBuffer<OptixInstance> instanceBuffer = {};
+		test::ArrayBuffer<OptixInstance>        instanceBuffer = {};
+		std::vector<std::shared_ptr<GASHandle>> baseGASHandles = {};
 	};
 	using  InstanceSetPtr = std::shared_ptr<InstanceSet>;
 	struct IASHandle {
@@ -150,15 +163,20 @@ namespace test {
 		void Build(const rtlib::OPXContext* context, const OptixAccelBuildOptions& accelOptions) {
 			auto buildInputs = std::vector <OptixBuildInput>(this->instanceSets.size());
 			size_t i = 0;
+			size_t sbtCount = 0;
 			for (auto& instanceSet : this->instanceSets) {
 				buildInputs[i].type                       = OPTIX_BUILD_INPUT_TYPE_INSTANCES;
 				buildInputs[i].instanceArray.instances    = reinterpret_cast<CUdeviceptr>(instanceSet->instanceBuffer.gpuHandle.getDevicePtr());
 				buildInputs[i].instanceArray.numInstances = instanceSet->instanceBuffer.gpuHandle.getCount();
+				for (auto& baseGasHandle : instanceSet->baseGASHandles) {
+					sbtCount += baseGasHandle->sbtCount;
+				}
 				++i;
 			}
 			auto [outputBuffer, iasHandle] = context->buildAccel(accelOptions, buildInputs);
 			this->handle                   = iasHandle;
 			this->buffer                   = std::move(outputBuffer);
+			this->sbtCount = sbtCount;
 		}
 	};
 	using  IASHandlePtr   = std::shared_ptr<IASHandle>;

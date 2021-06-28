@@ -14,6 +14,14 @@ enum RayType   {
     RAY_TYPE_OCCLUSION,
     RAY_TYPE_COUNT,  
 };
+
+enum MaterialType {
+    MATERIAL_TYPE_DIFFUSE  = 0,
+    MATERIAL_TYPE_SPECULAR,
+    MATERIAL_TYPE_EMISSION,
+    MATERIAL_TYPE_OCCLUSION,
+    MATERIAL_TYPE_COUNT
+};
 struct ParallelLight {
     float3   corner;
     float3   v1, v2;
