@@ -1,7 +1,6 @@
 #ifndef RTLIB_UTILS_H
 #define RTLIB_UTILS_H
-#include <glm/glm.hpp>
-#include <tiny_obj_loader.h>
+#include "VectorFunction.h"
 #include <vector>
 namespace rtlib{
     namespace utils {
@@ -153,7 +152,23 @@ namespace rtlib{
                 return 4 * z + 2 * y + x;
             }
         };
-        
+        struct    AABB{
+            float3 min = make_float3(FLT_MAX,FLT_MAX,FLT_MAX);
+            float3 max = make_float3(   0.0f,   0.0f,   0.0f);
+        public:
+            AABB()noexcept{}
+            AABB(const AABB& aabb)noexcept = default;
+            AABB& operator=(const AABB& aabb)noexcept = default;
+            AABB(const std::vector<float3>& vertices)noexcept:AABB(){
+                for(auto& vertex:vertices){
+                    this->Update(vertex);
+                }
+            }
+            void Update(const float3& vertex)noexcept{
+                min = rtlib::min(min,vertex);
+                max = rtlib::max(max,vertex);
+            }
+        };
     }
 }
 #endif
