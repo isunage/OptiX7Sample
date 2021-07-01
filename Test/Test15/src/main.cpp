@@ -42,7 +42,7 @@ int main() {
         }
     }
     auto objMeshGroup   = std::make_shared<test::ObjMeshGroup>();
-    if (!objMeshGroup->Load(TEST_TEST15_DATA_PATH"/Models/CornellBox/CornellBox-Mirror.obj", TEST_TEST15_DATA_PATH"/Models/CornellBox/")) {
+    if (!objMeshGroup->Load(TEST_TEST15_DATA_PATH"/Models/CornellBox/CornellBox-Original.obj", TEST_TEST15_DATA_PATH"/Models/CornellBox/")) {
         return -1;
     }
     auto& materialSet   = objMeshGroup->GetMaterialSet();
@@ -101,11 +101,12 @@ int main() {
         firstIASHandle->instanceSets[0]->SetInstance(lightInstance);
         firstIASHandle->instanceSets[0]->instanceBuffer.Upload();
         firstIASHandle->Build(tracer.GetOPXContext().get(), accelOptions);
+
     }
     tracer.SetIASHandle("FirstIAS", firstIASHandle);
     //pipeline: init
-    auto mainPipeline  = std::make_shared<test::Pipeline>();
     {
+        auto tracePipeline = std::make_shared<test::Pipeline>();
         {
             OptixPipelineCompileOptions pipelineCompileOptions = {};
             pipelineCompileOptions.pipelineLaunchParamsVariableName = "params";
@@ -114,12 +115,12 @@ int main() {
             pipelineCompileOptions.usesPrimitiveTypeFlags = 0;
             pipelineCompileOptions.usesMotionBlur = false;
             pipelineCompileOptions.traversableGraphFlags = OPTIX_TRAVERSABLE_GRAPH_FLAG_ALLOW_ANY;
-            mainPipeline->pipeline = tracer.GetOPXContext()->createPipeline(pipelineCompileOptions);
+            tracePipeline->pipeline = tracer.GetOPXContext()->createPipeline(pipelineCompileOptions);
         }
         {
-            mainPipeline->width = width;
-            mainPipeline->height = height;
-            mainPipeline->depth = 2;
+            tracePipeline->width = width;
+            tracePipeline->height = height;
+            tracePipeline->depth = 2;
         }
         //module: Load
         {
@@ -139,7 +140,7 @@ int main() {
             moduleCompileOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_LINEINFO;
 #endif
             try {
-                mainPipeline->modules["RayTrace"] = mainPipeline->pipeline.createModule(ptxSource, moduleCompileOptions);
+                tracePipeline->modules["RayTrace"] = tracePipeline->pipeline.createModule(ptxSource, moduleCompileOptions);
             }
             catch (rtlib::OptixException& err) {
                 std::cout << err.what() << std::endl;
@@ -147,16 +148,16 @@ int main() {
         }
         //program group: init
         {
-            auto& rayTraceModule = mainPipeline->modules["RayTrace"];
-            mainPipeline->raygenPG = mainPipeline->pipeline.createRaygenPG({ rayTraceModule,"__raygen__rg" });
-            mainPipeline->missPGs.resize(RAY_TYPE_COUNT);
-            mainPipeline->missPGs[RAY_TYPE_RADIANCE] = mainPipeline->pipeline.createMissPG({ rayTraceModule,"__miss__radiance" });
-            mainPipeline->missPGs[RAY_TYPE_OCCLUSION] = mainPipeline->pipeline.createMissPG({ rayTraceModule,"__miss__occluded" });
-            mainPipeline->hitGroupPGs.resize(MATERIAL_TYPE_COUNT);
-            mainPipeline->hitGroupPGs[MATERIAL_TYPE_DIFFUSE] = mainPipeline->pipeline.createHitgroupPG({ rayTraceModule ,"__closesthit__radiance_for_diffuse" }, {}, {});
-            mainPipeline->hitGroupPGs[MATERIAL_TYPE_SPECULAR] = mainPipeline->pipeline.createHitgroupPG({ rayTraceModule ,"__closesthit__radiance_for_specular" }, {}, {});
-            mainPipeline->hitGroupPGs[MATERIAL_TYPE_EMISSION] = mainPipeline->pipeline.createHitgroupPG({ rayTraceModule ,"__closesthit__radiance_for_emission" }, {}, {});
-            mainPipeline->hitGroupPGs[MATERIAL_TYPE_OCCLUSION] = mainPipeline->pipeline.createHitgroupPG({ rayTraceModule ,"__closesthit__occluded" }, {}, {});
+            auto& rayTraceModule = tracePipeline->modules["RayTrace"];
+            tracePipeline->raygenPG = tracePipeline->pipeline.createRaygenPG({ rayTraceModule,"__raygen__rg" });
+            tracePipeline->missPGs.resize(RAY_TYPE_COUNT);
+            tracePipeline->missPGs[RAY_TYPE_RADIANCE] = tracePipeline->pipeline.createMissPG({ rayTraceModule,"__miss__radiance" });
+            tracePipeline->missPGs[RAY_TYPE_OCCLUSION] = tracePipeline->pipeline.createMissPG({ rayTraceModule,"__miss__occluded" });
+            tracePipeline->hitGroupPGs.resize(MATERIAL_TYPE_COUNT);
+            tracePipeline->hitGroupPGs[MATERIAL_TYPE_DIFFUSE] = tracePipeline->pipeline.createHitgroupPG({ rayTraceModule ,"__closesthit__radiance_for_diffuse" }, {}, {});
+            tracePipeline->hitGroupPGs[MATERIAL_TYPE_SPECULAR] = tracePipeline->pipeline.createHitgroupPG({ rayTraceModule ,"__closesthit__radiance_for_specular" }, {}, {});
+            tracePipeline->hitGroupPGs[MATERIAL_TYPE_EMISSION] = tracePipeline->pipeline.createHitgroupPG({ rayTraceModule ,"__closesthit__radiance_for_emission" }, {}, {});
+            tracePipeline->hitGroupPGs[MATERIAL_TYPE_OCCLUSION] = tracePipeline->pipeline.createHitgroupPG({ rayTraceModule ,"__closesthit__occluded" }, {}, {});
         }
         //pipeline link
         {
@@ -167,27 +168,27 @@ int main() {
 #else
             pipelineLinkOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_LINEINFO;
 #endif
-            mainPipeline->pipeline.link(pipelineLinkOptions);
+            tracePipeline->pipeline.link(pipelineLinkOptions);
         }
         //SBTRecord
         {
-            mainPipeline->raygenBuffer.cpuHandle.resize(1);
+            tracePipeline->raygenBuffer.cpuHandle.resize(1);
             auto camera = cameraController.GetCamera(30.0f, 1.0f);
             auto [u, v, w] = camera.getUVW();
-            mainPipeline->raygenBuffer.cpuHandle[0] = mainPipeline->raygenPG.getSBTRecord<RayGenData>();
-            mainPipeline->raygenBuffer.cpuHandle[0].data.eye = camera.getEye();
-            mainPipeline->raygenBuffer.cpuHandle[0].data.u = u;
-            mainPipeline->raygenBuffer.cpuHandle[0].data.v = v;
-            mainPipeline->raygenBuffer.cpuHandle[0].data.w = w;
-            mainPipeline->raygenBuffer.Upload();
-            mainPipeline->missBuffer.cpuHandle.resize(RAY_TYPE_COUNT);
-            mainPipeline->missBuffer.cpuHandle[RAY_TYPE_RADIANCE] = mainPipeline->missPGs[RAY_TYPE_RADIANCE].getSBTRecord<MissData>();
-            mainPipeline->missBuffer.cpuHandle[RAY_TYPE_RADIANCE].data.bgColor = make_float4(0.0f, 0.0f, 0.0f, 0.0f);
-            mainPipeline->missBuffer.cpuHandle[RAY_TYPE_OCCLUSION] = mainPipeline->missPGs[RAY_TYPE_OCCLUSION].getSBTRecord<MissData>();
-            mainPipeline->missBuffer.cpuHandle[RAY_TYPE_OCCLUSION].data.bgColor = make_float4(0.0f, 0.0f, 0.0f, 0.0f);
-            mainPipeline->missBuffer.Upload();
-            mainPipeline->hitGBuffer.cpuHandle.resize(RAY_TYPE_COUNT * firstIASHandle->sbtCount);
-            auto& cpuHgRecords = mainPipeline->hitGBuffer.cpuHandle;
+            tracePipeline->raygenBuffer.cpuHandle[0] = tracePipeline->raygenPG.getSBTRecord<RayGenData>();
+            tracePipeline->raygenBuffer.cpuHandle[0].data.eye = camera.getEye();
+            tracePipeline->raygenBuffer.cpuHandle[0].data.u = u;
+            tracePipeline->raygenBuffer.cpuHandle[0].data.v = v;
+            tracePipeline->raygenBuffer.cpuHandle[0].data.w = w;
+            tracePipeline->raygenBuffer.Upload();
+            tracePipeline->missBuffer.cpuHandle.resize(RAY_TYPE_COUNT);
+            tracePipeline->missBuffer.cpuHandle[RAY_TYPE_RADIANCE] = tracePipeline->missPGs[RAY_TYPE_RADIANCE].getSBTRecord<MissData>();
+            tracePipeline->missBuffer.cpuHandle[RAY_TYPE_RADIANCE].data.bgColor = make_float4(0.0f, 0.0f, 0.0f, 0.0f);
+            tracePipeline->missBuffer.cpuHandle[RAY_TYPE_OCCLUSION] = tracePipeline->missPGs[RAY_TYPE_OCCLUSION].getSBTRecord<MissData>();
+            tracePipeline->missBuffer.cpuHandle[RAY_TYPE_OCCLUSION].data.bgColor = make_float4(0.0f, 0.0f, 0.0f, 0.0f);
+            tracePipeline->missBuffer.Upload();
+            tracePipeline->hitGBuffer.cpuHandle.resize(RAY_TYPE_COUNT * firstIASHandle->sbtCount);
+            auto& cpuHgRecords = tracePipeline->hitGBuffer.cpuHandle;
             for (auto& [name, iasHandle] : tracer.m_IASHandles) {
                 size_t sbtOffset = 0;
                 for (auto& instanceSet : iasHandle->instanceSets) {
@@ -210,35 +211,35 @@ int main() {
                                     radianceHgData.shinness = material.shinness;
                                 }
                                 if (material.type == test::PhongMaterialType::eDiffuse) {
-                                    cpuHgRecords[RAY_TYPE_COUNT * sbtOffset + RAY_TYPE_COUNT * i + RAY_TYPE_RADIANCE] = mainPipeline->hitGroupPGs[MATERIAL_TYPE_DIFFUSE].getSBTRecord<HitgroupData>(radianceHgData);
+                                    cpuHgRecords[RAY_TYPE_COUNT * sbtOffset + RAY_TYPE_COUNT * i + RAY_TYPE_RADIANCE] = tracePipeline->hitGroupPGs[MATERIAL_TYPE_DIFFUSE].getSBTRecord<HitgroupData>(radianceHgData);
                                 }
                                 else if (material.type == test::PhongMaterialType::eSpecular) {
-                                    cpuHgRecords[RAY_TYPE_COUNT * sbtOffset + RAY_TYPE_COUNT * i + RAY_TYPE_RADIANCE] = mainPipeline->hitGroupPGs[MATERIAL_TYPE_SPECULAR].getSBTRecord<HitgroupData>(radianceHgData);
+                                    cpuHgRecords[RAY_TYPE_COUNT * sbtOffset + RAY_TYPE_COUNT * i + RAY_TYPE_RADIANCE] = tracePipeline->hitGroupPGs[MATERIAL_TYPE_SPECULAR].getSBTRecord<HitgroupData>(radianceHgData);
                                 }
                                 else {
-                                    cpuHgRecords[RAY_TYPE_COUNT * sbtOffset + RAY_TYPE_COUNT * i + RAY_TYPE_RADIANCE] = mainPipeline->hitGroupPGs[MATERIAL_TYPE_EMISSION].getSBTRecord<HitgroupData>(radianceHgData);
+                                    cpuHgRecords[RAY_TYPE_COUNT * sbtOffset + RAY_TYPE_COUNT * i + RAY_TYPE_RADIANCE] = tracePipeline->hitGroupPGs[MATERIAL_TYPE_EMISSION].getSBTRecord<HitgroupData>(radianceHgData);
                                 }
-                                cpuHgRecords[RAY_TYPE_COUNT * sbtOffset + RAY_TYPE_COUNT * i + RAY_TYPE_OCCLUSION] = mainPipeline->hitGroupPGs[MATERIAL_TYPE_OCCLUSION].getSBTRecord<HitgroupData>();
+                                cpuHgRecords[RAY_TYPE_COUNT * sbtOffset + RAY_TYPE_COUNT * i + RAY_TYPE_OCCLUSION] = tracePipeline->hitGroupPGs[MATERIAL_TYPE_OCCLUSION].getSBTRecord<HitgroupData>();
                             }
                             sbtOffset += mesh->GetUniqueResource()->materials.size();
                         }
                     }
                 }
             }
-            mainPipeline->hitGBuffer.Upload();
-            mainPipeline->shaderbindingTable = {};
-            mainPipeline->shaderbindingTable.raygenRecord = reinterpret_cast<CUdeviceptr>(mainPipeline->raygenBuffer.gpuHandle.getDevicePtr());
-            mainPipeline->shaderbindingTable.missRecordBase = reinterpret_cast<CUdeviceptr>(mainPipeline->missBuffer.gpuHandle.getDevicePtr());
-            mainPipeline->shaderbindingTable.missRecordCount = mainPipeline->missBuffer.gpuHandle.getCount();
-            mainPipeline->shaderbindingTable.missRecordStrideInBytes = sizeof(rtlib::SBTRecord<MissData>);
-            mainPipeline->shaderbindingTable.hitgroupRecordBase = reinterpret_cast<CUdeviceptr>(mainPipeline->hitGBuffer.gpuHandle.getDevicePtr());
-            mainPipeline->shaderbindingTable.hitgroupRecordCount = mainPipeline->hitGBuffer.gpuHandle.getCount();
-            mainPipeline->shaderbindingTable.hitgroupRecordStrideInBytes = sizeof(rtlib::SBTRecord<HitgroupData>);
+            tracePipeline->hitGBuffer.Upload();
+            tracePipeline->shaderbindingTable = {};
+            tracePipeline->shaderbindingTable.raygenRecord = reinterpret_cast<CUdeviceptr>(tracePipeline->raygenBuffer.gpuHandle.getDevicePtr());
+            tracePipeline->shaderbindingTable.missRecordBase = reinterpret_cast<CUdeviceptr>(tracePipeline->missBuffer.gpuHandle.getDevicePtr());
+            tracePipeline->shaderbindingTable.missRecordCount = tracePipeline->missBuffer.gpuHandle.getCount();
+            tracePipeline->shaderbindingTable.missRecordStrideInBytes = sizeof(rtlib::SBTRecord<MissData>);
+            tracePipeline->shaderbindingTable.hitgroupRecordBase = reinterpret_cast<CUdeviceptr>(tracePipeline->hitGBuffer.gpuHandle.getDevicePtr());
+            tracePipeline->shaderbindingTable.hitgroupRecordCount = tracePipeline->hitGBuffer.gpuHandle.getCount();
+            tracePipeline->shaderbindingTable.hitgroupRecordStrideInBytes = sizeof(rtlib::SBTRecord<HitgroupData>);
         }
-        tracer.SetPipeline("Main", mainPipeline);
+        tracer.SetPipeline("Trace", tracePipeline);
     }
-    auto debugPipeline = std::make_shared<test::Pipeline>();
     {
+        auto debugPipeline = std::make_shared<test::Pipeline>();
         {
             OptixPipelineCompileOptions pipelineCompileOptions = {};
             pipelineCompileOptions.pipelineLaunchParamsVariableName = "params";
@@ -405,7 +406,7 @@ int main() {
             params.samplePerLaunch = 4;
         }
     }
-    auto&  curPipeline = debugPipeline;
+    auto&  curPipeline = tracer.m_Pipelines["Trace"];
     {
         constexpr std::array<float, 5 * 4> screenVertices = {
             -1.0f,-1.0f,0.0f,0.0f, 1.0f,

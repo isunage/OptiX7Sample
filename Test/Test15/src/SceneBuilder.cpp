@@ -117,7 +117,7 @@ bool test::ObjMeshGroup::Load(const std::string& objFilePath, const std::string&
                     if (idxs[k].texcoord_index >= 0) {
                         auto tx = attrib.texcoords[2 * size_t(idxs[k].texcoord_index) + 0];
                         auto ty = attrib.texcoords[2 * size_t(idxs[k].texcoord_index) + 1];
-                        texCrdBuffer.cpuHandle[idxs[k].vertex_index] = make_float2(tx, ty);
+                        texCrdBuffer.cpuHandle[idxs[k].vertex_index] = make_float2(tx, -ty);
                     }
                     else {
                         texCrdBuffer.cpuHandle[idxs[k].vertex_index] = make_float2(0.5, 0.5);

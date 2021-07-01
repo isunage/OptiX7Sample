@@ -8,7 +8,7 @@
 #include <RTLib/Math.h>
 //#define TEST_SKIP_TEXTURE_SAMPLE
 //#define   TEST11_SHOW_EMISSON_COLOR
-//#define TEST11_SHOW_NORMAL
+#define TEST_SHOW_DIFFUSE_COLOR
 enum RayType   {
     RAY_TYPE_RADIANCE = 0,
     RAY_TYPE_OCCLUSION,

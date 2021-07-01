@@ -43,22 +43,39 @@ extern "C" __global__ void __closesthit__debug(){
     auto p1          = hgData->vertices[hgData->indices[primitiveId].y];
     auto p2          = hgData->vertices[hgData->indices[primitiveId].z];
     auto normal      = rtlib::normalize(rtlib::cross(p1 - p0, p2 - p0));
-    auto diffTex = hgData->diffuseTex;
-    auto t0      = hgData->texCoords[hgData->indices[primitiveId].x];
-    auto t1      = hgData->texCoords[hgData->indices[primitiveId].y];
-    auto t2      = hgData->texCoords[hgData->indices[primitiveId].z];
-    auto t       = (1.0f-texCoord.x-texCoord.y)*t0 + texCoord.x * t1 + texCoord.y * t2;
-    auto diffC   = tex2D<uchar4>(diffTex, t.x, t.y);
+    auto t0          = hgData->texCoords[hgData->indices[primitiveId].x];
+    auto t1          = hgData->texCoords[hgData->indices[primitiveId].y];
+    auto t2          = hgData->texCoords[hgData->indices[primitiveId].z];
+    auto t           = (1.0f-texCoord.x-texCoord.y)*t0 + texCoord.x * t1 + texCoord.y * t2;
+    auto diffC       = hgData->getDiffuseColor(t);
+    auto specC       = hgData->getSpecularColor(t);
+    auto emitC       = hgData->getEmissionColor(t);
     //printf("%f %f\n",t0.x,t0.y);
-    //optixSetPayload_0(float_as_int(float(diffC.x) / 255.99f));
-    //optixSetPayload_1(float_as_int(float(diffC.y) / 255.99f));
-    //optixSetPayload_2(float_as_int(float(diffC.z) / 255.99f));
-    //optixSetPayload_0(float_as_int((t.x)));
-    //optixSetPayload_1(float_as_int((t.y)));
-    //optixSetPayload_2(float_as_int((2.0f-t.x-t.y)/2.0f));
+#ifdef TEST_SHOW_DIFFUSE_COLOR
+    optixSetPayload_0(float_as_int(diffC.x));
+    optixSetPayload_1(float_as_int(diffC.y));
+    optixSetPayload_2(float_as_int(diffC.z));
+#endif 
+#ifdef TEST_SHOW_SPECULAR_COLOR
+    optixSetPayload_0(float_as_int(specC.x));
+    optixSetPayload_1(float_as_int(specC.y));
+    optixSetPayload_2(float_as_int(specC.z));
+#endif 
+#ifdef TEST_SHOW_EMISSION_COLOR
+    optixSetPayload_0(float_as_int(emitC.x));
+    optixSetPayload_1(float_as_int(emitC.y));
+    optixSetPayload_2(float_as_int(emitC.z));
+#endif 
+#ifdef TEST_SHOW_TEXCOORD
+    optixSetPayload_0(float_as_int((t.x)));
+    optixSetPayload_1(float_as_int((t.y)));
+    optixSetPayload_2(float_as_int((2.0f-t.x-t.y)/2.0f));
+#endif
+#ifdef TEST_SHOW_NORMAL
     optixSetPayload_0(float_as_int((0.5f+0.5f*normal.x)));
     optixSetPayload_1(float_as_int((0.5f+0.5f*normal.y)));
     optixSetPayload_2(float_as_int((0.5f+0.5f*normal.z)));
+#endif
 }
 extern "C" __global__ void     __anyhit__ah(){
     auto* hgData = reinterpret_cast<HitgroupData*>(optixGetSbtDataPointer());
