@@ -38,7 +38,7 @@ namespace test {
 		rtlib::CUDABuffer<T> gpuHandle   = {};
 	public:
 		void Upload() {
-			gpuHandle.allocate(cpuHandle.size());
+			gpuHandle.resize(cpuHandle.size());
 			gpuHandle.upload(cpuHandle);
 		}
 	};
@@ -60,8 +60,10 @@ namespace test {
 	class  Mesh {
 	public:
 		Mesh()noexcept {}
+		void SetSharedResource(const  MeshSharedResourcePtr& res)noexcept;
 		auto GetSharedResource()const noexcept -> MeshSharedResourcePtr;
 		void SetUniqueResource(const  MeshUniqueResourcePtr& res)noexcept;
+		void SetUniqueResource(const std::string& name, const MeshUniqueResourcePtr& res)noexcept;
 		auto GetUniqueResource()const->MeshUniqueResourcePtr;
 	private:
 		friend MeshGroup;
@@ -112,7 +114,6 @@ namespace test {
 		std::vector<std::shared_ptr<GASHandle>> baseGASHandles = {};
 	public:
 		void SetInstance(const Instance& instance)noexcept;
-
 	};
 	using  InstanceSetPtr = std::shared_ptr<InstanceSet>;
 	struct IASHandle {

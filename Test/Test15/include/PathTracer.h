@@ -40,22 +40,23 @@ namespace test {
 		using IASHandleMap   = std::unordered_map<std::string, std::shared_ptr<IASHandle>>;
 		using PipelineMap    = std::unordered_map<std::string, std::shared_ptr<Pipeline>>;
 	public:
-		OPXContextPtr m_OPXContext = {};
-		GASHandleMap  m_GASHandles = {};
-		IASHandleMap  m_IASHandles = {};
-		TextureMap    m_Textures   = {};
-		PipelineMap   m_Pipelines  = {};
+		OPXContextPtr m_OPXContext   = {};
+		GASHandleMap  m_GASHandles   = {};
+		IASHandleMap  m_IASHandles   = {};
+		TextureMap    m_Textures     = {};
+		PipelineMap   m_Pipelines    = {};
 	public:
 		void InitCUDA();
 		void InitOPX();
+	public:
 		auto GetOPXContext()const -> const OPXContextPtr&;
 		void SetGASHandle(const std::string& keyName, const std::shared_ptr<GASHandle>& gasHandle);
 		void SetIASHandle(const std::string& keyName, const std::shared_ptr<IASHandle>& iasHandle);
-		auto GetInstance( const std::string& gasKeyName)const->Instance;
-		void LoadTexture( const std::string& keyName, const std::string& texPath);
-		auto  GetTexture( const std::string& keyName) const ->const rtlib::CUDATexture2D<uchar4>&;
-		bool  HasTexture( const std::string& keyName) const noexcept;
-		void SetPipeline( const std::string& keyName, const std::shared_ptr<Pipeline>& pipeline);
+		auto  GetInstance( const std::string& gasKeyName)const->Instance;
+		void  LoadTexture( const std::string& keyName, const std::string& texPath);
+		auto   GetTexture( const std::string& keyName) const ->const rtlib::CUDATexture2D<uchar4>&;
+		bool   HasTexture( const std::string& keyName) const noexcept;
+		void  SetPipeline( const std::string& keyName, const std::shared_ptr<Pipeline>& pipeline);
 	};
 }
 #endif

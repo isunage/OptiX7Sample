@@ -44,6 +44,11 @@ auto test::MeshGroup::LoadMesh(const std::string& name) const -> MeshPtr
 	return mesh;
 }
 
+void test::Mesh::SetSharedResource(const MeshSharedResourcePtr& res) noexcept
+{
+    m_SharedResource = res;
+}
+
 auto test::Mesh::GetSharedResource() const noexcept -> MeshSharedResourcePtr
 {
 	return m_SharedResource;
@@ -52,6 +57,12 @@ auto test::Mesh::GetSharedResource() const noexcept -> MeshSharedResourcePtr
 void test::Mesh::SetUniqueResource(const MeshUniqueResourcePtr& res) noexcept
 {
 	m_UniqueResource = res;
+}
+
+void test::Mesh::SetUniqueResource(const std::string& name, const MeshUniqueResourcePtr& res) noexcept
+{
+    m_Name = name;
+    m_UniqueResource = res;
 }
 
 auto test::Mesh::GetUniqueResource() const -> MeshUniqueResourcePtr
