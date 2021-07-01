@@ -13,6 +13,7 @@ namespace test {
 	enum class PhongMaterialType {
 		eDiffuse = 0,
 		eSpecular,
+		eRefract,
 		eEmission,
 	};
 	struct PhongMaterial {
@@ -21,6 +22,7 @@ namespace test {
 		std::string  name;
 		float3       diffCol;
 		float3       specCol;
+		float3       tranCol;
 		float3       emitCol;
 		float        shinness;
 		float        refrInd;

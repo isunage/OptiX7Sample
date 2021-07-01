@@ -159,7 +159,9 @@ bool test::ObjMeshGroup::Load(const std::string& objFilePath, const std::string&
             phongMaterials[i].name = materials[i].name;
             phongMaterials[i].diffCol = make_float3(materials[i].diffuse[0], materials[i].diffuse[1], materials[i].diffuse[2]);
             phongMaterials[i].specCol = make_float3(materials[i].specular[0], materials[i].specular[1], materials[i].specular[2]);
+            phongMaterials[i].tranCol = make_float3(materials[i].transmittance[0], materials[i].transmittance[1], materials[i].transmittance[2]);
             phongMaterials[i].emitCol = make_float3(materials[i].emission[0], materials[i].emission[1], materials[i].emission[2]);
+
             if (!materials[i].diffuse_texname.empty()) {
                 phongMaterials[i].diffTex = mtlFileDir + materials[i].diffuse_texname;
             }
@@ -185,14 +187,18 @@ bool test::ObjMeshGroup::Load(const std::string& objFilePath, const std::string&
                 phongMaterials[i].shinTex = "";
             }
             phongMaterials[i].shinness = materials[i].shininess;
-            phongMaterials[i].refrInd = materials[i].ior;
-            if(phongMaterials[i].emitCol.x+ phongMaterials[i].emitCol.y+phongMaterials[i].emitCol.z!=0.0f){
-                phongMaterials[i].type    = PhongMaterialType::eEmission;
+            phongMaterials[i].refrInd  = materials[i].ior;
+            if (phongMaterials[i].emitCol.x + phongMaterials[i].emitCol.y + phongMaterials[i].emitCol.z != 0.0f) {
+                phongMaterials[i].type = PhongMaterialType::eEmission;
+            }
+            else if (phongMaterials[i].refrInd > 1.01f && 
+                phongMaterials[i].tranCol.x + phongMaterials[i].tranCol.y + phongMaterials[i].tranCol.z != 0.0f) {
+                phongMaterials[i].type = PhongMaterialType::eRefract;
             }else if (phongMaterials[i].shinness > 300) {
-                phongMaterials[i].type    = PhongMaterialType::eSpecular;
+                phongMaterials[i].type = PhongMaterialType::eSpecular;
             }
             else {
-                phongMaterials[i].type    = PhongMaterialType::eDiffuse;
+                phongMaterials[i].type = PhongMaterialType::eDiffuse;
             }
         }
     }

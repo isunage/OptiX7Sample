@@ -79,7 +79,7 @@ extern "C" __global__ void     __raygen__rg(){
             traceRadiance(params.gasHandle, rayOrigin, rayDirection, 0.01f, 1e16f, &prd);
             result += prd.emitted;
             result += prd.radiance * prd.attenuation;
-            if (prd.done || depth >= 4) {
+            if (prd.done || depth >= TEST_MAX_TRACE_DEPTH) {
                 break;
             }
             rayOrigin    = prd.origin;
@@ -95,7 +95,10 @@ extern "C" __global__ void     __raygen__rg(){
     //if (idx.x == 500 && idx.y  == 500) {
         //printf("%f %f %f\n", frameColor.x, frameColor.y, frameColor.z);
     //}
-    params.frameBuffer[params.width * idx.y + idx.x] = make_uchar4(static_cast<unsigned char>(255.99 * frameColor.x), static_cast<unsigned char>(255.99 * frameColor.y), static_cast<unsigned char>(255.99 * frameColor.z), 255);
+    params.frameBuffer[params.width * idx.y + idx.x] = make_uchar4(
+        static_cast<unsigned char>(255.99 * rtlib::linear_to_gamma(frameColor.x)),
+        static_cast<unsigned char>(255.99 * rtlib::linear_to_gamma(frameColor.y)),
+        static_cast<unsigned char>(255.99 * rtlib::linear_to_gamma(frameColor.z)), 255);
     params.accumBuffer[params.width * idx.y + idx.x] = accumColor;
     params.seed[params.width * idx.y + idx.x]        = seed;
 }
@@ -178,19 +181,68 @@ extern "C" __global__ void __closesthit__radiance_for_specular() {
     const float3 position = optixGetWorldRayOrigin() + optixGetRayTmax() * rayDirection;
     RadiancePRD* prd = getRadiancePRD();
     prd->emitted     = make_float3(0.0f, 0.0f, 0.0f);
-    rtlib::Xorshift32 xor32(prd->seed);
     {
-        rtlib::ONB onb(normal);
-        float3 newDirection = onb.local(rtlib::random_cosine_direction(xor32));
-        prd->direction = newDirection;
-        prd->origin = position;
-        float3 diffuse = hgData->getDiffuseColor(texCoord);
-        float3 specular = hgData->getSpecularColor(texCoord);
+        float3 specular   = hgData->getSpecularColor(texCoord);
         float3 reflectDir = rtlib::normalize(rayDirection - 2.0f * rtlib::dot(rayDirection, normal) * normal);
-        float  shinness   = hgData->shinness;
+        prd->origin       = position;
         prd->direction    = reflectDir;
         prd->attenuation *= specular;
         prd->countEmitted = true;
+    }
+}
+extern "C" __global__ void __closesthit__radiance_for_refraction() {
+    auto* hgData = reinterpret_cast<HitgroupData*>(optixGetSbtDataPointer());
+    const float3 rayDirection = optixGetWorldRayDirection();
+    const int    primitiveID = optixGetPrimitiveIndex();
+    const float3 v0 = optixTransformPointFromObjectToWorldSpace(hgData->vertices[hgData->indices[primitiveID].x]);
+    const float3 v1 = optixTransformPointFromObjectToWorldSpace(hgData->vertices[hgData->indices[primitiveID].y]);
+    const float3 v2 = optixTransformPointFromObjectToWorldSpace(hgData->vertices[hgData->indices[primitiveID].z]);
+    const float3 n0 = optixTransformNormalFromObjectToWorldSpace(rtlib::normalize(rtlib::cross(v1 - v0, v2 - v0)));
+    float3 normal   = {};
+    float  refInd   = 0.0f;
+    if (rtlib::dot(n0,rayDirection)<0.0f) {
+        normal      = n0;
+        refInd      = 1.0f / hgData->refrInd; 
+    }
+    else {
+        normal      = make_float3(-n0.x,-n0.y,-n0.z);
+        refInd      = hgData->refrInd;
+    }
+    const float2 barycentric = optixGetTriangleBarycentrics();
+    const auto t0 = hgData->texCoords[hgData->indices[primitiveID].x];
+    const auto t1 = hgData->texCoords[hgData->indices[primitiveID].y];
+    const auto t2 = hgData->texCoords[hgData->indices[primitiveID].z];
+    const auto texCoord = (1.0f - barycentric.x - barycentric.y) * t0 + barycentric.x * t1 + barycentric.y * t2;
+    const float3 position = optixGetWorldRayOrigin() + optixGetRayTmax() * rayDirection;
+    RadiancePRD* prd      = getRadiancePRD();
+    prd->emitted          = make_float3(0.0f, 0.0f, 0.0f);
+    rtlib::Xorshift32 xor32(prd->seed);
+    float3 diffuse        = hgData->getDiffuseColor(texCoord);
+    float3 specular       = hgData->getSpecularColor(texCoord);
+    float3 transmit       = hgData->transmit;
+    {
+        prd->origin       = position;
+        float3 reflectDir = rtlib::normalize(rayDirection - 2.0f * rtlib::dot(rayDirection, normal) * normal);
+        float  cosine_i   = -rtlib::dot(normal, rayDirection);
+        float  sine_o_2   = (1.0f - rtlib::pow2(cosine_i)) * rtlib::pow2(refInd);
+        float  f0         = rtlib::pow2((1 - refInd) / (1 + refInd));
+        float  fresnell   = f0 + (1.0f - f0) * rtlib::pow5(1.0f - cosine_i);
+        if (rtlib::random_float1(0.0f, 1.0f, xor32) < fresnell || sine_o_2 > 1.0f) {
+
+            //printf("reflect: %lf %lf %lf\n", reflectDir.x, reflectDir.y, reflectDir.z);
+            prd->origin      += 0.001f * normal;
+            prd->direction    = reflectDir;
+            prd->attenuation *= specular;
+        }
+        else {
+            float  cosine_o   = sqrtf(1.0f - sine_o_2);
+            float3 refractDir = (rayDirection - (cosine_o - cosine_i) * normal) / refInd;
+            //printf("refract: %lf %lf %lf\n", refractDir.x, refractDir.y, refractDir.z);
+            prd->origin      -= 0.001f * normal;
+            prd->direction    = refractDir;
+            prd->attenuation *= transmit;
+        }
+        prd->countEmitted   = true;
     }
     prd->seed = xor32.m_seed;
 }

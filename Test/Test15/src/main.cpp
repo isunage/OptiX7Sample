@@ -18,8 +18,8 @@ struct WindowState {
     float2 delCurPos = {};
 };
 int main() {
-    int  width  = 512;
-    int  height = 512;
+    int  width  = 768;
+    int  height = 768;
     auto cameraController = rtlib::CameraController({ 0.0f,1.0f, 5.0f });
     test::PathTracer tracer = {};
     tracer.InitCUDA();
@@ -42,10 +42,11 @@ int main() {
         }
     }
     auto objMeshGroup   = std::make_shared<test::ObjMeshGroup>();
-    if (!objMeshGroup->Load(TEST_TEST15_DATA_PATH"/Models/CornellBox/CornellBox-Original.obj", TEST_TEST15_DATA_PATH"/Models/CornellBox/")) {
+    if (!objMeshGroup->Load(TEST_TEST15_DATA_PATH"/Models/CornellBox/CornellBox-Water.obj", TEST_TEST15_DATA_PATH"/Models/CornellBox/")) {
         return -1;
     }
     auto& materialSet   = objMeshGroup->GetMaterialSet();
+
     {
         for (auto& material : materialSet->materials) {
             auto diffTex = material.diffTex != "" ? material.diffTex : std::string(TEST_TEST15_DATA_PATH"/Textures/white.png");
@@ -154,9 +155,10 @@ int main() {
             tracePipeline->missPGs[RAY_TYPE_RADIANCE] = tracePipeline->pipeline.createMissPG({ rayTraceModule,"__miss__radiance" });
             tracePipeline->missPGs[RAY_TYPE_OCCLUSION] = tracePipeline->pipeline.createMissPG({ rayTraceModule,"__miss__occluded" });
             tracePipeline->hitGroupPGs.resize(MATERIAL_TYPE_COUNT);
-            tracePipeline->hitGroupPGs[MATERIAL_TYPE_DIFFUSE] = tracePipeline->pipeline.createHitgroupPG({ rayTraceModule ,"__closesthit__radiance_for_diffuse" }, {}, {});
-            tracePipeline->hitGroupPGs[MATERIAL_TYPE_SPECULAR] = tracePipeline->pipeline.createHitgroupPG({ rayTraceModule ,"__closesthit__radiance_for_specular" }, {}, {});
-            tracePipeline->hitGroupPGs[MATERIAL_TYPE_EMISSION] = tracePipeline->pipeline.createHitgroupPG({ rayTraceModule ,"__closesthit__radiance_for_emission" }, {}, {});
+            tracePipeline->hitGroupPGs[MATERIAL_TYPE_DIFFUSE]   = tracePipeline->pipeline.createHitgroupPG({ rayTraceModule ,"__closesthit__radiance_for_diffuse" }, {}, {});
+            tracePipeline->hitGroupPGs[MATERIAL_TYPE_SPECULAR]  = tracePipeline->pipeline.createHitgroupPG({ rayTraceModule ,"__closesthit__radiance_for_specular" }, {}, {});
+            tracePipeline->hitGroupPGs[MATERIAL_TYPE_REFRACTION]= tracePipeline->pipeline.createHitgroupPG({ rayTraceModule ,"__closesthit__radiance_for_refraction" }, {}, {});
+            tracePipeline->hitGroupPGs[MATERIAL_TYPE_EMISSION]  = tracePipeline->pipeline.createHitgroupPG({ rayTraceModule ,"__closesthit__radiance_for_emission" }, {}, {});
             tracePipeline->hitGroupPGs[MATERIAL_TYPE_OCCLUSION] = tracePipeline->pipeline.createHitgroupPG({ rayTraceModule ,"__closesthit__occluded" }, {}, {});
         }
         //pipeline link
@@ -209,6 +211,8 @@ int main() {
                                     radianceHgData.specular = material.specCol;
                                     radianceHgData.emission = material.emitCol;
                                     radianceHgData.shinness = material.shinness;
+                                    radianceHgData.transmit = material.tranCol;
+                                    radianceHgData.refrInd = material.refrInd;
                                 }
                                 if (material.type == test::PhongMaterialType::eDiffuse) {
                                     cpuHgRecords[RAY_TYPE_COUNT * sbtOffset + RAY_TYPE_COUNT * i + RAY_TYPE_RADIANCE] = tracePipeline->hitGroupPGs[MATERIAL_TYPE_DIFFUSE].getSBTRecord<HitgroupData>(radianceHgData);
@@ -216,10 +220,13 @@ int main() {
                                 else if (material.type == test::PhongMaterialType::eSpecular) {
                                     cpuHgRecords[RAY_TYPE_COUNT * sbtOffset + RAY_TYPE_COUNT * i + RAY_TYPE_RADIANCE] = tracePipeline->hitGroupPGs[MATERIAL_TYPE_SPECULAR].getSBTRecord<HitgroupData>(radianceHgData);
                                 }
+                                else if (material.type == test::PhongMaterialType::eRefract){
+                                    cpuHgRecords[RAY_TYPE_COUNT * sbtOffset + RAY_TYPE_COUNT * i + RAY_TYPE_RADIANCE] = tracePipeline->hitGroupPGs[MATERIAL_TYPE_REFRACTION].getSBTRecord<HitgroupData>(radianceHgData);
+                                }
                                 else {
                                     cpuHgRecords[RAY_TYPE_COUNT * sbtOffset + RAY_TYPE_COUNT * i + RAY_TYPE_RADIANCE] = tracePipeline->hitGroupPGs[MATERIAL_TYPE_EMISSION].getSBTRecord<HitgroupData>(radianceHgData);
                                 }
-                                cpuHgRecords[RAY_TYPE_COUNT * sbtOffset + RAY_TYPE_COUNT * i + RAY_TYPE_OCCLUSION] = tracePipeline->hitGroupPGs[MATERIAL_TYPE_OCCLUSION].getSBTRecord<HitgroupData>();
+                                cpuHgRecords[RAY_TYPE_COUNT * sbtOffset + RAY_TYPE_COUNT * i + RAY_TYPE_OCCLUSION]    = tracePipeline->hitGroupPGs[MATERIAL_TYPE_OCCLUSION].getSBTRecord<HitgroupData>();
                             }
                             sbtOffset += mesh->GetUniqueResource()->materials.size();
                         }
@@ -336,10 +343,12 @@ int main() {
                                     radianceHgData.diffuseTex = tracer.GetTexture(material.diffTex).getHandle();
                                     radianceHgData.specularTex = tracer.GetTexture(material.specTex).getHandle();
                                     radianceHgData.emissionTex = tracer.GetTexture(material.emitTex).getHandle();
-                                    radianceHgData.diffuse = material.diffCol;
+                                    radianceHgData.diffuse  = material.diffCol;
                                     radianceHgData.specular = material.specCol;
                                     radianceHgData.emission = material.emitCol;
+                                    radianceHgData.transmit = material.tranCol;
                                     radianceHgData.shinness = material.shinness;
+                                    //printf("%lf %lf %lf\n",radianceHgData.transmit.x,radianceHgData.transmit.y,radianceHgData.transmit.z);
                                 }
                                 cpuHgRecords[RAY_TYPE_COUNT * sbtOffset + RAY_TYPE_COUNT * i + RAY_TYPE_RADIANCE]  = debugPipeline->hitGroupPGs[RAY_TYPE_RADIANCE].getSBTRecord<HitgroupData>(radianceHgData);
                                 cpuHgRecords[RAY_TYPE_COUNT * sbtOffset + RAY_TYPE_COUNT * i + RAY_TYPE_OCCLUSION] = debugPipeline->hitGroupPGs[RAY_TYPE_OCCLUSION].getSBTRecord<HitgroupData>();
