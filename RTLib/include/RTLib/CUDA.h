@@ -6,6 +6,7 @@
 #include <iostream>
 #include <string>
 #include <algorithm>
+#include <vector>
 #include "Preprocessors.h"
 #include "PixelFormat.h"
 #include "Exceptions.h"

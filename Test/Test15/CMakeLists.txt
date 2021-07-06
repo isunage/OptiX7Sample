@@ -16,7 +16,7 @@ ${CMAKE_CURRENT_SOURCE_DIR}/src/PathTracer.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/cuda/RayTrace.cu
 ${CMAKE_CURRENT_SOURCE_DIR}/cuda/RayDebug.cu)
-add_custom_command(TARGET Test15 POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/cuda/RayTrace.h  ${TEST_TEST15_CUDA_PATH}/RayTrace.h )
+add_custom_command(TARGET Test15 PRE_BUILD  COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/cuda/RayTrace.h  ${TEST_TEST15_CUDA_PATH}/RayTrace.h )
 add_custom_command(TARGET Test15 POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/cuda/RayTrace.cu ${TEST_TEST15_CUDA_PATH}/RayTrace.cu)
 add_custom_command(TARGET Test15 POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/cuda/RayDebug.cu ${TEST_TEST15_CUDA_PATH}/RayDebug.cu)
 rtlib_compile_ptx(Test15 ${TEST_TEST15_CUDA_PATH}/RayTrace.cu ${TEST_TEST15_CUDA_PATH}/RayTrace.h)

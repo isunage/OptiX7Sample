@@ -6,10 +6,10 @@ extern "C" {
 static __forceinline__ __device__ float3 faceForward(const float3& n, const float3& i, const float3& nref) {
     return copysignf(1.0f, rtlib::dot(n, i)) * nref;
 }
-static __forceinline__ __device__ void* unpackPointer(unsigned int p0, unsigned int p1) {
+static __forceinline__ __device__ void*  unpackPointer(unsigned int p0, unsigned int p1) {
     return reinterpret_cast<void*>(rtlib::to_combine(p0, p1));
 }
-static __forceinline__ __device__ void packPointer(void* ptr,unsigned int& p0, unsigned int& p1) {
+static __forceinline__ __device__ void   packPointer(void* ptr,unsigned int& p0, unsigned int& p1) {
     const unsigned long long llv = reinterpret_cast<const unsigned long long>(ptr);
     p0 = rtlib::to_upper(llv);
     p1 = rtlib::to_lower(llv);

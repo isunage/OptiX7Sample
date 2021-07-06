@@ -2,6 +2,7 @@
 #define RTLIB_CAMERA_H
 #include <tuple>
 #include <cmath>
+#include <iostream>
 #include "VectorFunction.h"
 namespace rtlib{
     class Camera{
@@ -21,7 +22,11 @@ namespace rtlib{
          m_LookAt{lookAt},
          m_Vup{vup},
          m_FovY{fovY},
-         m_Aspect{aspect}{}
+         m_Aspect{aspect}{
+            std::cout << "Camera Eye (x:" << m_Eye.x    << " y:" <<m_Eye.y    << " z:" <<    m_Eye.z << ")" << std::endl;
+            std::cout << "Camera  At (x:" << m_LookAt.x << " y:" <<m_LookAt.y << " z:" << m_LookAt.z << ")" << std::endl;
+            std::cout << "Camera  up (x:" <<    m_Vup.x << " y:" <<   m_Vup.y << " z:" <<    m_Vup.z << ")" << std::endl;
+         }
         //Direction
         inline float3 getDirection()const noexcept{
             return normalize(m_LookAt-m_Eye);
@@ -147,7 +152,7 @@ namespace rtlib{
             front.y = sin(pitch);
             front.z = sin(yaw) * cos(pitch);
             m_Front = rtlib::normalize(front);
-            m_Right = rtlib::normalize(rtlib::cross(m_Front, m_Up));
+            m_Right = rtlib::normalize(rtlib::cross(m_Up, m_Front));
         }
     };
 }
