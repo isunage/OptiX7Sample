@@ -279,18 +279,18 @@ int main() {
                                 auto& material = materialSet->materials[materialId];
                                 HitgroupData radianceHgData = {};
                                 {
-                                    radianceHgData.vertices = mesh->GetSharedResource()->vertexBuffer.gpuHandle.getDevicePtr();
-                                    radianceHgData.indices = mesh->GetUniqueResource()->triIndBuffer.gpuHandle.getDevicePtr();
-                                    radianceHgData.texCoords = mesh->GetSharedResource()->texCrdBuffer.gpuHandle.getDevicePtr();
-                                    radianceHgData.diffuseTex = tracer.GetTexture(material.diffTex).getHandle();
+                                    radianceHgData.vertices    = mesh->GetSharedResource()->vertexBuffer.gpuHandle.getDevicePtr();
+                                    radianceHgData.indices     = mesh->GetUniqueResource()->triIndBuffer.gpuHandle.getDevicePtr();
+                                    radianceHgData.texCoords   = mesh->GetSharedResource()->texCrdBuffer.gpuHandle.getDevicePtr();
+                                    radianceHgData.diffuseTex  = tracer.GetTexture(material.diffTex).getHandle();
                                     radianceHgData.specularTex = tracer.GetTexture(material.specTex).getHandle();
                                     radianceHgData.emissionTex = tracer.GetTexture(material.emitTex).getHandle();
-                                    radianceHgData.diffuse = material.diffCol;
+                                    radianceHgData.diffuse  = material.diffCol;
                                     radianceHgData.specular = material.specCol;
                                     radianceHgData.emission = material.emitCol;
                                     radianceHgData.shinness = material.shinness;
                                     radianceHgData.transmit = material.tranCol;
-                                    radianceHgData.refrInd = material.refrInd;
+                                    radianceHgData.refrInd  = material.refrInd;
                                 }
                                 if (material.type == test::PhongMaterialType::eDiffuse) {
                                     cpuHgRecords[RAY_TYPE_COUNT * sbtOffset + RAY_TYPE_COUNT * i + RAY_TYPE_RADIANCE] = tracePipeline->hitGroupPGs[MATERIAL_TYPE_DIFFUSE].getSBTRecord<HitgroupData>(radianceHgData);
