@@ -166,20 +166,20 @@ namespace rtlib{
         GLTexture2D()noexcept{}
         GLTexture2D(const GLTexture2D&)noexcept = delete;
         GLTexture2D(GLTexture2D&& tex)noexcept{
-            std::swap(m_ID    ,tex.m_ID);
-            std::swap(m_Width ,tex.m_Width);
-            std::swap(m_Height,tex.m_Height);
-            std::swap(m_Target,tex.m_Target);
-            std::swap(m_Views ,tex.m_Views);
+            std::swap(m_ID, tex.m_ID);
+            std::swap(m_NumLevels, tex.m_NumLevels);
+            std::swap(m_Target, tex.m_Target);
+            std::swap(m_InternalFormat, tex.m_InternalFormat);
+            std::swap(m_Views, tex.m_Views);
         }
         GLTexture2D& operator=(const GLTexture2D& )noexcept = delete;
         GLTexture2D& operator=(GLTexture2D&& tex)noexcept{
             if(this!=&tex){
                 this->reset();
                 std::swap(m_ID    ,tex.m_ID);
-                std::swap(m_Width ,tex.m_Width);
-                std::swap(m_Height,tex.m_Height);
+                std::swap(m_NumLevels,tex.m_NumLevels);
                 std::swap(m_Target,tex.m_Target);
+                std::swap(m_InternalFormat,tex.m_InternalFormat);
                 std::swap(m_Views ,tex.m_Views);
             }
             return *this;
@@ -298,6 +298,7 @@ namespace rtlib{
             glPixelStorei(GL_UNPACK_ALIGNMENT, unpackAlignments);
             buffer.bind();
             glTexSubImage2D(m_Target, level, w_offset, h_offset, w_size, h_size, GLPixelTraits<PixelType>::format, GLPixelTraits<PixelType>::type, nullptr);
+            buffer.unbind();
             return true;
         }
         //download

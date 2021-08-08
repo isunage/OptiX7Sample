@@ -91,22 +91,22 @@ namespace rtlib{
         void ProcessKeyboard(CameraMovement mode, float deltaTime)noexcept {
             float velocity = m_MovementSpeed * deltaTime;
             if (mode == CameraMovement::eForward) {
-                m_Position -= m_Front * velocity;
-            }
-            if (mode == CameraMovement::eBackward) {
                 m_Position += m_Front * velocity;
             }
-            if (mode == CameraMovement::eLeft) {
-                m_Position -= m_Right * velocity;
+            if (mode == CameraMovement::eBackward) {
+                m_Position -= m_Front * velocity;
             }
-            if (mode == CameraMovement::eRight) {
+            if (mode == CameraMovement::eLeft) {
                 m_Position += m_Right * velocity;
             }
+            if (mode == CameraMovement::eRight) {
+                m_Position -= m_Right * velocity;
+            }
             if (mode == CameraMovement::eUp) {
-                m_Position -= m_Up    * velocity;
+                m_Position += m_Up    * velocity;
             }
             if (mode == CameraMovement::eDown) {
-                m_Position += m_Up    * velocity;
+                m_Position -= m_Up    * velocity;
             }
         }
         void ProcessMouseMovement(float xoffset, float yoffset, bool constrainPitch = true)noexcept {

@@ -1,7 +1,25 @@
+set(TEST_TEST16_CUDA_PATH "${CMAKE_CURRENT_BINARY_DIR}/cuda")
 set(TEST_TEST16_DATA_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../../Data")
 configure_file(
     ${CMAKE_CURRENT_SOURCE_DIR}/Test16Config.h.in 
     ${CMAKE_CURRENT_BINARY_DIR}/Test16Config.h 
 )
-add_executable(Test16 ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp)
+add_executable(Test16 
+${CMAKE_CURRENT_SOURCE_DIR}/include/Application.h
+${CMAKE_CURRENT_SOURCE_DIR}/include/SceneBuilder.h
+${CMAKE_CURRENT_SOURCE_DIR}/include/PathTracer.h
+${CMAKE_CURRENT_SOURCE_DIR}/cuda/RayTrace.h
+
+${CMAKE_CURRENT_SOURCE_DIR}/src/Application.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/src/SceneBuilder.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/src/PathTracer.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/cuda/RayTrace.cu
+${CMAKE_CURRENT_SOURCE_DIR}/cuda/RayDebug.cu)
+add_custom_command(TARGET Test16 PRE_BUILD  COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/cuda/RayTrace.h  ${TEST_TEST16_CUDA_PATH}/RayTrace.h )
+add_custom_command(TARGET Test16 POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/cuda/RayTrace.cu ${TEST_TEST16_CUDA_PATH}/RayTrace.cu)
+add_custom_command(TARGET Test16 POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/cuda/RayDebug.cu ${TEST_TEST16_CUDA_PATH}/RayDebug.cu)
+rtlib_compile_ptx(Test16 ${TEST_TEST16_CUDA_PATH}/RayTrace.cu ${TEST_TEST16_CUDA_PATH}/RayTrace.h)
+rtlib_compile_ptx(Test16 ${TEST_TEST16_CUDA_PATH}/RayDebug.cu ${TEST_TEST16_CUDA_PATH}/RayTrace.h)
+target_include_directories(Test16 PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include ${CMAKE_CURRENT_BINARY_DIR})
 target_link_libraries(Test16 RTLib)

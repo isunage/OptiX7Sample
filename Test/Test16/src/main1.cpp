@@ -1,4 +1,4 @@
-#include <Test17Config.h>
+#include <Test16Config.h>
 #include <cuda/RayTrace.h>
 #include <RTLib/Optix.h>
 #include <RTLib/Utils.h>
@@ -11,7 +11,6 @@
 #include <iostream>
 #include <fstream>
 #include <string>
-
 struct WindowState {
     float  curTime = 0.0f;
     float  delTime = 0.0f;
@@ -45,16 +44,16 @@ int main() {
         }
     }
     auto objMeshGroup   = std::make_shared<test::ObjMeshGroup>();
-    if (!objMeshGroup->Load(TEST_TEST17_DATA_PATH"/Models/Sponza/sponza.obj", TEST_TEST17_DATA_PATH"/Models/Sponza/")) {
+    if (!objMeshGroup->Load(TEST_TEST16_DATA_PATH"/Models/Sponza/sponza.obj", TEST_TEST16_DATA_PATH"/Models/Sponza/")) {
         return -1;
     }
     auto& materialSet   = objMeshGroup->GetMaterialSet();
 
     {
         for (auto& material : materialSet->materials) {
-            auto diffTex = material.diffTex != "" ? material.diffTex : std::string(TEST_TEST17_DATA_PATH"/Textures/white.png");
-            auto specTex = material.specTex != "" ? material.specTex : std::string(TEST_TEST17_DATA_PATH"/Textures/white.png");
-            auto emitTex = material.emitTex != "" ? material.emitTex : std::string(TEST_TEST17_DATA_PATH"/Textures/white.png");
+            auto diffTex = material.diffTex != "" ? material.diffTex : std::string(TEST_TEST16_DATA_PATH"/Textures/white.png");
+            auto specTex = material.specTex != "" ? material.specTex : std::string(TEST_TEST16_DATA_PATH"/Textures/white.png");
+            auto emitTex = material.emitTex != "" ? material.emitTex : std::string(TEST_TEST16_DATA_PATH"/Textures/white.png");
             if (!tracer.HasTexture(material.diffTex)) {
                  tracer.LoadTexture(material.diffTex, diffTex);
             }
@@ -206,7 +205,7 @@ int main() {
         {
             auto ptxSource = std::string();
             {
-                auto ptxFile = std::ifstream(TEST_TEST17_CUDA_PATH"/RayTrace.ptx", std::ios::binary);
+                auto ptxFile = std::ifstream(TEST_TEST16_CUDA_PATH"/RayTrace.ptx", std::ios::binary);
                 ptxSource = std::string((std::istreambuf_iterator<char>(ptxFile)), (std::istreambuf_iterator<char>()));
             }
             OptixModuleCompileOptions moduleCompileOptions = {};
@@ -345,7 +344,7 @@ int main() {
         {
             auto ptxSource = std::string();
             {
-                auto ptxFile = std::ifstream(TEST_TEST17_CUDA_PATH"/RayDebug.ptx", std::ios::binary);
+                auto ptxFile = std::ifstream(TEST_TEST16_CUDA_PATH"/RayDebug.ptx", std::ios::binary);
                 ptxSource = std::string((std::istreambuf_iterator<char>(ptxFile)), (std::istreambuf_iterator<char>()));
             }
             OptixModuleCompileOptions moduleCompileOptions = {};
@@ -462,7 +461,7 @@ int main() {
     }
     Params params = {};
     {
-        auto light         = ParallelLight();
+        auto light = ParallelLight();
         {
             auto lightMesh = lightGASHandle->meshes[0];
             auto lightVertices = std::vector<float3>();
@@ -655,6 +654,7 @@ int main() {
                 }
 
             }
+        
         }
         auto img_pixels = std::vector<uchar4>();
         frameBufferGL.download(img_pixels);

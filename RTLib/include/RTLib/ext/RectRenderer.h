@@ -24,6 +24,8 @@ namespace rtlib{
 				glUniform1i(m_TexLoc, 0);
 				glBindVertexArray(m_RectVAO);
 				glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
+                glBindVertexArray(0);
+                glBindTexture(GL_TEXTURE_2D, 0);
 			}
 			void reset() {
 				glDeleteVertexArrays(1, &m_RectVAO);

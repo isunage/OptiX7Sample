@@ -15,6 +15,7 @@ namespace rtlib{
         cudaGraphicsResource_t m_GraphicsResource = nullptr;
     private:
         void registerResource() {
+
             RTLIB_CUDA_CHECK(cudaGraphicsGLRegisterBuffer(
                 &m_GraphicsResource,
                 getID(),
@@ -27,7 +28,7 @@ namespace rtlib{
             }
         }
     public:
-        GLInteropBuffer():m_GLBuffer{} {}
+        GLInteropBuffer() {}
         GLInteropBuffer(const GLInteropBuffer  &)noexcept = delete;
         GLInteropBuffer(GLInteropBuffer&& buffer)noexcept{
             m_Handle = std::move(buffer.m_Handle);
@@ -90,6 +91,7 @@ namespace rtlib{
         //Member(Unique)
         bool resize(size_t count) {
             if (getCount() != count) {
+                std::cout << "RESIZED!\n";
                 GLenum target = this->getHandle().getTarget();
                 GLenum usage  = this->getHandle().getUsage();
                 this->reset();
@@ -99,10 +101,14 @@ namespace rtlib{
                 return true;
 
             }
+            else {
+                std::cout << "NOT RESIZED!\n";
+            }
             return false;
         }
         void allocate(size_t count) {
             this->m_Handle.allocate(count);
+            std::cout << "ALLOCATED!\n";
             this->registerResource();
         }
         [[nodiscard]] T* map() {
