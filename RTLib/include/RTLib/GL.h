@@ -41,7 +41,7 @@ namespace rtlib{
         GLBuffer& operator=(const GLBuffer& )noexcept = delete;
         GLBuffer& operator=(GLBuffer&& buffer){
             if(this!=&buffer){
-                this->Release();
+                this->reset();
                 this->m_ID     = buffer.m_ID;
                 this->m_Count  = buffer.m_Count;
                 this->m_Target = buffer.m_Target;

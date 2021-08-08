@@ -2,6 +2,7 @@
 #include <cuda/RayTrace.h>
 #include <RTLib/Optix.h>
 #include <RTLib/Utils.h>
+#include <RTLib/ext/RectRenderer.h>
 #include <GLFW/glfw3.h>
 #include <stb_image.h>
 #include <stb_image_write.h>
@@ -67,7 +68,7 @@ int main() {
     }
 	bool isLightFound   = false;
     //GAS1: World
-    auto worldGASHandle = std::make_shared<test::GASHandle>();
+    auto worldGASHandle = std::make_shared<rtlib::ext::GASHandle>();
     {
 		bool isLightFound = false;
         OptixAccelBuildOptions accelOptions = {};
@@ -85,7 +86,7 @@ int main() {
 
     }
     //GAS2: Light
-    auto lightGASHandle = std::make_shared<test::GASHandle>();
+    auto lightGASHandle = std::make_shared<rtlib::ext::GASHandle>();
     if(isLightFound){
         OptixAccelBuildOptions accelOptions = {};
         accelOptions.buildFlags             = OPTIX_BUILD_FLAG_ALLOW_COMPACTION | OPTIX_BUILD_FLAG_PREFER_FAST_TRACE;
@@ -102,8 +103,8 @@ int main() {
 		OptixAccelBuildOptions accelOptions = {};
 		accelOptions.buildFlags = OPTIX_BUILD_FLAG_ALLOW_COMPACTION | OPTIX_BUILD_FLAG_PREFER_FAST_TRACE;
 		accelOptions.operation  = OPTIX_BUILD_OPERATION_BUILD;
-		auto lightMesh = test::Mesh::New();
-		lightMesh->SetSharedResource(test::MeshSharedResource::New());
+		auto lightMesh = rtlib::ext::Mesh::New();
+		lightMesh->SetSharedResource(rtlib::ext::MeshSharedResource::New());
 		lightMesh->GetSharedResource()->name = "light";
 		lightMesh->GetSharedResource()->vertexBuffer.cpuHandle = {
 			{aabb.min.x,aabb.max.y+1e-3f,aabb.min.z},
@@ -145,7 +146,7 @@ int main() {
 		lightMesh->GetSharedResource()->vertexBuffer.Upload();
 		lightMesh->GetSharedResource()->texCrdBuffer.Upload();
 		lightMesh->GetSharedResource()->normalBuffer.Upload();
-		lightMesh->SetUniqueResource(test::MeshUniqueResource::New());
+		lightMesh->SetUniqueResource(rtlib::ext::MeshUniqueResource::New());
 		lightMesh->GetUniqueResource()->name      = "light";
 		lightMesh->GetUniqueResource()->materials = {
 			curMaterialSetCount
@@ -166,7 +167,7 @@ int main() {
     tracer.SetGASHandle("CornellBox-World", worldGASHandle);
     tracer.SetGASHandle("CornellBox-Light", lightGASHandle);
     //IAS1: FirstIAS
-    auto firstIASHandle                     = std::make_shared<test::IASHandle>();
+    auto firstIASHandle                     = std::make_shared<rtlib::ext::IASHandle>();
     {
         OptixAccelBuildOptions accelOptions = {};
         accelOptions.buildFlags             = OPTIX_BUILD_FLAG_ALLOW_COMPACTION | OPTIX_BUILD_FLAG_PREFER_FAST_TRACE;
@@ -175,7 +176,7 @@ int main() {
         auto lightInstance                  = tracer.GetInstance("CornellBox-Light");
         lightInstance.instance.sbtOffset    = worldInstance.baseGASHandle->sbtCount * RAY_TYPE_COUNT;
         firstIASHandle->instanceSets.resize(1);
-        firstIASHandle->instanceSets[0]     = std::make_shared<test::InstanceSet>();
+        firstIASHandle->instanceSets[0]     = std::make_shared<rtlib::ext::InstanceSet>();
         firstIASHandle->instanceSets[0]->SetInstance(worldInstance);
         firstIASHandle->instanceSets[0]->SetInstance(lightInstance);
         firstIASHandle->instanceSets[0]->instanceBuffer.Upload();
@@ -525,25 +526,8 @@ int main() {
         auto window  = glfwGetCurrentContext();
         WindowState windowState = {};
         glfwSetWindowUserPointer(window, &windowState);
-        auto program = rtlib::GLProgram();
-        {
-            program.create();
-            auto vs = rtlib::GLVertexShader(std::string(vsSource));
-            auto fs = rtlib::GLFragmentShader(std::string(fsSource));
-            if (!vs.compile()) {
-                std::cout << vs.getLog() << std::endl;
-            }
-            if (!fs.compile()) {
-                std::cout << fs.getLog() << std::endl;
-            }
-            program.attach(vs);
-            program.attach(fs);
-            if (!program.link()) {
-                std::cout << program.getLog() << std::endl;
-            }
-        }
-        auto screenVBO = rtlib::GLBuffer(screenVertices, GL_ARRAY_BUFFER, GL_STATIC_DRAW);
-        auto screenIBO = rtlib::GLBuffer(screenIndices, GL_ELEMENT_ARRAY_BUFFER, GL_STATIC_DRAW);
+		auto renderer = rtlib::ext::RectRenderer();
+		renderer.init();
         auto glTexture = rtlib::GLTexture2D<uchar4>();
         {
             glTexture.allocate({ (size_t)width, (size_t)height });
@@ -552,23 +536,7 @@ int main() {
             glTexture.setParameteri(GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE, false);
             glTexture.setParameteri(GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE, false);
         }
-        auto screenVAO = GLuint(0);
-        {
-            glGenVertexArrays(1, &screenVAO);
-            glBindVertexArray(screenVAO);
-            screenVBO.bind();
-            screenIBO.bind();
-            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 5, (void*)(sizeof(float) * 0));
-            glEnableVertexAttribArray(0);
-            glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 5, (void*)(sizeof(float) * 3));
-            glEnableVertexAttribArray(1);
-            glBindVertexArray(0);
-            screenVBO.unbind();
-            screenIBO.unbind();
-        }
-
         glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
-        GLint texLoc  = program.getUniformLocation("tex");
         glfwSetCursorPosCallback(window, [](GLFWwindow* wnd, double xPos, double yPos) {
             WindowState* pWindowState = (WindowState*)glfwGetWindowUserPointer(wnd);
             pWindowState->delCurPos.x = xPos - pWindowState->curCurPos.x;
@@ -595,7 +563,6 @@ int main() {
         bool   isFixedLight   = false;
         bool   isMovedCamera  = false;
         while (!glfwWindowShouldClose(window)) {
-
             if (isResized) {
                 {
                     std::random_device rd;
@@ -653,12 +620,8 @@ int main() {
                     glViewport(0, 0, width, height);
                 }
                 glClear(GL_COLOR_BUFFER_BIT);
-                program.use();
-                glActiveTexture(GL_TEXTURE0);
-                glTexture.bind();
-                glUniform1i(texLoc, 0);
-                glBindVertexArray(screenVAO);
-                glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
+				renderer.draw(glTexture.getID());
+                
                 glfwSwapBuffers(window);
                 isUpdated = false;
                 isResized = false;
@@ -723,10 +686,7 @@ int main() {
         auto img_pixels = std::vector<uchar4>();
         frameBufferGL.download(img_pixels);
         stbi_write_bmp("tekitou.bmp", width, height, 4, img_pixels.data());
-        program.destroy();
-        glDeleteVertexArrays(1, &screenVAO);
-        screenVBO.reset();
-        screenIBO.reset();
+		renderer.reset();
         glTexture.reset();
         glfwDestroyWindow(window);
         window = nullptr;

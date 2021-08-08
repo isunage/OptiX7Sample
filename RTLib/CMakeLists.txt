@@ -26,7 +26,11 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/include/RTLib/Config.h.in ${CMAKE_CUR
 add_library(RTLib STATIC 
 ${CMAKE_CURRENT_SOURCE_DIR}/src/Optix.cpp 
 ${CMAKE_CURRENT_SOURCE_DIR}/src/Exceptions.cpp
-${CMAKE_CURRENT_SOURCE_DIR}/src/Camera.cpp)
+${CMAKE_CURRENT_SOURCE_DIR}/src/Camera.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/src/Mesh.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/src/TraversalHandle.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/src/RectRenderer.cpp
+)
 ##include directories
 target_include_directories(RTLib PUBLIC ${RTLIB_INCLUDE_DIR} ${CMAKE_CURRENT_BINARY_DIR})
 ##link libraries

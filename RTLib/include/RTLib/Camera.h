@@ -23,9 +23,9 @@ namespace rtlib{
          m_Vup{vup},
          m_FovY{fovY},
          m_Aspect{aspect}{
-            std::cout << "Camera Eye (x:" << m_Eye.x    << " y:" <<m_Eye.y    << " z:" <<    m_Eye.z << ")" << std::endl;
-            std::cout << "Camera  At (x:" << m_LookAt.x << " y:" <<m_LookAt.y << " z:" << m_LookAt.z << ")" << std::endl;
-            std::cout << "Camera  up (x:" <<    m_Vup.x << " y:" <<   m_Vup.y << " z:" <<    m_Vup.z << ")" << std::endl;
+            //std::cout << "Camera Eye (x:" << m_Eye.x    << " y:" <<m_Eye.y    << " z:" <<    m_Eye.z << ")" << std::endl;
+			//std::cout << "Camera  At (x:" << m_LookAt.x << " y:" <<m_LookAt.y << " z:" << m_LookAt.z << ")" << std::endl;
+			//std::cout << "Camera  up (x:" <<    m_Vup.x << " y:" <<   m_Vup.y << " z:" <<    m_Vup.z << ")" << std::endl;
          }
         //Direction
         inline float3 getDirection()const noexcept{

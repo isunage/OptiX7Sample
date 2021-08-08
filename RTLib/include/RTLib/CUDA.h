@@ -199,6 +199,17 @@ namespace rtlib{
             }
         }
     };
+    template<typename T>
+    struct CUDAUploadBuffer {
+        std::vector<T>       cpuHandle   = {};
+        rtlib::CUDABuffer<T> gpuHandle   = {};
+    public:
+        void Upload() {
+            gpuHandle.resize(cpuHandle.size());
+            gpuHandle.upload(cpuHandle);
+        }
+    };
+
     /*****Textures*********/
     //Array2D
     //CUDA Array

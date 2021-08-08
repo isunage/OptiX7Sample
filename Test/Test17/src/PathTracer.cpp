@@ -42,15 +42,15 @@ void test::PathTracer::SetPipeline(const std::string& keyName, const std::shared
     m_Pipelines[keyName] = pipeline;
 }
 
-void test::PathTracer::SetGASHandle(const std::string& keyName, const std::shared_ptr<GASHandle>& gasHandle)
+void test::PathTracer::SetGASHandle(const std::string& keyName, const std::shared_ptr<rtlib::ext::GASHandle>& gasHandle)
 {
     m_GASHandles[keyName] = gasHandle;
 }
 
-auto test::PathTracer::GetInstance(const std::string& gasKeyName) const -> Instance
+auto test::PathTracer::GetInstance(const std::string& gasKeyName) const -> rtlib::ext::Instance
 {
     auto baseGASHandle = this->m_GASHandles.at(gasKeyName);
-    Instance instance  = {};
+	rtlib::ext::Instance instance  = {};
     instance.instance.traversableHandle = baseGASHandle->handle;
     instance.instance.instanceId        = 0;
     instance.instance.sbtOffset         = 0;
@@ -66,7 +66,7 @@ auto test::PathTracer::GetInstance(const std::string& gasKeyName) const -> Insta
     return instance;
 }
 
-void test::PathTracer::SetIASHandle(const std::string& keyName, const std::shared_ptr<IASHandle>& iasHandle)
+void test::PathTracer::SetIASHandle(const std::string& keyName, const std::shared_ptr<rtlib::ext::IASHandle>& iasHandle)
 {
     m_IASHandles[keyName] = iasHandle;
 }
