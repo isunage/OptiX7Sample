@@ -18,7 +18,7 @@
 #include <sstream>
 #include <string>
 
-class Application {
+class Test18Application {
 public:
 	bool InitGLFW(int gl_version_major, int gl_version_minor) {
 		if (glfwInit() == GLFW_FALSE) {
@@ -48,8 +48,8 @@ public:
 		glfwSetCharCallback(m_Window,ImGui_ImplGlfw_CharCallback);
 		glfwSetScrollCallback(m_Window,ImGui_ImplGlfw_ScrollCallback);
 		glfwSetCursorPosCallback(m_Window, cursorPosCallback);
-		m_Width = width;
-		m_Height = height;
+		m_FbWidth = width;
+		m_FbHeight = height;
 		return true;
 	}
 	bool InitGLAD() {
@@ -83,7 +83,7 @@ public:
 		m_CameraController.SetMouseSensitivity(0.125f);
 		m_CameraController.SetMovementSpeed(50.0f);
 	}
-	void LoadObjModel(){
+	void LoadScene(){
 		auto objMeshGroup = std::make_shared<test::ObjMeshGroup>();
 		if (!objMeshGroup->Load(TEST_TEST16_DATA_PATH"/Models/Sponza/sponza.obj", TEST_TEST16_DATA_PATH"/Models/Sponza/")) {
 			throw std::runtime_error("Failed To Load Model!");
@@ -228,15 +228,15 @@ public:
 	}
 	void InitFrameResources(){
 		RTLIB_CUDA_CHECK(cudaStreamCreate(&m_Stream));
-	 	m_FrameBuffer   = rtlib::CUDABuffer<uchar4>(std::vector<uchar4>(m_Width * m_Height));
-		auto frameBufferGL = rtlib::GLInteropBuffer<uchar4>(m_Width * m_Height, GL_PIXEL_UNPACK_BUFFER, GL_DYNAMIC_DRAW, m_Stream);
+	 	m_FrameBuffer   = rtlib::CUDABuffer<uchar4>(std::vector<uchar4>(m_FbWidth * m_FbHeight));
+		auto frameBufferGL = rtlib::GLInteropBuffer<uchar4>(m_FbWidth * m_FbHeight, GL_PIXEL_UNPACK_BUFFER, GL_DYNAMIC_DRAW, m_Stream);
 
-		m_FrameBufferGL = rtlib::GLInteropBuffer<uchar4>(m_Width * m_Height, GL_PIXEL_UNPACK_BUFFER, GL_DYNAMIC_DRAW, m_Stream);
+		m_FrameBufferGL = rtlib::GLInteropBuffer<uchar4>(m_FbWidth * m_FbHeight, GL_PIXEL_UNPACK_BUFFER, GL_DYNAMIC_DRAW, m_Stream);
 
-    	m_AccumBuffer   = rtlib::CUDABuffer<float3>(std::vector<float3>(m_Width * m_Height));
+    	m_AccumBuffer   = rtlib::CUDABuffer<float3>(std::vector<float3>(m_FbWidth * m_FbHeight));
    		m_SeedBuffer    = rtlib::CUDABuffer<unsigned int>();
 		{
-			std::vector<unsigned int> seeds(m_Width * m_Height);
+			std::vector<unsigned int> seeds(m_FbWidth * m_FbHeight);
 			std::random_device rd;
 			std::mt19937 mt(rd());
 			std::generate(seeds.begin(), seeds.end(), mt);
@@ -245,7 +245,7 @@ public:
 		}
 		m_GLTexture = rtlib::GLTexture2D<uchar4>();
 		{
-			m_GLTexture.allocate({ (size_t)m_Width, (size_t)m_Height });
+			m_GLTexture.allocate({ (size_t)m_FbWidth, (size_t)m_FbHeight });
 			m_GLTexture.setParameteri(GL_TEXTURE_MAG_FILTER, GL_LINEAR, false);
 			m_GLTexture.setParameteri(GL_TEXTURE_MIN_FILTER, GL_LINEAR, false);
 			m_GLTexture.setParameteri(GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE, false);
@@ -266,8 +266,8 @@ public:
             tracePipeline->pipeline = m_Tracer.GetOPXContext()->createPipeline(pipelineCompileOptions);
         }
         {
-            tracePipeline->width  = m_Width;
-            tracePipeline->height = m_Height;
+            tracePipeline->width  = m_FbWidth;
+            tracePipeline->height = m_FbHeight;
             tracePipeline->depth  = 2;
         }
         //module: Load
@@ -281,11 +281,11 @@ public:
             moduleCompileOptions.maxRegisterCount = OPTIX_COMPILE_DEFAULT_MAX_REGISTER_COUNT;
             moduleCompileOptions.numBoundValues = 0;
 #ifndef NDEBUG
-            moduleCompileOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_NONE;
-            moduleCompileOptions.optLevel = OPTIX_COMPILE_OPTIMIZATION_LEVEL_3;
+			moduleCompileOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_LINEINFO;
+			moduleCompileOptions.optLevel = OPTIX_COMPILE_OPTIMIZATION_DEFAULT;
 #else
-            moduleCompileOptions.optLevel = OPTIX_COMPILE_OPTIMIZATION_DEFAULT;
-            moduleCompileOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_LINEINFO;
+			moduleCompileOptions.optLevel   = OPTIX_COMPILE_OPTIMIZATION_LEVEL_3;
+			moduleCompileOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_NONE;
 #endif
             try {
                 tracePipeline->modules["RayTrace"] = tracePipeline->pipeline.createModule(ptxSource, moduleCompileOptions);
@@ -315,7 +315,7 @@ public:
 #ifndef NDEBUG
             pipelineLinkOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_LINEINFO;
 #else
-            pipelineLinkOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_LINEINFO;
+            pipelineLinkOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_NONE;
 #endif
             tracePipeline->pipeline.link(pipelineLinkOptions);
         }
@@ -409,8 +409,8 @@ public:
 			debugPipeline->pipeline = m_Tracer.GetOPXContext()->createPipeline(pipelineCompileOptions);
 		}
 		{
-			debugPipeline->width  = m_Width;
-			debugPipeline->height = m_Height;
+			debugPipeline->width  = m_FbWidth;
+			debugPipeline->height = m_FbHeight;
 			debugPipeline->depth  = 1;
 		}
 		//module: Load
@@ -424,11 +424,11 @@ public:
 			moduleCompileOptions.maxRegisterCount = OPTIX_COMPILE_DEFAULT_MAX_REGISTER_COUNT;
 			moduleCompileOptions.numBoundValues = 0;
 #ifndef NDEBUG
-			moduleCompileOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_NONE;
-			moduleCompileOptions.optLevel = OPTIX_COMPILE_OPTIMIZATION_LEVEL_3;
-#else
-			moduleCompileOptions.optLevel = OPTIX_COMPILE_OPTIMIZATION_DEFAULT;
 			moduleCompileOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_LINEINFO;
+			moduleCompileOptions.optLevel = OPTIX_COMPILE_OPTIMIZATION_DEFAULT;
+#else
+			moduleCompileOptions.optLevel   = OPTIX_COMPILE_OPTIMIZATION_LEVEL_3;
+			moduleCompileOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_NONE;
 #endif
 			try {
 				debugPipeline->modules["RayDebug"] = debugPipeline->pipeline.createModule(ptxSource, moduleCompileOptions);
@@ -548,8 +548,8 @@ public:
 				m_Params.frameBuffer     = m_FrameBuffer.getDevicePtr();
 				m_Params.accumBuffer     = m_AccumBuffer.getDevicePtr();
 				m_Params.seed            = m_SeedBuffer.getDevicePtr();
-				m_Params.width           = m_Width;
-				m_Params.height          = m_Height;
+				m_Params.width           = m_FbWidth;
+				m_Params.height          = m_FbHeight;
 				m_Params.maxTraceDepth   = 4;
 				m_Params.gasHandle       = m_Tracer.m_IASHandles["FirstIAS"]->handle;
 				m_Params.light           = light;
@@ -575,23 +575,24 @@ public:
 		std::string curPipelineName = "Trace";
 		std::string prvPipelineName = "Debug";
 		while (!glfwWindowShouldClose(m_Window)) {
-			auto& curPipeline = m_Tracer.m_Pipelines[curPipelineName];
+
+						auto& curPipeline = m_Tracer.m_Pipelines[curPipelineName];
 			{
 				if (isResized) {
 					{
 						std::random_device rd;
 						std::mt19937 mt(rd());
-						std::vector<unsigned int> seeds(m_Width * m_Height);
+						std::vector<unsigned int> seeds(m_FbWidth * m_FbHeight);
 						std::generate(seeds.begin(), seeds.end(), mt);
-						m_SeedBuffer.resize(m_Width * m_Height);
+						m_SeedBuffer.resize(m_FbWidth * m_FbHeight);
 						m_SeedBuffer.upload(seeds);
 					}
-					m_FrameBufferGL.resize(m_Width * m_Height);
-					m_AccumBuffer.resize(m_Width * m_Height);
+					m_FrameBufferGL.resize(m_FbWidth * m_FbHeight);
+					m_AccumBuffer.resize(m_FbWidth * m_FbHeight);
 					curPipeline->paramsBuffer.cpuHandle[0].accumBuffer = m_AccumBuffer.getDevicePtr();
 					curPipeline->paramsBuffer.cpuHandle[0].seed   = m_SeedBuffer.getDevicePtr();
-					curPipeline->paramsBuffer.cpuHandle[0].width  = m_Width;
-					curPipeline->paramsBuffer.cpuHandle[0].height = m_Height;
+					curPipeline->paramsBuffer.cpuHandle[0].width  = m_FbWidth;
+					curPipeline->paramsBuffer.cpuHandle[0].height = m_FbHeight;
 				}
 				if (isMovedCamera) {
 					auto camera = m_CameraController.GetCamera(30.0f, 1.0f);
@@ -604,14 +605,15 @@ public:
 					isUpdated = true;
 				}
 				if (isUpdated) {
-					m_FrameBufferGL.upload(std::vector<uchar4>(m_Width * m_Height));
-					m_AccumBuffer.upload(std::vector<float3>(m_Width * m_Height));
+					m_FrameBufferGL.upload(std::vector<uchar4>(m_FbWidth * m_FbHeight));
+					m_AccumBuffer.upload(std::vector<float3>(m_FbWidth * m_FbHeight));
 					curPipeline->paramsBuffer.cpuHandle[0].samplePerALL  = 0;
 					curPipeline->paramsBuffer.cpuHandle[0].maxTraceDepth = m_Params.maxTraceDepth;
 				}
+
 				{
-					curPipeline->width  = m_Width;
-					curPipeline->height = m_Height;
+					curPipeline->width  = m_FbWidth;
+					curPipeline->height = m_FbHeight;
 					curPipeline->paramsBuffer.cpuHandle[0].light           = m_Params.light;
 					curPipeline->paramsBuffer.cpuHandle[0].frameBuffer     = m_FrameBufferGL.map();
 					curPipeline->paramsBuffer.cpuHandle[0].samplePerLaunch = m_Params.samplePerLaunch;
@@ -623,17 +625,17 @@ public:
 				}
 				if (isResized) {
 					m_GLTexture.reset();
-					m_GLTexture.allocate({ (size_t)m_Width,(size_t)m_Height }, GL_TEXTURE_2D);
+					m_GLTexture.allocate({ (size_t)m_FbWidth,(size_t)m_FbHeight }, GL_TEXTURE_2D);
 					m_GLTexture.setParameteri(GL_TEXTURE_MAG_FILTER, GL_LINEAR, false);
 					m_GLTexture.setParameteri(GL_TEXTURE_MIN_FILTER, GL_LINEAR, false);
 					m_GLTexture.setParameteri(GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE, false);
 					m_GLTexture.setParameteri(GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE, false);
 				}
 				{
-					m_GLTexture.upload(0, m_FrameBufferGL.getHandle(), 0, 0, m_Width, m_Height);
+					m_GLTexture.upload(0, m_FrameBufferGL.getHandle(), 0, 0, m_FbWidth, m_FbHeight);
 					glClearColor(0.8f, 0.8f, 0.8f, 0.0f);
 					glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-					glViewport(0, 0, m_Width, m_Height);
+					glViewport(0, 0, m_FbWidth, m_FbHeight);
 					m_RectRenderer->draw(m_GLTexture.getID());
 					glfwPollEvents();
 				}
@@ -705,11 +707,11 @@ public:
 				{
 					int tWidth, tHeight;
 					glfwGetWindowSize(m_Window, &tWidth, &tHeight);
-					if (m_Width != tWidth || m_Height != tHeight) {
-						std::cout << m_Width << "->" << tWidth << "\n";
-						std::cout << m_Height << "->" << tHeight << "\n";
-						m_Width = tWidth;
-						m_Height = tHeight;
+					if (m_FbWidth != tWidth || m_FbHeight != tHeight) {
+						std::cout << m_FbWidth << "->" << tWidth << "\n";
+						std::cout << m_FbHeight << "->" << tHeight << "\n";
+						m_FbWidth = tWidth;
+						m_FbHeight = tHeight;
 						isResized = true;
 						isUpdated = true;
 					}
@@ -757,7 +759,6 @@ public:
 					}
 				}
 			}
-			
 		}
 	}
     void MainLoop2() {
@@ -856,7 +857,7 @@ private:
 private:
 	static void cursorPosCallback(GLFWwindow* window,  double xPos, double yPos)
 	{
-		Application* app = reinterpret_cast<Application*>(glfwGetWindowUserPointer(window));
+		Test18Application* app = reinterpret_cast<Test18Application*>(glfwGetWindowUserPointer(window));
 		if (app) {
 			app->m_DelCursorPos.x = xPos - app->m_CurCursorPos.x;
 			app->m_DelCursorPos.y = yPos - app->m_CurCursorPos.y;;
@@ -866,8 +867,8 @@ private:
 	}
 private:
 	GLFWwindow*                     m_Window             = nullptr;
-	int			      	            m_Width              = 0;
-	int                             m_Height             = 0;
+	int			      	            m_FbWidth              = 0;
+	int                             m_FbHeight             = 0;
 	std::string                     m_Title              = {};
 	float2                          m_DelCursorPos       = {};
 	float2                          m_CurCursorPos       = {};
@@ -890,13 +891,13 @@ private:
 	uint32_t                        m_LightHgRecIndex    = 0;
 };
 int main() {
-	Application app = {};
+	Test18Application app = {};
 	app.InitGLFW(4, 4);
 	app.InitWindow(1024, 1024, "title");
 	app.InitGLAD();
 	app.InitImGui();
 	app.InitOptix();
-	app.LoadObjModel();
+	app.LoadScene();
 	app.InitRayTracePipeline();
 	app.InitDebugPipeline();
 	app.InitFrameResources();

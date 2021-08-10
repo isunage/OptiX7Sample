@@ -48,7 +48,7 @@ static __forceinline__ __device__ bool traceOccluded(
     optixTrace(handle, rayOrigin, rayDirection, tmin, tmax, 0.0f, OptixVisibilityMask(255), OPTIX_RAY_FLAG_NONE, RAY_TYPE_OCCLUSION, RAY_TYPE_COUNT, RAY_TYPE_OCCLUSION, occluded);
     return occluded;
 }
-extern "C" __global__ void     __raygen__rg(){
+extern "C" __global__ void __raygen__rg(){
     const uint3 idx             = optixGetLaunchIndex();
 	const uint3 dim             = optixGetLaunchDimensions();
     auto* rgData                = reinterpret_cast<RayGenData*>(optixGetSbtDataPointer());
@@ -102,16 +102,16 @@ extern "C" __global__ void     __raygen__rg(){
     params.accumBuffer[params.width * idx.y + idx.x] = accumColor;
     params.seed[params.width * idx.y + idx.x]        = seed;
 }
-extern "C" __global__ void       __miss__radiance(){
+extern "C" __global__ void __miss__radiance(){
     auto* msData = reinterpret_cast<MissData*>(optixGetSbtDataPointer());
     RadiancePRD* prd = getRadiancePRD();
     prd->radiance    = make_float3(msData->bgColor.x, msData->bgColor.y, msData->bgColor.z);
     prd->done        = true;
 }
-extern "C" __global__ void       __miss__occluded() {
+extern "C" __global__ void __miss__occluded() {
     setPayloadOccluded(false);
 }
-extern "C" __global__ void __closesthit__radiance_for_diffuse()  {
+extern "C" __global__ void __closesthit__radiance_for_diffuse()    {
     auto*        hgData       = reinterpret_cast<HitgroupData*>(optixGetSbtDataPointer());
     const float3 rayDirection = optixGetWorldRayDirection();
     const int    primitiveID  = optixGetPrimitiveIndex();
@@ -164,7 +164,7 @@ extern "C" __global__ void __closesthit__radiance_for_diffuse()  {
     }
     prd->seed = xor32.m_seed;
 }
-extern "C" __global__ void __closesthit__radiance_for_specular() {
+extern "C" __global__ void __closesthit__radiance_for_specular()   {
     auto* hgData = reinterpret_cast<HitgroupData*>(optixGetSbtDataPointer());
     const float3 rayDirection = optixGetWorldRayDirection();
     const int    primitiveID  = optixGetPrimitiveIndex();
@@ -246,7 +246,7 @@ extern "C" __global__ void __closesthit__radiance_for_refraction() {
     }
     prd->seed = xor32.m_seed;
 }
-extern "C" __global__ void __closesthit__radiance_for_emission() {
+extern "C" __global__ void __closesthit__radiance_for_emission()   {
     auto* hgData = reinterpret_cast<HitgroupData*>(optixGetSbtDataPointer());
     const float3 rayDirection = optixGetWorldRayDirection();
     const int    primitiveID = optixGetPrimitiveIndex();

@@ -28,3 +28,7 @@ add_subdirectory(Test15)
 add_subdirectory(Test16)
 ## fix light
 add_subdirectory(Test17)
+## fix shader
+add_subdirectory(Test18)
+## practical path guiding
+add_subdirectory(Test19)
