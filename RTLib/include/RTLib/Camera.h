@@ -85,7 +85,14 @@ namespace rtlib{
             m_Zoom{ defaultZoom }{
             UpdateCameraVectors();
         }
-        Camera GetCamera(float fovY, float aspect)const noexcept {
+        void SetCamera(const Camera& camera)noexcept
+        {
+            m_Position = camera.getEye();
+            m_Front    = camera.getLookAt() - m_Position;
+            m_Up       = camera.getVup();
+            m_Right    = rtlib::normalize(rtlib::cross(m_Up, m_Front));
+        }
+        auto GetCamera(float fovY, float aspect)const noexcept -> Camera{
             return Camera(m_Position, m_Position+m_Front,m_Up,fovY,aspect);
         }
         void ProcessKeyboard(CameraMovement mode, float deltaTime)noexcept {

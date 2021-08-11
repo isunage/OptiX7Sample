@@ -17,6 +17,7 @@
 #include <random>
 #include <sstream>
 #include <string>
+#define TEST18_USE_NEE
 class Test18Application {
 public:
 	bool InitGLFW(int gl_version_major, int gl_version_minor) {
@@ -49,6 +50,7 @@ public:
 		glfwSetCursorPosCallback(m_Window, cursorPosCallback);
 		glfwSetFramebufferSizeCallback(m_Window, frameBufferSizeCallback);
 		glfwGetFramebufferSize(m_Window, &m_FbWidth, &m_FbHeight);
+		m_FbAspect = static_cast<float>(m_FbWidth) / static_cast<float>(m_FbHeight);
 		return true;
 	}
 	bool InitGLAD() {
@@ -302,7 +304,11 @@ public:
         {
             tracePipeline->width  = m_FbWidth;
             tracePipeline->height = m_FbHeight;
-            tracePipeline->depth  = 2;
+#ifndef TEST18_USE_NEE
+            tracePipeline->depth  = 1;
+#else
+			tracePipeline->depth  = 2;
+#endif
         }
         //module: Load
         {
@@ -323,7 +329,11 @@ public:
 			tracePipeline->LoadRgProgramGroupFromModule({ "RayTrace", "__raygen__rg" });
 			tracePipeline->LoadMsProgramGroupFromModule("Radiance"  , { "RayTrace" , "__miss__radiance" });
 			tracePipeline->LoadMsProgramGroupFromModule("Occlusion" , { "RayTrace" , "__miss__occluded" });
-			tracePipeline->LoadHgProgramGroupFromModule("Diffuse"   , {"RayTrace" ,"__closesthit__radiance_for_diffuse"}, {}, {});
+#ifndef TEST18_USE_NEE
+			tracePipeline->LoadHgProgramGroupFromModule("Diffuse", { "RayTrace" ,"__closesthit__radiance_for_diffuse_non_nee" }, {}, {});
+#else
+			tracePipeline->LoadHgProgramGroupFromModule("Diffuse", { "RayTrace" ,"__closesthit__radiance_for_diffuse" }, {}, {});
+#endif
 			tracePipeline->LoadHgProgramGroupFromModule("Specular"  , { "RayTrace" ,"__closesthit__radiance_for_specular" }, {}, {});
 			tracePipeline->LoadHgProgramGroupFromModule("Refraction", { "RayTrace" ,"__closesthit__radiance_for_refraction" }, {}, {});
 			tracePipeline->LoadHgProgramGroupFromModule("Emission"  , { "RayTrace" ,"__closesthit__radiance_for_emission" }, {}, {});
@@ -332,7 +342,11 @@ public:
         //pipeline link
         {
 			OptixPipelineLinkOptions linkOptions = {};
+#ifndef TEST18_USE_NEE
+			linkOptions.maxTraceDepth = 1;
+#else
 			linkOptions.maxTraceDepth = 2;
+#endif
 #ifndef NDEBUG
 			linkOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_LINEINFO;
 #else
@@ -344,7 +358,7 @@ public:
         //SBTRecord
         {
             tracePipeline->raygenBuffer.cpuHandle.resize(1);
-            auto camera = m_CameraController.GetCamera(30.0f, 1.0f);
+            auto camera = m_CameraController.GetCamera(m_CameraFovY, m_FbAspect);
             auto [u, v, w] = camera.getUVW();
             tracePipeline->raygenBuffer.cpuHandle[0]          = tracePipeline->rgProgramGroup.getSBTRecord<RayGenData>();
             tracePipeline->raygenBuffer.cpuHandle[0].data.eye = camera.getEye();
@@ -496,7 +510,7 @@ public:
 		//SBTRecord
 		{
 			debugPipeline->raygenBuffer.cpuHandle.resize(1);
-			auto camera    = m_CameraController.GetCamera(30.0f, 1.0f);
+			auto camera    = m_CameraController.GetCamera(m_CameraFovY, m_FbAspect);
 			auto [u, v, w] = camera.getUVW();
 			debugPipeline->raygenBuffer.cpuHandle[0] = debugPipeline->rgProgramGroup.getSBTRecord<RayGenData>();
 			debugPipeline->raygenBuffer.cpuHandle[0].data.eye = camera.getEye();
@@ -575,9 +589,10 @@ public:
 			{
 				if (m_Resized     ) {
 					this->OnResize();
-					m_Resized    = false;
+					m_Resized      = false;
+					m_UpdateCamera = true;
 					//Resize‚ÍFlush‚·‚é•K—v‚ª‚ ‚é
-					m_FlushFrame = true;
+					m_FlushFrame   = true;
 				}
 				if (m_UpdateCamera) {
 					this->OnUpdateCamera();
@@ -677,7 +692,7 @@ private:
 	}
 	void OnUpdateCamera()
 	{
-		auto camera    = m_CameraController.GetCamera(30.0f, 1.0f);
+		auto camera    = m_CameraController.GetCamera(m_CameraFovY, m_FbAspect);
 		auto [u, v, w] = camera.getUVW();
 		m_Tracer.GetTracePipeline()->raygenBuffer.cpuHandle[0].data.eye = camera.getEye();
 		m_Tracer.GetTracePipeline()->raygenBuffer.cpuHandle[0].data.u   = u;
@@ -764,6 +779,7 @@ private:
 			m_SamplePerAll += curPipeline->paramsBuffer.cpuHandle[0].samplePerLaunch;
 		}
 		else {
+			
 			auto& curPipeline = m_Tracer.GetDebugPipeline();
 			auto& params = curPipeline->paramsBuffer.cpuHandle[0];
 			params.diffuseBuffer  = m_DebugBufferGLs["Diffuse"].map();
@@ -813,10 +829,9 @@ private:
 				ImGui::Begin("TraceConfig", nullptr, ImGuiWindowFlags_MenuBar);
 
 				ImGui::BeginChild(ImGui::GetID((void*)0), ImVec2(350, 200), ImGuiWindowFlags_NoTitleBar);
+				ImGui::Text("Fps: %.2f", 1.0f / m_DelTime);
 				if (m_CurPipelineName == "Trace")
 				{
-
-					ImGui::Text("Fps  : %.2f", 1.0f / m_DelTime);
 					ImGui::Text("Smp  : %3d" , m_SamplePerAll);
 					ImGui::Text("Smp/s: %.2f", m_SamplePerLaunch / m_DelTime);
 					{
@@ -835,7 +850,6 @@ private:
 					}
 				}
 				else {
-					ImGui::Text("Fps: %.2f", 1.0f / m_DelTime);
 					static int mode = 0;
 					ImGui::RadioButton("Diffuse" , &mode, 0); 
 					ImGui::SameLine(); 
@@ -874,6 +888,18 @@ private:
 						break;
 					}
 				}
+				//Camera
+				{
+					
+					{
+						float camFovY = m_CameraFovY;
+						if (ImGui::SliderFloat("Camera.FovY", &camFovY, -90.0f, 90.0f)) {
+							m_CameraFovY   = camFovY;
+							m_UpdateCamera = true;
+						}
+					}
+				}
+				//Light
 				{
 					float emission[3] = { m_Light.emission.x, m_Light.emission.y, m_Light.emission.z };
 					if (ImGui::SliderFloat3("light.Color", emission, 0.0f, 10.0f)) {
@@ -888,17 +914,13 @@ private:
 					m_UpdateCamera  = true;
 				}
 				ImGui::EndChild();
-
 				ImGui::End();
-
 				ImGui::PopStyleColor();
 				ImGui::PopStyleColor();
 			}
-
 			// Rendering
 			ImGui::Render();
 			ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-
 		}
 	}
 	void OnGetInputs() {
@@ -948,6 +970,7 @@ private:
 			{
 				app->m_FbWidth  = fbWidth;
 				app->m_FbHeight = fbHeight;
+				app->m_FbAspect = static_cast<float>(fbWidth) / static_cast<float>(fbHeight);
 				app->m_Resized  = true;
 			}
 		}
@@ -967,17 +990,21 @@ private:
 	using GLInteropBufferMap = std::unordered_map<std::string, rtlib::GLInteropBuffer<uchar4>>;
 private:
 	GLFWwindow*                     m_Window             = nullptr;
-	int			      	            m_FbWidth              = 0;
-	int                             m_FbHeight             = 0;
+	int			      	            m_FbWidth            = 0;
+	int                             m_FbHeight           = 0;
+	float                           m_FbAspect           = 1.0f;
 	std::string                     m_Title              = {};
-	bool                            m_Resized            = false;
-	bool                            m_UpdateCamera       = false;
-	bool                            m_UpdateLight        = false;
+	std::string                     m_GlslVersion        = {};
+	//Inputs
 	float2                          m_DelCursorPos       = {};
 	float2                          m_CurCursorPos       = {};
 	float                           m_CurTime            = 0.0f;
 	float                           m_DelTime            = 0.0f;
-	std::string                     m_GlslVersion        = {};
+	float                           m_CameraFovY         = 30.0f;
+	//State
+	bool                            m_Resized            = false;
+	bool                            m_UpdateCamera       = false;
+	bool                            m_UpdateLight        = false;
 
 	rtlib::GLTexture2D<uchar4>      m_GLTexture          = {};
 	std::shared_ptr<rtlib::ext::RectRenderer>        
@@ -986,18 +1013,22 @@ private:
 	test::PathTracer                m_Tracer             = {};
 	test::MaterialSetPtr            m_MaterialSet        = nullptr;
 	CUstream                        m_Stream             = nullptr;
+	//Trace
 	rtlib::CUDABuffer<uchar4>       m_FrameBuffer        = {};
 	rtlib::GLInteropBuffer<uchar4>  m_FrameBufferGL      = {};
+	rtlib::CUDABuffer<float3>       m_AccumBuffer        = {};
+	rtlib::CUDABuffer<unsigned int> m_SeedBuffer         = {};
 	//Debug
 	CUDABufferMap                   m_DebugBuffers       = {};
 	GLInteropBufferMap              m_DebugBufferGLs     = {};
-	rtlib::CUDABuffer<float3>       m_AccumBuffer        = {};
-	rtlib::CUDABuffer<unsigned int> m_SeedBuffer         = {};
+	//Light
 	uint32_t                        m_LightHgRecIndex    = 0;
 	ParallelLight                   m_Light              = {};
+	//Config
 	uint32_t                        m_MaxTraceDepth      = 4;
 	uint32_t                        m_SamplePerLaunch    = 1;
 	uint32_t                        m_SamplePerAll       = 0;
+	//State
 	bool                            m_FlushFrame         = false;
 	bool                            m_UpdateParams       = false;
 	std::string                     m_CurPipelineName    = "Trace";

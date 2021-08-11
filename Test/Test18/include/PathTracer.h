@@ -12,6 +12,7 @@
 #include <stb_image_write.h>
 #include "../include/SceneBuilder.h"
 namespace test {
+
 	template<typename Param_t>
 	struct Pipeline {
 	public:
