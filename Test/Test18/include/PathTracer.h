@@ -12,40 +12,46 @@
 #include <stb_image_write.h>
 #include "../include/SceneBuilder.h"
 namespace test {
-
 	template<typename Param_t>
 	struct Pipeline {
 	public:
-		using OPXContextPtr = std::shared_ptr <rtlib::OPXContext >;
+		template<typename T>
+		using UploadBuffer = rtlib::CUDAUploadBuffer<T>;
+		template<typename T>
+		using UploadBufferMap = std::unordered_map<std::string, rtlib::CUDAUploadBuffer<T>>;
 		struct ProgramDesc {
 			std::string moduleName;
 			std::string programName;
 		};
-	public:
-		template<typename T>
-		using UploadBuffer  = rtlib::CUDAUploadBuffer<T>;
-		using OPXModuleMap  = std::unordered_map<std::string, rtlib::OPXModule>;
-		using RayGenRecord  = rtlib::SBTRecord<RayGenData>;
-		using MissRecord    = rtlib::SBTRecord<MissData>;
-		using HitGRecord    = rtlib::SBTRecord<HitgroupData>;
-		using MissPGMap     = std::unordered_map<std::string, rtlib::OPXMissPG>;
-		using HitGPGMap     = std::unordered_map<std::string, rtlib::OPXHitgroupPG>;
+		struct PipelineSubPass
+		{
+			OptixShaderBindingTable shaderBindingTable = {};
+			UploadBuffer<Param_t>   paramsBuffer = {};
+			int                     depth = 0;
+		};
+		using OPXModuleMap = std::unordered_map<std::string, rtlib::OPXModule>;
+		using PipelineSubPassMap = std::unordered_map<std::string, PipelineSubPass>;
+		using RayGRecord = rtlib::SBTRecord<RayGenData>;
+		using MissRecord = rtlib::SBTRecord<MissData>;
+		using HitGRecord = rtlib::SBTRecord<HitgroupData>;
+		using MissPGMap = std::unordered_map<std::string, rtlib::OPXMissPG>;
+		using HitGPGMap = std::unordered_map<std::string, rtlib::OPXHitgroupPG>;
+		using OPXContextPtr = std::shared_ptr <rtlib::OPXContext >;
+		
 		OPXContextPtr                     context            = nullptr;
 		int								  width				 = 0;
 		int 							  height             = 0;
-		int 							  depth              = 0;
 		rtlib::OPXPipeline                pipeline           = {};
 		OPXModuleMap                      modules            = {};
 		rtlib::OPXRaygenPG                rgProgramGroup     = {};
 		MissPGMap                         msProgramGroups    = {};
 		HitGPGMap                         hgProgramGroups    = {};
-		OptixShaderBindingTable           shaderbindingTable = {};
-		UploadBuffer<RayGenRecord>	      raygenBuffer		 = {};
-		UploadBuffer<MissRecord>	      missBuffer		 = {};
-		UploadBuffer<HitGRecord>	      hitGBuffer		 = {};
-		UploadBuffer<Param_t>	    	  paramsBuffer       = {};
+		UploadBufferMap<RayGRecord>	      rayGBuffers		 = {};
+		UploadBufferMap<MissRecord>	      missBuffers		 = {};
+		UploadBufferMap<HitGRecord>	      hitGBuffers		 = {};
 		OptixPipelineCompileOptions       compileOptions     = {};
 		OptixPipelineLinkOptions          linkOptions        = {};
+		PipelineSubPassMap                subPasses          = {};
 		bool                              updateRG           = false;
 		bool                              updateMS           = false;
 		bool                              updateHG           = false;
@@ -134,29 +140,52 @@ namespace test {
 			}
 			return true;
 		}
-		void Launch(CUstream stream)noexcept {
-			this->pipeline.launch(stream, this->paramsBuffer.gpuHandle.getDevicePtr(), this->shaderbindingTable, this->width, this->height, this->depth);
+		void InitShaderBindingTable(const std::string& subPassName, const std::string& rgRecName, const std::string& msRecName, const std::string& hgRecName)
+		{
+			auto& sbt         = subPasses[subPassName].shaderBindingTable;
+			auto& rayGBuffer  = rayGBuffers.at(rgRecName);
+			auto& missBuffer  = missBuffers.at(msRecName);
+			auto& hitGBuffer  = hitGBuffers.at(hgRecName);
+			sbt.raygenRecord                = reinterpret_cast<CUdeviceptr>(rayGBuffer.gpuHandle.getDevicePtr());
+			sbt.missRecordBase              = reinterpret_cast<CUdeviceptr>(missBuffer.gpuHandle.getDevicePtr());
+			sbt.missRecordCount             = missBuffer.cpuHandle.size();
+			sbt.missRecordStrideInBytes     = sizeof(missBuffer.cpuHandle[0]);
+			sbt.hitgroupRecordBase          = reinterpret_cast<CUdeviceptr>(hitGBuffer.gpuHandle.getDevicePtr());
+			sbt.hitgroupRecordCount         = hitGBuffer.cpuHandle.size();
+			sbt.hitgroupRecordStrideInBytes = sizeof(hitGBuffer.cpuHandle[0]);
+		}
+		void Launch(const std::string& sbtName,CUstream stream)noexcept {
+			auto& subPass = this->subPasses.at(sbtName);
+			this->pipeline.launch(stream, subPass.paramsBuffer.gpuHandle.getDevicePtr(), subPass.shaderBindingTable, this->width, this->height, subPass.depth);
 		}
 		void Update()noexcept
 		{
 			if (updateRG)
 			{
-				raygenBuffer.Upload();
+				for (auto& [name, rayGBuffer] : rayGBuffers) {
+					rayGBuffer.Upload();
+				}
 				updateRG = false;
 			}
 			if (updateMS)
 			{
-				missBuffer.Upload();
+				for (auto& [name, missBuffer] : missBuffers) {
+					missBuffer.Upload();
+				}
 				updateMS = false;
 			}
 			if (updateHG)
 			{
-				hitGBuffer.Upload();
+				for (auto& [name, hitGBuffer] : hitGBuffers) {
+					hitGBuffer.Upload();
+				}
 				updateHG = false;
 			}
 			if (updatePm)
 			{
-				paramsBuffer.Upload();
+				for (auto& [name, subPass] : subPasses) {
+					subPass.paramsBuffer.Upload();
+				}
 				updatePm = false;
 			}
 		}
