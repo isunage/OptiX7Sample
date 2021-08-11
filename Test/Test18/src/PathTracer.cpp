@@ -1,6 +1,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "../include/PathTracer.h"
+#include <memory>
 void test::PathTracer::InitCUDA()
 {
 	RTLIB_CUDA_CHECK(cudaFree(0));
@@ -20,11 +21,25 @@ auto test::PathTracer::GetOPXContext() const -> const OPXContextPtr&
 void test::PathTracer::LoadTexture(const std::string& keyName, const std::string& texPath)
 {
     int texWidth, texHeight, texComp;
-    auto img = stbi_load(texPath.c_str(), &texWidth, &texHeight, &texComp, 4);
+    std::unique_ptr<unsigned char> pixels;
+    {
+        auto img = stbi_load(texPath.c_str(), &texWidth, &texHeight, &texComp, 4);
+        pixels   = std::unique_ptr<unsigned char>(new unsigned char[texWidth * texHeight * 4]);
+        {
+            for (auto h = 0; h < texHeight; ++h) {
+                auto srcData = img + 4 * texWidth * (texHeight-1-h);
+                auto dstData = pixels.get() + 4 * texWidth * h;
+                std::memcpy(dstData, srcData, 4 * texWidth);
+            }
+        }
+        
+        stbi_image_free(img);
+    }
+    
     this->m_Textures[keyName] = rtlib::CUDATexture2D<uchar4>();
     this->m_Textures[keyName].allocate(texWidth, texHeight, cudaTextureReadMode::cudaReadModeElementType);
-    this->m_Textures[keyName].upload(img, texWidth, texHeight);
-    stbi_image_free(img);
+    this->m_Textures[keyName].upload(pixels.get(), texWidth, texHeight);
+    
 }
 
 auto test::PathTracer::GetTexture(const std::string& keyName) const -> const rtlib::CUDATexture2D<uchar4>&
@@ -37,9 +52,24 @@ bool test::PathTracer::HasTexture(const std::string& keyName) const noexcept
     return this->m_Textures.count(keyName)!=0;
 }
 
-void test::PathTracer::SetPipeline(const std::string& keyName, const std::shared_ptr<Pipeline>& pipeline)
+void test::PathTracer::SetTracePipeline(const TracePipelinePtr& tracePipeline)
 {
-    m_Pipelines[keyName] = pipeline;
+    m_TracePipeline = tracePipeline;
+}
+
+void test::PathTracer::SetDebugPipeline(const DebugPipelinePtr& debugPipeline)
+{
+    m_DebugPipeline = debugPipeline;
+}
+
+auto test::PathTracer::GetTracePipeline() const -> TracePipelinePtr
+{
+    return m_TracePipeline;
+}
+
+auto test::PathTracer::GetDebugPipeline() const -> DebugPipelinePtr
+{
+    return m_DebugPipeline;
 }
 
 void test::PathTracer::SetGASHandle(const std::string& keyName, const std::shared_ptr<rtlib::ext::GASHandle>& gasHandle)
@@ -69,9 +99,4 @@ auto test::PathTracer::GetInstance(const std::string& gasKeyName) const -> rtlib
 void test::PathTracer::SetIASHandle(const std::string& keyName, const std::shared_ptr<rtlib::ext::IASHandle>& iasHandle)
 {
     m_IASHandles[keyName] = iasHandle;
-}
-
-void test::Pipeline::Launch(CUstream stream) noexcept
-{
-    this->pipeline.launch(stream, this->paramsBuffer.gpuHandle.getDevicePtr(), this->shaderbindingTable, this->width, this->height, this->depth);
 }

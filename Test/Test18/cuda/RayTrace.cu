@@ -1,7 +1,19 @@
 #define __CUDACC__
 #include "RayTrace.h"
+struct RadiancePRD {
+    float3        origin;
+    float3        direction;
+    float3        emitted;
+    float3        radiance;
+    float3        attenuation;
+    float         distance;
+    unsigned int  seed;
+    int           countEmitted;
+    int           done;
+    int           pad;
+};
 extern "C" {
-    __constant__ Params params;
+    __constant__ RayTraceParams params;
 }
 static __forceinline__ __device__ float3 faceForward(const float3& n, const float3& i, const float3& nref) {
     return copysignf(1.0f, rtlib::dot(n, i)) * nref;
@@ -13,6 +25,16 @@ static __forceinline__ __device__ void   packPointer(void* ptr,unsigned int& p0,
     const unsigned long long llv = reinterpret_cast<const unsigned long long>(ptr);
     p0 = rtlib::to_upper(llv);
     p1 = rtlib::to_lower(llv);
+}
+static __forceinline__ __device__ float3 unpackFloat3(unsigned int p0, unsigned p1,unsigned int p2)
+{
+    return make_float3(__uint_as_float(p0),__uint_as_float(p1),__uint_as_float(p2));
+}
+static __forceinline__ __device__ void   packFloat3(const float3& v,unsigned int& p0, unsigned& p1,unsigned int& p2)
+{
+    p0 = __float_as_uint(v.x);
+    p1 = __float_as_uint(v.y);
+    p2 = __float_as_uint(v.z);
 }
 static __forceinline__ __device__ RadiancePRD* getRadiancePRD() {
     unsigned int p0 = optixGetPayload_0();
@@ -26,18 +48,34 @@ static __forceinline__ __device__ void setRadiancePRD(RadiancePRD* prd) {
     optixSetPayload_0(p0);
     optixSetPayload_1(p1);
 }
-static __forceinline__ __device__ void  setPayloadOccluded(bool occluded) {
+static __forceinline__ __device__ void setRayOrigin(const float3& origin){
+    unsigned int p2,p3,p4;
+    packFloat3(origin,p2,p3,p4);
+    optixSetPayload_2(p2);
+    optixSetPayload_3(p3);
+    optixSetPayload_4(p4);
+}
+static __forceinline__ __device__ void setRayDirection(const float3& direction){
+    unsigned int p5,p6,p7;
+    packFloat3(direction,p5,p6,p7);
+    optixSetPayload_5(p5);
+    optixSetPayload_6(p6);
+    optixSetPayload_7(p7);
+}
+static __forceinline__ __device__ void setPayloadOccluded(bool occluded) {
     optixSetPayload_0(static_cast<unsigned int>(occluded));
 }
 static __forceinline__ __device__ void traceRadiance(
     OptixTraversableHandle handle,
-    const float3& rayOrigin, 
-    const float3& rayDirection,
+    float3&     rayOrigin, 
+    float3&     rayDirection,
     float tmin, float tmax,
     RadiancePRD*  prd) {
-    unsigned int p0, p1;
+    unsigned int p0, p1, p2, p3, p4, p5, p6, p7;
     packPointer(prd, p0, p1);
-    optixTrace(handle, rayOrigin, rayDirection, tmin, tmax, 0.0f, OptixVisibilityMask(255), OPTIX_RAY_FLAG_NONE, RAY_TYPE_RADIANCE, RAY_TYPE_COUNT, RAY_TYPE_RADIANCE, p0, p1);
+    optixTrace(handle, rayOrigin, rayDirection, tmin, tmax, 0.0f, OptixVisibilityMask(255), OPTIX_RAY_FLAG_NONE, RAY_TYPE_RADIANCE, RAY_TYPE_COUNT, RAY_TYPE_RADIANCE, p0, p1, p2, p3, p4, p5, p6, p7);
+    rayOrigin    = unpackFloat3(p2,p3,p4);
+    rayDirection = unpackFloat3(p5,p6,p7);
 }
 static __forceinline__ __device__ bool traceOccluded(
     OptixTraversableHandle handle,
@@ -82,8 +120,6 @@ extern "C" __global__ void     __raygen__rg(){
             if (prd.done || depth >= params.maxTraceDepth) {
                 break;
             }
-            rayOrigin    = prd.origin;
-            rayDirection = prd.direction;
             depth++;
         }
         seed = prd.seed;
@@ -132,8 +168,10 @@ extern "C" __global__ void __closesthit__radiance_for_diffuse()  {
     {
         rtlib::ONB onb(normal);
         float3 newDirection = onb.local(rtlib::random_cosine_direction(xor32));
-        prd->direction      = newDirection;
-        prd->origin         = position;
+
+        setRayOrigin(position);
+        setRayDirection(newDirection);
+
         float3 diffuse      = hgData->getDiffuseColor(texCoord);
         prd->attenuation   *= diffuse;
         prd->countEmitted   = false;
@@ -180,8 +218,10 @@ extern "C" __global__ void __closesthit__radiance_for_specular() {
     {
         float3 specular   = hgData->getSpecularColor(texCoord);
         float3 reflectDir = rtlib::normalize(rayDirection - 2.0f * rtlib::dot(rayDirection, normal) * normal);
-        prd->origin       = position;
-        prd->direction    = reflectDir;
+
+        setRayOrigin(position);
+        setRayDirection(reflectDir);
+
         prd->attenuation *= specular;
         prd->countEmitted = true;
     }
@@ -217,7 +257,6 @@ extern "C" __global__ void __closesthit__radiance_for_refraction() {
     float3 specular       = hgData->getSpecularColor(texCoord);
     float3 transmit       = hgData->transmit;
     {
-        prd->origin       = position;
         float3 reflectDir = rtlib::normalize(rayDirection - 2.0f * rtlib::dot(rayDirection, normal) * normal);
         float  cosine_i   = -rtlib::dot(normal, rayDirection);
         float  sine_o_2   = (1.0f - rtlib::pow2(cosine_i)) * rtlib::pow2(refInd);
@@ -226,16 +265,16 @@ extern "C" __global__ void __closesthit__radiance_for_refraction() {
         if (rtlib::random_float1(0.0f, 1.0f, xor32) < fresnell || sine_o_2 > 1.0f) {
 
             //printf("reflect: %lf %lf %lf\n", reflectDir.x, reflectDir.y, reflectDir.z);
-            prd->origin      += 0.001f * normal;
-            prd->direction    = reflectDir;
+            setRayOrigin(position+0.001f * normal);
+            setRayDirection(reflectDir);
             prd->attenuation *= specular;
         }
         else {
             float  cosine_o   = sqrtf(1.0f - sine_o_2);
             float3 refractDir = (rayDirection - (cosine_o - cosine_i) * normal) / refInd;
             //printf("refract: %lf %lf %lf\n", refractDir.x, refractDir.y, refractDir.z);
-            prd->origin      -= 0.001f * normal;
-            prd->direction    = refractDir;
+            setRayOrigin(position-0.001f * normal);
+            setRayDirection(refractDir);
             prd->attenuation *= transmit;
         }
         prd->countEmitted   = true;
@@ -285,8 +324,10 @@ extern "C" __global__ void __closesthit__radiance_for_phong()  {
     {
         rtlib::ONB onb(normal);
         float3 newDirection = onb.local(rtlib::random_cosine_direction(xor32));
-        prd->direction      = newDirection;
-        prd->origin         = position;
+        
+        setRayOrigin(position);
+        setRayDirection(newDirection);
+
         float3 diffuse      = hgData->getDiffuseColor(texCoord);
         float3 specular     = hgData->getSpecularColor(texCoord);
         float3 reflectDir   = rtlib::normalize(rayDirection - 2.0f * rtlib::dot(rayDirection, normal) * normal);

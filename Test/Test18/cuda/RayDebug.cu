@@ -1,14 +1,37 @@
 #define __CUDACC__
 #include "RayTrace.h"
+struct RadiancePRD {
+    float3        diffuse;
+    float3        specular;
+    float3        transmit;
+    float3        emission;
+    float         distance;
+    float2        texCoord;
+    float3        normal;
+};
 extern "C" {
-    __constant__ Params params;
+    __constant__ RayDebugParams params;
 }
-static __forceinline__ __device__ void trace(OptixTraversableHandle handle,const float3& rayOrigin, const float3& rayDirection,float tmin, float tmax,float3& color) {
-    unsigned int p0, p1,p2;
-    optixTrace(handle, rayOrigin, rayDirection, tmin, tmax, 0.0f, OptixVisibilityMask(255), OPTIX_RAY_FLAG_NONE, RAY_TYPE_RADIANCE, RAY_TYPE_COUNT, RAY_TYPE_RADIANCE, p0, p1, p2);
-    color.x = int_as_float(p0);
-    color.y = int_as_float(p1);
-    color.z = int_as_float(p2);
+static __forceinline__ __device__ float3 faceForward(const float3& n, const float3& i, const float3& nref) {
+    return copysignf(1.0f, rtlib::dot(n, i)) * nref;
+}
+static __forceinline__ __device__ void*  unpackPointer(unsigned int p0, unsigned int p1) {
+    return reinterpret_cast<void*>(rtlib::to_combine(p0, p1));
+}
+static __forceinline__ __device__ void   packPointer(void* ptr,unsigned int& p0, unsigned int& p1) {
+    const unsigned long long llv = reinterpret_cast<const unsigned long long>(ptr);
+    p0 = rtlib::to_upper(llv);
+    p1 = rtlib::to_lower(llv);
+}
+static __forceinline__ __device__ RadiancePRD* getRadiancePRD() {
+    unsigned int p0 = optixGetPayload_0();
+    unsigned int p1 = optixGetPayload_1();
+    return static_cast<RadiancePRD*>(unpackPointer(p0, p1));
+}
+static __forceinline__ __device__ void trace(OptixTraversableHandle handle,const float3& rayOrigin, const float3& rayDirection,float tmin, float tmax,RadiancePRD* prd) {
+    unsigned int p0, p1;
+    packPointer(prd,p0,p1);
+    optixTrace(handle, rayOrigin, rayDirection, tmin, tmax, 0.0f, OptixVisibilityMask(255), OPTIX_RAY_FLAG_NONE, RAY_TYPE_RADIANCE, RAY_TYPE_COUNT, RAY_TYPE_RADIANCE, p0, p1);
 }
 extern "C" __global__ void     __raygen__debug(){
     const uint3 idx = optixGetLaunchIndex();
@@ -23,59 +46,53 @@ extern "C" __global__ void     __raygen__debug(){
 	const float3 origin    = rgData->eye;
 	const float3 direction = rtlib::normalize(d.x * u + d.y * v + w);
     //printf("%f, %lf, %lf\n", direction.x, direction.y, direction.z);
-    float3 color;
-    trace(params.gasHandle, origin,direction, 0.0f, 1e16f,color);
+    RadiancePRD prd;
+    trace(params.gasHandle, origin,direction, 0.0f, 1e16f,&prd);
+    auto texCoordColor = make_float3(prd.texCoord.x,prd.texCoord.y,(1.0f-(prd.texCoord.x+prd.texCoord.y)/2.0f));
+    auto normalColor   = make_float3((prd.normal.x+1.0f)/2.0f,(prd.normal.y+1.0f)/2.0f,(prd.normal.z+1.0f)/2.0f);
+    auto depthColor    = prd.distance / 400.0f;
    // printf("%f, %lf\n", texCoord.x, texCoord.y);
-    params.frameBuffer[params.width * idx.y + idx.x] = make_uchar4(static_cast<unsigned char>(255.99 * color.x), static_cast<unsigned char>(255.99 * color.y), static_cast<unsigned char>(255.99 * color.z), 255);
+    params.diffuseBuffer[params.width * idx.y + idx.x]  = make_uchar4(static_cast<unsigned char>(255.99 * prd.diffuse.x ), static_cast<unsigned char>(255.99 * prd.diffuse.y ), static_cast<unsigned char>(255.99 * prd.diffuse.z ), 255);
+    params.specularBuffer[params.width * idx.y + idx.x] = make_uchar4(static_cast<unsigned char>(255.99 * prd.specular.x), static_cast<unsigned char>(255.99 * prd.specular.y), static_cast<unsigned char>(255.99 * prd.specular.z), 255);
+    params.emissionBuffer[params.width * idx.y + idx.x] = make_uchar4(static_cast<unsigned char>(255.99 * prd.emission.x), static_cast<unsigned char>(255.99 * prd.emission.y), static_cast<unsigned char>(255.99 * prd.emission.z), 255);
+    params.transmitBuffer[params.width * idx.y + idx.x] = make_uchar4(static_cast<unsigned char>(255.99 * prd.transmit.x), static_cast<unsigned char>(255.99 * prd.transmit.y), static_cast<unsigned char>(255.99 * prd.transmit.z), 255);
+    
+    params.texCoordBuffer[params.width * idx.y + idx.x] = make_uchar4(static_cast<unsigned char>(255.99 * texCoordColor.x), static_cast<unsigned char>(255.99 * texCoordColor.y), static_cast<unsigned char>(255.99 * texCoordColor.z), 255);
+
+    params.normalBuffer[params.width * idx.y + idx.x]  =  make_uchar4(static_cast<unsigned char>(255.99 * normalColor.x), static_cast<unsigned char>(255.99 * normalColor.y), static_cast<unsigned char>(255.99 * normalColor.z), 255);
+    params.depthBuffer[params.width * idx.y + idx.x]   = make_uchar4(static_cast<unsigned char>(255.99 * depthColor), static_cast<unsigned char>(255.99 * depthColor), static_cast<unsigned char>(255.99 * depthColor), 255);
 }
 extern "C" __global__ void       __miss__debug(){
     auto* msData = reinterpret_cast<MissData*>(optixGetSbtDataPointer());
-    optixSetPayload_0(float_as_int(msData->bgColor.x));
-    optixSetPayload_1(float_as_int(msData->bgColor.y));
-    optixSetPayload_2(float_as_int(msData->bgColor.z));
 }
 extern "C" __global__ void __closesthit__debug(){
     auto* hgData     = reinterpret_cast<HitgroupData*>(optixGetSbtDataPointer());
     float2 texCoord  = optixGetTriangleBarycentrics();
-    auto primitiveId = optixGetPrimitiveIndex();
+    auto primitiveID = optixGetPrimitiveIndex();
+    const float3 rayDirection = optixGetWorldRayDirection();
     //printf("%d\n", primitiveId);
-    auto p0          = hgData->vertices[hgData->indices[primitiveId].x];
-    auto p1          = hgData->vertices[hgData->indices[primitiveId].y];
-    auto p2          = hgData->vertices[hgData->indices[primitiveId].z];
-    auto normal      = rtlib::normalize(rtlib::cross(p1 - p0, p2 - p0));
-    auto t0          = hgData->texCoords[hgData->indices[primitiveId].x];
-    auto t1          = hgData->texCoords[hgData->indices[primitiveId].y];
-    auto t2          = hgData->texCoords[hgData->indices[primitiveId].z];
+    const float3 v0  = optixTransformPointFromObjectToWorldSpace(hgData->vertices[hgData->indices[primitiveID].x]);
+    const float3 v1  = optixTransformPointFromObjectToWorldSpace(hgData->vertices[hgData->indices[primitiveID].y]);
+    const float3 v2  = optixTransformPointFromObjectToWorldSpace(hgData->vertices[hgData->indices[primitiveID].z]);
+    const float3 n0  = optixTransformNormalFromObjectToWorldSpace(rtlib::normalize(rtlib::cross(v1 - v0, v2 - v0)));
+    const float3 normal = faceForward(n0, make_float3(-rayDirection.x,-rayDirection.y,-rayDirection.z), n0);
+    auto t0          = hgData->texCoords[hgData->indices[primitiveID].x];
+    auto t1          = hgData->texCoords[hgData->indices[primitiveID].y];
+    auto t2          = hgData->texCoords[hgData->indices[primitiveID].z];
     auto t           = (1.0f-texCoord.x-texCoord.y)*t0 + texCoord.x * t1 + texCoord.y * t2;
-    auto diffC       = hgData->getDiffuseColor(t);
-    auto specC       = hgData->getSpecularColor(t);
-    auto emitC       = hgData->getEmissionColor(t);
+    auto diffuse     = hgData->getDiffuseColor(t);
+    auto specular    = hgData->getSpecularColor(t);
+    auto transmit    = hgData->transmit;
+    auto emission    = hgData->getEmissionColor(t);
     //printf("%f %f\n",t0.x,t0.y);
-#ifdef TEST_SHOW_DIFFUSE_COLOR
-    optixSetPayload_0(float_as_int(diffC.x));
-    optixSetPayload_1(float_as_int(diffC.y));
-    optixSetPayload_2(float_as_int(diffC.z));
-#endif 
-#ifdef TEST_SHOW_SPECULAR_COLOR
-    optixSetPayload_0(float_as_int(specC.x));
-    optixSetPayload_1(float_as_int(specC.y));
-    optixSetPayload_2(float_as_int(specC.z));
-#endif 
-#ifdef TEST_SHOW_EMISSION_COLOR
-    optixSetPayload_0(float_as_int(emitC.x));
-    optixSetPayload_1(float_as_int(emitC.y));
-    optixSetPayload_2(float_as_int(emitC.z));
-#endif 
-#ifdef TEST_SHOW_TEXCOORD
-    optixSetPayload_0(float_as_int((t.x)));
-    optixSetPayload_1(float_as_int((t.y)));
-    optixSetPayload_2(float_as_int((2.0f-t.x-t.y)/2.0f));
-#endif
-#ifdef TEST_SHOW_NORMAL
-    optixSetPayload_0(float_as_int((0.5f+0.5f*normal.x)));
-    optixSetPayload_1(float_as_int((0.5f+0.5f*normal.y)));
-    optixSetPayload_2(float_as_int((0.5f+0.5f*normal.z)));
-#endif
+    auto prd         = getRadiancePRD();
+    prd->diffuse     = diffuse;
+    prd->specular    = specular;
+    prd->transmit    = transmit;
+    prd->emission    = emission;
+    prd->distance    = optixGetRayTmax();
+    prd->texCoord    = t;
+    prd->normal      = normal;
 }
 extern "C" __global__ void     __anyhit__ah(){
     auto* hgData = reinterpret_cast<HitgroupData*>(optixGetSbtDataPointer());

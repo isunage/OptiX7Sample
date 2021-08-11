@@ -30,15 +30,28 @@ struct ParallelLight {
     float3   normal;
     float3 emission;
 };
-struct Params {
+struct RayTraceParams {
     uchar4*                frameBuffer;
     float3*                accumBuffer;
-    unsigned int*          seed;
-    unsigned int           width;
+    unsigned int*          seed;       
+    unsigned int           width;      
     unsigned int           height;
     unsigned int           samplePerLaunch;
     unsigned int           samplePerALL;
     unsigned int           maxTraceDepth;
+    OptixTraversableHandle gasHandle;
+    ParallelLight          light;
+};
+struct RayDebugParams {
+    uchar4*                diffuseBuffer; //8
+    uchar4*                specularBuffer;
+    uchar4*                transmitBuffer;
+    uchar4*                emissionBuffer;
+    uchar4*                texCoordBuffer;
+    uchar4*                normalBuffer;
+    uchar4*                depthBuffer;
+    unsigned int           width;
+    unsigned int           height;
     OptixTraversableHandle gasHandle;
     ParallelLight          light;
 };
@@ -95,17 +108,4 @@ struct HitgroupData{
     }
 #endif
 };
-struct RadiancePRD {
-    float3        origin;
-    float3        direction;
-    float3        emitted;
-    float3        radiance;
-    float3        attenuation;
-    float         distance;
-    unsigned int  seed;
-    int           countEmitted;
-    int           done;
-    int           pad;
-};
-
 #endif

@@ -12,6 +12,7 @@
 #include <stb_image_write.h>
 #include "../include/SceneBuilder.h"
 namespace test {
+	template<typename Param_t>
 	struct Pipeline {
 	public:
 		using OPXContextPtr = std::shared_ptr <rtlib::OPXContext >;
@@ -41,7 +42,7 @@ namespace test {
 		UploadBuffer<RayGenRecord>	      raygenBuffer		 = {};
 		UploadBuffer<MissRecord>	      missBuffer		 = {};
 		UploadBuffer<HitGRecord>	      hitGBuffer		 = {};
-		UploadBuffer<Params>	    	  paramsBuffer       = {};
+		UploadBuffer<Param_t>	    	  paramsBuffer       = {};
 		OptixPipelineCompileOptions       compileOptions     = {};
 		OptixPipelineLinkOptions          linkOptions        = {};
 		bool                              updateRG           = false;
@@ -132,7 +133,9 @@ namespace test {
 			}
 			return true;
 		}
-		void Launch(CUstream stream)noexcept;
+		void Launch(CUstream stream)noexcept {
+			this->pipeline.launch(stream, this->paramsBuffer.gpuHandle.getDevicePtr(), this->shaderbindingTable, this->width, this->height, this->depth);
+		}
 		void Update()noexcept
 		{
 			if (updateRG)
@@ -163,15 +166,17 @@ namespace test {
 		using TextureMap     = std::unordered_map<std::string, rtlib::CUDATexture2D<uchar4>>;
 		
 	private:
-		using GASHandleMap = std::unordered_map < std::string, std::shared_ptr <rtlib::ext::GASHandle>> ;
-		using IASHandleMap   = std::unordered_map<std::string, std::shared_ptr<rtlib::ext::IASHandle>>;
-		using PipelineMap    = std::unordered_map<std::string, std::shared_ptr<Pipeline>>;
+		using GASHandleMap    = std::unordered_map < std::string, std::shared_ptr <rtlib::ext::GASHandle>> ;
+		using IASHandleMap    = std::unordered_map<std::string, std::shared_ptr<rtlib::ext::IASHandle>>;
+		using TracePipelinePtr= std::shared_ptr<Pipeline<RayTraceParams>>;
+		using DebugPipelinePtr= std::shared_ptr<Pipeline<RayDebugParams>>;
 	public:
-		OPXContextPtr m_OPXContext   = {};
-		GASHandleMap  m_GASHandles   = {};
-		IASHandleMap  m_IASHandles   = {};
-		TextureMap    m_Textures     = {};
-		PipelineMap   m_Pipelines    = {};
+		OPXContextPtr      m_OPXContext    = {};
+		GASHandleMap       m_GASHandles    = {};
+		IASHandleMap       m_IASHandles    = {};
+		TextureMap         m_Textures      = {};
+		TracePipelinePtr   m_TracePipeline = {};
+		DebugPipelinePtr   m_DebugPipeline = {};
 	public:
 		void InitCUDA();
 		void InitOPX();
@@ -179,11 +184,14 @@ namespace test {
 		auto GetOPXContext()const -> const OPXContextPtr&;
 		void SetGASHandle(const std::string& keyName, const std::shared_ptr<rtlib::ext::GASHandle>& gasHandle);
 		void SetIASHandle(const std::string& keyName, const std::shared_ptr<rtlib::ext::IASHandle>& iasHandle);
-		auto  GetInstance( const std::string& gasKeyName)const->rtlib::ext::Instance;
-		void  LoadTexture( const std::string& keyName, const std::string& texPath);
-		auto   GetTexture( const std::string& keyName) const ->const rtlib::CUDATexture2D<uchar4>&;
-		bool   HasTexture( const std::string& keyName) const noexcept;
-		void  SetPipeline( const std::string& keyName, const std::shared_ptr<Pipeline>& pipeline);
+		auto GetInstance( const std::string& gasKeyName)const->rtlib::ext::Instance;
+		void LoadTexture( const std::string& keyName, const std::string& texPath);
+		auto GetTexture( const std::string& keyName) const ->const rtlib::CUDATexture2D<uchar4>&;
+		bool HasTexture( const std::string& keyName) const noexcept;
+		void SetTracePipeline(const TracePipelinePtr& tracePipeline);
+		void SetDebugPipeline(const DebugPipelinePtr& debugPipeline);
+		auto GetTracePipeline()const->TracePipelinePtr;
+		auto GetDebugPipeline()const->DebugPipelinePtr;
 	};
 }
 #endif

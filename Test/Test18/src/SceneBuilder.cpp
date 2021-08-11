@@ -25,45 +25,92 @@ bool test::ObjMeshGroup::Load(const std::string& objFilePath, const std::string&
         auto& vertexBuffer = meshGroup->GetSharedResource()->vertexBuffer;
         auto& texCrdBuffer = meshGroup->GetSharedResource()->texCrdBuffer;
         auto& normalBuffer = meshGroup->GetSharedResource()->normalBuffer;
-        vertexBuffer.cpuHandle.resize(attrib.vertices.size() / 3);
-        texCrdBuffer.cpuHandle.resize(vertexBuffer.cpuHandle.size());
-        normalBuffer.cpuHandle.resize(vertexBuffer.cpuHandle.size());
-        for (size_t i = 0; i < vertexBuffer.cpuHandle.size(); ++i) {
-            vertexBuffer.cpuHandle[i] = make_float3(attrib.vertices[3 * i + 0], attrib.vertices[3 * i + 1], attrib.vertices[3 * i + 2]);
+
+        struct MyHash
+        {
+            MyHash()noexcept {}
+            MyHash(const MyHash&)noexcept = default;
+            MyHash(MyHash&&)noexcept = default;
+            ~MyHash()noexcept {}
+            MyHash& operator=(const MyHash&)noexcept = default;
+            MyHash& operator=(MyHash&&)noexcept = default;
+            size_t operator()(tinyobj::index_t key)const
+            {
+                size_t vertexHash = std::hash_value<int>(key.vertex_index) & 0x3FFFFF;
+                size_t normalHash = std::hash_value<int>(key.normal_index) & 0x1FFFFF;
+                size_t texCrdHash = std::hash_value<int>(key.texcoord_index) & 0x1FFFFF;
+                return vertexHash + (normalHash << 22) + (texCrdHash << 43);
+            }
+        };
+        struct MyEqualTo
+        {
+            using first_argument_type = tinyobj::index_t;
+            using second_argument_type = tinyobj::index_t;
+            using result_type = bool;
+            constexpr bool operator()(const tinyobj::index_t& x, const tinyobj::index_t& y)const
+            {
+                return (x.vertex_index == y.vertex_index) && (x.texcoord_index == y.texcoord_index) && (x.normal_index == y.normal_index);
+            }
+        };
+
+        std::vector< tinyobj::index_t> indices = {};
+        std::unordered_map<tinyobj::index_t, size_t, MyHash, MyEqualTo> indicesMap = {};
+        for (size_t i = 0; i < shapes.size(); ++i) {
+            for (size_t j = 0; j < shapes[i].mesh.num_face_vertices.size(); ++j) {
+                for (size_t k = 0; k < 3; ++k) {
+                    //tinyobj::idx
+                    tinyobj::index_t idx = shapes[i].mesh.indices[3 * j + k];
+                    if (indicesMap.count(idx) == 0) {
+                        size_t indicesCount = std::size(indices);
+                        indicesMap[idx] = indicesCount;
+                        indices.push_back(idx);
+                    }
+                }
+            }
         }
+        std::cout << "VertexBuffer: " << attrib.vertices.size() / 3  << "->" << indices.size() << std::endl;
+        std::cout << "NormalBuffer: " << attrib.normals.size() / 3   << "->" << indices.size() << std::endl;
+        std::cout << "TexCrdBuffer: " << attrib.texcoords.size() / 2 << "->" << indices.size() << std::endl;
+        vertexBuffer.cpuHandle.resize(indices.size());
+        texCrdBuffer.cpuHandle.resize(indices.size());
+        normalBuffer.cpuHandle.resize(indices.size());
+
+        for (size_t i = 0; i < indices.size(); ++i) {
+            tinyobj::index_t idx = indices[i];
+            vertexBuffer.cpuHandle[i] = make_float3(
+                attrib.vertices[3 * idx.vertex_index + 0], 
+                attrib.vertices[3 * idx.vertex_index + 1], 
+                attrib.vertices[3 * idx.vertex_index + 2]);
+            if (idx.normal_index >= 0) {
+                normalBuffer.cpuHandle[i] = make_float3(
+                    attrib.normals[3 * idx.normal_index + 0],
+                    attrib.normals[3 * idx.normal_index + 1],
+                    attrib.normals[3 * idx.normal_index + 2]);
+            }
+            else {
+                normalBuffer.cpuHandle[i] = make_float3(0.0f,1.0f,0.0f);
+            }
+            if (idx.texcoord_index >= 0) {
+                texCrdBuffer.cpuHandle[i] = make_float2(
+                    attrib.texcoords[2 * idx.texcoord_index + 0],
+                    attrib.texcoords[2 * idx.texcoord_index + 1]);
+            }
+            else {
+                texCrdBuffer.cpuHandle[i] = make_float2(0.5f,0.5f);
+            }
+        }
+
+        std::unordered_map<std::size_t, std::size_t> texCrdMap = {};
         for (size_t i = 0; i < shapes.size(); ++i) {
             std::unordered_map<uint32_t, uint32_t> tmpMaterials = {};
             auto uniqueResource  = std::make_shared<rtlib::ext::MeshUniqueResource>();
             uniqueResource->name = shapes[i].name;
             uniqueResource->triIndBuffer.cpuHandle.resize(shapes[i].mesh.num_face_vertices.size());
             for (size_t j = 0; j < shapes[i].mesh.num_face_vertices.size(); ++j) {
-                tinyobj::index_t idxs[3] = {
-                    shapes[i].mesh.indices[3 * j + 0],
-                    shapes[i].mesh.indices[3 * j + 1],
-                    shapes[i].mesh.indices[3 * j + 2]
-                };
-                uniqueResource->triIndBuffer.cpuHandle[j] = make_uint3(idxs[0].vertex_index, idxs[1].vertex_index, idxs[2].vertex_index);
-                for (size_t k = 0; k < 3; ++k) {
-                    if (idxs[k].texcoord_index >= 0) {
-                        auto tx = attrib.texcoords[2 * size_t(idxs[k].texcoord_index) + 0];
-                        auto ty = attrib.texcoords[2 * size_t(idxs[k].texcoord_index) + 1];
-                        texCrdBuffer.cpuHandle[idxs[k].vertex_index] = make_float2(tx, -ty);
-                    }
-                    else {
-                        texCrdBuffer.cpuHandle[idxs[k].vertex_index] = make_float2(0.5, 0.5);
-                    }
-                }
-                for (size_t k = 0; k < 3; ++k) {
-                    if (idxs[k].normal_index >= 0) {
-                        auto nx = attrib.normals[3 * size_t(idxs[k].normal_index) + 0];
-                        auto ny = attrib.normals[3 * size_t(idxs[k].normal_index) + 1];
-                        auto nz = attrib.normals[3 * size_t(idxs[k].normal_index) + 2];
-                        normalBuffer.cpuHandle[idxs[k].vertex_index] = make_float3(nx, ny, nz);
-                    }
-                    else {
-                        normalBuffer.cpuHandle[idxs[k].vertex_index] = make_float3(0.0, 1.0, 0.0);
-                    }
-                }
+                uint32_t idx0 = indicesMap.at(shapes[i].mesh.indices[3 * j + 0]);
+                uint32_t idx1 = indicesMap.at(shapes[i].mesh.indices[3 * j + 1]);
+                uint32_t idx2 = indicesMap.at(shapes[i].mesh.indices[3 * j + 2]);
+                uniqueResource->triIndBuffer.cpuHandle[j] = make_uint3(idx0, idx1, idx2);
             }
             uniqueResource->matIndBuffer.cpuHandle.resize(shapes[i].mesh.material_ids.size());
             for (size_t j = 0; j < shapes[i].mesh.material_ids.size();++j){
