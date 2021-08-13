@@ -36,9 +36,9 @@ bool test::ObjMeshGroup::Load(const std::string& objFilePath, const std::string&
             MyHash& operator=(MyHash&&)noexcept = default;
             size_t operator()(tinyobj::index_t key)const
             {
-                size_t vertexHash = std::hash_value<int>(key.vertex_index) & 0x3FFFFF;
-                size_t normalHash = std::hash_value<int>(key.normal_index) & 0x1FFFFF;
-                size_t texCrdHash = std::hash_value<int>(key.texcoord_index) & 0x1FFFFF;
+                size_t vertexHash = std::hash<int>()(key.vertex_index) & 0x3FFFFF;
+                size_t normalHash = std::hash<int>()(key.normal_index) & 0x1FFFFF;
+                size_t texCrdHash = std::hash<int>()(key.texcoord_index) & 0x1FFFFF;
                 return vertexHash + (normalHash << 22) + (texCrdHash << 43);
             }
         };

@@ -4,6 +4,7 @@
 #include "Mesh.h"
 namespace rtlib{
     namespace ext {
+        struct Instance;
         struct GASHandle {
             OptixTraversableHandle   handle   = {};
             rtlib::CUDABuffer<void>  buffer   = {};
@@ -12,9 +13,25 @@ namespace rtlib{
         public:
             void Build(const rtlib::OPXContext* context, const OptixAccelBuildOptions& accelOptions);
         };
+        using GASHandlePtr = std::shared_ptr<GASHandle>;
         struct Instance {
             OptixInstance              instance      = {};
             std::shared_ptr<GASHandle> baseGASHandle = {};
+        public:
+            void Init(const GASHandlePtr& gasHandle){
+                instance.traversableHandle = gasHandle->handle;
+                instance.instanceId        = 0;
+                instance.sbtOffset         = 0;
+                instance.visibilityMask    = 255;
+                instance.flags             = OPTIX_INSTANCE_FLAG_NONE;
+                float transform[12] = {
+                    1.0f,0.0f,0.0f,0.0f,
+                    0.0f,1.0f,0.0f,0.0f,
+                    0.0f,0.0f,1.0f,0.0f
+                };
+                std::memcpy(instance.transform, transform, sizeof(float) * 12);
+                baseGASHandle = gasHandle;
+            }
         };
         struct InstanceSet {
             CUDAUploadBuffer<OptixInstance>         instanceBuffer = {};
@@ -31,7 +48,7 @@ namespace rtlib{
         public:
             void Build(const rtlib::OPXContext* context, const OptixAccelBuildOptions& accelOptions);
         };
-        using  IASHandlePtr   = std::shared_ptr<IASHandle>;
+        using  IASHandlePtr = std::shared_ptr<IASHandle>;
     }
 }
 #endif

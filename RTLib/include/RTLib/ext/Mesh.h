@@ -62,12 +62,16 @@ namespace rtlib{
             auto GetUniqueResources()const noexcept -> const std::unordered_map<std::string, MeshUniqueResourcePtr>&;
             auto GetUniqueNames()const noexcept -> std::vector<std::string>;
             auto LoadMesh(const std::string& name)const->MeshPtr;
+            static auto New()->std::shared_ptr<MeshGroup> {
+                return std::shared_ptr<MeshGroup>(new MeshGroup());
+            }
         private:
             using MeshUniqueResourcePtrMap = std::unordered_map<std::string, MeshUniqueResourcePtr>;
             std::string              m_Name            = {};
             MeshSharedResourcePtr    m_SharedResource  = {};
             MeshUniqueResourcePtrMap m_UniqueResources = {};
         };
+        using MeshGroupPtr = std::shared_ptr<MeshGroup>;
     }
 }
 #endif
