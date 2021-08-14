@@ -85,7 +85,7 @@ namespace test{
         //ProgramGroup
         bool LoadRayGProgramGroupFromModule(const std::string& pgName, const ProgramDesc& rgDesc) {
             try {
-                auto& rgModule = m_Modules.at(rgDesc.moduleName);
+                auto& rgModule = GetModule(rgDesc.moduleName);
                 m_RayGProgramGroups[pgName] = m_Pipeline.createRaygenPG({ rgModule,rgDesc.programName.c_str() });
             }
             catch (...) {
@@ -95,7 +95,7 @@ namespace test{
         }
         bool LoadMissProgramGroupFromModule(const std::string& pgName, const ProgramDesc& msDesc) {
             try {
-                auto& msModule = m_Modules.at(msDesc.moduleName);
+                auto& msModule = GetModule(msDesc.moduleName);
                 m_MissProgramGroups[pgName] = m_Pipeline.createMissPG({ msModule,msDesc.programName.c_str() });
             }
             catch (...) {
@@ -107,20 +107,20 @@ namespace test{
             try {
                 rtlib::OPXProgramDesc opxChDesc;
                 if (!chDesc.programName.empty() && !chDesc.moduleName.empty()) {
-                    opxChDesc.module = modules[chDesc.moduleName];
+                    opxChDesc.module    = GetModule(chDesc.moduleName);
                     opxChDesc.entryName = chDesc.programName.c_str();
                 }
                 rtlib::OPXProgramDesc opxAhDesc;
                 if (!ahDesc.programName.empty() && !ahDesc.moduleName.empty()) {
-                    opxAhDesc.module = modules[ahDesc.moduleName];
+                    opxAhDesc.module    = GetModule(ahDesc.moduleName);
                     opxAhDesc.entryName = ahDesc.programName.c_str();
                 }
                 rtlib::OPXProgramDesc opxIsDesc;
                 if (!isDesc.programName.empty() && !isDesc.moduleName.empty()) {
-                    opxIsDesc.module = modules[isDesc.moduleName];
+                    opxIsDesc.module    = GetModule(isDesc.moduleName);
                     opxIsDesc.entryName = isDesc.programName.c_str();
                 }
-                auto hgProgramGroup = pipeline.createHitgroupPG(
+                auto hgProgramGroup = m_Pipeline.createHitgroupPG(
                     opxChDesc, opxAhDesc, opxIsDesc
                 );
                 m_HitGProgramGroups[pgName] = hgProgramGroup;
@@ -183,6 +183,21 @@ namespace test{
         }
         auto GetSubPass(const std::string& subPassName)const -> SubPassPtr {
             return m_SubPasses.at(subPassName);
+        }
+        void AddRayGRecordBufferToSubPass(const std::string& subPassName, const std::string& rayGRecordName) {
+            auto subPass          = GetSubPass(subPassName);
+            auto rayGRecordBuffer = GetRayGRecordBuffer(rayGRecordName);
+            subPass->SetRayGRecordBuffer(rayGRecordBuffer);
+        }
+        void AddMissRecordBufferToSubPass(const std::string& subPassName, const std::string& missRecordName) {
+            auto subPass = GetSubPass(subPassName);
+            auto missRecordBuffer = GetMissRecordBuffer(missRecordName);
+            subPass->SetMissRecordBuffer(missRecordBuffer);
+        }
+        void AddHitGRecordBufferToSubPass(const std::string& subPassName, const std::string& hitGRecordName) {
+            auto subPass = GetSubPass(subPassName);
+            auto hitGRecordBuffer = GetHitGRecordBuffer(hitGRecordName);
+            subPass->SetHitGRecordBuffer(hitGRecordBuffer);
         }
     private:
         ContextPtr             m_Context                = {};
