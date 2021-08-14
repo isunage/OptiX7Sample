@@ -32,3 +32,5 @@ add_subdirectory(Test17)
 add_subdirectory(Test18)
 ## practical path guiding
 add_subdirectory(Test19)
+
+add_subdirectory(Test20)

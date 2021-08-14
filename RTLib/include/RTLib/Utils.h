@@ -153,12 +153,13 @@ namespace rtlib{
             }
         };
         struct    AABB{
-            float3 min = make_float3(FLT_MAX,FLT_MAX,FLT_MAX);
-            float3 max = make_float3(   0.0f,   0.0f,   0.0f);
+            float3 min = make_float3( FLT_MAX,  FLT_MAX,  FLT_MAX);
+            float3 max = make_float3(-FLT_MAX, -FLT_MAX, -FLT_MAX);
         public:
             AABB()noexcept{}
             AABB(const AABB& aabb)noexcept = default;
             AABB& operator=(const AABB& aabb)noexcept = default;
+            AABB(const float3& min, const float3& max)noexcept :min{ min }, max{ max }{}
             AABB(const std::vector<float3>& vertices)noexcept:AABB(){
                 for(auto& vertex:vertices){
                     this->Update(vertex);
