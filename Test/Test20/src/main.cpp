@@ -53,11 +53,25 @@ namespace test {
 			return result;
 		}
 	};
+	struct DTreeNode {
+		bool        isLeaf      = false;
+		UINT32      children[4] = {};
+		STreeRecord record      = {};
+	};
+	struct DTree {
+		auto getRecord()const -> STreeRecord {
+			return STreeRecord{};
+		}
+		void store(const RadianceRec& record) {
+
+		}
+		std::vector<DTreeNode> nodes = {};
+	};
 	struct STreeNode {
 		UINT32                   axis        = 0;
 		bool                     isLeaf      = true;
 		UINT32                   children[2] = {};
-		STreeRecord              record      = {};
+		DTree                    dtree       = {};
 		auto getChildIdx(float3& p)const->uint32_t {
 			float arr[3] = { p.x,p.y,p.z };
 			if (arr[axis] < 0.5f) {
@@ -74,7 +88,7 @@ namespace test {
 		}
 		auto getRecord(const std::vector<STreeNode>& nodes)const -> STreeRecord {
 			if (isLeaf) {
-				return record;
+				return dtree.getRecord();
 			}
 			else {
 				auto record1 = nodes[children[0]].getRecord(nodes);
@@ -98,7 +112,7 @@ namespace test {
 			auto w = getOverlappingVolume(min1, max1, min2, min2 + size2);
 			if (w > 0.0f) {
 				if (isLeaf) {
-					record.push_back(radiance);
+					dtree.store(radiance);
 					return true;
 				}
 				else {

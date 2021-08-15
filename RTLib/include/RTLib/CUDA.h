@@ -204,12 +204,28 @@ namespace rtlib{
         std::vector<T>       cpuHandle   = {};
         rtlib::CUDABuffer<T> gpuHandle   = {};
     public:
+        void Alloc(size_t count){
+            cpuHandle.resize(count);
+            gpuHandle.allocate(count);
+        }
         void Upload() {
             gpuHandle.resize(cpuHandle.size());
             gpuHandle.upload(cpuHandle);
         }
     };
-
+    template<typename T>
+    struct CUDADownloadBuffer{
+        std::vector<T>       cpuHandle   = {};
+        rtlib::CUDABuffer<T> gpuHandle   = {};
+    public:
+        void Alloc(size_t count){
+            gpuHandle.allocate(count);
+        }
+        void Download(size_t count) {
+            cpuHandle.resize(count);
+            gpuHandle.download(cpuHandle.data(),count);
+        }
+    };
     /*****Textures*********/
     //Array2D
     //CUDA Array
