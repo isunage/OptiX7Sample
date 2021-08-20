@@ -1,6 +1,7 @@
 #ifndef RTLIB_PREPROCESSOR_H
 #define RTLIB_PREPROCESSOR_H
 #ifdef __CUDA_ARCH__
+#define RTLIB_DEVICE __device__
 #define RTLIB_HOST_DEVICE __host__ __device__
 #define RTLIB_INLINE __forceinline__
 //Program
@@ -13,6 +14,7 @@
 #define RTLIB_CONTINUATION_CALLABLE_PROGRAM_NAME(program_name) __continuation_callable__##program_name
 #define RTLIB_EXCEPTION_PROGRAM_NAME(program_name) __exception__##program_name
 #else
+#define RTLIB_DEVICE 
 #define RTLIB_HOST_DEVICE 
 #define RTLIB_INLINE inline
 //Program

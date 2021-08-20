@@ -1,16 +1,15 @@
 #define __CUDACC__
 #include "RayTrace.h"
 struct RadiancePRD {
-    float3        origin;
-    float3        direction;
-    float3        emitted;
+    //float3 register 2���]�T���o��
+    float3        emitted;  
     float3        radiance;
     float3        attenuation;
     float         distance;
     unsigned int  seed;
     int           countEmitted;
     int           done;
-    int           pad;
+    int           isDelta;
 };
 extern "C" {
     __constant__ RayTraceParams params;
@@ -116,8 +115,8 @@ extern "C" __global__ void __raygen__rg(){
         int depth = 0;
         for (;;) {
             traceRadiance(params.gasHandle, rayOrigin, rayDirection, 0.01f, 1e16f, &prd);
-            result += prd.emitted;
-            result += prd.radiance * prd.attenuation;
+            result += prd.emitted  ;
+            result += prd.radiance * prd.attenuation ;
             if (prd.done || depth >= params.maxTraceDepth) {
                 break;
             }
@@ -166,6 +165,7 @@ extern "C" __global__ void __closesthit__radiance_for_diffuse_nee()  {
     const float3 position     = optixGetWorldRayOrigin() + optixGetRayTmax() * rayDirection;
     RadiancePRD* prd          = getRadiancePRD();
     prd->emitted              = make_float3(0.0f, 0.0f, 0.0f);
+    //�d�_�T���v�����O��������
     rtlib::Xorshift32 xor32(prd->seed);
     {
         rtlib::ONB onb(normal);
@@ -176,6 +176,7 @@ extern "C" __global__ void __closesthit__radiance_for_diffuse_nee()  {
 
         float3 diffuse      = hgData->getDiffuseColor(texCoord);
         prd->attenuation   *= diffuse;
+        prd->isDelta        = false;
         prd->countEmitted   = false;
     }
     {
@@ -195,8 +196,61 @@ extern "C" __global__ void __closesthit__radiance_for_diffuse_nee()  {
                 weight = ndl * lndl * A / (RTLIB_M_PI * Ldist * Ldist);
             }
         }
-        prd->radiance += light.emission * weight;
+        prd->radiance = light.emission * weight;
         
+    }
+    prd->seed = xor32.m_seed;
+}
+extern "C" __global__ void __closesthit__radiance_for_diffuse_mis() {
+
+    auto* hgData = reinterpret_cast<HitgroupData*>(optixGetSbtDataPointer());
+    const float3 rayDirection = optixGetWorldRayDirection();
+    const int    primitiveID = optixGetPrimitiveIndex();
+    const float3 v0 = optixTransformPointFromObjectToWorldSpace(hgData->vertices[hgData->indices[primitiveID].x]);
+    const float3 v1 = optixTransformPointFromObjectToWorldSpace(hgData->vertices[hgData->indices[primitiveID].y]);
+    const float3 v2 = optixTransformPointFromObjectToWorldSpace(hgData->vertices[hgData->indices[primitiveID].z]);
+    const float3 n0 = optixTransformNormalFromObjectToWorldSpace(rtlib::normalize(rtlib::cross(v1 - v0, v2 - v0)));
+    const float3 normal = faceForward(n0, make_float3(-rayDirection.x, -rayDirection.y, -rayDirection.z), n0);
+    const float2 barycentric = optixGetTriangleBarycentrics();
+    const auto t0 = hgData->texCoords[hgData->indices[primitiveID].x];
+    const auto t1 = hgData->texCoords[hgData->indices[primitiveID].y];
+    const auto t2 = hgData->texCoords[hgData->indices[primitiveID].z];
+    const auto texCoord = (1.0f - barycentric.x - barycentric.y) * t0 + barycentric.x * t1 + barycentric.y * t2;
+    const float3 position = optixGetWorldRayOrigin() + optixGetRayTmax() * rayDirection;
+    RadiancePRD* prd = getRadiancePRD();
+    prd->emitted = make_float3(0.0f, 0.0f, 0.0f);
+    rtlib::Xorshift32 xor32(prd->seed);
+    {
+        rtlib::ONB onb(normal);
+        float3 newDirection = onb.local(rtlib::random_cosine_direction(xor32));
+
+        setRayOrigin(position);
+        setRayDirection(newDirection);
+
+        float3 diffuse = hgData->getDiffuseColor(texCoord);
+        const float2 z = rtlib::random_float2(xor32);
+        const auto   light = params.light;
+        const float3 lightPos = light.corner + light.v1 * z.x + light.v2 * z.y;
+        const float  Ldist = rtlib::distance(lightPos, position);
+        const float3 lightDir = rtlib::normalize(lightPos - position);
+        const float  ndl = rtlib::dot(normal, lightDir);
+        const float  lndl = -rtlib::dot(light.normal, lightDir);
+        const float  A = rtlib::length(rtlib::cross(light.v1, light.v2));
+
+        const float  cosine_pdf = rtlib::dot(newDirection, normal)/ RTLIB_M_PI;
+        const float  light_pdf  = (Ldist * Ldist) / (A * lndl);
+        float weight = 0.0f;
+        if (ndl > 0.0f && lndl > 0.0f) {
+            const bool occluded = traceOccluded(params.gasHandle, position, lightDir, 0.01f, Ldist - 0.01f);
+            if (!occluded) {
+                //printf("not Occluded!\n");
+                weight = ndl / (RTLIB_M_PI * cosine_pdf);
+            }
+        }
+        prd->attenuation *= diffuse * (cosine_pdf / (cosine_pdf + light_pdf));
+        prd->countEmitted = true;
+        prd->radiance    += light.emission * weight;
+
     }
     prd->seed = xor32.m_seed;
 }
@@ -228,6 +282,7 @@ extern "C" __global__ void __closesthit__radiance_for_diffuse_def(){
 
         float3 diffuse       = hgData->getDiffuseColor(texCoord);
         prd->attenuation    *= diffuse;
+        prd->isDelta         = false;
         prd->countEmitted    = true;
     }
     prd->seed = xor32.m_seed;
@@ -257,6 +312,7 @@ extern "C" __global__ void __closesthit__radiance_for_specular() {
         setRayDirection(reflectDir);
 
         prd->attenuation *= specular;
+        prd->isDelta      = true;
         prd->countEmitted = true;
     }
 }
@@ -311,6 +367,7 @@ extern "C" __global__ void __closesthit__radiance_for_refraction() {
             setRayDirection(refractDir);
             prd->attenuation *= transmit;
         }
+        prd->isDelta        = true;
         prd->countEmitted   = true;
     }
     prd->seed = xor32.m_seed;
@@ -332,10 +389,10 @@ extern "C" __global__ void __closesthit__radiance_for_emission() {
     const float3 position = optixGetWorldRayOrigin() + optixGetRayTmax() * rayDirection;
     RadiancePRD* prd      = getRadiancePRD();
     if (prd->countEmitted) {
-        prd->emitted = hgData->getEmissionColor(texCoord) * prd->attenuation;
+        prd->emitted  = hgData->getEmissionColor(texCoord) * prd->attenuation;
     }
     prd->countEmitted = false;
-    prd->done = true;
+    prd->done         = true;
 }
 extern "C" __global__ void __closesthit__radiance_for_phong()  {
     auto*        hgData       = reinterpret_cast<HitgroupData*>(optixGetSbtDataPointer());
@@ -423,6 +480,7 @@ extern "C" __global__ void __closesthit__radiance_for_phong_def()  {
         float  shinness     = hgData->shinness;
         float cosine        = fabsf(rtlib::dot(newDirection, reflectDir));
         prd->attenuation   *= diffuse + specular * (shinness + 2.0f) * powf(cosine, shinness) / 2.0f;
+        prd->isDelta        = false;
         prd->countEmitted   = true;
     }
     prd->seed = xor32.m_seed;

@@ -555,6 +555,25 @@ namespace rtlib {
         memcpy(&ans, &value, sizeof( unsigned int));
         return ans - 1.0f;
 #endif
+#if defined(__CUDA_ARCH__)
+
+#endif
+    }
+    RTLIB_INLINE RTLIB_HOST_DEVICE float3   canonical_to_dir(const float2& p){
+        const float cosTheta = 2.0f * p.x - 1.0f;
+        const float sinTheta = sqrtf(1.0f-cosTheta*cosTheta);
+        const float phi      = RTLIB_M_2PI * p.y;
+        const float cosPhi   = ::cosf(phi);
+        const float sinPhi   = ::sinf(phi);
+        return make_float3(sinTheta*cosPhi,sinTheta*sinPhi,cosTheta);
+    }
+    RTLIB_INLINE RTLIB_HOST_DEVICE float2   dir_to_canonical(const float3& d){
+        const float z = rtlib::clamp(d.z,-1.0f,1.0f);
+        float phi = atan2f(d.y,d.x);
+        while(phi < 0.0f){
+            phi += RTLIB_M_2PI;
+        }
+        return make_float2((z+1.0f)/2.0f,phi/RTLIB_M_2PI);
     }
 }
 #endif

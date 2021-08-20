@@ -19,6 +19,7 @@ ${CMAKE_CURRENT_SOURCE_DIR}/src/RTPipeline.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/src/RTTracer.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/cuda/RayTrace.cu
+${CMAKE_CURRENT_SOURCE_DIR}/cuda/RayStore.cu
 ${CMAKE_CURRENT_SOURCE_DIR}/cuda/RayDebug.cu)
 
 add_custom_command(TARGET Test20 PRE_BUILD  COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/cuda/RayTrace.h  ${TEST_TEST20_CUDA_PATH}/RayTrace.h )
