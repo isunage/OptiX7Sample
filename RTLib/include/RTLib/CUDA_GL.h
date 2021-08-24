@@ -60,7 +60,7 @@ namespace rtlib{
         }
         //Get And Set
         RTLIB_DECLARE_GET_AND_SET_BY_VALUE(GLInteropBuffer, cudaStream_t, Stream, m_Stream);
-        GLenum getTarget()const noexcept{ return m_Handle.getTarget()};
+        GLenum getTarget()const noexcept { return m_Handle.getTarget(); };
         void   setTarget(GLenum target)noexcept{ m_Handle.setTarget(target);}
         GLenum getUsage()const noexcept{ return m_Handle.getUsage()};
         void   setUsage(GLenum usage)noexcept{ m_Handle.setUsage(usage);}

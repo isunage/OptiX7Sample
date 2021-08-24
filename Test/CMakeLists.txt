@@ -34,5 +34,5 @@ add_subdirectory(Test18)
 add_subdirectory(Test19)
 
 add_subdirectory(Test20)
-
+add_subdirectory(Test21)
 add_subdirectory(TestPathGuiding)

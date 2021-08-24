@@ -206,23 +206,56 @@ extern "C" __global__ void __raygen__pg(){
             vertices[depth].bsdfPdf      = prd.bsdfPdf;
             vertices[depth].dTreePdf     = prd.dTreePdf;
             vertices[depth].isDelta      = prd.isDelta;
+            if (!prd.dTree) {
+                printf("Bug(%d,%d,%d): Result(%f %f %f) prvThroughPut(%lf %lf %lf) prd.emission(%lf %lf %lf) prd.wei (%lf %lf %lf) prd.pdf: (%lf %lf %lf) prd.done: %d\n",
+                    idx.x, idx.y, depth,
+                    result.x, result.y, result.z,
+                    prvThroughPut.x, prvThroughPut.y, prvThroughPut.z,
+                    prd.emission.x, prd.emission.y, prd.emission.z,
+                    prd.woWei, prd.bsdfWei, prd.dTreeWei,
+                    prd.woPdf, prd.bsdfPdf, prd.dTreePdf,
+                    (int)prd.done
+                );
+            }
+
             //Radiance�̍X�V
             for (int j = 0; j <= depth; ++j) {
                 vertices[j].Record(prvThroughPut * prd.emission);
             }
             //Result�̍X�V
             result         += prvThroughPut * prd.emission;
+            if (isnan(result.x) || isnan(result.y) || isnan(result.z)) {
+                printf("Bug(%d,%d,%d): Result(%f %f %f) prvThroughPut(%lf %lf %lf) prd.emission(%lf %lf %lf) prd.wei (%lf %lf %lf) prd.pdf: (%lf %lf %lf) prd.done: %d\n", 
+                    idx.x, idx.y, depth, 
+                    result.x, result.y, result.z,
+                    prvThroughPut.x, prvThroughPut.y, prvThroughPut.z,
+                    prd.emission.x , prd.emission.y , prd.emission.z,
+                    prd.woWei, prd.bsdfWei, prd.dTreeWei,
+                    prd.woPdf, prd.bsdfPdf, prd.dTreePdf, (int)prd.done
+                );
+            }
             // if (idx.x==100&&idx.y==100){
             //     printf("(%d,%d,%d)= %f %f %f\n",idx.x,idx.y,depth, prvThroughPut.x,prvThroughPut.y,prvThroughPut.z);
             // }
             //ThroughPut�̍X�V
             prvThroughPut  *= (prd.cosine * prd.bsdfVal) / (prd.woWei * prd.woPdf + prd.bsdfWei * prd.bsdfPdf + prd.dTreeWei * prd.dTreePdf);
+            if (isnan(prvThroughPut.x)    || isnan(prvThroughPut.y)     ||     isnan(prvThroughPut.z)||
+               !isfinite(prvThroughPut.x) || !isfinite(prvThroughPut.y) || !isfinite(prvThroughPut.z)) {
+                printf("Bug(%d,%d,%d): Result(%f %f %f) prvThroughPut(%lf %lf %lf) prd.emission(%lf %lf %lf) prd.wei (%lf %lf %lf) prd.pdf: (%lf %lf %lf) prd.done: %d\n",
+                    idx.x, idx.y, depth,
+                    result.x, result.y, result.z,
+                    prvThroughPut.x, prvThroughPut.y, prvThroughPut.z,
+                    prd.emission.x, prd.emission.y, prd.emission.z,
+                    prd.woWei, prd.bsdfWei, prd.dTreeWei,
+                    prd.woPdf, prd.bsdfPdf, prd.dTreePdf, (int)prd.done
+                );
+            }
             if (prd.done || depth >= params.maxTraceDepth) {
                 if (idx.x==100&&idx.y==100){
-                     printf("(%d,%d,%d)= %f %f %f\n",idx.x,idx.y,depth, 
-                     vertices[depth].radiance.x/vertices[depth].throughPut.x, 
-                     vertices[depth].radiance.y/vertices[depth].throughPut.y, 
-                     vertices[depth].radiance.z/vertices[depth].throughPut.z);
+                     //printf("(%d,%d,%d)= %f %f %f\n",idx.x,idx.y,depth, 
+                    // vertices[depth].radiance.x/vertices[depth].throughPut.x, 
+                     //vertices[depth].radiance.y/vertices[depth].throughPut.y, 
+                    // vertices[depth].radiance.z/vertices[depth].throughPut.z);
                 }
                 break;
             }
@@ -323,37 +356,61 @@ extern "C" __global__ void __closesthit__radiance_for_diffuse_pg() {
     float3 newDirection = make_float3(0.0f);
     RadiancePRD* prd = getRadiancePRD();
 
-    prd->dTree = params.sdTree.GetDTreeWrapper(position);
+    prd->dTree    = params.sdTree.GetDTreeWrapper(position);
     prd->emission = make_float3(0.0f, 0.0f, 0.0f);
     prd->distance = optixGetRayTmax();
 
     rtlib::Xorshift32 xor32(prd->seed);
     {
-        prd->woWei    = 0.5f;
-        prd->dTreeWei = 0.5f;
-        prd->bsdfWei  = 0.0f;
+        if (prd->dTree) {
+            prd->woWei    = 0.5f;
+            prd->dTreeWei = 0.5f;
+            prd->bsdfWei  = 0.0f;
+        }
+        else {
+            prd->woWei    = 1.0f;
+            prd->dTreeWei = 0.0f;
+            prd->bsdfWei  = 0.0f;
+        }
 
         if (rtlib::random_float1(xor32) < prd->woWei) {
             rtlib::ONB onb(normal);
-            newDirection = onb.local(rtlib::random_cosine_direction(xor32));
+            do {
+                newDirection = onb.local(rtlib::random_cosine_direction(xor32));
+            } while (rtlib::dot(normal, newDirection) == 0.0f);
         }
         else {
-            newDirection = prd->dTree->Sample(xor32);
+            do {
+                newDirection = prd->dTree->Sample(xor32);
+            } while (rtlib::dot(normal, newDirection) == 0.0f);
         }
-        prd->woPdf = rtlib::max(rtlib::dot(newDirection, normal), 0.0f) / RTLIB_M_PI;
-        prd->dTreePdf = prd->dTree->Pdf(newDirection);
-        prd->bsdfPdf = 0.0f;
+
+        prd->woPdf       = fabsf(rtlib::dot(newDirection, normal)) / RTLIB_M_PI;
+        if (prd->dTree) {
+
+            prd->dTreePdf = prd->dTree->Pdf(newDirection);
+            if (prd->dTreePdf == 0.0&& prd->woPdf== 0.0f) {
+                printf("Bug! dir=(%lf %lf %lf) normal=(%lf %lf %lf)\n", 
+                    newDirection.x, newDirection.y, newDirection.z,
+                    normal.x, normal.y, normal.z
+                );
+            }
+        }
+        else {
+            prd->dTreePdf = 0.0f;
+        }
+        
+        prd->bsdfPdf     = 0.0f;
 
         setRayOrigin(position);
         setRayDirection(newDirection);
 
-        float3 diffuse = hgData->getDiffuseColor(texCoord);
-        prd->bsdfVal = diffuse / RTLIB_M_PI;
-        prd->cosine =  fabsf(rtlib::dot(newDirection, normal));
-        prd->seed = xor32.m_seed;
-        prd->isDelta = false;
+        float3 diffuse   = hgData->getDiffuseColor(texCoord);
+        prd->bsdfVal     = diffuse / RTLIB_M_PI;
+        prd->cosine      =  fabsf(rtlib::dot(newDirection, normal));
+        prd->seed        = xor32.m_seed;
+        prd->isDelta     = false;
     }
-    prd->seed = xor32.m_seed;
 }
 extern "C" __global__ void __closesthit__radiance_for_specular() {
 

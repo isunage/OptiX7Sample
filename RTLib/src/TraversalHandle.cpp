@@ -71,5 +71,85 @@ void rtlib::ext::IASHandle::Build(const rtlib::OPXContext* context, const OptixA
 void rtlib::ext::InstanceSet::SetInstance(const Instance& instance) noexcept
 {
     instanceBuffer.cpuHandle.push_back(instance.instance);
-    baseGASHandles.push_back(instance.baseGASHandle);
+    if(instance.type==InstanceType::GAS){
+        instanceIndices.push_back({ InstanceType::GAS, baseGASHandles.size() });
+         baseGASHandles.push_back(instance.baseGASHandle);
+    }else{
+        instanceIndices.push_back({ InstanceType::IAS, baseIASHandles.size() });
+         baseIASHandles.push_back(instance.baseIASHandle);
+    }
+}
+
+auto rtlib::ext::InstanceSet::GetInstance(size_t i) const noexcept -> Instance
+{
+    auto instanceIndex  = instanceIndices[i];
+    rtlib::ext::Instance instance = {};
+    instance.type       = instanceIndex.type;
+    instance.instance   = instanceBuffer.cpuHandle[i];
+    if (instance.type == InstanceType::GAS)
+    {
+        instance.baseGASHandle = baseGASHandles[instanceIndex.index];
+    }
+    else {
+        instance.baseIASHandle = baseIASHandles[instanceIndex.index];
+    }
+    return instance;
+}
+
+void rtlib::ext::InstanceSet::Upload() noexcept
+{
+    instanceBuffer.Upload();
+}
+
+void rtlib::ext::Instance::Init(const rtlib::ext::GASHandlePtr& gasHandle) {
+    type                       = InstanceType::GAS;
+    instance.traversableHandle = gasHandle->handle;
+    instance.instanceId        = 0;
+    instance.sbtOffset         = 0;
+    instance.visibilityMask    = 255;
+    instance.flags             = OPTIX_INSTANCE_FLAG_NONE;
+    float transform[12] = {
+        1.0f,0.0f,0.0f,0.0f,
+        0.0f,1.0f,0.0f,0.0f,
+        0.0f,0.0f,1.0f,0.0f
+    };
+    std::memcpy(instance.transform, transform, sizeof(float) * 12);
+    baseGASHandle = gasHandle;
+}
+
+void rtlib::ext::Instance::Init(const rtlib::ext::IASHandlePtr& iasHandle) {
+    type                       = InstanceType::IAS;
+    instance.traversableHandle = iasHandle->handle;
+    instance.instanceId        = 0;
+    instance.sbtOffset         = 0;
+    instance.visibilityMask    = 255;
+    instance.flags             = OPTIX_INSTANCE_FLAG_NONE;
+    float transform[12] = {
+        1.0f,0.0f,0.0f,0.0f,
+        0.0f,1.0f,0.0f,0.0f,
+        0.0f,0.0f,1.0f,0.0f
+    };
+    std::memcpy(instance.transform, transform, sizeof(float) * 12);
+    baseIASHandle = iasHandle;
+}
+
+auto rtlib::ext::Instance::GetSbtOffset() const noexcept -> size_t
+{
+    return instance.sbtOffset;
+}
+
+void rtlib::ext::Instance::SetSbtOffset(size_t offset) noexcept
+{
+    instance.sbtOffset = offset;
+}
+
+auto rtlib::ext::Instance::GetSbtCount() const noexcept -> size_t
+{
+    if (type == InstanceType::GAS) {
+        return baseGASHandle->sbtCount;
+    }
+    else
+    {
+        return baseIASHandle->sbtCount;
+    }
 }

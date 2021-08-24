@@ -6,7 +6,6 @@
 #include <RTLib/Random.h>
 #include <RTLib/VectorFunction.h>
 #include <RTLib/Math.h>
-#include "PathGuiding.h"
 //#define TEST_SKIP_TEXTURE_SAMPLE
 //#define   TEST11_SHOW_EMISSON_COLOR
 #define TEST_MAX_TRACE_DEPTH 4
@@ -31,11 +30,6 @@ struct ParallelLight {
     float3   normal;
     float3 emission;
 };
-struct RadianceRec {
-    float3 origin;
-    float3 direction;
-    float3 data;
-};
 struct RayTraceParams {
     uchar4*                frameBuffer;
     float3*                accumBuffer;
@@ -46,7 +40,6 @@ struct RayTraceParams {
     unsigned int           samplePerALL;
     unsigned int           maxTraceDepth;
     OptixTraversableHandle gasHandle;
-    STree                  sdTree;
     ParallelLight          light;
 };
 struct RayDebugParams {
@@ -57,12 +50,9 @@ struct RayDebugParams {
     uchar4*                texCoordBuffer;
     uchar4*                normalBuffer;
     uchar4*                depthBuffer;
-    uchar4*                sTreeColBuffer;
-    uchar4*                sampleBuffer;
     unsigned int           width;
     unsigned int           height;
     OptixTraversableHandle gasHandle;
-    STree                  sdTree;
     ParallelLight          light;
 };
 struct RayGenData{

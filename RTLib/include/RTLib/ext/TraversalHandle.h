@@ -13,31 +13,40 @@ namespace rtlib{
         public:
             void Build(const rtlib::OPXContext* context, const OptixAccelBuildOptions& accelOptions);
         };
-        using GASHandlePtr = std::shared_ptr<GASHandle>;
+        using  GASHandlePtr = std::shared_ptr<GASHandle>;
+        enum class InstanceType 
+        {
+            GAS = 0,
+            IAS
+        };
+        struct IASHandle;
+        using  IASHandlePtr = std::shared_ptr<IASHandle>;
         struct Instance {
+            InstanceType               type          = InstanceType::GAS;
             OptixInstance              instance      = {};
             std::shared_ptr<GASHandle> baseGASHandle = {};
+            std::shared_ptr<IASHandle> baseIASHandle = {};
         public:
-            void Init(const GASHandlePtr& gasHandle){
-                instance.traversableHandle = gasHandle->handle;
-                instance.instanceId        = 0;
-                instance.sbtOffset         = 0;
-                instance.visibilityMask    = 255;
-                instance.flags             = OPTIX_INSTANCE_FLAG_NONE;
-                float transform[12] = {
-                    1.0f,0.0f,0.0f,0.0f,
-                    0.0f,1.0f,0.0f,0.0f,
-                    0.0f,0.0f,1.0f,0.0f
-                };
-                std::memcpy(instance.transform, transform, sizeof(float) * 12);
-                baseGASHandle = gasHandle;
-            }
+            void Init(const GASHandlePtr& gasHandle);
+            void Init(const IASHandlePtr& iasHandle);
+            auto GetSbtOffset()const noexcept -> size_t;
+            void SetSbtOffset(size_t offset)noexcept;
+            auto GetSbtCount() const noexcept -> size_t;
+        };
+        struct InstanceIndex
+        {
+            InstanceType type;
+            size_t       index;
         };
         struct InstanceSet {
-            CUDAUploadBuffer<OptixInstance>         instanceBuffer = {};
-            std::vector<std::shared_ptr<GASHandle>> baseGASHandles = {};
+            CUDAUploadBuffer<OptixInstance>              instanceBuffer  = {};
+            std::vector<InstanceIndex>                   instanceIndices = {};
+            std::vector<std::shared_ptr<GASHandle>>      baseGASHandles  = {};
+            std::vector<std::shared_ptr<IASHandle>>      baseIASHandles  = {};
         public:
+            void Upload()noexcept;
             void SetInstance(const Instance& instance)noexcept;
+            auto GetInstance(size_t i)const noexcept -> Instance;
         };
         using  InstanceSetPtr = std::shared_ptr<InstanceSet>;
         struct IASHandle {

@@ -73,9 +73,9 @@ namespace test {
 		void Build() {
 			auto& root = m_Nodes.front();
 			root.Build(m_Nodes);
-			float sum = 0.0f;
+			float sum  = 0.0f;
 			for (int i = 0; i < 4; ++i) {
-				sum += root.sums[i];
+				sum   += root.sums[i];
 			}
 			m_Sum = sum;
 		}
@@ -233,7 +233,7 @@ namespace test {
 		}
 		bool ShallSplit(const RTSTreeNode& node, int depth, size_t samplesRequired)const noexcept
 		{
-			std::cout << node.dTree.GetStatisticalWeight() << "vs " << samplesRequired << std::endl;
+			//std::cout << node.dTree.GetStatisticalWeight() << "vs " << samplesRequired << std::endl;
 			return m_Nodes.size() < std::numeric_limits<uint32_t>::max() - 1 && node.dTree.GetStatisticalWeight() > samplesRequired;
 		}
 		void Refine(size_t sTreeTh, int maxMB) {
@@ -343,6 +343,11 @@ namespace test {
 			m_GpuDTreeWrappers.upload(dTreeWrappers);
 			m_GpuDTreeNodesBuilding.upload(dTreeNodes);
 			m_GpuDTreeNodesSampling.upload(dTreeNodes);
+			
+			//std::cout << "Upload(Info)\n";
+			//std::cout << "GpuSTreeNodes          : " << m_GpuSTreeNodes.getSizeInBytes()         / (1024.0f * 1024.0f) << "MB\n";
+			//std::cout << "GpuDTreeNodes(Building): " << m_GpuDTreeNodesBuilding.getSizeInBytes() / (1024.0f * 1024.0f) << "MB\n";
+			//std::cout << "GpuDTreeNodes(Sampling): " << m_GpuDTreeNodesSampling.getSizeInBytes() / (1024.0f * 1024.0f) << "MB\n";
 		}
 		void Download() noexcept{
 			const size_t gpuSTreeNodeCnt = m_CpuSTree.GetNumNodes();
@@ -376,6 +381,9 @@ namespace test {
 				}
 			}
 		}
+		void Clear() {
+			m_CpuSTree = RTSTree(m_CpuSTree.GetAabbMin(), m_CpuSTree.GetAabbMax());
+		}
 		auto GetGpuHandle()const noexcept -> STree {
 			STree sTree;
 			sTree.aabbMax = m_CpuSTree.GetAabbMax();
@@ -387,11 +395,11 @@ namespace test {
 			int iter = std::log2(samplePerAll);
 			size_t sTreeTh = std::pow(2.0, iter) / 4.0f * 4000;
 
-			m_CpuSTree.Refine(sTreeTh,600);
+			m_CpuSTree.Refine(sTreeTh,2000);
 			for (int i = 0; i < m_CpuSTree.GetNumNodes(); ++i) {
 				if (m_CpuSTree.Node(i).isLeaf) {
 					auto dTree = m_CpuSTree.Node(i).dTree;
-					m_CpuSTree.Node(i).dTree.Reset(dTree,20,0.001);
+					m_CpuSTree.Node(i).dTree.Reset(dTree,30,0.001);
 				}
 			}
 		}
@@ -456,12 +464,12 @@ namespace test {
 				}
 				avgStatisticalWeight /= nPoints;
 			}
-			std::cout << "SDTree Build Statistics\n";
-			std::cout << "Depth(STree):      " << m_CpuSTree.GetDepth() << std::endl;
-			std::cout << "Depth(DTree):      " << minDepth       << "," << avgDepth       << "," << maxDepth       << std::endl;
-			std::cout << "Node count:        " << minNodes       << "," << avgNodes       << "," << maxNodes       << std::endl;
-			std::cout << "Mean Radiance:     " << minAvgRadiance << "," << avgAvgRadiance << "," << maxAvgRadiance << std::endl;
-			std::cout << "statisticalWeight: " << minStatisticalWeight << "," << avgStatisticalWeight << "," << maxStatisticalWeight << std::endl;
+			//std::cout << "SDTree Build Statistics\n";
+			//std::cout << "Depth(STree):      " << m_CpuSTree.GetDepth() << std::endl;
+			//std::cout << "Depth(DTree):      " << minDepth       << "," << avgDepth       << "," << maxDepth       << std::endl;
+			//std::cout << "Node count:        " << minNodes       << "," << avgNodes       << "," << maxNodes       << std::endl;
+			//std::cout << "Mean Radiance:     " << minAvgRadiance << "," << avgAvgRadiance << "," << maxAvgRadiance << std::endl;
+			//std::cout << "statisticalWeight: " << minStatisticalWeight << "," << avgStatisticalWeight << "," << maxStatisticalWeight << std::endl;
 		}
 	private:
 		RTSTree                         m_CpuSTree;

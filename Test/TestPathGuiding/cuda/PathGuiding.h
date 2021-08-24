@@ -83,6 +83,7 @@ struct DTreeNode {
 		int        idx = cur->GetChildIdx(p);
 		int      depth = 1;
 		while (depth < PATH_GUIDING_MAX_DEPTH) {
+			//Leafだったら加算する
 			if (cur->IsLeaf(idx)) {
 				cur->AddSumAtomic(idx, irradiance);
 				break;
@@ -96,25 +97,25 @@ struct DTreeNode {
 	template<typename RNG>
 	RTLIB_INLINE RTLIB_HOST_DEVICE auto Sample(RNG& rng, const DTreeNode* nodes)const noexcept -> float2 {
 		const DTreeNode* cur = this;
-		int    depth = 1;
-		float2 result = make_float2(0.0f);
-		float  size = 1.0f;
+		int    depth         = 1;
+		float2 result        = make_float2(0.0f);
+		float  size          = 1.0f;
 		while (depth < PATH_GUIDING_MAX_DEPTH) {
-			int   idx = 0;
-			float topLeft = sums[0];
-			float topRight = sums[1];
-			float partial = sums[0] + sums[2];
-			float total = GetSumOfAll();
+			int   idx        = 0;
+			float topLeft    = sums[0];
+			float topRight   = sums[1];
+			float partial    = sums[0] + sums[2];
+			float total      = GetSumOfAll();
 
 			if (total <= 0.0f) {
 				result += rtlib::random_float2(rng) * size;
+				break;
 			}
-
+			//(s0+s2)/(s0+s1+s2+s3)
 			float boundary = partial / total;
 			auto  origin = make_float2(0.0f);
 
 			float sample = rtlib::random_float1(rng);
-
 			if (sample < boundary)
 			{
 				sample /= boundary;
@@ -122,9 +123,9 @@ struct DTreeNode {
 			}
 			else
 			{
-				partial = total - partial;
+				partial  = total - partial;
 				origin.x = 0.5f;
-				sample = (sample - boundary) / (1.0f - boundary);
+				sample   = (sample - boundary) / (1.0f - boundary);
 				boundary = topRight / partial;
 				idx |= (1 << 0);
 			}
@@ -147,8 +148,8 @@ struct DTreeNode {
 			}
 
 			result += size * origin;
-			size *= 0.5f;
-			cur = &nodes[cur->children[idx]];
+			size   *= 0.5f;
+			cur     = &nodes[cur->children[idx]];
 			++depth;
 		}
 		return result;
@@ -236,6 +237,7 @@ struct DTree {
 		if (GetMean() <= 0.0f) {
 			return 1.0f / (4.0f * RTLIB_M_PI);
 		}
+
 		return nodes[0].Pdf(p, nodes) / (4.0f * RTLIB_M_PI);
 	}
 	DTreeNode* nodes;
@@ -397,7 +399,7 @@ struct TraceVertex {
 		if (radiance.z * woPdf > 1e-5f) {
 			localRadiance.z = radiance.z / throughPut.z;
 		}
-       // printf("localRadiance=(%f,%f,%f)\n",localRadiance.x,localRadiance.y,localRadiance.z);
+       //printf("localRadiance=(%f,%f,%f)\n",localRadiance.x,localRadiance.y,localRadiance.z);
 		float3 product = localRadiance * bsdfVal;
 		float localRadianceAvg = (localRadiance.x + localRadiance.y + localRadiance.z) / 3.0f;
 		float productAvg = (product.x + product.y + product.z) / 3.0f;
