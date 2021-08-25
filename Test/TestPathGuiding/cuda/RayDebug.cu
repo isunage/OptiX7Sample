@@ -9,7 +9,6 @@ struct RadiancePRD {
     float2        texCoord;
     float3        normal;
     float3        sTreeCol;
-    float         sample;
 };
 extern "C" {
     __constant__ RayDebugParams params;
@@ -53,9 +52,9 @@ extern "C" __global__ void     __raygen__debug(){
     auto texCoordColor = make_float3(prd.texCoord.x,prd.texCoord.y,(1.0f-(prd.texCoord.x+prd.texCoord.y)/2.0f));
     auto normalColor   = make_float3((prd.normal.x+1.0f)/2.0f,(prd.normal.y+1.0f)/2.0f,(prd.normal.z+1.0f)/2.0f);
     auto depthColor    = prd.distance / 400.0f;
-    if (idx.x == 100 && idx.y == 100) {
-        printf("prd.sample=%lf\n", prd.sample);
-    }
+    //if (idx.x == 100 && idx.y == 100) {
+      // printf("prd.sample=%lf\n", prd.sample);
+    //}
    // printf("%f, %lf\n", texCoord.x, texCoord.y);
     params.diffuseBuffer[params.width * idx.y + idx.x]  = make_uchar4(static_cast<unsigned char>(255.99 * prd.diffuse.x ), static_cast<unsigned char>(255.99 * prd.diffuse.y ), static_cast<unsigned char>(255.99 * prd.diffuse.z ), 255);
     params.specularBuffer[params.width * idx.y + idx.x] = make_uchar4(static_cast<unsigned char>(255.99 * prd.specular.x), static_cast<unsigned char>(255.99 * prd.specular.y), static_cast<unsigned char>(255.99 * prd.specular.z), 255);
@@ -66,7 +65,6 @@ extern "C" __global__ void     __raygen__debug(){
     params.sTreeColBuffer[params.width * idx.y + idx.x] = make_uchar4(static_cast<unsigned char>(255.99 * prd.sTreeCol.x) , static_cast<unsigned char>(255.99 * prd.sTreeCol.y) , static_cast<unsigned char>(255.99 * prd.sTreeCol.z), 255);
     params.normalBuffer[params.width * idx.y + idx.x]   = make_uchar4(static_cast<unsigned char>(255.99 * normalColor.x)  , static_cast<unsigned char>(255.99 * normalColor.y)  , static_cast<unsigned char>(255.99 * normalColor.z), 255);
     params.depthBuffer[params.width * idx.y + idx.x]    = make_uchar4(static_cast<unsigned char>(255.99 * depthColor)     , static_cast<unsigned char>(255.99 * depthColor)     , static_cast<unsigned char>(255.99 * depthColor), 255);
-    params.sampleBuffer[params.width * idx.y + idx.x]   = make_uchar4(static_cast<unsigned char>(255.99 * prd.sample)     , static_cast<unsigned char>(255.99 * prd.sample)     , static_cast<unsigned char>(255.99 * prd.sample), 255);
 }
 extern "C" __global__ void       __miss__debug(){
     auto* msData = reinterpret_cast<MissData*>(optixGetSbtDataPointer());
@@ -92,7 +90,7 @@ extern "C" __global__ void __closesthit__debug(){
     auto transmit    = hgData->transmit;
     auto emission    = hgData->getEmissionColor(t);
     float3 sTreeSize;
-    auto dTree = params.sdTree.GetDTreeWrapper(p, sTreeSize);
+    auto dTree       = params.sdTree.GetDTreeWrapper(p, sTreeSize);
     //printf("%f %f\n",t0.x,t0.y);
     auto prd         = getRadiancePRD();
     prd->diffuse     = diffuse;
@@ -103,15 +101,6 @@ extern "C" __global__ void __closesthit__debug(){
     prd->sTreeCol    = sTreeSize;
     prd->texCoord    = t;
     prd->normal      = normal;
-    prd->sample      = 0.0f;
-    rtlib::SplitMin64 spMin(0);
-    rtlib::Xorshift32 xor32(spMin.next());
-    for (int i = 0; i < 1000; ++i) {
-        auto dir     = dTree->Sample(xor32);
-        //dir
-        prd->sample +=  1.0f / (4.0f * dTree->Pdf(dir)* RTLIB_M_PI);
-    }
-    prd->sample /= 1000.0f;
 }
 extern "C" __global__ void     __anyhit__ah(){
     auto* hgData = reinterpret_cast<HitgroupData*>(optixGetSbtDataPointer());

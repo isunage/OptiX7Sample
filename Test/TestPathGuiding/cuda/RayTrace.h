@@ -58,7 +58,6 @@ struct RayDebugParams {
     uchar4*                normalBuffer;
     uchar4*                depthBuffer;
     uchar4*                sTreeColBuffer;
-    uchar4*                sampleBuffer;
     unsigned int           width;
     unsigned int           height;
     OptixTraversableHandle gasHandle;

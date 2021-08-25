@@ -3,9 +3,11 @@
 #include "../cuda/PathGuiding.h"
 #include <vector>
 #include <iterator>
+#include <fstream>
 #include <stack>
 #include <algorithm>
 #include <functional>
+#include <stb_image_write.h>
 #include <RTLib/CUDA.h>
 #include <RTLib/VectorFunction.h>
 namespace test {
@@ -105,6 +107,48 @@ namespace test {
 			const float factor = 1.0f / (4.0f * RTLIB_M_PI * m_StatisticalWeight);
 			return factor * m_Sum;
 		}
+
+		template<typename RNG>
+		auto Sample(RNG& rng)const noexcept -> float2 {
+			return m_Nodes[0].Sample(rng, m_Nodes.data());
+		}
+		auto Pdf(float2 dir)const noexcept -> float {
+			return m_Nodes[0].Pdf(dir,m_Nodes.data());
+		}
+		void Dump(std::fstream& jsonFile)const noexcept {
+			jsonFile << "{\n";
+			jsonFile << "\"sum\"              : " << m_Sum               << ",\n";
+			jsonFile << "\"statisticalWeight\": " << m_StatisticalWeight << ",\n";
+			jsonFile << "\"maxDepth\"         : " << m_MaxDepth          << ",\n";
+			jsonFile << "\"root\"             :  \n";
+			m_Nodes[0].Dump(jsonFile, m_Nodes);
+			jsonFile << "\n";
+			jsonFile << "}";
+		}
+		void SavePDFImage(int dTreeId)const {
+			int width  = 256;
+			int height = 256;
+			std::unique_ptr<unsigned char[]> pixels(new unsigned char[width * height * 4]);
+			for (int j = 0; j < height; ++j) {
+				for (int i = 0; i < width; ++i) {
+					auto dir2 = make_float2((float)i / (float)width, (float)j / (float)height);
+					auto pdf  = m_Nodes[0].Pdf(dir2, m_Nodes.data());
+					if (pdf <= 0.0f) {
+						pixels[4 * (width * j + i) + 0] = 0;
+						pixels[4 * (width * j + i) + 1] = 0;
+						pixels[4 * (width * j + i) + 2] = 0;
+						pixels[4 * (width * j + i) + 3] = 255;
+					}
+					else {
+						pixels[4 * (width * j + i) + 0] = 0;
+						pixels[4 * (width * j + i) + 1] = 0;
+						pixels[4 * (width * j + i) + 2] = static_cast<unsigned char>(255.99f*1.0f/pdf);
+						pixels[4 * (width * j + i) + 3] = 255;
+					}
+				}
+			}
+			stbi_write_png((std::string("images/dTree") + std::to_string(dTreeId) + ".png").c_str(), width, height, 4, pixels.get(), 4 * width);
+		}
 		auto Node(size_t idx)const noexcept -> const RTDTreeNode& {
 			return m_Nodes[idx];
 		}
@@ -163,6 +207,27 @@ namespace test {
 				result = std::max(result, 1+nodes[children[i]].GetDepth(nodes));
 			}
 			return result;
+		}
+		void Dump(std::fstream& jsonFile, size_t sTreeNodeIdx, const std::vector<RTSTreeNode>& nodes)const noexcept {
+			jsonFile << "{\n";
+			jsonFile << "\"isLeaf\"  : " << (this->isLeaf ? "true" : "false") << ",\n";
+			jsonFile << "\"axis\"    : " << (int)this->axis << ",\n";
+			if (!this->isLeaf) {
+				jsonFile << "\"children\": [\n";
+				nodes[this->children[0]].Dump(jsonFile, children[0], nodes);
+				jsonFile << ",\n";
+				nodes[this->children[1]].Dump(jsonFile, children[1], nodes);
+				jsonFile << "\n";
+
+				jsonFile << "]\n";
+			}
+			else {
+				jsonFile << "\"dTree\": \"" << "dTree" << sTreeNodeIdx << "\"";
+				if (dTree.GetMean() > 0.0f) {
+					dTree.SavePDFImage(sTreeNodeIdx);
+				}
+			}
+			jsonFile << "}";
 		}
 		RTDTree                  dTree;
 		bool                     isLeaf;
@@ -280,6 +345,15 @@ namespace test {
 		auto GetAabbMax()const -> float3 {
 			return m_AabbMax;
 		}
+		void Dump(std::fstream& jsonFile)const noexcept{
+			jsonFile << "{\n";
+			jsonFile << "\"aabbMin\" : [" << m_AabbMin.x << ", " << m_AabbMin.y << ", " << m_AabbMin.z << "],\n";
+			jsonFile << "\"aabbMax\" : [" << m_AabbMax.x << ", " << m_AabbMax.y << ", " << m_AabbMax.z << "],\n";
+			jsonFile << "\"root\"    : \n";
+			m_Nodes[0].Dump(jsonFile,0, m_Nodes);
+			jsonFile << "\n";
+			jsonFile << "}\n";
+		}
 	private:
 		std::vector<RTSTreeNode> m_Nodes;
 		float3                   m_AabbMin;
@@ -344,10 +418,10 @@ namespace test {
 			m_GpuDTreeNodesBuilding.upload(dTreeNodes);
 			m_GpuDTreeNodesSampling.upload(dTreeNodes);
 			
-			//std::cout << "Upload(Info)\n";
-			//std::cout << "GpuSTreeNodes          : " << m_GpuSTreeNodes.getSizeInBytes()         / (1024.0f * 1024.0f) << "MB\n";
-			//std::cout << "GpuDTreeNodes(Building): " << m_GpuDTreeNodesBuilding.getSizeInBytes() / (1024.0f * 1024.0f) << "MB\n";
-			//std::cout << "GpuDTreeNodes(Sampling): " << m_GpuDTreeNodesSampling.getSizeInBytes() / (1024.0f * 1024.0f) << "MB\n";
+			std::cout << "Upload(Info)\n";
+			std::cout << "GpuSTreeNodes          : " << m_GpuSTreeNodes.getSizeInBytes()         / (1024.0f * 1024.0f) << "MB\n";
+			std::cout << "GpuDTreeNodes(Building): " << m_GpuDTreeNodesBuilding.getSizeInBytes() / (1024.0f * 1024.0f) << "MB\n";
+			std::cout << "GpuDTreeNodes(Sampling): " << m_GpuDTreeNodesSampling.getSizeInBytes() / (1024.0f * 1024.0f) << "MB\n";
 		}
 		void Download() noexcept{
 			const size_t gpuSTreeNodeCnt = m_CpuSTree.GetNumNodes();
@@ -392,10 +466,13 @@ namespace test {
 			return sTree;
 		}
 		void Reset(int samplePerAll) {
-			int iter = std::log2(samplePerAll);
-			size_t sTreeTh = std::pow(2.0, iter) / 4.0f * 4000;
+			if (samplePerAll <= 0) {
+				return;
+			}
+			int iter       = std::log2(samplePerAll);
+			size_t sTreeTh = (std::pow(2.0, iter) / 4.0f )* 4000;
 
-			m_CpuSTree.Refine(sTreeTh,2000);
+			m_CpuSTree.Refine(sTreeTh,1000);
 			for (int i = 0; i < m_CpuSTree.GetNumNodes(); ++i) {
 				if (m_CpuSTree.Node(i).isLeaf) {
 					auto dTree = m_CpuSTree.Node(i).dTree;
@@ -428,6 +505,24 @@ namespace test {
 			for (int i = 0; i < m_CpuSTree.GetNumNodes(); ++i) {
 				if (m_CpuSTree.Node(i).isLeaf) {
 					auto& dTree = m_CpuSTree.Node(i).dTree;
+					{
+						//rtlib::Xorshift32 xor32(1);
+						//auto val = 0.0f;
+						//for (int i = 0; i < 100000; ++i) {
+							//auto dir = dTree.Sample(xor32);
+							//auto pdf = dTree.Pdf(dir);
+							//val += (pdf <= 0.0f) ? 0.0f : (1.0f / pdf);
+						//}
+						//val /= 100000.0f;
+						//if (val >= 0.4f && val <= 0.6f) {
+							//dTree.SavePDFImage(0);
+							//for (auto i = 0; i < dTree.GetNumNodes(); ++i) {
+								//std::cout << i << "," << dTree.Node(i).GetSum(0) << "," << dTree.Node(i).GetSum(1) << "," << dTree.Node(i).GetSum(2) << "," << dTree.Node(i).GetSum(3) << ",";
+								//std::cout << dTree.Node(i).GetChild(0) << "," << dTree.Node(i).GetChild(1) << "," << dTree.Node(i).GetChild(2) << "," << dTree.Node(i).GetChild(3) << std::endl;
+							//}
+						//}
+						//std::cout << "val=" << val << std::endl;
+					}
 					const int depth = dTree.GetDepth();
 					maxDepth = std::max<int>(maxDepth, depth);
 					minDepth = std::min<int>(minDepth, depth);
@@ -470,6 +565,14 @@ namespace test {
 			//std::cout << "Node count:        " << minNodes       << "," << avgNodes       << "," << maxNodes       << std::endl;
 			//std::cout << "Mean Radiance:     " << minAvgRadiance << "," << avgAvgRadiance << "," << maxAvgRadiance << std::endl;
 			//std::cout << "statisticalWeight: " << minStatisticalWeight << "," << avgStatisticalWeight << "," << maxStatisticalWeight << std::endl;
+		}
+		void Dump(std::string filename) {
+			std::fstream jsonFile(filename, std::ios::binary | std::ios::out);
+			jsonFile << "{\n";
+			jsonFile << "\"STree\":\n";
+			m_CpuSTree.Dump(jsonFile);
+			jsonFile << "}\n";
+			jsonFile.close();
 		}
 	private:
 		RTSTree                         m_CpuSTree;

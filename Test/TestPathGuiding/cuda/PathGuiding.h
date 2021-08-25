@@ -4,17 +4,18 @@
 #include <RTLib/Random.h>
 #include <RTLib/VectorFunction.h>
 #ifndef __CUDA_ARCH__
+#include <fstream>
 #include <stack>
 #include <vector>
 #endif
-#define PATH_GUIDING_MAX_DEPTH 64
+#define PATH_GUIDING_MAX_DEPTH 128
 //全部を実装するのは困難...
 //ではどうするか->最も実装しやすい方法で実装する
 //フィルタ...Nearest(点で扱った方が再帰が容易)
 struct DTreeNode {
 	RTLIB_INLINE RTLIB_HOST_DEVICE DTreeNode()noexcept {
 		for (int i = 0; i < 4; ++i) {
-			children[i] = 0.0f;
+			children[i] = 0;
 			sums[i] = 0.0f;
 		}
 	}
@@ -102,10 +103,10 @@ struct DTreeNode {
 		float  size          = 1.0f;
 		while (depth < PATH_GUIDING_MAX_DEPTH) {
 			int   idx        = 0;
-			float topLeft    = sums[0];
-			float topRight   = sums[1];
-			float partial    = sums[0] + sums[2];
-			float total      = GetSumOfAll();
+			float topLeft    = cur->sums[0];
+			float topRight   = cur->sums[1];
+			float partial    = cur->sums[0] + cur->sums[2];
+			float total      = cur->GetSumOfAll();
 
 			if (total <= 0.0f) {
 				result += rtlib::random_float2(rng) * size;
@@ -113,12 +114,11 @@ struct DTreeNode {
 			}
 			//(s0+s2)/(s0+s1+s2+s3)
 			float boundary = partial / total;
-			auto  origin = make_float2(0.0f);
-
-			float sample = rtlib::random_float1(rng);
+			auto  origin   = make_float2(0.0f);
+			float sample   = rtlib::random_float1(rng);
 			if (sample < boundary)
 			{
-				sample /= boundary;
+				sample  /= boundary;
 				boundary = topLeft / partial;
 			}
 			else
@@ -162,7 +162,27 @@ struct DTreeNode {
 		int              idx = cur->GetChildIdx(p);
 		int            depth = 1;
 		while (depth < PATH_GUIDING_MAX_DEPTH) {
-			const auto factor = 4.0f * sums[idx] / GetSumOfAll();
+			auto total = cur->GetSumOfAll();
+			if (total <= 0.0f) {
+				result = 0.0f;
+				break;
+			}
+			if (cur->sums[idx]<=0.0f||cur->sums[idx] == total){
+				break;
+			}
+			int idx2 = idx > 1? (idx%2):(idx+2);
+			auto partial = cur->sums[idx]+cur->sums[idx2];
+			if (cur->sums[idx2]<=0.0f||total-partial<=0.0f){
+				result *= 2.0f * cur->sums[idx]/total;
+				break;
+			}
+			if(isnan(cur->sums[idx])){
+				printf("sums = (%f, %f, %f, %f)\n",cur->sums[0],cur->sums[1],cur->sums[2],cur->sums[3]);
+			}
+			if(cur==nullptr){
+				printf("cur = nullptr\n");
+			}
+			const auto factor = 4.0f * cur->sums[idx] / total;
 			result *= factor;
 			if (cur->IsLeaf(idx)) {
 				break;
@@ -170,6 +190,9 @@ struct DTreeNode {
 			cur = &nodes[cur->children[idx]];
 			idx = cur->GetChildIdx(p);
 			++depth;
+		}
+		if(isnan(result)){
+			printf("result is nan\n");
 		}
 		return result;
 	}
@@ -193,6 +216,38 @@ struct DTreeNode {
 			}
 			sums[i] = sum;
 		}
+	}
+	void Dump(std::fstream& jsonFile, const std::vector<DTreeNode>& nodes)const noexcept
+	{
+		jsonFile << "{\n";
+		jsonFile << "\"sums\"             : [" << sums[0] << ", " << sums[1] << ", " <<sums[2] <<", " << sums[3]  << "],\n";
+		jsonFile << "\"children\"         : [\n";
+		if (!IsLeaf(0)){
+			nodes[children[0]].Dump(jsonFile,nodes);
+			jsonFile << ",\n";
+		}else{
+			jsonFile << "{},\n";
+		}
+		if (!IsLeaf(1)){
+			nodes[children[1]].Dump(jsonFile,nodes);
+			jsonFile << ",\n";
+		}else{
+			jsonFile << "{},\n";
+		}
+		if (!IsLeaf(2)){
+			nodes[children[2]].Dump(jsonFile,nodes);
+			jsonFile << ",\n";
+		}else{
+			jsonFile << "{},\n";
+		}
+		if (!IsLeaf(3)){
+			nodes[children[3]].Dump(jsonFile,nodes);
+			jsonFile << "\n";
+		}else{
+			jsonFile << "{}\n";
+		}
+		jsonFile << "]\n";
+		jsonFile << "}";
 	}
 #endif
 	float          sums[4];

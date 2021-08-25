@@ -42,6 +42,114 @@ namespace test {
 		}
 	}
 }
+static void TestPathGuide()
+{
+	constexpr size_t N = 10000;
+	std::random_device rnd;
+	std::mt19937 mt(rnd());
+	rtlib::Xorshift32 xor32(mt());
+	std::vector<DTreeNode> nodes = {};
+	int index = 0;
+	nodes.emplace_back();
+	nodes[index].sums[0]     = 5266.26;
+	nodes[index].sums[1]     = 0;
+	nodes[index].sums[2]     = 1724.18;
+	nodes[index].sums[3]     = 0;
+	nodes[index].children[0] = 1;//1
+	nodes[index].children[1] = 2;//0
+	nodes[index].children[2] = 3;//0.7
+	nodes[index].children[3] = 4;//0
+	++index;//1->OK
+	nodes.emplace_back();
+	nodes[index].sums[0] = 1598.15;
+	nodes[index].sums[1] = 3537.22;
+	nodes[index].sums[2] = 95.4294;
+	nodes[index].sums[3] = 35.4652;
+	nodes[index].children[0] = 0;
+	nodes[index].children[1] = 0;
+	nodes[index].children[2] = 0;
+	nodes[index].children[3] = 0;
+	++index;//2->0
+	nodes.emplace_back();
+	nodes[index].sums[0] = 0;
+	nodes[index].sums[1] = 0;
+	nodes[index].sums[2] = 0;
+	nodes[index].sums[3] = 0;
+	nodes[index].children[0] = 0;
+	nodes[index].children[1] = 0;
+	nodes[index].children[2] = 0;
+	nodes[index].children[3] = 0;
+	++index;//3->OK
+	nodes.emplace_back();
+	nodes[index].sums[0] = 112.208;
+	nodes[index].sums[1] = 72.1011;
+	nodes[index].sums[2] = 849.374;
+	nodes[index].sums[3] = 690.493;
+	nodes[index].children[0] = 5;
+	nodes[index].children[1] = 6;
+	nodes[index].children[2] = 7;
+	nodes[index].children[3] = 8;
+	++index;//4->OK
+	nodes.emplace_back();
+	nodes[index].sums[0] = 0;
+	nodes[index].sums[1] = 0;
+	nodes[index].sums[2] = 0;
+	nodes[index].sums[3] = 0;
+	nodes[index].children[0] = 0;
+	nodes[index].children[1] = 0;
+	nodes[index].children[2] = 0;
+	nodes[index].children[3] = 0;
+	++index;//5->OK
+	nodes.emplace_back();
+	nodes[index].sums[0] = 69.0228;
+	nodes[index].sums[1] = 43.1848;
+	nodes[index].sums[2] = 0;
+	nodes[index].sums[3] = 0;
+	nodes[index].children[0] = 0;
+	nodes[index].children[1] = 0;
+	nodes[index].children[2] = 0;
+	nodes[index].children[3] = 0;
+	++index;//6->OK
+	nodes.emplace_back();
+	nodes[index].sums[0] = 72.1011;
+	nodes[index].sums[1] = 0;
+	nodes[index].sums[2] = 0;
+	nodes[index].sums[3] = 0;
+	nodes[index].children[0] = 0;
+	nodes[index].children[1] = 0;
+	nodes[index].children[2] = 0;
+	nodes[index].children[3] = 0;
+	++index;//7->OK
+	nodes.emplace_back();
+	nodes[index].sums[0] = 409.951;
+	nodes[index].sums[1] = 71.4979;
+	nodes[index].sums[2] = 131.178;
+	nodes[index].sums[3] = 236.747;
+	nodes[index].children[0] = 0;
+	nodes[index].children[1] = 0;
+	nodes[index].children[2] = 0;
+	nodes[index].children[3] = 0;
+	++index;//8->OK
+	nodes.emplace_back();
+	nodes[index].sums[0] = 225.099;
+	nodes[index].sums[1] = 87.5592;
+	nodes[index].sums[2] = 221.741;
+	nodes[index].sums[3] = 156.094;
+	nodes[index].children[0] = 0;
+	nodes[index].children[1] = 0;
+	nodes[index].children[2] = 0;
+	nodes[index].children[3] = 0;
+	float res = 0.0f;
+	for (auto i = 0; i < N; ++i) {
+		auto dir = nodes[0].Sample(xor32, nodes.data());
+		//4.0f vs 0.0f
+		auto pdf = nodes[0].Pdf(dir, nodes.data());
+		//std::cout << pdf << std::endl;
+		res += (pdf <= 0.0f) ? 0.0f:(1.0f / pdf);
+	}
+	res /= N;
+	std::cout << res << "\n";
+}
 class Test20Application {
 private:
 	static inline constexpr uint32_t         kDefaultSamplePerLaunch     = 1;
@@ -282,19 +390,18 @@ public:
 	}
 	void InitFrameResources() {
 		RTLIB_CUDA_CHECK(cudaStreamCreate(&m_Stream));
-		m_FrameBuffer              = rtlib::CUDABuffer<uchar4>(std::vector<uchar4>(m_FbWidth * m_FbHeight));
-		m_ReferBuffer              = rtlib::CUDABuffer<uchar4>(std::vector<uchar4>(m_FbWidth * m_FbHeight));
-		m_DebugBuffers["Diffuse"]  = rtlib::CUDABuffer<uchar4>(std::vector<uchar4>(m_FbWidth * m_FbHeight));
-		m_DebugBuffers["Specular"] = rtlib::CUDABuffer<uchar4>(std::vector<uchar4>(m_FbWidth * m_FbHeight));
-		m_DebugBuffers["Transmit"] = rtlib::CUDABuffer<uchar4>(std::vector<uchar4>(m_FbWidth * m_FbHeight));
-		m_DebugBuffers["Emission"] = rtlib::CUDABuffer<uchar4>(std::vector<uchar4>(m_FbWidth * m_FbHeight));
-		m_DebugBuffers["TexCoord"] = rtlib::CUDABuffer<uchar4>(std::vector<uchar4>(m_FbWidth * m_FbHeight));
-		m_DebugBuffers["Normal"]   = rtlib::CUDABuffer<uchar4>(std::vector<uchar4>(m_FbWidth * m_FbHeight));
-		m_DebugBuffers["Depth"]    = rtlib::CUDABuffer<uchar4>(std::vector<uchar4>(m_FbWidth * m_FbHeight));
-		m_DebugBuffers["STree"]    = rtlib::CUDABuffer<uchar4>(std::vector<uchar4>(m_FbWidth * m_FbHeight));
-		m_DebugBuffers["Sample"]   = rtlib::CUDABuffer<uchar4>(std::vector<uchar4>(m_FbWidth * m_FbHeight));
-		m_FrameBufferGL = rtlib::GLInteropBuffer<uchar4>(m_FbWidth * m_FbHeight, GL_PIXEL_UNPACK_BUFFER, GL_DYNAMIC_DRAW, m_Stream);
-		m_DebugBufferGLs["Diffuse"] = rtlib::GLInteropBuffer<uchar4>(m_FbWidth * m_FbHeight, GL_PIXEL_UNPACK_BUFFER, GL_DYNAMIC_DRAW, m_Stream);
+		m_FrameBuffer                = rtlib::CUDABuffer<uchar4>(std::vector<uchar4>(m_FbWidth * m_FbHeight));
+		m_ReferBuffer                = rtlib::CUDABuffer<uchar4>(std::vector<uchar4>(m_FbWidth * m_FbHeight));
+		m_DebugBuffers["Diffuse"]    = rtlib::CUDABuffer<uchar4>(std::vector<uchar4>(m_FbWidth * m_FbHeight));
+		m_DebugBuffers["Specular"]   = rtlib::CUDABuffer<uchar4>(std::vector<uchar4>(m_FbWidth * m_FbHeight));
+		m_DebugBuffers["Transmit"]   = rtlib::CUDABuffer<uchar4>(std::vector<uchar4>(m_FbWidth * m_FbHeight));
+		m_DebugBuffers["Emission"]   = rtlib::CUDABuffer<uchar4>(std::vector<uchar4>(m_FbWidth * m_FbHeight));
+		m_DebugBuffers["TexCoord"]   = rtlib::CUDABuffer<uchar4>(std::vector<uchar4>(m_FbWidth * m_FbHeight));
+		m_DebugBuffers["Normal"]     = rtlib::CUDABuffer<uchar4>(std::vector<uchar4>(m_FbWidth * m_FbHeight));
+		m_DebugBuffers["Depth"]      = rtlib::CUDABuffer<uchar4>(std::vector<uchar4>(m_FbWidth * m_FbHeight));
+		m_DebugBuffers["STree"]      = rtlib::CUDABuffer<uchar4>(std::vector<uchar4>(m_FbWidth * m_FbHeight));
+		m_FrameBufferGL              = rtlib::GLInteropBuffer<uchar4>(m_FbWidth * m_FbHeight, GL_PIXEL_UNPACK_BUFFER, GL_DYNAMIC_DRAW, m_Stream);
+		m_DebugBufferGLs["Diffuse"]  = rtlib::GLInteropBuffer<uchar4>(m_FbWidth * m_FbHeight, GL_PIXEL_UNPACK_BUFFER, GL_DYNAMIC_DRAW, m_Stream);
 		m_DebugBufferGLs["Specular"] = rtlib::GLInteropBuffer<uchar4>(m_FbWidth * m_FbHeight, GL_PIXEL_UNPACK_BUFFER, GL_DYNAMIC_DRAW, m_Stream);
 		m_DebugBufferGLs["Transmit"] = rtlib::GLInteropBuffer<uchar4>(m_FbWidth * m_FbHeight, GL_PIXEL_UNPACK_BUFFER, GL_DYNAMIC_DRAW, m_Stream);
 		m_DebugBufferGLs["Emission"] = rtlib::GLInteropBuffer<uchar4>(m_FbWidth * m_FbHeight, GL_PIXEL_UNPACK_BUFFER, GL_DYNAMIC_DRAW, m_Stream);
@@ -302,7 +409,6 @@ public:
 		m_DebugBufferGLs["Normal"]   = rtlib::GLInteropBuffer<uchar4>(m_FbWidth * m_FbHeight, GL_PIXEL_UNPACK_BUFFER, GL_DYNAMIC_DRAW, m_Stream);
 		m_DebugBufferGLs["Depth"]    = rtlib::GLInteropBuffer<uchar4>(m_FbWidth * m_FbHeight, GL_PIXEL_UNPACK_BUFFER, GL_DYNAMIC_DRAW, m_Stream);
 		m_DebugBufferGLs["STree"]    = rtlib::GLInteropBuffer<uchar4>(m_FbWidth * m_FbHeight, GL_PIXEL_UNPACK_BUFFER, GL_DYNAMIC_DRAW, m_Stream);
-		m_DebugBufferGLs["Sample"]   = rtlib::GLInteropBuffer<uchar4>(m_FbWidth * m_FbHeight, GL_PIXEL_UNPACK_BUFFER, GL_DYNAMIC_DRAW, m_Stream);
 		m_AccumBuffer = rtlib::CUDABuffer<float3>(std::vector<float3>(m_FbWidth * m_FbHeight));
 		m_SeedBuffer = rtlib::CUDABuffer<unsigned int>();
 		{
@@ -702,6 +808,7 @@ public:
 					m_UpdateLight = false;
 					m_FlushFrame = true;
 				}
+				this->OnUpdateSDTree();
 				if (m_FlushFrame) {
 					this->OnFlushFrame();
 					m_FlushFrame = false;
@@ -712,10 +819,10 @@ public:
 					this->OnUpdateParams();
 					m_UpdateParams = false;
 				}
+				
 				this->OnLaunch();
 				this->OnRenderFrame();
 				this->OnRenderImGui();
-				this->OnBuildSDTree();
 				this->OnUpdateTime();
 				this->OnGetInputs();
 				this->OnShowRMSE();
@@ -838,6 +945,42 @@ private:
 		m_Tracer2.GetDebugPipeline()->GetHitGRecordBuffer("Def")->GetData(m_LightHgRecIndex).diffuse  = m_Light.emission;
 		m_Tracer2.GetDebugPipeline()->GetHitGRecordBuffer("Def")->Upload();
 	}
+	void OnUpdateSDTree() {
+		bool isDownLoad   = false;
+		bool shouldUpload = false;
+		if (m_DumpSDTree) {
+			if (!isDownLoad) {
+				m_SdTree->Download();
+				m_SdTree->Build();
+				isDownLoad = true;
+			}
+			m_SdTree->Dump("SDTree.json");
+		}
+		if (m_ClearSDTree) {
+			m_SdTree->Clear();
+			shouldUpload  = true;
+		}
+		if (m_BuildSDTree) {
+			if (!isDownLoad) {
+				m_SdTree->Download();
+				isDownLoad = true;
+			}
+			m_SdTree->Build();
+			shouldUpload   = true;
+		}
+		if (m_ResetSDTree) {
+			if (!isDownLoad) {
+				m_SdTree->Download();
+				isDownLoad = true;
+			}
+			m_SdTree->Reset(m_SamplePerAll);
+			shouldUpload   = true;
+		}
+		if (shouldUpload) {
+			m_SdTree->Upload();
+		}
+		m_ClearSDTree = m_BuildSDTree = m_ResetSDTree = m_DumpSDTree = false;
+	}
 	void OnFlushFrame() {
 		//Frame�̍Ď擾
 		m_FrameBufferGL.upload(std::vector<uchar4>(m_FbWidth * m_FbHeight));
@@ -874,7 +1017,6 @@ private:
 			params.normalBuffer   = m_DebugBuffers["Normal"].getDevicePtr();
 			params.depthBuffer    = m_DebugBuffers["Depth"].getDevicePtr();
 			params.sTreeColBuffer = m_DebugBuffers["STree"].getDevicePtr();
-			params.sampleBuffer   = m_DebugBuffers["Sample"].getDevicePtr();
 			params.width          = m_FbWidth;
 			params.height         = m_FbHeight;
 			params.gasHandle      = m_Tracer2.GetTLAS()->handle;
@@ -908,7 +1050,6 @@ private:
 			params.normalBuffer   = m_DebugBufferGLs["Normal"].map();
 			params.depthBuffer    = m_DebugBufferGLs["Depth"].map();
 			params.sTreeColBuffer = m_DebugBufferGLs["STree"].map();
-			params.sampleBuffer   = m_DebugBufferGLs["Sample"].map();
 			curPipeline->Launch(m_FbWidth, m_FbHeight, "Def", m_Stream);
 			m_DebugBufferGLs["Diffuse"].unmap();
 			m_DebugBufferGLs["Specular"].unmap();
@@ -918,7 +1059,6 @@ private:
 			m_DebugBufferGLs["Normal"].unmap();
 			m_DebugBufferGLs["Depth"].unmap();
 			m_DebugBufferGLs["STree"].unmap();
-			m_DebugBufferGLs["Sample"].unmap();
 		}
 
 	}
@@ -943,7 +1083,7 @@ private:
 				ImGui::PushStyleColor(ImGuiCol_TitleBgActive, ImVec4(0.0f, 0.7f, 0.2f, 1.0f));
 				ImGui::PushStyleColor(ImGuiCol_TitleBg, ImVec4(0.0f, 0.3f, 0.1f, 1.0f));
 				ImGui::SetNextWindowPos(ImVec2(20, 20), ImGuiCond_Once);
-				ImGui::SetNextWindowSize(ImVec2(400, 300), ImGuiCond_Once);
+				ImGui::SetNextWindowSize(ImVec2(500, 500), ImGuiCond_Once);
 
 				ImGui::Begin("TraceConfig", nullptr, ImGuiWindowFlags_MenuBar);
 
@@ -966,7 +1106,8 @@ private:
 						int maxTraceDepth = curParams.maxTraceDepth;
 						if (ImGui::SliderInt("maxTraceDepth", &maxTraceDepth, 1, 10)) {
 							curParams.maxTraceDepth = maxTraceDepth;
-							m_FlushFrame = true;
+							m_FlushFrame  = true;
+							m_ClearSDTree = true;
 						}
 					}
 					if (m_CurSubPassName == "Def") {
@@ -979,21 +1120,29 @@ private:
 						int pgAction = 0;
 						ImGui::RadioButton("None" , &pgAction, 0);
 						ImGui::SameLine();
-						ImGui::RadioButton("Clear", &pgAction, 1);
+						ImGui::RadioButton("Dump" , &pgAction, 1);
 						ImGui::SameLine();
-						ImGui::RadioButton("Reset", &pgAction, 2);
+						ImGui::RadioButton("Clear", &pgAction, 2);
+						ImGui::SameLine();
+						ImGui::RadioButton("Build", &pgAction, 3);
+						ImGui::SameLine();
+						ImGui::RadioButton("Reset", &pgAction, 4);
 						switch (pgAction) {
 						case 0:
 							break;
 						case 1:
-							m_SdTree->Clear();
-							m_SdTree->Upload();
+							m_DumpSDTree  = true;
 							break;
 						case 2:
-							m_SdTree->Download();
-							m_SdTree->Reset(m_SamplePerAll);
-							m_SdTree->Upload();
-							m_FlushFrame = true;
+							m_FlushFrame  = true;
+							m_ClearSDTree = true;
+							break;
+						case 3:
+							m_BuildSDTree = true;
+							break;
+						case 4:
+							m_FlushFrame  = true;
+							m_ResetSDTree = true;
 							break;
 						}
 					}
@@ -1015,8 +1164,6 @@ private:
 					ImGui::RadioButton("Depth"   , &debugMode, 6);
 					ImGui::SameLine();
 					ImGui::RadioButton("STree"   , &debugMode, 7);
-					ImGui::SameLine();
-					ImGui::RadioButton("Sample"  , &debugMode, 8);
 					switch (debugMode) {
 					case 0:
 						m_DebugFrameName = "Diffuse";
@@ -1042,9 +1189,6 @@ private:
 					case 7:
 						m_DebugFrameName = "STree";
 						break;
-					case 8:
-						m_DebugFrameName = "Sample";
-						break;
 					}
 				}
 				//Camera
@@ -1055,6 +1199,7 @@ private:
 						if (ImGui::SliderFloat("Camera.FovY", &camFovY, -90.0f, 90.0f)) {
 							m_CameraFovY = camFovY;
 							m_UpdateCamera = true;
+							m_ClearSDTree  = true;
 						}
 					}
 				}
@@ -1066,6 +1211,7 @@ private:
 						m_Light.emission.y = emission[1];
 						m_Light.emission.z = emission[2];
 						m_UpdateLight = true;
+						m_ClearSDTree = true;
 					}
 				}
 				if (ImGui::Button(m_PrvPipelineName.c_str())) {
@@ -1078,7 +1224,7 @@ private:
 							ImGui::SameLine();
 							if (ImGui::Button(subPassName.data())) {
 								m_CurSubPassName = subPassName;
-								m_FlushFrame = true;
+								m_FlushFrame     = true;
 							}
 						}
 					}
@@ -1161,11 +1307,6 @@ private:
 		const float  rmse = (std::sqrt(sigma.x) + std::sqrt(sigma.y) + std::sqrt(sigma.z)) / 3.0f;
 		std::cout << "RMSE/Smp: " << m_SamplePerAll << " " << rmse <<  std::endl;
 	}
-	void OnBuildSDTree() {
-		m_SdTree->Download();
-		m_SdTree->Build();
-		m_SdTree->Upload();
-	}
 private:
 	static void frameBufferSizeCallback(GLFWwindow* window, int fbWidth, int fbHeight)
 	{
@@ -1239,12 +1380,16 @@ private:
 	//State
 	bool                            m_FlushFrame         = false;
 	bool                            m_UpdateParams       = false;
+	bool                            m_BuildSDTree        = false;
+	bool                            m_ResetSDTree        = false;
+	bool                            m_DumpSDTree         = false;
+	bool                            m_ClearSDTree        = false;
 	std::string                     m_CurPipelineName    = "Trace";
 	std::string                     m_PrvPipelineName    = "Debug";
 	std::string                     m_CurSubPassName     = "Def";
 	std::string                     m_DebugFrameName     = "Diffuse";
 };
-int main() {
+void  Test20Main() {
 	Test20Application app = {};
 	app.InitGLFW(4, 4);
 	app.InitWindow(1024, 1024, "title");
@@ -1264,4 +1409,8 @@ int main() {
 	app.CleanUpImGui();
 	app.CleanUpWindow();
 	app.CleanUpGLFW();
+}
+int main() {
+	//TestPathGuide();
+	Test20Main();
 }
