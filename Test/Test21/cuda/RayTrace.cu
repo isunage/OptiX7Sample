@@ -196,7 +196,7 @@ extern "C" __global__ void __closesthit__radiance_for_diffuse_nee(){
             }
         }
         prd->attenuation2 = prd->attenuation;
-        prd->radiance    += light.emission * weight;
+        prd->radiance    += light.emission/RTLIB_M_PI * weight;
         
     }
     prd->seed = xor32.m_seed;
@@ -412,7 +412,7 @@ extern "C" __global__ void __closesthit__radiance_for_phong_nee(){
                 weight = ndl * lndl * A / (RTLIB_M_PI * Ldist * Ldist);
             }
         }
-        prd->radiance += light.emission * weight;
+        prd->radiance += light.emission/RTLIB_M_PI * weight;
         
     }
     prd->seed = xor32.m_seed;
