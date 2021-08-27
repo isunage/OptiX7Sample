@@ -32,6 +32,9 @@ namespace test {
 				size_t         srcNodeIdx;
 				const RTDTree* srcDTree;
 				int            depth;
+				auto GetSrcNode()const -> const RTDTreeNode& {
+					return srcDTree->Node(srcNodeIdx);
+				}
 			};
 			std::stack<StackNode> stackNodes = {};
 			stackNodes.push({ 0,0,&prvDTree,1 });
@@ -44,26 +47,28 @@ namespace test {
 				m_MaxDepth = std::max(m_MaxDepth, sNode.depth);
 
 				for (int i = 0; i < 4; ++i) {
-					const auto& srcNode = sNode.srcDTree->Node(sNode.srcNodeIdx);
-					const auto fraction = total > 0.0f ? (srcNode.GetSum(i) / total) : std::pow(0.25f, sNode.depth);
+					//this
+					const auto fraction = total > 0.0f ? (sNode.GetSrcNode().GetSum(i) / total) : std::pow(0.25f, sNode.depth);
 					if (sNode.depth < newMaxDepth && fraction > subDivTh) {
-						if (!srcNode.IsLeaf(i)) {
-							//�O��DTree����ɂ���
-							stackNodes.push({ m_Nodes.size(), srcNode.GetChild(i),&prvDTree,sNode.depth + 1 });
+						if (!sNode.GetSrcNode().IsLeaf(i)) {
+							//Not Leaf -> Copy Child
+							stackNodes.push({ m_Nodes.size(), sNode.GetSrcNode().GetChild(i),&prvDTree,sNode.depth + 1 });
 						}
 						else {
-							//Leaf
-							//�������g�ɂ��ĕ������邩����
+							//    Leaf -> Copy Itself
 							stackNodes.push({ m_Nodes.size(), m_Nodes.size(), this,sNode.depth + 1 });
 						}
 						m_Nodes[sNode.dstNodeIdx].SetChild(i, static_cast<unsigned short>(m_Nodes.size()));
 						m_Nodes.emplace_back();
-						m_Nodes.back().SetSumAll(srcNode.GetSum(i) / 4.0f);
+						auto& backNode = m_Nodes.back();
+						backNode.SetSumAll(sNode.GetSrcNode().GetSum(i) / 4.0f);
 						if (m_Nodes.size() > std::numeric_limits<uint16_t>::max())
 						{
+							std::cout << "DTreeWrapper hit maximum count!\n";
 							stackNodes = {};
 							break;
 						}
+						
 					}
 				}
 			}
@@ -223,9 +228,6 @@ namespace test {
 			}
 			else {
 				jsonFile << "\"dTree\": \"" << "dTree" << sTreeNodeIdx << "\"";
-				if (dTree.GetMean() > 0.0f) {
-					dTree.SavePDFImage(sTreeNodeIdx);
-				}
 			}
 			jsonFile << "}";
 		}
@@ -470,13 +472,13 @@ namespace test {
 				return;
 			}
 			int iter       = std::log2(samplePerAll);
-			size_t sTreeTh = (std::pow(2.0, iter) / 4.0f )* 4000;
+			size_t sTreeTh = std::sqrt(std::pow(2.0, iter) / 4.0f )* 4000;
 
-			m_CpuSTree.Refine(sTreeTh,1000);
+			m_CpuSTree.Refine(sTreeTh,2000);
 			for (int i = 0; i < m_CpuSTree.GetNumNodes(); ++i) {
 				if (m_CpuSTree.Node(i).isLeaf) {
 					auto dTree = m_CpuSTree.Node(i).dTree;
-					m_CpuSTree.Node(i).dTree.Reset(dTree,30,0.001);
+					m_CpuSTree.Node(i).dTree.Reset(dTree,20,0.01);
 				}
 			}
 		}
@@ -501,27 +503,31 @@ namespace test {
 
 			int nPoints = 0;
 			int nPointsNodes = 0;
-
+			bool isSaved = false;
 			for (int i = 0; i < m_CpuSTree.GetNumNodes(); ++i) {
 				if (m_CpuSTree.Node(i).isLeaf) {
 					auto& dTree = m_CpuSTree.Node(i).dTree;
-					{
-						//rtlib::Xorshift32 xor32(1);
-						//auto val = 0.0f;
-						//for (int i = 0; i < 100000; ++i) {
-							//auto dir = dTree.Sample(xor32);
-							//auto pdf = dTree.Pdf(dir);
-							//val += (pdf <= 0.0f) ? 0.0f : (1.0f / pdf);
-						//}
-						//val /= 100000.0f;
-						//if (val >= 0.4f && val <= 0.6f) {
-							//dTree.SavePDFImage(0);
-							//for (auto i = 0; i < dTree.GetNumNodes(); ++i) {
-								//std::cout << i << "," << dTree.Node(i).GetSum(0) << "," << dTree.Node(i).GetSum(1) << "," << dTree.Node(i).GetSum(2) << "," << dTree.Node(i).GetSum(3) << ",";
-								//std::cout << dTree.Node(i).GetChild(0) << "," << dTree.Node(i).GetChild(1) << "," << dTree.Node(i).GetChild(2) << "," << dTree.Node(i).GetChild(3) << std::endl;
-							//}
-						//}
-						//std::cout << "val=" << val << std::endl;
+					if( dTree.GetMean()>0.0f){
+						if (!isSaved) {
+							dTree.SavePDFImage(i);
+							isSaved = true;
+						}
+						// rtlib::Xorshift32 xor32(1);
+						// auto val = 0.0f;
+						// for (int i = 0; i < 100000; ++i) {
+						// 	auto dir = dTree.Sample(xor32);
+						// 	auto pdf = dTree.Pdf(dir);
+						// 	val += (pdf <= 0.0f) ? 0.0f : (1.0f / pdf);
+						// }
+						// val /= 100000.0f;
+						// if (val >= 0.4f && val <= 0.6f) {
+						// 	dTree.SavePDFImage(0);
+						// 	for (auto i = 0; i < dTree.GetNumNodes(); ++i) {
+						// 		std::cout << i << "," << dTree.Node(i).GetSum(0) << "," << dTree.Node(i).GetSum(1) << "," << dTree.Node(i).GetSum(2) << "," << dTree.Node(i).GetSum(3) << ",";
+						// 		std::cout << dTree.Node(i).GetChild(0) << "," << dTree.Node(i).GetChild(1) << "," << dTree.Node(i).GetChild(2) << "," << dTree.Node(i).GetChild(3) << std::endl;
+						// 	}
+						// }
+						// std::cout << "val=" << val << std::endl;
 					}
 					const int depth = dTree.GetDepth();
 					maxDepth = std::max<int>(maxDepth, depth);

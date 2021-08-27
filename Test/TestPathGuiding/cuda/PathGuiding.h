@@ -107,8 +107,8 @@ struct DTreeNode {
 			float topRight   = cur->sums[1];
 			float partial    = cur->sums[0] + cur->sums[2];
 			float total      = cur->GetSumOfAll();
-
-			if (total <= 0.0f) {
+			float mulOfSum   = cur->sums[0]*cur->sums[1]*cur->sums[2]*cur->sums[3];
+			if (total <= 0.0f||mulOfSum <=0.0f) {
 				result += rtlib::random_float2(rng) * size;
 				break;
 			}
@@ -167,13 +167,8 @@ struct DTreeNode {
 				result = 0.0f;
 				break;
 			}
-			if (cur->sums[idx]<=0.0f||cur->sums[idx] == total){
-				break;
-			}
-			int idx2 = idx > 1? (idx%2):(idx+2);
-			auto partial = cur->sums[idx]+cur->sums[idx2];
-			if (cur->sums[idx2]<=0.0f||total-partial<=0.0f){
-				result *= 2.0f * cur->sums[idx]/total;
+			float mulOfSum = cur->sums[0]*cur->sums[1]*cur->sums[2]*cur->sums[3];
+			if (mulOfSum<=0.0f){
 				break;
 			}
 			if(isnan(cur->sums[idx])){
@@ -310,7 +305,7 @@ struct DTreeRecord {
 struct DTreeWrapper {
 	RTLIB_INLINE RTLIB_DEVICE      void  Record(const DTreeRecord& rec) noexcept {
 		if (!rec.isDelta) {
-			float irradiance = rec.radiance / rec.woPdf;
+			float irradiance = rec.radiance * rec.woPdf * RTLIB_M_PI;
 			building.RecordIrradiance(rtlib::dir_to_canonical(rec.direction), irradiance, rec.statisticalWeight);
 		}
 	}
@@ -426,6 +421,7 @@ struct TraceVertex {
 	float3        throughPut;
 	float3        bsdfVal;
 	float3        radiance;
+	float         weight;
 	float         woPdf;
 	float         bsdfPdf;
 	float         dTreePdf;
@@ -455,10 +451,10 @@ struct TraceVertex {
 			localRadiance.z = radiance.z / throughPut.z;
 		}
        //printf("localRadiance=(%f,%f,%f)\n",localRadiance.x,localRadiance.y,localRadiance.z);
-		float3 product = localRadiance * bsdfVal;
+		float3 product         = localRadiance * bsdfVal;
 		float localRadianceAvg = (localRadiance.x + localRadiance.y + localRadiance.z) / 3.0f;
-		float productAvg = (product.x + product.y + product.z) / 3.0f;
-		DTreeRecord rec{ rayDirection,localRadianceAvg,productAvg,woPdf,bsdfPdf,dTreePdf,statisticalWeight,isDelta };
+		float productAvg       = (product.x + product.y + product.z) / 3.0f;
+		DTreeRecord rec{ rayDirection,localRadianceAvg * weight,productAvg * weight,woPdf,bsdfPdf,dTreePdf,statisticalWeight,isDelta };
 		dTree->Record(rec);
 	}
 };

@@ -6,7 +6,7 @@
 #include <RTLib/Utils.h>
 #include <RTLib/VectorFunction.h>
 #include <RTLib/ext/RectRenderer.h>
-#include <cuda/RayTrace.h>
+#include <cuda/RayTrace.h>li
 #include <GLFW/glfw3.h>
 #include <stb_image_write.h>
 #include <imgui.h>
@@ -30,8 +30,7 @@ namespace test {
 		if (emitCol.x + emitCol.y + emitCol.z != 0.0f) {
 			return "Emission";
 		}
-		else if (refrIndx > 1.61f &&
-			tranCol.x + tranCol.y + tranCol.z != 0.0f) {
+		else if (refrIndx > 1.68f && tranCol.x + tranCol.y + tranCol.z != 0.0f) {
 			return "Refraction";
 		}
 		else if (shinness > 300) {
@@ -244,9 +243,9 @@ public:
 					}
 				}
 			}
-			m_Tracer2.AddMeshGroup("Sponza", objMeshGroup->GetMeshGroup());
+			m_Tracer2.AddMeshGroup("CornellBox", objMeshGroup->GetMeshGroup());
 		}
-		auto meshGroup    = m_Tracer2.GetMeshGroup("Sponza");
+		auto meshGroup    = m_Tracer2.GetMeshGroup("CornellBox");
 		bool isLightFound = false;
 		//GAS1: World
 		m_Tracer2.NewGASHandle("world");
@@ -973,6 +972,9 @@ private:
 				m_SdTree->Download();
 				isDownLoad = true;
 			}
+			if (!m_BuildSDTree) {
+				m_SdTree->Build();
+			}
 			m_SdTree->Reset(m_SamplePerAll);
 			shouldUpload   = true;
 		}
@@ -1390,7 +1392,7 @@ private:
 	std::string                     m_DebugFrameName     = "Diffuse";
 };
 void  Test20Main() {
-	Test20Application app = {};
+	Test20Application app;
 	app.InitGLFW(4, 4);
 	app.InitWindow(1024, 1024, "title");
 	app.InitGLAD();

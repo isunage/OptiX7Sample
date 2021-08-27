@@ -98,7 +98,7 @@ extern "C" __global__ void __closesthit__debug(){
     prd->transmit    = transmit;
     prd->emission    = emission;
     prd->distance    = optixGetRayTmax();
-    prd->sTreeCol    = sTreeSize;
+    prd->sTreeCol    = make_float3(dTree->sampling.GetMean());
     prd->texCoord    = t;
     prd->normal      = normal;
 }
