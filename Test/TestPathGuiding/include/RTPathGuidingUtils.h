@@ -467,12 +467,11 @@ namespace test {
 			sTree.nodes   = m_GpuSTreeNodes.getDevicePtr();
 			return sTree;
 		}
-		void Reset(int samplePerAll) {
-			if (samplePerAll <= 0) {
+		void Reset(int iter) {
+			if (iter <= 0) {
 				return;
 			}
-			int iter       = std::log2(samplePerAll);
-			size_t sTreeTh = std::sqrt(std::pow(2.0, iter) / 4.0f )* 4000;
+			size_t sTreeTh = std::sqrt(std::pow(2.0, iter))* 12000;
 
 			m_CpuSTree.Refine(sTreeTh,2000);
 			for (int i = 0; i < m_CpuSTree.GetNumNodes(); ++i) {

@@ -680,7 +680,7 @@ public:
 				this->OnRenderImGui();
 				this->OnShowRMSE();
 				this->OnUpdateTime();
-				this->OnGetInputs();
+				this->OnReactInputs();
 				if (m_SamplePerAll > m_RegenSeedSample) {
 					this->OnRegenSeed();
 					m_RegenSeedSample += 1000;
@@ -998,7 +998,7 @@ private:
 			ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 		}
 	}
-	void OnGetInputs() {
+	void OnReactInputs() {
 		if (glfwGetKey(m_Window, GLFW_KEY_W) == GLFW_PRESS) {
 			m_CameraController.ProcessKeyboard(rtlib::CameraMovement::eForward, m_DelTime);
 			m_UpdateCamera = true;

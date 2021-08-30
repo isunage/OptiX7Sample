@@ -899,7 +899,7 @@ public:
 				this->OnRenderFrame();
 				this->OnRenderImGui();
 				this->OnUpdateTime();
-				this->OnGetInputs();
+				this->OnReactInputs();
 				glfwSwapBuffers(m_Window);
 				glfwPollEvents();
 			}
@@ -1221,7 +1221,7 @@ private:
 			ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 		}
 	}
-	void OnGetInputs() {
+	void OnReactInputs() {
 		if (glfwGetKey(m_Window, GLFW_KEY_W) == GLFW_PRESS) {
 			m_CameraController.ProcessKeyboard(rtlib::CameraMovement::eForward, m_DelTime);
 			m_UpdateCamera = true;
