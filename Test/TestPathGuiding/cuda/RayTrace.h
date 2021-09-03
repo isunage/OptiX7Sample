@@ -48,6 +48,7 @@ struct RayTraceParams {
     OptixTraversableHandle gasHandle;
     STree                  sdTree;
     ParallelLight          light;
+    bool                   isBuilt;
 };
 struct RayDebugParams {
     uchar4*                diffuseBuffer; //8
@@ -65,16 +66,17 @@ struct RayDebugParams {
     ParallelLight          light;
 };
 struct RayGenData{
-    float3 u,v,w;
-    float3 eye;
+    float3                u,v,w;
+    float3                eye;
 };
 struct MissData {
     float4  bgColor;
 };
 struct HitgroupData{
     float3*             vertices;
-    uint3*              indices;
+    float3*             normals;
     float2*             texCoords;
+    uint3*              indices;
     float3              diffuse;
     cudaTextureObject_t diffuseTex;
     float3              emission;

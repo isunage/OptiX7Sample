@@ -68,6 +68,15 @@ extern "C" __global__ void     __raygen__debug(){
 }
 extern "C" __global__ void       __miss__debug(){
     auto* msData = reinterpret_cast<MissData*>(optixGetSbtDataPointer());
+    auto prd      = getRadiancePRD();
+    prd->diffuse  = make_float3(0.0f);
+    prd->specular = make_float3(0.0f);
+    prd->transmit = make_float3(0.0f);
+    prd->emission = make_float3(0.0f);
+    prd->distance = optixGetRayTmax();
+    prd->sTreeCol = make_float3(0.0f);
+    prd->texCoord = make_float2(0.0f);
+    prd->normal   = make_float3(0.0f);
 }
 extern "C" __global__ void __closesthit__debug(){
     auto* hgData     = reinterpret_cast<HitgroupData*>(optixGetSbtDataPointer());
@@ -79,8 +88,11 @@ extern "C" __global__ void __closesthit__debug(){
     const float3 v0  = optixTransformPointFromObjectToWorldSpace(hgData->vertices[hgData->indices[primitiveID].x]);
     const float3 v1  = optixTransformPointFromObjectToWorldSpace(hgData->vertices[hgData->indices[primitiveID].y]);
     const float3 v2  = optixTransformPointFromObjectToWorldSpace(hgData->vertices[hgData->indices[primitiveID].z]);
-    const float3 n0  = optixTransformNormalFromObjectToWorldSpace(rtlib::normalize(rtlib::cross(v1 - v0, v2 - v0)));
-    const float3 normal = faceForward(n0, make_float3(-rayDirection.x,-rayDirection.y,-rayDirection.z), n0);
+    const float3 n0  = optixTransformNormalFromObjectToWorldSpace(hgData->normals[hgData->indices[primitiveID].x]);
+    const float3 n1  = optixTransformNormalFromObjectToWorldSpace(hgData->normals[hgData->indices[primitiveID].y]);
+    const float3 n2  = optixTransformNormalFromObjectToWorldSpace(hgData->normals[hgData->indices[primitiveID].z]);
+    const float3 n_base = rtlib::normalize((1.0f - texCoord.x - texCoord.y) * n0 + texCoord.x * n1 + texCoord.y * n2);
+    const float3 normal = faceForward(n0, make_float3(-rayDirection.x,-rayDirection.y,-rayDirection.z), n_base);
     auto t0          = hgData->texCoords[hgData->indices[primitiveID].x];
     auto t1          = hgData->texCoords[hgData->indices[primitiveID].y];
     auto t2          = hgData->texCoords[hgData->indices[primitiveID].z];

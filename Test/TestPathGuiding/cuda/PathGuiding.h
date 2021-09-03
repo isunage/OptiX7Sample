@@ -8,7 +8,7 @@
 #include <stack>
 #include <vector>
 #endif
-#define PATH_GUIDING_MAX_DEPTH 128
+#define PATH_GUIDING_MAX_DEPTH 1024
 //全部を実装するのは困難...
 //ではどうするか->最も実装しやすい方法で実装する
 //フィルタ...Nearest(点で扱った方が再帰が容易)
@@ -108,7 +108,8 @@ struct DTreeNode {
 			float partial    = cur->sums[0] + cur->sums[2];
 			float total      = cur->GetSumOfAll();
 			float mulOfSum   = cur->sums[0]*cur->sums[1]*cur->sums[2]*cur->sums[3];
-			if (total <= 0.0f||mulOfSum <=0.0f) {
+			//if( total <=0.0f){
+			if (mulOfSum <=0.0f) {
 				result += rtlib::random_float2(rng) * size;
 				break;
 			}
@@ -137,7 +138,7 @@ struct DTreeNode {
 			else
 			{
 				origin.y = 0.5f;
-				sample = (sample - boundary) / (1.0f - boundary);
+				sample   = (sample - boundary) / (1.0f - boundary);
 				idx |= (1 << 1);
 			}
 
@@ -149,7 +150,8 @@ struct DTreeNode {
 
 			result += size * origin;
 			size   *= 0.5f;
-			cur     = &nodes[cur->children[idx]];
+			const auto newNode = &nodes[cur->children[idx]];
+			cur     = newNode;
 			++depth;
 		}
 		return result;
@@ -163,10 +165,9 @@ struct DTreeNode {
 		int            depth = 1;
 		while (depth < PATH_GUIDING_MAX_DEPTH) {
 			auto total = cur->GetSumOfAll();
-			if (total <= 0.0f) {
-				result = 0.0f;
-				break;
-			}
+			//if (total <= 0.0f) {
+				//break;
+			//}
 			float mulOfSum = cur->sums[0]*cur->sums[1]*cur->sums[2]*cur->sums[3];
 			if (mulOfSum<=0.0f){
 				break;
@@ -182,7 +183,8 @@ struct DTreeNode {
 			if (cur->IsLeaf(idx)) {
 				break;
 			}
-			cur = &nodes[cur->children[idx]];
+			const auto newNode = &nodes[cur->children[idx]];
+			cur = newNode;
 			idx = cur->GetChildIdx(p);
 			++depth;
 		}
@@ -269,9 +271,9 @@ struct DTree {
 #endif
 	}
 	RTLIB_INLINE RTLIB_DEVICE      void  RecordIrradiance(float2 p, float irradiance, float statisticalWeight)noexcept {
-		if (statisticalWeight > 0.0f) {
+		if (isfinite(statisticalWeight) && statisticalWeight > 0.0f) {
 			AddStatisticalWeightAtomic(statisticalWeight);
-			if (irradiance > 0.0f) {
+			if (isfinite(irradiance) && irradiance > 0.0f) {
 				nodes[0].Record(p, irradiance * statisticalWeight, nodes);
 			}
 		}
@@ -305,7 +307,7 @@ struct DTreeRecord {
 struct DTreeWrapper {
 	RTLIB_INLINE RTLIB_DEVICE      void  Record(const DTreeRecord& rec) noexcept {
 		if (!rec.isDelta) {
-			float irradiance = rec.radiance * rec.woPdf * RTLIB_M_PI;
+			float irradiance = rec.radiance / rec.woPdf;
 			building.RecordIrradiance(rtlib::dir_to_canonical(rec.direction), irradiance, rec.statisticalWeight);
 		}
 	}
@@ -421,7 +423,6 @@ struct TraceVertex {
 	float3        throughPut;
 	float3        bsdfVal;
 	float3        radiance;
-	float         weight;
 	float         woPdf;
 	float         bsdfPdf;
 	float         dTreePdf;
@@ -434,27 +435,31 @@ struct TraceVertex {
 		if (!dTree) {
 			return;
 		}
-		bool isValidRadiance = isfinite(radiance.x) && isfinite(radiance.y) && isfinite(radiance.z);
-		bool isValidBsdfVal = isfinite(bsdfVal.x) && isfinite(bsdfVal.y) && isfinite(bsdfVal.z);
+		bool isValidRadiance = (isfinite(radiance.x) && radiance.x >= 0.0f) &&
+							   (isfinite(radiance.y) && radiance.y >= 0.0f) &&
+							   (isfinite(radiance.z) && radiance.z >= 0.0f);
+		bool isValidBsdfVal  = (isfinite(bsdfVal.x)  && bsdfVal.x  >= 0.0f) &&
+			                   (isfinite(bsdfVal.y)  && bsdfVal.y  >= 0.0f) &&
+		                       (isfinite(bsdfVal.z)  && bsdfVal.z  >= 0.0f);
 		if (woPdf <= 0.0f || !isValidRadiance || !isValidBsdfVal)
 		{
 			return;
 		}
 		auto localRadiance = make_float3(0.0f);
-		if (radiance.x * woPdf > 1e-5f) {
+		if (throughPut.x * woPdf > 1e-5f) {
 			localRadiance.x = radiance.x / throughPut.x;
 		}
-		if (radiance.y * woPdf > 1e-5f) {
+		if (throughPut.y * woPdf > 1e-5f) {
 			localRadiance.y = radiance.y / throughPut.y;
 		}
-		if (radiance.z * woPdf > 1e-5f) {
+		if (throughPut.z * woPdf > 1e-5f) {
 			localRadiance.z = radiance.z / throughPut.z;
 		}
        //printf("localRadiance=(%f,%f,%f)\n",localRadiance.x,localRadiance.y,localRadiance.z);
 		float3 product         = localRadiance * bsdfVal;
 		float localRadianceAvg = (localRadiance.x + localRadiance.y + localRadiance.z) / 3.0f;
 		float productAvg       = (product.x + product.y + product.z) / 3.0f;
-		DTreeRecord rec{ rayDirection,localRadianceAvg * weight,productAvg * weight,woPdf,bsdfPdf,dTreePdf,statisticalWeight,isDelta };
+		DTreeRecord rec{ rayDirection,localRadianceAvg ,productAvg,woPdf,bsdfPdf,dTreePdf,statisticalWeight,isDelta };
 		dTree->Record(rec);
 	}
 };

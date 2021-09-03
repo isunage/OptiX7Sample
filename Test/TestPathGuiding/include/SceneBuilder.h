@@ -61,7 +61,7 @@ namespace test {
                 };
                 struct MyEqualTo
                 {
-                    using first_argument_type = tinyobj::index_t;
+                    using first_argument_type  = tinyobj::index_t;
                     using second_argument_type = tinyobj::index_t;
                     using result_type = bool;
                     constexpr bool operator()(const tinyobj::index_t& x, const tinyobj::index_t& y)const
@@ -150,7 +150,8 @@ namespace test {
             {
                 phongMaterials->resize(materials.size());
                 for (size_t i = 0; i < phongMaterials->size(); ++i) {
-                    (*phongMaterials)[i].SetString(   "name",   materials[i].name);
+                    (*phongMaterials)[i].SetString("name",  materials[i].name);
+                    (*phongMaterials)[i].SetUInt32("illum", materials[i].illum);
                     (*phongMaterials)[i].SetFloat3("diffCol", 
                         { materials[i].diffuse[0],
                           materials[i].diffuse[1],

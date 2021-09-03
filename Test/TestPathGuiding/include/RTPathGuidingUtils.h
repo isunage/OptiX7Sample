@@ -114,11 +114,17 @@ namespace test {
 		}
 
 		template<typename RNG>
-		auto Sample(RNG& rng)const noexcept -> float2 {
-			return m_Nodes[0].Sample(rng, m_Nodes.data());
+		auto Sample(RNG& rng)const noexcept -> float3 {
+			if (GetMean() <= 0.0f) {
+				return rtlib::canonical_to_dir(rtlib::random_float2(rng));
+			}
+			return rtlib::canonical_to_dir(m_Nodes[0].Sample(rng, m_Nodes.data()));
 		}
-		auto Pdf(float2 dir)const noexcept -> float {
-			return m_Nodes[0].Pdf(dir,m_Nodes.data());
+		auto Pdf(const float3& dir)const noexcept -> float {
+			if (GetMean() <= 0.0f) {
+				return 1.0f / (4.0f * RTLIB_M_PI);
+			}
+			return m_Nodes[0].Pdf(rtlib::dir_to_canonical(dir),m_Nodes.data()) / (4.0f * RTLIB_M_PI);
 		}
 		void Dump(std::fstream& jsonFile)const noexcept {
 			jsonFile << "{\n";
@@ -154,6 +160,9 @@ namespace test {
 			}
 			stbi_write_png((std::string("images/dTree") + std::to_string(dTreeId) + ".png").c_str(), width, height, 4, pixels.get(), 4 * width);
 		}
+		auto Nodes()noexcept -> std::vector<RTDTreeNode>& {
+			return m_Nodes;
+		}
 		auto Node(size_t idx)const noexcept -> const RTDTreeNode& {
 			return m_Nodes[idx];
 		}
@@ -166,7 +175,50 @@ namespace test {
 		float                    m_StatisticalWeight;
 		int                      m_MaxDepth;
 	};
-	//���������DTreeWrapper�̔z���ʓr�����Ƃ��ēn�����ƂŊ��S�ɕ����ł���
+	struct RTDTreeWrapper {
+		auto GetApproxMemoryFootPrint()const noexcept->size_t {
+			return building.GetApproxMemoryFootPrint() + sampling.GetApproxMemoryFootPrint();
+		}
+		auto GetStatisticalWeightSampling()const noexcept -> float {
+			return sampling.GetStatisticalWeight();
+		}
+		auto GetStatisticalWeightBuilding()const noexcept -> float {
+			return building.GetStatisticalWeight();
+		}
+		void SetStatisticalWeightSampling(float val)noexcept {
+			sampling.SetStatisticalWeight(val);
+		}
+		void SetStatisticalWeightBuilding(float val)noexcept {
+			building.SetStatisticalWeight(val);
+		}
+		template<typename RNG>
+		auto  Sample(RNG& rng)const noexcept -> float3 {
+			return sampling.Sample(rng);
+		}
+		auto  Pdf(const float3& dir)const noexcept -> float {
+			return sampling.Pdf(dir);
+		}
+		auto  GetNumNodes()const noexcept->size_t {
+			return sampling.GetNumNodes();
+		}
+		auto  GetMean()const noexcept->float {
+			return sampling.GetMean();
+		}
+		auto  GetDepth()const noexcept -> int {
+			return sampling.GetDepth();
+		}
+		void  Build() {
+			//一層にする→うまくいく
+			building.Build();
+			sampling = building;
+		}
+		void  Reset(int newMaxDepth, float subDivTh) {
+			//Buildingを削除し、samplingで得た新しい構造に変更
+			building.Reset(sampling, newMaxDepth, subDivTh);
+		}
+		RTDTree    building;
+		RTDTree    sampling;
+	};
 	struct RTSTreeNode {
 		RTSTreeNode()noexcept : dTree(), isLeaf{ true }, axis{ 0 }, children{}{
 			
@@ -185,7 +237,7 @@ namespace test {
 		auto GetNodeIdx(float3& p)const noexcept -> unsigned int {
 			return children[GetChildIdx(p)];
 		}
-		auto GetDTree(float3 p, float3& size, const std::vector<RTSTreeNode>& nodes)const noexcept -> const RTDTree* {
+		auto GetDTree(float3 p, float3& size, const std::vector<RTSTreeNode>& nodes)const noexcept -> const RTDTreeWrapper* {
 			const RTSTreeNode* cur = this;
 			int   ndx   = cur->GetNodeIdx(p);
 			int   depth = 1;
@@ -200,7 +252,7 @@ namespace test {
 			}
 			return nullptr;
 		}
-		auto GetDTree()const noexcept -> const RTDTree* {
+		auto GetDTreeWrapper()const noexcept -> const RTDTreeWrapper* {
 			return &dTree;
 		}
 		auto GetDepth(const std::vector<RTSTreeNode>& nodes)const-> int {
@@ -231,7 +283,7 @@ namespace test {
 			}
 			jsonFile << "}";
 		}
-		RTDTree                  dTree;
+		RTDTreeWrapper           dTree;
 		bool                     isLeaf;
 		unsigned char            axis;
 		unsigned short           padding;    //2^32���ő�
@@ -271,18 +323,18 @@ namespace test {
 				nodes[idx].axis   = (cur.axis + 1) % 3;
 				nodes[idx].isLeaf = true;
 				nodes[idx].dTree  = cur.dTree;
-				nodes[idx].dTree.SetStatisticalWeight(cur.dTree.GetStatisticalWeight()/2.0f);
+				nodes[idx].dTree.building.SetStatisticalWeight(cur.dTree.building.GetStatisticalWeight()/2.0f);
 			}
 			cur.isLeaf = false;
 			cur.dTree  = {};
 		}
-		auto GetDTree(float3 p, float3& size)const noexcept -> const RTDTree* {
+		auto GetDTree(float3 p, float3& size)const noexcept -> const RTDTreeWrapper* {
 			size = m_AabbMax - m_AabbMin;
 			p    = p - m_AabbMin;
 			p   /= size;
 			return m_Nodes[0].GetDTree(p, size, m_Nodes);
 		}
-		auto GetDTree(const float3& p)const noexcept ->const RTDTree* {
+		auto GetDTree(const float3& p)const noexcept ->const RTDTreeWrapper* {
 			float3 size;
 			return GetDTree(p, size);
 		}
@@ -301,14 +353,14 @@ namespace test {
 		bool ShallSplit(const RTSTreeNode& node, int depth, size_t samplesRequired)const noexcept
 		{
 			//std::cout << node.dTree.GetStatisticalWeight() << "vs " << samplesRequired << std::endl;
-			return m_Nodes.size() < std::numeric_limits<uint32_t>::max() - 1 && node.dTree.GetStatisticalWeight() > samplesRequired;
+			return m_Nodes.size() < std::numeric_limits<uint32_t>::max() - 1 && node.dTree.building.GetStatisticalWeight() > samplesRequired;
 		}
 		void Refine(size_t sTreeTh, int maxMB) {
 			if (maxMB >= 0) {
 				size_t approxMemoryFootPrint = 0;
 				for (const auto& node : m_Nodes)
 				{
-					approxMemoryFootPrint += node.GetDTree()->GetApproxMemoryFootPrint();
+					approxMemoryFootPrint += node.GetDTreeWrapper()->GetApproxMemoryFootPrint();
 				}
 				if (approxMemoryFootPrint / 1000000 >= maxMB) {
 					return;
@@ -365,27 +417,32 @@ namespace test {
 	public:
 		RTSTreeWrapper(const float3& aabbMin, const float3& aabbMax)noexcept :m_CpuSTree{ aabbMin,aabbMax } {}
 		void Upload()noexcept {
+			//Uploadは両方必要
 			const size_t gpuSTreeNodeCnt = m_CpuSTree.GetNumNodes();
 			size_t gpuDTreeCnt     = 0;
-			size_t gpuDTreeNodeCnt = 0;
+			size_t gpuDTreeNodeCntBuilding = 0;
+			size_t gpuDTreeNodeCntSampling = 0;
 			for (size_t i = 0; i < gpuSTreeNodeCnt; ++i) {
 				if (m_CpuSTree.Node(i).isLeaf) {
 					gpuDTreeCnt++;
-					gpuDTreeNodeCnt += m_CpuSTree.Node(i).dTree.GetNumNodes();
+					gpuDTreeNodeCntBuilding += m_CpuSTree.Node(i).dTree.building.GetNumNodes();
+					gpuDTreeNodeCntSampling += m_CpuSTree.Node(i).dTree.sampling.GetNumNodes();
 				}
 			}
 			//CPU Upload Memory
 			std::vector<STreeNode>    sTreeNodes(gpuSTreeNodeCnt);
 			std::vector<DTreeWrapper> dTreeWrappers(gpuDTreeCnt);
-			std::vector<DTreeNode>    dTreeNodes(gpuDTreeNodeCnt);
+			std::vector<DTreeNode>    dTreeNodesBuilding(gpuDTreeNodeCntBuilding);
+			std::vector<DTreeNode>    dTreeNodesSampling(gpuDTreeNodeCntSampling);
 			//GPU Upload Memory
 			m_GpuSTreeNodes.resize(sTreeNodes.size());
 			m_GpuDTreeWrappers.resize(dTreeWrappers.size());
-			m_GpuDTreeNodesBuilding.resize(dTreeNodes.size());
-			m_GpuDTreeNodesSampling.resize(dTreeNodes.size());
+			m_GpuDTreeNodesBuilding.resize(dTreeNodesBuilding.size());
+			m_GpuDTreeNodesSampling.resize(dTreeNodesSampling.size());
 			{
 				size_t dTreeIndex      = 0;
-				size_t dTreeNodeOffset = 0;
+				size_t dTreeNodeOffsetBuilding = 0;
+				size_t dTreeNodeOffsetSampling = 0;
 				for (size_t i = 0; i < gpuSTreeNodeCnt; ++i) {
 					sTreeNodes[i].axis        = m_CpuSTree.Node(i).axis;
 					sTreeNodes[i].children[0] = m_CpuSTree.Node(i).children[0];
@@ -394,19 +451,23 @@ namespace test {
 						//DTREE
 						sTreeNodes[i].dTree   = m_GpuDTreeWrappers.getDevicePtr() + dTreeIndex;
 						//BUILDING
-						dTreeWrappers[dTreeIndex].building.sum               = m_CpuSTree.Node(i).dTree.GetSum();
-						dTreeWrappers[dTreeIndex].building.statisticalWeight = m_CpuSTree.Node(i).dTree.GetStatisticalWeight();
-						dTreeWrappers[dTreeIndex].building.nodes             = m_GpuDTreeNodesBuilding.getDevicePtr() + dTreeNodeOffset;
-						//SAMPLING
-						dTreeWrappers[dTreeIndex].sampling.sum               = m_CpuSTree.Node(i).dTree.GetSum();
-						dTreeWrappers[dTreeIndex].sampling.statisticalWeight = m_CpuSTree.Node(i).dTree.GetStatisticalWeight();
-						dTreeWrappers[dTreeIndex].sampling.nodes             = m_GpuDTreeNodesSampling.getDevicePtr() + dTreeNodeOffset;
-						//NODES
-						for (size_t j = 0; j < m_CpuSTree.Node(i).dTree.GetNumNodes(); ++j) {
+						dTreeWrappers[dTreeIndex].building.sum               = m_CpuSTree.Node(i).dTree.building.GetSum();
+						dTreeWrappers[dTreeIndex].building.statisticalWeight = m_CpuSTree.Node(i).dTree.building.GetStatisticalWeight();
+						dTreeWrappers[dTreeIndex].building.nodes             = m_GpuDTreeNodesBuilding.getDevicePtr() + dTreeNodeOffsetBuilding;
+						for (size_t j = 0; j < m_CpuSTree.Node(i).dTree.building.GetNumNodes(); ++j) {
 							//SUMS
-							dTreeNodes[dTreeNodeOffset + j] = m_CpuSTree.Node(i).dTree.Node(j);
+							dTreeNodesBuilding[dTreeNodeOffsetBuilding + j]  = m_CpuSTree.Node(i).dTree.building.Node(j);
 						}
-						dTreeNodeOffset += m_CpuSTree.Node(i).dTree.GetNumNodes();
+						dTreeNodeOffsetBuilding += m_CpuSTree.Node(i).dTree.building.GetNumNodes();
+						//SAMPLING
+						dTreeWrappers[dTreeIndex].sampling.sum               = m_CpuSTree.Node(i).dTree.sampling.GetSum();
+						dTreeWrappers[dTreeIndex].sampling.statisticalWeight = m_CpuSTree.Node(i).dTree.sampling.GetStatisticalWeight();
+						dTreeWrappers[dTreeIndex].sampling.nodes             = m_GpuDTreeNodesSampling.getDevicePtr() + dTreeNodeOffsetSampling;
+						for (size_t j = 0; j < m_CpuSTree.Node(i).dTree.sampling.GetNumNodes(); ++j) {
+							//SUMS
+							dTreeNodesSampling[dTreeNodeOffsetSampling + j]  = m_CpuSTree.Node(i).dTree.sampling.Node(j);
+						}
+						dTreeNodeOffsetSampling += m_CpuSTree.Node(i).dTree.sampling.GetNumNodes();
 						dTreeIndex++;
 					}
 					else {
@@ -417,8 +478,8 @@ namespace test {
 			//Upload
 			m_GpuSTreeNodes.upload(sTreeNodes);
 			m_GpuDTreeWrappers.upload(dTreeWrappers);
-			m_GpuDTreeNodesBuilding.upload(dTreeNodes);
-			m_GpuDTreeNodesSampling.upload(dTreeNodes);
+			m_GpuDTreeNodesBuilding.upload(dTreeNodesBuilding);
+			m_GpuDTreeNodesSampling.upload(dTreeNodesSampling);
 			
 			std::cout << "Upload(Info)\n";
 			std::cout << "GpuSTreeNodes          : " << m_GpuSTreeNodes.getSizeInBytes()         / (1024.0f * 1024.0f) << "MB\n";
@@ -426,32 +487,32 @@ namespace test {
 			std::cout << "GpuDTreeNodes(Sampling): " << m_GpuDTreeNodesSampling.getSizeInBytes() / (1024.0f * 1024.0f) << "MB\n";
 		}
 		void Download() noexcept{
-			const size_t gpuSTreeNodeCnt = m_CpuSTree.GetNumNodes();
-			size_t gpuDTreeCnt     = 0;
-			size_t gpuDTreeNodeCnt = 0;
+			//ダウンロードが必要なのはBuildingだけ
+			const size_t gpuSTreeNodeCnt   = m_CpuSTree.GetNumNodes();
+			size_t gpuDTreeCnt             = 0;
+			size_t gpuDTreeNodeCntBuilding = 0;
 			for (size_t i = 0; i < gpuSTreeNodeCnt; ++i) {
 				if (m_CpuSTree.Node(i).isLeaf) {
 					gpuDTreeCnt++;
-					gpuDTreeNodeCnt += m_CpuSTree.Node(i).dTree.GetNumNodes();
+					gpuDTreeNodeCntBuilding += m_CpuSTree.Node(i).dTree.building.GetNumNodes();
 				}
 			}
 			std::vector<DTreeWrapper> dTreeWrappers(gpuDTreeCnt);
-			std::vector<DTreeNode>    dTreeNodes(gpuDTreeNodeCnt);
+			std::vector<DTreeNode>    dTreeNodesBuilding(gpuDTreeNodeCntBuilding);
 			m_GpuDTreeWrappers.download(dTreeWrappers);
-			m_GpuDTreeNodesBuilding.download(dTreeNodes);
+			m_GpuDTreeNodesBuilding.download(dTreeNodesBuilding);
 			{
 				size_t cpuDTreeIndex      = 0;
-				size_t cpuDTreeNodeOffset = 0;
-				//�\���͕ς���Ă��Ȃ��Ƒz��
+				size_t cpuDTreeNodeOffsetBuilding = 0;
 				for (size_t i = 0; i < gpuSTreeNodeCnt; ++i) {
 					if (m_CpuSTree.Node(i).isLeaf) {
-						m_CpuSTree.Node(i).dTree.SetSum(dTreeWrappers[cpuDTreeIndex].building.sum);
-						m_CpuSTree.Node(i).dTree.SetStatisticalWeight(dTreeWrappers[cpuDTreeIndex].building.statisticalWeight);
-						for (size_t j = 0; j < m_CpuSTree.Node(i).dTree.GetNumNodes(); ++j) {
+						m_CpuSTree.Node(i).dTree.building.SetSum(dTreeWrappers[cpuDTreeIndex].building.sum);
+						m_CpuSTree.Node(i).dTree.building.SetStatisticalWeight(dTreeWrappers[cpuDTreeIndex].building.statisticalWeight);
+						for (size_t j = 0; j < m_CpuSTree.Node(i).dTree.building.GetNumNodes(); ++j) {
 							//SUMS
-							m_CpuSTree.Node(i).dTree.Node(j) = dTreeNodes[cpuDTreeNodeOffset + j];
+							m_CpuSTree.Node(i).dTree.building.Node(j) = dTreeNodesBuilding[cpuDTreeNodeOffsetBuilding + j];
 						}
-						cpuDTreeNodeOffset += m_CpuSTree.Node(i).dTree.GetNumNodes();
+						cpuDTreeNodeOffsetBuilding += m_CpuSTree.Node(i).dTree.building.GetNumNodes();
 						cpuDTreeIndex++;
 					}
 				}
@@ -467,17 +528,15 @@ namespace test {
 			sTree.nodes   = m_GpuSTreeNodes.getDevicePtr();
 			return sTree;
 		}
-		void Reset(int iter) {
+		void Reset(int iter, int samplePerPasses) {
 			if (iter <= 0) {
 				return;
 			}
-			size_t sTreeTh = std::sqrt(std::pow(2.0, iter))* 12000;
-
+			size_t sTreeTh = std::sqrt(std::pow(2.0, iter) * samplePerPasses / 4.0f )* 4000;
 			m_CpuSTree.Refine(sTreeTh,2000);
 			for (int i = 0; i < m_CpuSTree.GetNumNodes(); ++i) {
 				if (m_CpuSTree.Node(i).isLeaf) {
-					auto dTree = m_CpuSTree.Node(i).dTree;
-					m_CpuSTree.Node(i).dTree.Reset(dTree,20,0.01);
+					m_CpuSTree.Node(i).dTree.Reset(20,0.01);
 				}
 			}
 		}
@@ -506,27 +565,18 @@ namespace test {
 			for (int i = 0; i < m_CpuSTree.GetNumNodes(); ++i) {
 				if (m_CpuSTree.Node(i).isLeaf) {
 					auto& dTree = m_CpuSTree.Node(i).dTree;
-					if( dTree.GetMean()>0.0f){
-						if (!isSaved) {
-							dTree.SavePDFImage(i);
-							isSaved = true;
-						}
-						// rtlib::Xorshift32 xor32(1);
-						// auto val = 0.0f;
-						// for (int i = 0; i < 100000; ++i) {
-						// 	auto dir = dTree.Sample(xor32);
-						// 	auto pdf = dTree.Pdf(dir);
-						// 	val += (pdf <= 0.0f) ? 0.0f : (1.0f / pdf);
-						// }
-						// val /= 100000.0f;
-						// if (val >= 0.4f && val <= 0.6f) {
-						// 	dTree.SavePDFImage(0);
-						// 	for (auto i = 0; i < dTree.GetNumNodes(); ++i) {
-						// 		std::cout << i << "," << dTree.Node(i).GetSum(0) << "," << dTree.Node(i).GetSum(1) << "," << dTree.Node(i).GetSum(2) << "," << dTree.Node(i).GetSum(3) << ",";
-						// 		std::cout << dTree.Node(i).GetChild(0) << "," << dTree.Node(i).GetChild(1) << "," << dTree.Node(i).GetChild(2) << "," << dTree.Node(i).GetChild(3) << std::endl;
+					{
+						// rtlib::Xorshift32 xor (100);
+						// float result = 0.0f;
+						// int N = 100000;
+						// for (int i = 0; i < N; ++i) {
+						// 	float value = dTree.Pdf(dTree.Sample(xor));
+						// 	if (value > 0.0f)
+						// 	{
+						// 		result += 1.0f / value;
 						// 	}
 						// }
-						// std::cout << "val=" << val << std::endl;
+						// printf("Pdf = %f, Mean = %f\n", result / (RTLIB_M_PI*4.0f *(float)N), dTree.GetMean());
 					}
 					const int depth = dTree.GetDepth();
 					maxDepth = std::max<int>(maxDepth, depth);
@@ -547,7 +597,7 @@ namespace test {
 						++nPointsNodes;
 					}
 
-					const auto statisticalWeight = dTree.GetStatisticalWeight();
+					const auto statisticalWeight = dTree.GetStatisticalWeightSampling();
 					maxStatisticalWeight         = std::max<float>(maxStatisticalWeight, statisticalWeight);
 					minStatisticalWeight         = std::min<float>(minStatisticalWeight, statisticalWeight);
 					avgStatisticalWeight        += statisticalWeight;
@@ -564,12 +614,12 @@ namespace test {
 				}
 				avgStatisticalWeight /= nPoints;
 			}
-			//std::cout << "SDTree Build Statistics\n";
-			//std::cout << "Depth(STree):      " << m_CpuSTree.GetDepth() << std::endl;
-			//std::cout << "Depth(DTree):      " << minDepth       << "," << avgDepth       << "," << maxDepth       << std::endl;
-			//std::cout << "Node count:        " << minNodes       << "," << avgNodes       << "," << maxNodes       << std::endl;
-			//std::cout << "Mean Radiance:     " << minAvgRadiance << "," << avgAvgRadiance << "," << maxAvgRadiance << std::endl;
-			//std::cout << "statisticalWeight: " << minStatisticalWeight << "," << avgStatisticalWeight << "," << maxStatisticalWeight << std::endl;
+			std::cout << "SDTree Build Statistics\n";
+			std::cout << "Depth(STree):      " << m_CpuSTree.GetDepth() << std::endl;
+			std::cout << "Depth(DTree):      " << minDepth       << "," << avgDepth       << "," << maxDepth       << std::endl;
+			std::cout << "Node count:        " << minNodes       << "," << avgNodes       << "," << maxNodes       << std::endl;
+			std::cout << "Mean Radiance:     " << minAvgRadiance << "," << avgAvgRadiance << "," << maxAvgRadiance << std::endl;
+			std::cout << "statisticalWeight: " << minStatisticalWeight << "," << avgStatisticalWeight << "," << maxStatisticalWeight << std::endl;
 		}
 		void Dump(std::string filename) {
 			std::fstream jsonFile(filename, std::ios::binary | std::ios::out);

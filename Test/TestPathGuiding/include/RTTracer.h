@@ -28,11 +28,12 @@ namespace test {
 		//MeshGroup
 		void AddMeshGroup(const std::string& mgName, const rtlib::ext::MeshGroupPtr& meshGroup)noexcept;
 		auto GetMeshGroup(const std::string& mgName) const->rtlib::ext::MeshGroupPtr;
+		auto GetMeshGroups()const -> const MeshGroupMap&;
 		//MaterialList
 		void AddMaterialList(const std::string& mlName, const rtlib::ext::MaterialListPtr& materialList)noexcept;
 		auto GetMaterialList(const std::string& mlName) const->rtlib::ext::MaterialListPtr;
 		//Texture
-		void LoadTexture(const std::string& keyName, const std::string& texPath);
+		bool LoadTexture(const std::string& keyName, const std::string& texPath);
 		auto GetTexture(const std::string& keyName) const ->const rtlib::CUDATexture2D<uchar4>&;
 		bool HasTexture(const std::string& keyName) const noexcept;
         //GeometryAS

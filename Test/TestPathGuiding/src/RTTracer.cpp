@@ -24,6 +24,11 @@ auto test::RTTracer::GetMeshGroup(const std::string& mgName) const -> rtlib::ext
 	return m_MeshGroups.at(mgName);
 }
 
+auto test::RTTracer::GetMeshGroups() const -> const MeshGroupMap&
+{
+    return m_MeshGroups;
+}
+
 //MaterialList
 
 void test::RTTracer::AddMaterialList(const std::string& mlName, const rtlib::ext::MaterialListPtr& materialList) noexcept {
@@ -34,27 +39,28 @@ auto test::RTTracer::GetMaterialList(const std::string& mlName) const -> rtlib::
 	return m_MaterialLists.at(mlName);
 }
 
-void test::RTTracer::LoadTexture(const std::string& keyName, const std::string& texPath)
+bool test::RTTracer::LoadTexture(const std::string& keyName, const std::string& texPath)
 {
     int texWidth, texHeight, texComp;
     std::unique_ptr<unsigned char> pixels;
     {
         auto img = stbi_load(texPath.c_str(), &texWidth, &texHeight, &texComp, 4);
-        pixels = std::unique_ptr<unsigned char>(new unsigned char[texWidth * texHeight * 4]);
-        {
-            for (auto h = 0; h < texHeight; ++h) {
-                auto srcData = img + 4 * texWidth * (texHeight - 1 - h);
-                auto dstData = pixels.get() + 4 * texWidth * h;
-                std::memcpy(dstData, srcData, 4 * texWidth);
-            }
+        if (!img){
+            return false;
         }
-
+        pixels = std::unique_ptr<unsigned char>(new unsigned char[texWidth * texHeight * 4]);
+        for (auto h = 0; h < texHeight; ++h) {
+            auto srcData = img + 4 * texWidth * (texHeight - 1 - h);
+            auto dstData = pixels.get() + 4 * texWidth * h;
+            std::memcpy(dstData, srcData, 4 * texWidth);
+        }
         stbi_image_free(img);
     }
 
     this->m_Textures[keyName] = rtlib::CUDATexture2D<uchar4>();
     this->m_Textures[keyName].allocate(texWidth, texHeight, cudaTextureReadMode::cudaReadModeElementType);
     this->m_Textures[keyName].upload(pixels.get(), texWidth, texHeight);
+    return true;
 }
 
 auto test::RTTracer::GetTexture(const std::string& keyName) const -> const rtlib::CUDATexture2D<uchar4>&

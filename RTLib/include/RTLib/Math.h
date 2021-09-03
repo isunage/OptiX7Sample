@@ -568,12 +568,32 @@ namespace rtlib {
         return make_float3(sinTheta*cosPhi,sinTheta*sinPhi,cosTheta);
     }
     RTLIB_INLINE RTLIB_HOST_DEVICE float2   dir_to_canonical(const float3& d){
+        if ( !::isfinite(d.x) || !::isfinite(d.y) || !::isfinite(d.z)) {
+            return make_float2(0, 0);
+        }
         const float z = rtlib::clamp(d.z,-1.0f,1.0f);
         float phi = atan2f(d.y,d.x);
         while(phi < 0.0f){
             phi += RTLIB_M_2PI;
         }
         return make_float2((z+1.0f)/2.0f,phi/RTLIB_M_2PI);
+    }
+    RTLIB_INLINE RTLIB_HOST_DEVICE float3   spherical_to_dir(const float2& p) {
+        const float tht    = RTLIB_M_PI  * p.x;
+        const float cosTht = ::cosf(tht);
+        const float sinTht = ::sinf(tht);
+        const float phi    = RTLIB_M_2PI * p.y;
+        const float cosPhi = ::cosf(phi);
+        const float sinPhi = ::sinf(phi);
+        return make_float3(sinTht * cosPhi, sinTht * sinPhi, cosTht);
+    }
+    RTLIB_INLINE RTLIB_HOST_DEVICE float2   dir_to_spherical(const float3& d) {
+        const float tht    = ::acosf(d.z);
+        float phi          = atan2f(d.y, d.x);
+        while (phi < 0.0f) {
+            phi += RTLIB_M_2PI;
+        }
+        return make_float2(tht/ RTLIB_M_PI, phi/RTLIB_M_2PI);
     }
 }
 #endif
