@@ -94,9 +94,9 @@ struct HitgroupData{
     #if defined(TEST_SKIP_TEXTURE_SAMPLE)
         return this->diffuse;
     #else
-        auto diffTC      = tex2D<uchar4>(this->diffuseTex, uv.x, uv.y);
+        auto diffTC      = tex2D<float4>(this->diffuseTex, uv.x, uv.y);
         auto diffBC      = this->diffuse;
-        auto diffColor   = diffBC*make_float3(float(diffTC.x)/ 255.99f,float(diffTC.y)/ 255.99f,float(diffTC.z)/ 255.99f);
+        auto diffColor   = diffBC*make_float3(float(diffTC.x) ,float(diffTC.y) ,float(diffTC.z) );
         return diffColor;
     #endif
     }
@@ -104,9 +104,9 @@ struct HitgroupData{
     #if defined(TEST_SKIP_TEXTURE_SAMPLE)
         return this->specular;
     #else
-        auto specTC      = tex2D<uchar4>(this->specularTex, uv.x, uv.y);
+        auto specTC      = tex2D<float4>(this->specularTex, uv.x, uv.y);
         auto specBC      = this->specular;
-        auto specColor   = specBC * make_float3(float(specTC.x) / 255.99f, float(specTC.y) / 255.99f, float(specTC.z) / 255.99f);
+        auto specColor   = specBC * make_float3(float(specTC.x) , float(specTC.y) , float(specTC.z) );
         return specColor;
     #endif
     }
@@ -114,9 +114,9 @@ struct HitgroupData{
     #if defined(TEST_SKIP_TEXTURE_SAMPLE)
         return this->emission;
     #else
-        auto emitTC    = tex2D<uchar4>(this->emissionTex, uv.x, uv.y);
+        auto emitTC    = tex2D<float4>(this->emissionTex, uv.x, uv.y);
         auto emitBC    = this->emission;
-        auto emitColor = emitBC * make_float3(float(emitTC.x) / 255.99f, float(emitTC.y) / 255.99f, float(emitTC.z) / 255.99f);
+        auto emitColor = emitBC * make_float3(float(emitTC.x) , float(emitTC.y) , float(emitTC.z) );
         return emitColor;
     #endif
     }

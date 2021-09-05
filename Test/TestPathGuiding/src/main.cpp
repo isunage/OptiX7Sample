@@ -284,18 +284,18 @@ private:
 	}
 	void LoadScene(){
 		std::vector<std::pair<std::string, std::string>> objInfos = {
-			//{TEST_TEST_PG_DATA_PATH"/Models/Lumberyard/Exterior/exterior.obj" , TEST_TEST_PG_DATA_PATH"/Models/Lumberyard/Exterior/"},
-			//{TEST_TEST_PG_DATA_PATH"/Models/Lumberyard/Interior/interior.obj" , TEST_TEST_PG_DATA_PATH"/Models/Lumberyard/Interior/"},
-			{TEST_TEST_PG_DATA_PATH"/Models/Sponza/Sponza.obj"              , TEST_TEST_PG_DATA_PATH"/Models/Sponza/"             },
-			//{TEST_TEST_PG_DATA_PATH"/Models/CornellBox/CornellBox-Water.obj", TEST_TEST_PG_DATA_PATH"/Models/CornellBox/"},
-			//{TEST_TEST_PG_DATA_PATH"/Models/CornellBox/CornellBox-Water.obj", TEST_TEST_PG_DATA_PATH"/Models/CornellBox/"},
+			//{TEST_TEST_PG_DATA_PATH"/Models/Lumberyard/Exterior/exterior.obj"  , TEST_TEST_PG_DATA_PATH"/Models/Lumberyard/Exterior/"},
+			//{TEST_TEST_PG_DATA_PATH"/Models/Lumberyard/Interior/interior.obj"  , TEST_TEST_PG_DATA_PATH"/Models/Lumberyard/Interior/"},
+			{TEST_TEST_PG_DATA_PATH"/Models/Sponza/Sponza.obj"                 , TEST_TEST_PG_DATA_PATH"/Models/Sponza/"             },
+			//{TEST_TEST_PG_DATA_PATH"/Models/CornellBox/CornellBox-Original.obj", TEST_TEST_PG_DATA_PATH"/Models/CornellBox/"         },
+			//{TEST_TEST_PG_DATA_PATH"/Models/CornellBox/CornellBox-Water.obj"   , TEST_TEST_PG_DATA_PATH"/Models/CornellBox/"         },
 		};
 		m_MaterialSet = rtlib::ext::MaterialListPtr(new rtlib::ext::MaterialList());
 		{
 			size_t materialOffset = 0;
 			for (auto& objInfo : objInfos) {
 				auto objMeshGroup = std::make_shared<test::ObjMeshGroup>();
-				if (!objMeshGroup->Load(objInfo.first, objInfo.second)) {
+				if (!objMeshGroup->Load2(objInfo.first, objInfo.second)) {
 					throw std::runtime_error("Failed To Load Model!");
 				}
 				auto& meshGroup   = objMeshGroup->GetMeshGroup();
@@ -506,26 +506,26 @@ private:
 	void InitFrameResources() {
 		RTLIB_CUDA_CHECK(cudaStreamCreate(&m_Stream));
 		m_FrameBuffer = rtlib::CUDABuffer<uchar4>(std::vector<uchar4>(m_FbWidth * m_FbHeight));
-		m_RefImage = std::vector<float3>(m_FbWidth * m_FbHeight);
-		m_DebugBuffers["Diffuse"] = rtlib::CUDABuffer<uchar4>(std::vector<uchar4>(m_FbWidth * m_FbHeight));
-		m_DebugBuffers["Specular"] = rtlib::CUDABuffer<uchar4>(std::vector<uchar4>(m_FbWidth * m_FbHeight));
-		m_DebugBuffers["Transmit"] = rtlib::CUDABuffer<uchar4>(std::vector<uchar4>(m_FbWidth * m_FbHeight));
-		m_DebugBuffers["Emission"] = rtlib::CUDABuffer<uchar4>(std::vector<uchar4>(m_FbWidth * m_FbHeight));
-		m_DebugBuffers["TexCoord"] = rtlib::CUDABuffer<uchar4>(std::vector<uchar4>(m_FbWidth * m_FbHeight));
-		m_DebugBuffers["Normal"] = rtlib::CUDABuffer<uchar4>(std::vector<uchar4>(m_FbWidth * m_FbHeight));
-		m_DebugBuffers["Depth"] = rtlib::CUDABuffer<uchar4>(std::vector<uchar4>(m_FbWidth * m_FbHeight));
-		m_DebugBuffers["STree"] = rtlib::CUDABuffer<uchar4>(std::vector<uchar4>(m_FbWidth * m_FbHeight));
-		m_FrameBufferGL = rtlib::GLInteropBuffer<uchar4>(m_FbWidth * m_FbHeight, GL_PIXEL_UNPACK_BUFFER, GL_DYNAMIC_DRAW, m_Stream);
-		m_DebugBufferGLs["Diffuse"] = rtlib::GLInteropBuffer<uchar4>(m_FbWidth * m_FbHeight, GL_PIXEL_UNPACK_BUFFER, GL_DYNAMIC_DRAW, m_Stream);
+		m_RefImage	  = std::vector<float3>(m_FbWidth * m_FbHeight);
+		m_DebugBuffers["Diffuse"]	 = rtlib::CUDABuffer<uchar4>(std::vector<uchar4>(m_FbWidth * m_FbHeight));
+		m_DebugBuffers["Specular"]	 = rtlib::CUDABuffer<uchar4>(std::vector<uchar4>(m_FbWidth * m_FbHeight));
+		m_DebugBuffers["Transmit"]	 = rtlib::CUDABuffer<uchar4>(std::vector<uchar4>(m_FbWidth * m_FbHeight));
+		m_DebugBuffers["Emission"]	 = rtlib::CUDABuffer<uchar4>(std::vector<uchar4>(m_FbWidth * m_FbHeight));
+		m_DebugBuffers["TexCoord"]	 = rtlib::CUDABuffer<uchar4>(std::vector<uchar4>(m_FbWidth * m_FbHeight));
+		m_DebugBuffers["Normal"]	 = rtlib::CUDABuffer<uchar4>(std::vector<uchar4>(m_FbWidth * m_FbHeight));
+		m_DebugBuffers["Depth"]		 = rtlib::CUDABuffer<uchar4>(std::vector<uchar4>(m_FbWidth * m_FbHeight));
+		m_DebugBuffers["STree"]		 = rtlib::CUDABuffer<uchar4>(std::vector<uchar4>(m_FbWidth * m_FbHeight));
+		m_FrameBufferGL				 = rtlib::GLInteropBuffer<uchar4>(m_FbWidth * m_FbHeight, GL_PIXEL_UNPACK_BUFFER, GL_DYNAMIC_DRAW, m_Stream);
+		m_DebugBufferGLs["Diffuse"]  = rtlib::GLInteropBuffer<uchar4>(m_FbWidth * m_FbHeight, GL_PIXEL_UNPACK_BUFFER, GL_DYNAMIC_DRAW, m_Stream);
 		m_DebugBufferGLs["Specular"] = rtlib::GLInteropBuffer<uchar4>(m_FbWidth * m_FbHeight, GL_PIXEL_UNPACK_BUFFER, GL_DYNAMIC_DRAW, m_Stream);
 		m_DebugBufferGLs["Transmit"] = rtlib::GLInteropBuffer<uchar4>(m_FbWidth * m_FbHeight, GL_PIXEL_UNPACK_BUFFER, GL_DYNAMIC_DRAW, m_Stream);
 		m_DebugBufferGLs["Emission"] = rtlib::GLInteropBuffer<uchar4>(m_FbWidth * m_FbHeight, GL_PIXEL_UNPACK_BUFFER, GL_DYNAMIC_DRAW, m_Stream);
 		m_DebugBufferGLs["TexCoord"] = rtlib::GLInteropBuffer<uchar4>(m_FbWidth * m_FbHeight, GL_PIXEL_UNPACK_BUFFER, GL_DYNAMIC_DRAW, m_Stream);
-		m_DebugBufferGLs["Normal"] = rtlib::GLInteropBuffer<uchar4>(m_FbWidth * m_FbHeight, GL_PIXEL_UNPACK_BUFFER, GL_DYNAMIC_DRAW, m_Stream);
-		m_DebugBufferGLs["Depth"] = rtlib::GLInteropBuffer<uchar4>(m_FbWidth * m_FbHeight, GL_PIXEL_UNPACK_BUFFER, GL_DYNAMIC_DRAW, m_Stream);
-		m_DebugBufferGLs["STree"] = rtlib::GLInteropBuffer<uchar4>(m_FbWidth * m_FbHeight, GL_PIXEL_UNPACK_BUFFER, GL_DYNAMIC_DRAW, m_Stream);
+		m_DebugBufferGLs["Normal"]   = rtlib::GLInteropBuffer<uchar4>(m_FbWidth * m_FbHeight, GL_PIXEL_UNPACK_BUFFER, GL_DYNAMIC_DRAW, m_Stream);
+		m_DebugBufferGLs["Depth"]	 = rtlib::GLInteropBuffer<uchar4>(m_FbWidth * m_FbHeight, GL_PIXEL_UNPACK_BUFFER, GL_DYNAMIC_DRAW, m_Stream);
+		m_DebugBufferGLs["STree"]	 = rtlib::GLInteropBuffer<uchar4>(m_FbWidth * m_FbHeight, GL_PIXEL_UNPACK_BUFFER, GL_DYNAMIC_DRAW, m_Stream);
 		m_AccumBuffer    = rtlib::CUDABuffer<float3>(std::vector<float3>(m_FbWidth * m_FbHeight));
-		m_AccumBufferPG  = rtlib::CUDABuffer<float3>(std::vector<float3>(m_FbWidth * m_FbHeight));
+		m_AccumBufferPg  = rtlib::CUDABuffer<float3>(std::vector<float3>(m_FbWidth * m_FbHeight));
 		m_SeedBuffer     = rtlib::CUDABuffer<unsigned int>();
 		{
 			std::vector<unsigned int> seeds(m_FbWidth * m_FbHeight);
@@ -673,7 +673,7 @@ private:
 										radianceHgData.refrInd     = material.GetFloat1("refrIndx");
 									}
 									auto typeString = test::SpecifyMaterialType(material);
-									if (typeString == "Phong") {
+									if (typeString == "Phong" || typeString == "Diffuse") {
 										typeString += "Def";
 									}
 									if (material.GetString("name") == "light") {
@@ -720,7 +720,7 @@ private:
 									if (material.GetString("name") == "light") {
 										m_LightHgRecIndex = RAY_TYPE_COUNT * sbtOffset + RAY_TYPE_COUNT * i + RAY_TYPE_RADIANCE;
 									}
-									if (typeString == "Phong") {
+									if (typeString == "Phong" || typeString == "Diffuse") {
 										typeString += "Pg";
 									}
 									tracePipeline2->AddHitGRecordFromPG("Pg", RAY_TYPE_COUNT * sbtOffset + RAY_TYPE_COUNT * i + RAY_TYPE_RADIANCE , typeString , radianceHgData);
@@ -762,7 +762,7 @@ private:
 				RayTraceParams params  = {};
 				params.frameBuffer     = m_FrameBuffer.getDevicePtr();
 				params.accumBuffer     = m_AccumBuffer.getDevicePtr();
-				params.accumBuffer2    = m_AccumBufferPG.getDevicePtr();
+				params.accumBuffer2    = m_AccumBufferPg.getDevicePtr();
 				params.seed            = m_SeedBuffer.getDevicePtr();
 				params.width           = m_FbWidth;
 				params.height          = m_FbHeight;
@@ -964,9 +964,15 @@ private:
 			auto& params        = curPipeline->GetSubPass(m_CurSubPassName)->GetParams();
 			params.frameBuffer  = m_FrameBufferGL.map();
 			params.samplePerALL = m_SamplePerAll;
+			if (m_CurSubPassName == "Pg") {
+				params.samplePerALL2 = m_SamplePerAllPg;
+			}
 			curPipeline->Launch(m_FbWidth, m_FbHeight, m_CurSubPassName, m_Stream);
 			m_FrameBufferGL.unmap();
 			m_SamplePerAll     += params.samplePerLaunch;
+			if (m_CurSubPassName == "Pg") {
+				m_SamplePerAllPg += params.samplePerLaunch;
+			}
 			if (m_RequiredVariance)
 			{
 				const size_t numSamples = m_FbWidth * m_FbHeight;
@@ -984,7 +990,30 @@ private:
 				aver1 /= (float)numSamples;
 				aver2 /= (float)numSamples;
 				m_Variance = aver2 - aver1 * aver1;
-				printf("Spp %d: Variance= %f\n", m_SamplePerAll, m_Variance);
+				if (m_CurSubPassName == "Pg") {
+					auto variancePg  = 0.0f;
+					m_AccumBufferPg.download(m_AccumImagePg);
+					{
+						float aver1 = 0.0f;
+						float aver2 = 0.0f;
+						for (auto& pixel : m_AccumImagePg) {
+							if (isnan(pixel.x) || isnan(pixel.y) || isnan(pixel.z)) {
+								printf("Bug!\n");
+							}
+							float pixelGray = rtlib::dot(make_float3(1.0f), pixel) / (3.0f * (float)m_SamplePerAllPg);
+							aver1 += pixelGray;
+							aver2 += pixelGray * pixelGray;
+						}
+						aver1 /= (float)(m_AccumImagePg.size());
+						aver2 /= (float)(m_AccumImagePg.size());
+						variancePg = aver2 - aver1 * aver1;
+					}
+					m_VariancePg = variancePg;
+					printf("Spp %d: Variance = %.7f\n", m_SamplePerAllPg, m_VariancePg);
+				}
+				else {
+					printf("Spp %d: Variance = %.7f\n", m_SamplePerAll  , m_Variance  );
+				}
 			}
 		}
 		else {
@@ -1283,9 +1312,11 @@ private:
 		auto& curDefParams = curPipeline->GetSubPass("Def")->GetParams();
 		OnClearSDTree();
 		OnUpLoadSDTree();
-		m_AccumBufferPG.resize(m_FbWidth * m_FbHeight);
+		m_AccumBufferPg.resize(m_FbWidth * m_FbHeight);
+		m_AccumBufferPg.upload(std::vector<float3>(m_FbWidth * m_FbHeight));
 		m_AccumImagePg            = std::vector<float3>(m_FbWidth * m_FbHeight);
-		m_SamplePerAllPG          = 0;
+		m_SamplePerAllPg          = 0;
+		m_VariancePg              = 0.0f;
 		m_NumPasses               = (int)std::ceil(m_SppBudget / (float)m_SamplePerLaunch);
 		m_TmpPasses               = 0;
 		m_RenderPasses            = 0;
@@ -1294,8 +1325,8 @@ private:
 		m_IsAccumulated           = false;
 		m_CurIteration            = 0;
 		m_CurVariance             = std::numeric_limits<float>::max();
-		curPgParams.accumBuffer2  = m_AccumBufferPG.getDevicePtr();
-		curPgParams.samplePerALL2 = m_SamplePerAllPG;
+		curPgParams.accumBuffer2  = m_AccumBufferPg.getDevicePtr();
+		curPgParams.samplePerALL2 = m_SamplePerAllPg;
 		curPgParams.maxTraceDepth = curDefParams.maxTraceDepth;
 		curPgParams.isBuilt       = false;
 		m_CurSubPassName          = "Pg";
@@ -1310,7 +1341,7 @@ private:
 			return;
 		}
 		if (m_TmpPasses == 0 && !m_IsAccumulated) {
-			printf("Iteration :%d\n", m_CurIteration);
+			//printf("Iteration :%d\n", m_CurIteration);
 			//Sampling開始時には、設定を行う
 			m_RemainPasses = m_NumPasses - m_RenderPasses;
 			m_CurPasses    = std::min<uint32_t>(m_RemainPasses, 1 << m_CurIteration);
@@ -1320,7 +1351,7 @@ private:
 			}
 			if (!m_IsFinalIteration) {
 				if (m_CurPasses >= m_RemainPasses) {
-					printf("Final Iteration!\n");
+					//printf("Final Iteration!\n");
 					m_IsFinalIteration = true;
 				}
 				this->OnDwLoadSDTree();
@@ -1332,9 +1363,6 @@ private:
 		}
 	}
 	void OnEndPG() {
-		auto& curParams         = m_Tracer.GetTracePipeline()->GetSubPass("Pg")->GetParams();
-		m_SamplePerAllPG       += m_SamplePerLaunch;
-		curParams.samplePerALL2 = m_SamplePerAllPG;
 		m_RenderPasses++;
 		if (m_IsAccumulated) {
 			m_TmpPasses++;
@@ -1343,31 +1371,12 @@ private:
 			}
 		}
 		if (!m_IsAccumulated) {
-			auto variancePg   = 0.0f;
-			m_AccumBufferPG.download(m_AccumImagePg);
-			{
-				float aver1 = 0.0f;
-				float aver2 = 0.0f;
-				for (auto& pixel : m_AccumImagePg) {
-					if (isnan(pixel.x) || isnan(pixel.y) || isnan(pixel.z)) {
-						printf("Bug!\n");
-					}
-					float pixelGray = rtlib::dot(make_float3(1.0f), pixel) / (3.0f * (float)m_SamplePerAllPG);
-					aver1 += pixelGray;
-					aver2 += pixelGray * pixelGray;
-				}
-				aver1 /= (float)(m_AccumImagePg.size());
-				aver2 /= (float)(m_AccumImagePg.size());
-				variancePg = aver2 - aver1 * aver1;
-			}
-
 			m_PrvVariance = m_CurVariance;
 			m_CurVariance = m_CurPasses * m_Variance / m_RemainPasses;
-			printf("Extrapolated var: Prv: %f Cur: %f Total: %f/%d\n", m_PrvVariance, m_CurVariance, variancePg, m_SamplePerAllPG);
+			//printf("Extrapolated var: Prv: %f Cur: %f Total: %f/%d\n", m_PrvVariance, m_CurVariance, m_VariancePg, m_SamplePerAllPg);
 			m_RemainPasses -= m_CurPasses;
 
-
-			
+			auto& curParams = m_Tracer.GetTracePipeline()->GetSubPass("Pg")->GetParams();
 			curParams.isBuilt = true;
 
 			
@@ -1406,6 +1415,7 @@ private:
 	}
 	void OnUpdateParams()
 	{
+
 		//params�̍Đݒ�
 		if (m_CurPipelineName == "Trace") {
 			auto& params          = m_Tracer.GetTracePipeline()->GetSubPass(m_CurSubPassName)->GetParams();
@@ -1419,6 +1429,11 @@ private:
 			params.light          = m_Light;
 			params.samplePerALL   = m_SamplePerAll;
 			params.samplePerLaunch= m_SamplePerLaunch;
+			if (m_CurSubPassName == "Pg")
+			{
+				params.accumBuffer2  = m_AccumBufferPg.getDevicePtr();
+				params.samplePerALL2 = m_SamplePerAllPg;
+			}
 		}
 		else {
 			auto& params          = m_Tracer.GetDebugPipeline()->GetSubPass("Def")->GetParams();
@@ -1504,9 +1519,10 @@ private:
 	//Guiding
 	SDTreePtr                       m_SdTree             = nullptr;
 	rtlib::utils::AABB              m_WorldAABB          = {};
-	rtlib::CUDABuffer<float3>       m_AccumBufferPG      = {};
+	rtlib::CUDABuffer<float3>       m_AccumBufferPg      = {};
 	std::vector<float3>             m_AccumImagePg       = {};
-	uint32_t                        m_SamplePerAllPG     = 0;
+	float                           m_VariancePg         = 0.0f;
+	uint32_t                        m_SamplePerAllPg     = 0;
 	uint32_t                        m_SppBudget          = 0;
 	uint32_t                        m_NumPasses          = 0;
 	uint32_t                        m_TmpPasses          = 0;

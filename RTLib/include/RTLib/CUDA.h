@@ -334,13 +334,13 @@ namespace rtlib{
             cudaTextureDesc texDesc             = {};
             texDesc.addressMode[0]              = cudaAddressModeWrap;
             texDesc.addressMode[1]              = cudaAddressModeWrap;
-            texDesc.filterMode                  = cudaFilterModePoint;
+            texDesc.filterMode                  = cudaFilterModeLinear;
             texDesc.readMode                    = readMode;
             texDesc.normalizedCoords            = true;
             texDesc.maxAnisotropy               = 1;
             texDesc.maxMipmapLevelClamp         = 99;
             texDesc.minMipmapLevelClamp         = 0;
-            texDesc.mipmapFilterMode            = cudaFilterModePoint;
+            texDesc.mipmapFilterMode            = cudaFilterModeLinear;
             texDesc.borderColor[0]              = 1.0f;
             texDesc.sRGB                        = useSRGB;
             RTLIB_CUDA_CHECK(cudaCreateTextureObject(&m_Handle,&resDesc,&texDesc,nullptr));

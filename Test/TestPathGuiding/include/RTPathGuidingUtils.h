@@ -381,7 +381,6 @@ namespace test {
 				size_t index;
 				int    depth;
 			};
-			printf("Refine!\n");
 			std::stack<StackNode> nodeIndices = {};
 			nodeIndices.push({ 0, 1 });
 			while (!nodeIndices.empty())
@@ -492,11 +491,12 @@ namespace test {
 			m_GpuDTreeWrappers.upload(dTreeWrappers);
 			m_GpuDTreeNodesBuilding.upload(dTreeNodesBuilding);
 			m_GpuDTreeNodesSampling.upload(dTreeNodesSampling);
-			
+#if 0
 			std::cout << "Upload(Info)\n";
 			std::cout << "GpuSTreeNodes          : " << m_GpuSTreeNodes.getSizeInBytes()         / (1024.0f * 1024.0f) << "MB\n";
 			std::cout << "GpuDTreeNodes(Building): " << m_GpuDTreeNodesBuilding.getSizeInBytes() / (1024.0f * 1024.0f) << "MB\n";
 			std::cout << "GpuDTreeNodes(Sampling): " << m_GpuDTreeNodesSampling.getSizeInBytes() / (1024.0f * 1024.0f) << "MB\n";
+#endif
 		}
 		void Download() noexcept{
 			//ダウンロードが必要なのはBuildingだけ
@@ -615,12 +615,14 @@ namespace test {
 				}
 				avgStatisticalWeight /= nPoints;
 			}
+#if 0
 			std::cout << "SDTree Build Statistics\n";
 			std::cout << "Depth(STree):      " << m_CpuSTree.GetDepth() << std::endl;
 			std::cout << "Depth(DTree):      " << minDepth       << "," << avgDepth       << "," << maxDepth       << std::endl;
 			std::cout << "Node count:        " << minNodes       << "," << avgNodes       << "," << maxNodes       << std::endl;
 			std::cout << "Mean Radiance:     " << minAvgRadiance << "," << avgAvgRadiance << "," << maxAvgRadiance << std::endl;
 			std::cout << "statisticalWeight: " << minStatisticalWeight << "," << avgStatisticalWeight << "," << maxStatisticalWeight << std::endl;
+#endif
 		}
 		void Dump(std::string filename) {
 			std::fstream jsonFile(filename, std::ios::binary | std::ios::out);
