@@ -53,7 +53,7 @@ struct DTreeNode {
 	RTLIB_INLINE RTLIB_HOST_DEVICE auto GetSum(int childIdx)const noexcept -> float {
 		return sums[childIdx];
 	}
-	RTLIB_INLINE RTLIB_HOST_DEVICE void SetSum(int childIdx, float val)noexcept{
+	RTLIB_INLINE RTLIB_HOST_DEVICE void SetSum(int childIdx, float val)noexcept {
 		sums[childIdx] = val;
 	}
 	RTLIB_INLINE RTLIB_HOST_DEVICE void SetSumAll(float val)noexcept {
@@ -98,18 +98,24 @@ struct DTreeNode {
 	template<typename RNG>
 	RTLIB_INLINE RTLIB_HOST_DEVICE auto Sample(RNG& rng, const DTreeNode* nodes)const noexcept -> float2 {
 		const DTreeNode* cur = this;
-		int    depth         = 1;
-		float2 result        = make_float2(0.0f);
-		float  size          = 1.0f;
-		while (depth < PATH_GUIDING_MAX_DEPTH) {
-			int   idx        = 0;
-			float topLeft    = cur->sums[0];
-			float topRight   = cur->sums[1];
-			float partial    = cur->sums[0] + cur->sums[2];
-			float total      = cur->GetSumOfAll();
-			float mulOfSum   = cur->sums[0]*cur->sums[1]*cur->sums[2]*cur->sums[3];
+		int    depth  = 1;
+		float2 result = make_float2(0.0f);
+		double size   = 1.0f;
+		for (;;) {
+			int   idx      = 0;
+			float topLeft  = cur->sums[0];
+			float topRight = cur->sums[1];
+			float partial  = cur->sums[0] + cur->sums[2];
+			float total    = cur->GetSumOfAll();
+#if 0
+			float mulOfSum = cur->sums[0] * cur->sums[1] * cur->sums[2] * cur->sums[3];
 			//if( total <=0.0f){
-			if (mulOfSum <=0.0f) {
+			if (mulOfSum <= 0.0f)
+#else
+			if (total <= 0.0f)
+#endif
+			{
+				printf("Bug!\n");
 				result += rtlib::random_float2(rng) * size;
 				break;
 			}
@@ -119,7 +125,7 @@ struct DTreeNode {
 			float sample   = rtlib::random_float1(rng);
 			if (sample < boundary)
 			{
-				sample  /= boundary;
+				sample /= boundary;
 				boundary = topLeft / partial;
 			}
 			else
@@ -128,7 +134,7 @@ struct DTreeNode {
 				origin.x = 0.5f;
 				sample   = (sample - boundary) / (1.0f - boundary);
 				boundary = topRight / partial;
-				idx |= (1 << 0);
+				idx     |= (1 << 0);
 			}
 
 			if (sample < boundary)
@@ -138,7 +144,7 @@ struct DTreeNode {
 			else
 			{
 				origin.y = 0.5f;
-				sample   = (sample - boundary) / (1.0f - boundary);
+				sample = (sample - boundary) / (1.0f - boundary);
 				idx |= (1 << 1);
 			}
 
@@ -149,9 +155,8 @@ struct DTreeNode {
 			}
 
 			result += size * origin;
-			size   *= 0.5f;
-			const auto newNode = &nodes[cur->children[idx]];
-			cur     = newNode;
+			size *= 0.5f;
+			cur = &nodes[cur->children[idx]];
 			++depth;
 		}
 		return result;
@@ -163,32 +168,37 @@ struct DTreeNode {
 		const DTreeNode* cur = this;
 		int              idx = cur->GetChildIdx(p);
 		int            depth = 1;
-		while (depth < PATH_GUIDING_MAX_DEPTH) {
+		for (;;) {
 			auto total = cur->GetSumOfAll();
 			//if (total <= 0.0f) {
 				//break;
-			//}
-			float mulOfSum = cur->sums[0]*cur->sums[1]*cur->sums[2]*cur->sums[3];
-			if (mulOfSum<=0.0f){
+#if 0
+			float mulOfSum = cur->sums[0] * cur->sums[1] * cur->sums[2] * cur->sums[3];
+			//if( total <=0.0f){
+			if (mulOfSum <= 0.0f)
+#else
+			if (cur->GetSum(idx) <= 0.0f)
+#endif
+			{
+				result = 0.0f;
 				break;
 			}
-			if(isnan(cur->sums[idx])){
-				printf("sums = (%f, %f, %f, %f)\n",cur->sums[0],cur->sums[1],cur->sums[2],cur->sums[3]);
+			if (isnan(cur->sums[idx])) {
+				printf("sums = (%f, %f, %f, %f)\n", cur->sums[0], cur->sums[1], cur->sums[2], cur->sums[3]);
 			}
-			if(cur==nullptr){
+			if (cur == nullptr) {
 				printf("cur = nullptr\n");
 			}
-			const auto factor = 4.0f * cur->sums[idx] / total;
+			const auto factor = 4.0f * cur->GetSum(idx) / total;
 			result *= factor;
 			if (cur->IsLeaf(idx)) {
 				break;
 			}
-			const auto newNode = &nodes[cur->children[idx]];
-			cur = newNode;
+			cur = &nodes[cur->children[idx]];
 			idx = cur->GetChildIdx(p);
 			++depth;
 		}
-		if(isnan(result)){
+		if (isnan(result)) {
 			printf("result is nan\n");
 		}
 		return result;
@@ -200,6 +210,20 @@ struct DTreeNode {
 		p = 2.0f * p - 1.0f;
 	}
 #ifndef __CUDA_ARCH__
+	auto GetArea(const std::vector<DTreeNode>& nodes)const noexcept -> float {
+		float  result = 0.0f;
+		for (int i = 0; i < 4; ++i) {
+			if (GetSum(i) > 0.0f) {
+				if (IsLeaf(i)) {
+					result += 1.0f / 4.0f;
+				}
+				else {
+					result += nodes[GetChild(i)].GetArea(nodes) / 4.0f;
+				}
+			}
+		}
+		return result;
+	}
 	void Build(std::vector<DTreeNode>& nodes) {
 		for (int i = 0; i < 4; ++i) {
 			if (this->IsLeaf(i)) {
@@ -217,30 +241,34 @@ struct DTreeNode {
 	void Dump(std::fstream& jsonFile, const std::vector<DTreeNode>& nodes)const noexcept
 	{
 		jsonFile << "{\n";
-		jsonFile << "\"sums\"             : [" << sums[0] << ", " << sums[1] << ", " <<sums[2] <<", " << sums[3]  << "],\n";
+		jsonFile << "\"sums\"             : [" << sums[0] << ", " << sums[1] << ", " << sums[2] << ", " << sums[3] << "],\n";
 		jsonFile << "\"children\"         : [\n";
-		if (!IsLeaf(0)){
-			nodes[children[0]].Dump(jsonFile,nodes);
+		if (!IsLeaf(0)) {
+			nodes[children[0]].Dump(jsonFile, nodes);
 			jsonFile << ",\n";
-		}else{
+		}
+		else {
 			jsonFile << "{},\n";
 		}
-		if (!IsLeaf(1)){
-			nodes[children[1]].Dump(jsonFile,nodes);
+		if (!IsLeaf(1)) {
+			nodes[children[1]].Dump(jsonFile, nodes);
 			jsonFile << ",\n";
-		}else{
+		}
+		else {
 			jsonFile << "{},\n";
 		}
-		if (!IsLeaf(2)){
-			nodes[children[2]].Dump(jsonFile,nodes);
+		if (!IsLeaf(2)) {
+			nodes[children[2]].Dump(jsonFile, nodes);
 			jsonFile << ",\n";
-		}else{
+		}
+		else {
 			jsonFile << "{},\n";
 		}
-		if (!IsLeaf(3)){
-			nodes[children[3]].Dump(jsonFile,nodes);
+		if (!IsLeaf(3)) {
+			nodes[children[3]].Dump(jsonFile, nodes);
 			jsonFile << "\n";
-		}else{
+		}
+		else {
 			jsonFile << "{}\n";
 		}
 		jsonFile << "]\n";
@@ -251,9 +279,12 @@ struct DTreeNode {
 	unsigned short children[4];
 };
 struct DTree {
+	RTLIB_INLINE RTLIB_HOST_DEVICE auto  GetArea()const noexcept -> float {
+		return area;
+	}
 	RTLIB_INLINE RTLIB_HOST_DEVICE auto  GetMean()const noexcept -> float {
-		if (statisticalWeight <= 0.0f) { return 0.0f; }
-		const float factor = 1.0f / (4.0f * RTLIB_M_PI * statisticalWeight);
+		if (statisticalWeight  <= 0.0f) { return 0.0f; }
+		const float factor = 1.0f / (4.0f * RTLIB_M_PI  * statisticalWeight);
 		return factor * sum;
 	}
 	RTLIB_INLINE RTLIB_DEVICE      void  AddStatisticalWeightAtomic(float val)noexcept {
@@ -293,6 +324,7 @@ struct DTree {
 		return nodes[0].Pdf(p, nodes) / (4.0f * RTLIB_M_PI);
 	}
 	DTreeNode* nodes;
+	float      area;
 	float      sum;
 	float      statisticalWeight;
 };
@@ -340,7 +372,6 @@ struct STreeNode {
 		return dTree != nullptr;
 	}
 	RTLIB_INLINE RTLIB_HOST_DEVICE auto  GetDTreeWrapper(float3& p, float3& size, const STreeNode* nodes)const noexcept -> DTreeWrapper* {
-		float         result = 1.0f;
 		const STreeNode* cur = this;
 		int              idx = cur->GetChildIdx(p);
 		int            depth = 1;
@@ -398,8 +429,8 @@ struct STreeNode {
 struct STree {
 	RTLIB_INLINE RTLIB_HOST_DEVICE auto  GetDTreeWrapper(float3 p, float3& size)const noexcept -> DTreeWrapper* {
 		size = aabbMax - aabbMin;
-		p    = p - aabbMin;
-		p   /= size;
+		p = p - aabbMin;
+		p /= size;
 		return nodes[0].GetDTreeWrapper(p, size, nodes);
 	}
 	RTLIB_INLINE RTLIB_HOST_DEVICE auto  GetDTreeWrapper(float3 p)const noexcept -> DTreeWrapper* {
@@ -436,29 +467,29 @@ struct TraceVertex {
 			return;
 		}
 		bool isValidRadiance = (isfinite(radiance.x) && radiance.x >= 0.0f) &&
-							   (isfinite(radiance.y) && radiance.y >= 0.0f) &&
-							   (isfinite(radiance.z) && radiance.z >= 0.0f);
-		bool isValidBsdfVal  = (isfinite(bsdfVal.x)  && bsdfVal.x  >= 0.0f) &&
-			                   (isfinite(bsdfVal.y)  && bsdfVal.y  >= 0.0f) &&
-		                       (isfinite(bsdfVal.z)  && bsdfVal.z  >= 0.0f);
+			(isfinite(radiance.y) && radiance.y >= 0.0f) &&
+			(isfinite(radiance.z) && radiance.z >= 0.0f);
+		bool isValidBsdfVal = (isfinite(bsdfVal.x) && bsdfVal.x >= 0.0f) &&
+			(isfinite(bsdfVal.y) && bsdfVal.y >= 0.0f) &&
+			(isfinite(bsdfVal.z) && bsdfVal.z >= 0.0f);
 		if (woPdf <= 0.0f || !isValidRadiance || !isValidBsdfVal)
 		{
 			return;
 		}
 		auto localRadiance = make_float3(0.0f);
-		if (throughPut.x * woPdf > 1e-5f) {
+		if (throughPut.x * woPdf > 1e-4f) {
 			localRadiance.x = radiance.x / throughPut.x;
 		}
-		if (throughPut.y * woPdf > 1e-5f) {
+		if (throughPut.y * woPdf > 1e-4f) {
 			localRadiance.y = radiance.y / throughPut.y;
 		}
-		if (throughPut.z * woPdf > 1e-5f) {
+		if (throughPut.z * woPdf > 1e-4f) {
 			localRadiance.z = radiance.z / throughPut.z;
 		}
-       //printf("localRadiance=(%f,%f,%f)\n",localRadiance.x,localRadiance.y,localRadiance.z);
-		float3 product         = localRadiance * bsdfVal;
+		//printf("localRadiance=(%f,%f,%f)\n",localRadiance.x,localRadiance.y,localRadiance.z);
+		float3 product = localRadiance * bsdfVal;
 		float localRadianceAvg = (localRadiance.x + localRadiance.y + localRadiance.z) / 3.0f;
-		float productAvg       = (product.x + product.y + product.z) / 3.0f;
+		float productAvg = (product.x + product.y + product.z) / 3.0f;
 		DTreeRecord rec{ rayDirection,localRadianceAvg ,productAvg,woPdf,bsdfPdf,dTreePdf,statisticalWeight,isDelta };
 		dTree->Record(rec);
 	}

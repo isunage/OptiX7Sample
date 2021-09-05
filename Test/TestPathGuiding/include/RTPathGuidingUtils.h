@@ -18,17 +18,20 @@ namespace test {
 			m_MaxDepth = 0;
 			m_Nodes.emplace_back();
 			m_Nodes.front().SetSumAll(0.0f);
-			m_Sum = 0.0f;
+			m_Sum  = 0.0f;
+			m_Area = 0.0f;
 			m_StatisticalWeight = 0.0f;
 		}
 		void Reset(const RTDTree& prvDTree, int newMaxDepth, float subDivTh) {
-			m_Sum = 0.0f;
+			m_Area              = 0.0f;
+			m_Sum               = 0.0f;
 			m_StatisticalWeight = 0.0f;
-			m_MaxDepth = 0;
+			m_MaxDepth          = 0;
 			m_Nodes.clear();
 			m_Nodes.emplace_back();
 			struct StackNode {
 				size_t         dstNodeIdx;
+				//const RTDTree* dstDTree = this;
 				size_t         srcNodeIdx;
 				const RTDTree* srcDTree;
 				int            depth;
@@ -51,12 +54,15 @@ namespace test {
 					const auto fraction = total > 0.0f ? (sNode.GetSrcNode().GetSum(i) / total) : std::pow(0.25f, sNode.depth);
 					if (sNode.depth < newMaxDepth && fraction > subDivTh) {
 						if (!sNode.GetSrcNode().IsLeaf(i)) {
+							if (sNode.srcDTree != &prvDTree) {
+								std::cout << "sNode.srcDTree != &prvDTree!\n";
+							}
 							//Not Leaf -> Copy Child
 							stackNodes.push({ m_Nodes.size(), sNode.GetSrcNode().GetChild(i),&prvDTree,sNode.depth + 1 });
 						}
 						else {
 							//    Leaf -> Copy Itself
-							stackNodes.push({ m_Nodes.size(), m_Nodes.size(), this,sNode.depth + 1 });
+							stackNodes.push({ m_Nodes.size(), m_Nodes.size()                , this    ,sNode.depth + 1 });
 						}
 						m_Nodes[sNode.dstNodeIdx].SetChild(i, static_cast<unsigned short>(m_Nodes.size()));
 						m_Nodes.emplace_back();
@@ -68,7 +74,6 @@ namespace test {
 							stackNodes = {};
 							break;
 						}
-						
 					}
 				}
 			}
@@ -80,6 +85,7 @@ namespace test {
 		void Build() {
 			auto& root = m_Nodes.front();
 			root.Build(m_Nodes);
+			m_Area     = root.GetArea(m_Nodes);
 			float sum  = 0.0f;
 			for (int i = 0; i < 4; ++i) {
 				sum   += root.sums[i];
@@ -107,12 +113,14 @@ namespace test {
 		auto GetDepth()const noexcept -> int {
 			return m_MaxDepth;
 		}
-		auto  GetMean()const noexcept -> float {
-			if (m_StatisticalWeight <= 0.0f) { return 0.0f; }
-			const float factor = 1.0f / (4.0f * RTLIB_M_PI * m_StatisticalWeight);
+		auto GetMean()const noexcept -> float {
+			if (m_StatisticalWeight * m_Area<= 0.0f) { return 0.0f; }
+			const float factor = 1.0f / (4.0f * RTLIB_M_PI * m_Area * m_StatisticalWeight);
 			return factor * m_Sum;
 		}
-
+		auto GetArea()const noexcept -> float {
+			return m_Area;
+		}
 		template<typename RNG>
 		auto Sample(RNG& rng)const noexcept -> float3 {
 			if (GetMean() <= 0.0f) {
@@ -124,7 +132,7 @@ namespace test {
 			if (GetMean() <= 0.0f) {
 				return 1.0f / (4.0f * RTLIB_M_PI);
 			}
-			return m_Nodes[0].Pdf(rtlib::dir_to_canonical(dir),m_Nodes.data()) / (4.0f * RTLIB_M_PI);
+			return m_Area * m_Nodes[0].Pdf(rtlib::dir_to_canonical(dir),m_Nodes.data()) / (4.0f * RTLIB_M_PI);
 		}
 		void Dump(std::fstream& jsonFile)const noexcept {
 			jsonFile << "{\n";
@@ -171,6 +179,7 @@ namespace test {
 		}
 	private:
 		std::vector<RTDTreeNode> m_Nodes;
+		float                    m_Area;
 		float                    m_Sum;
 		float                    m_StatisticalWeight;
 		int                      m_MaxDepth;
@@ -204,6 +213,9 @@ namespace test {
 		auto  GetMean()const noexcept->float {
 			return sampling.GetMean();
 		}
+		auto  GetArea()const noexcept->float {
+			return sampling.GetArea();
+		}
 		auto  GetDepth()const noexcept -> int {
 			return sampling.GetDepth();
 		}
@@ -220,9 +232,7 @@ namespace test {
 		RTDTree    sampling;
 	};
 	struct RTSTreeNode {
-		RTSTreeNode()noexcept : dTree(), isLeaf{ true }, axis{ 0 }, children{}{
-			
-		}
+		RTSTreeNode()noexcept : dTree(), isLeaf{ true }, axis{ 0 }, children{}{}
 		auto GetChildIdx(float3& p)const noexcept -> int {
 			float* p_A = reinterpret_cast<float*>(&p);
 			if (p_A[axis] < 0.5f) {
@@ -418,8 +428,8 @@ namespace test {
 		RTSTreeWrapper(const float3& aabbMin, const float3& aabbMax)noexcept :m_CpuSTree{ aabbMin,aabbMax } {}
 		void Upload()noexcept {
 			//Uploadは両方必要
-			const size_t gpuSTreeNodeCnt = m_CpuSTree.GetNumNodes();
-			size_t gpuDTreeCnt     = 0;
+			const size_t gpuSTreeNodeCnt   = m_CpuSTree.GetNumNodes();
+			size_t gpuDTreeCnt             = 0;
 			size_t gpuDTreeNodeCntBuilding = 0;
 			size_t gpuDTreeNodeCntSampling = 0;
 			for (size_t i = 0; i < gpuSTreeNodeCnt; ++i) {
@@ -451,15 +461,17 @@ namespace test {
 						//DTREE
 						sTreeNodes[i].dTree   = m_GpuDTreeWrappers.getDevicePtr() + dTreeIndex;
 						//BUILDING
+						dTreeWrappers[dTreeIndex].building.area              = m_CpuSTree.Node(i).dTree.building.GetArea();
 						dTreeWrappers[dTreeIndex].building.sum               = m_CpuSTree.Node(i).dTree.building.GetSum();
 						dTreeWrappers[dTreeIndex].building.statisticalWeight = m_CpuSTree.Node(i).dTree.building.GetStatisticalWeight();
 						dTreeWrappers[dTreeIndex].building.nodes             = m_GpuDTreeNodesBuilding.getDevicePtr() + dTreeNodeOffsetBuilding;
 						for (size_t j = 0; j < m_CpuSTree.Node(i).dTree.building.GetNumNodes(); ++j) {
-							//SUMS
+							//SUM
 							dTreeNodesBuilding[dTreeNodeOffsetBuilding + j]  = m_CpuSTree.Node(i).dTree.building.Node(j);
 						}
 						dTreeNodeOffsetBuilding += m_CpuSTree.Node(i).dTree.building.GetNumNodes();
 						//SAMPLING
+						dTreeWrappers[dTreeIndex].sampling.area              = m_CpuSTree.Node(i).dTree.sampling.GetArea();
 						dTreeWrappers[dTreeIndex].sampling.sum               = m_CpuSTree.Node(i).dTree.sampling.GetSum();
 						dTreeWrappers[dTreeIndex].sampling.statisticalWeight = m_CpuSTree.Node(i).dTree.sampling.GetStatisticalWeight();
 						dTreeWrappers[dTreeIndex].sampling.nodes             = m_GpuDTreeNodesSampling.getDevicePtr() + dTreeNodeOffsetSampling;
@@ -541,6 +553,7 @@ namespace test {
 			}
 		}
 		void Build() {
+			size_t bestIdx = 0;
 			for (int i = 0; i < m_CpuSTree.GetNumNodes(); ++i) {
 				if (m_CpuSTree.Node(i).isLeaf) {
 					m_CpuSTree.Node(i).dTree.Build();
@@ -565,19 +578,7 @@ namespace test {
 			for (int i = 0; i < m_CpuSTree.GetNumNodes(); ++i) {
 				if (m_CpuSTree.Node(i).isLeaf) {
 					auto& dTree = m_CpuSTree.Node(i).dTree;
-					{
-						// rtlib::Xorshift32 xor (100);
-						// float result = 0.0f;
-						// int N = 100000;
-						// for (int i = 0; i < N; ++i) {
-						// 	float value = dTree.Pdf(dTree.Sample(xor));
-						// 	if (value > 0.0f)
-						// 	{
-						// 		result += 1.0f / value;
-						// 	}
-						// }
-						// printf("Pdf = %f, Mean = %f\n", result / (RTLIB_M_PI*4.0f *(float)N), dTree.GetMean());
-					}
+					//printf("Area = %f\n", dTree.sampling.GetArea());
 					const int depth = dTree.GetDepth();
 					maxDepth = std::max<int>(maxDepth, depth);
 					minDepth = std::min<int>(minDepth, depth);

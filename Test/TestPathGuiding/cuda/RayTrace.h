@@ -7,10 +7,11 @@
 #include <RTLib/VectorFunction.h>
 #include <RTLib/Math.h>
 #include "PathGuiding.h"
+//#define RAY_GUIDING_SAMPLE_BY_UNIFORM_SPHERE
+//#define RAY_GUIDING_SAMPLE_BY_COSINE_SPHERE
 //#define TEST_SKIP_TEXTURE_SAMPLE
-//#define   TEST11_SHOW_EMISSON_COLOR
+//#define TEST11_SHOW_EMISSON_COLOR
 #define TEST_MAX_TRACE_DEPTH 4
-#define TEST_SHOW_DIFFUSE_COLOR
 enum RayType   {
     RAY_TYPE_RADIANCE = 0,
     RAY_TYPE_OCCLUSION,
@@ -39,11 +40,13 @@ struct RadianceRec {
 struct RayTraceParams {
     uchar4*                frameBuffer;
     float3*                accumBuffer;
+    float3*                accumBuffer2;
     unsigned int*          seed;       
     unsigned int           width;      
     unsigned int           height;
     unsigned int           samplePerLaunch;
     unsigned int           samplePerALL;
+    unsigned int           samplePerALL2;
     unsigned int           maxTraceDepth;
     OptixTraversableHandle gasHandle;
     STree                  sdTree;

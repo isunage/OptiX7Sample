@@ -54,10 +54,10 @@ static void TestPathGuide()
 	nodes[index].children[3] = 4;//0
 	++index;//1->OK
 	nodes.emplace_back();
-	nodes[index].sums[0] = 1598.15;
-	nodes[index].sums[1] = 3537.22;
-	nodes[index].sums[2] = 95.4294;
-	nodes[index].sums[3] = 35.4652;
+	nodes[index].sums[0]     = 1598.15;
+	nodes[index].sums[1]     = 3537.22;
+	nodes[index].sums[2]     = 95.4294;
+	nodes[index].sums[3]     = 35.4652;
 	nodes[index].children[0] = 0;
 	nodes[index].children[1] = 0;
 	nodes[index].children[2] = 0;
@@ -136,9 +136,10 @@ static void TestPathGuide()
 	for (auto i = 0; i < N; ++i) {
 		auto dir = nodes[0].Sample(xor32, nodes.data());
 		//4.0f vs 0.0f
-		auto pdf = nodes[0].Pdf(dir, nodes.data());
-		//std::cout << pdf << std::endl;
-		res += (pdf <= 0.0f) ? 0.0f:(1.0f / pdf);
+		auto pdf  = nodes[0].Pdf(dir, nodes.data());
+		auto area = nodes[0].GetArea(nodes);
+		std::cout << "pdf=" << pdf << std::endl;
+		res += (pdf <= 0.0f) ? 0.0f:(1.0f / (pdf* area));
 	}
 	res /= N;
 	std::cout << res << "\n";
@@ -285,8 +286,9 @@ private:
 		std::vector<std::pair<std::string, std::string>> objInfos = {
 			//{TEST_TEST_PG_DATA_PATH"/Models/Lumberyard/Exterior/exterior.obj" , TEST_TEST_PG_DATA_PATH"/Models/Lumberyard/Exterior/"},
 			//{TEST_TEST_PG_DATA_PATH"/Models/Lumberyard/Interior/interior.obj" , TEST_TEST_PG_DATA_PATH"/Models/Lumberyard/Interior/"},
-			//{TEST_TEST_PG_DATA_PATH"/Models/Sponza/Sponza.obj"              , TEST_TEST_PG_DATA_PATH"/Models/Sponza/"             },
-			{TEST_TEST_PG_DATA_PATH"/Models/CornellBox/CornellBox-Water.obj", TEST_TEST_PG_DATA_PATH"/Models/CornellBox/"},
+			{TEST_TEST_PG_DATA_PATH"/Models/Sponza/Sponza.obj"              , TEST_TEST_PG_DATA_PATH"/Models/Sponza/"             },
+			//{TEST_TEST_PG_DATA_PATH"/Models/CornellBox/CornellBox-Water.obj", TEST_TEST_PG_DATA_PATH"/Models/CornellBox/"},
+			//{TEST_TEST_PG_DATA_PATH"/Models/CornellBox/CornellBox-Water.obj", TEST_TEST_PG_DATA_PATH"/Models/CornellBox/"},
 		};
 		m_MaterialSet = rtlib::ext::MaterialListPtr(new rtlib::ext::MaterialList());
 		{
@@ -522,8 +524,9 @@ private:
 		m_DebugBufferGLs["Normal"] = rtlib::GLInteropBuffer<uchar4>(m_FbWidth * m_FbHeight, GL_PIXEL_UNPACK_BUFFER, GL_DYNAMIC_DRAW, m_Stream);
 		m_DebugBufferGLs["Depth"] = rtlib::GLInteropBuffer<uchar4>(m_FbWidth * m_FbHeight, GL_PIXEL_UNPACK_BUFFER, GL_DYNAMIC_DRAW, m_Stream);
 		m_DebugBufferGLs["STree"] = rtlib::GLInteropBuffer<uchar4>(m_FbWidth * m_FbHeight, GL_PIXEL_UNPACK_BUFFER, GL_DYNAMIC_DRAW, m_Stream);
-		m_AccumBuffer = rtlib::CUDABuffer<float3>(std::vector<float3>(m_FbWidth * m_FbHeight));
-		m_SeedBuffer = rtlib::CUDABuffer<unsigned int>();
+		m_AccumBuffer    = rtlib::CUDABuffer<float3>(std::vector<float3>(m_FbWidth * m_FbHeight));
+		m_AccumBufferPG  = rtlib::CUDABuffer<float3>(std::vector<float3>(m_FbWidth * m_FbHeight));
+		m_SeedBuffer     = rtlib::CUDABuffer<unsigned int>();
 		{
 			std::vector<unsigned int> seeds(m_FbWidth * m_FbHeight);
 			std::random_device rd;
@@ -732,19 +735,21 @@ private:
 				tracePipeline2->GetHitGRecordBuffer("Pg")->Upload();
 			}
 			{
-				RayTraceParams params = {};
-				params.frameBuffer = m_FrameBuffer.getDevicePtr();
-				params.accumBuffer = m_AccumBuffer.getDevicePtr();
-				params.seed = m_SeedBuffer.getDevicePtr();
-				params.width = m_FbWidth;
-				params.height = m_FbHeight;
-				params.maxTraceDepth = kDefaultMaxTraceDepth;
-				params.gasHandle = m_Tracer.GetTLAS()->handle;
-				params.light = m_Light;
+				RayTraceParams params  = {};
+				params.frameBuffer     = m_FrameBuffer.getDevicePtr();
+				params.accumBuffer     = m_AccumBuffer.getDevicePtr();
+				params.accumBuffer2    = nullptr;
+				params.seed            = m_SeedBuffer.getDevicePtr();
+				params.width           = m_FbWidth;
+				params.height          = m_FbHeight;
+				params.maxTraceDepth   = kDefaultMaxTraceDepth;
+				params.gasHandle       = m_Tracer.GetTLAS()->handle;
+				params.light           = m_Light;
 				params.samplePerALL    = 0;
+				params.samplePerALL2   = 0;
 				params.samplePerLaunch = kDefaultSamplePerLaunch;
-				params.isBuilt = false;
-
+				params.isBuilt         = false;
+				
 				tracePipeline2->NewSubPass("Def");
 				tracePipeline2->AddRayGRecordBufferToSubPass("Def", "Def");
 				tracePipeline2->AddMissRecordBufferToSubPass("Def", "Def");
@@ -754,20 +759,21 @@ private:
 				tracePipeline2->GetSubPass("Def")->SetTraceCallDepth(1);
 			}
 			{
-				RayTraceParams params = {};
-				params.frameBuffer = m_FrameBuffer.getDevicePtr();
-				params.accumBuffer = m_AccumBuffer.getDevicePtr();
-				params.seed = m_SeedBuffer.getDevicePtr();
-				params.width = m_FbWidth;
-				params.height = m_FbHeight;
-				params.maxTraceDepth = kDefaultMaxTraceDepth;
-				params.gasHandle = m_Tracer.GetTLAS()->handle;
-				params.sdTree = m_SdTree->GetGpuHandle();
-				params.sdTree = m_SdTree->GetGpuHandle();
-				params.light = m_Light;
-				params.samplePerALL = 0;
+				RayTraceParams params  = {};
+				params.frameBuffer     = m_FrameBuffer.getDevicePtr();
+				params.accumBuffer     = m_AccumBuffer.getDevicePtr();
+				params.accumBuffer2    = m_AccumBufferPG.getDevicePtr();
+				params.seed            = m_SeedBuffer.getDevicePtr();
+				params.width           = m_FbWidth;
+				params.height          = m_FbHeight;
+				params.maxTraceDepth   = kDefaultMaxTraceDepth;
+				params.gasHandle       = m_Tracer.GetTLAS()->handle;
+				params.sdTree          = m_SdTree->GetGpuHandle();
+				params.light           = m_Light;
+				params.samplePerALL    = 0;
+				params.samplePerALL2   = 0;
 				params.samplePerLaunch = kDefaultSamplePerLaunch;
-				params.isBuilt = false;
+				params.isBuilt         = false;
 
 				tracePipeline2->NewSubPass("Pg");
 				tracePipeline2->NewSubPass("Pg");
@@ -788,11 +794,11 @@ private:
 			OptixPipelineCompileOptions compileOptions = {};
 
 			compileOptions.pipelineLaunchParamsVariableName = "params";
-			compileOptions.numAttributeValues = 3;
-			compileOptions.numPayloadValues = 8;
+			compileOptions.numAttributeValues     = 3;
+			compileOptions.numPayloadValues       = 8;
 			compileOptions.usesPrimitiveTypeFlags = 0;
-			compileOptions.usesMotionBlur = false;
-			compileOptions.traversableGraphFlags = OPTIX_TRAVERSABLE_GRAPH_FLAG_ALLOW_ANY;
+			compileOptions.usesMotionBlur         = false;
+			compileOptions.traversableGraphFlags  = OPTIX_TRAVERSABLE_GRAPH_FLAG_ALLOW_ANY;
 
 			OptixPipelineLinkOptions linkOptions = {};
 
@@ -967,7 +973,7 @@ private:
 				m_AccumBuffer.download(m_AccumImage);
 				float aver1 = 0.0f;
 				float aver2 = 0.0f;
-				for (auto& pixel:      m_AccumImage) {
+				for (auto& pixel: m_AccumImage) {
 					if (isnan(pixel.x) || isnan(pixel.y) || isnan(pixel.z)) {
 						printf("Bug!\n");
 					}
@@ -1076,7 +1082,7 @@ private:
 							}
 							{
 								int sppBudget = m_SppBudget;
-								if (ImGui::SliderInt("sppBudget", &sppBudget, 1, 4096)) {
+								if (ImGui::SliderInt("sppBudget", &sppBudget, 1, 10000)) {
 									m_SppBudget = sppBudget;
 								}
 							}
@@ -1272,22 +1278,28 @@ private:
 		m_Tracer.GetDebugPipeline()->GetHitGRecordBuffer("Def")->Upload();
 	}
 	void OnPreparePG() {
+		auto& curPipeline  = m_Tracer.GetTracePipeline();
+		auto& curPgParams  = curPipeline->GetSubPass("Pg")->GetParams();
+		auto& curDefParams = curPipeline->GetSubPass("Def")->GetParams();
 		OnClearSDTree();
 		OnUpLoadSDTree();
-		m_AccumImagePg     = std::vector<float3>(m_FbWidth * m_FbHeight);
-		m_SamplePerAllPG   = 0;
-		m_NumPasses        = (int)std::ceil(m_SppBudget / (float)m_SamplePerLaunch);
-		m_TmpPasses        = 0;
-		m_RenderPasses     = 0;
-		m_CurPasses        = 0;
-		m_IsFinalIteration = false;
-		m_IsAccumulated    = false;
-		m_CurIteration     = 0;
-		m_CurVariance      = std::numeric_limits<float>::max();
-		m_Tracer.GetTracePipeline()->GetSubPass("Pg")->GetParams().maxTraceDepth = m_Tracer.GetTracePipeline()->GetSubPass("Def")->GetParams().maxTraceDepth;
-		m_Tracer.GetTracePipeline()->GetSubPass("Pg")->GetParams().isBuilt       = false;
-		m_CurSubPassName   = "Pg";
-		m_EventFlags |= EventFlags::eFlushFrame;
+		m_AccumBufferPG.resize(m_FbWidth * m_FbHeight);
+		m_AccumImagePg            = std::vector<float3>(m_FbWidth * m_FbHeight);
+		m_SamplePerAllPG          = 0;
+		m_NumPasses               = (int)std::ceil(m_SppBudget / (float)m_SamplePerLaunch);
+		m_TmpPasses               = 0;
+		m_RenderPasses            = 0;
+		m_CurPasses               = 0;
+		m_IsFinalIteration        = false;
+		m_IsAccumulated           = false;
+		m_CurIteration            = 0;
+		m_CurVariance             = std::numeric_limits<float>::max();
+		curPgParams.accumBuffer2  = m_AccumBufferPG.getDevicePtr();
+		curPgParams.samplePerALL2 = m_SamplePerAllPG;
+		curPgParams.maxTraceDepth = curDefParams.maxTraceDepth;
+		curPgParams.isBuilt       = false;
+		m_CurSubPassName          = "Pg";
+		m_EventFlags             |= EventFlags::eFlushFrame;
 	}
 	void OnBeginPG() {
 		//printf("m_RenderPasses=%d\n", m_RenderPasses);
@@ -1320,6 +1332,9 @@ private:
 		}
 	}
 	void OnEndPG() {
+		auto& curParams         = m_Tracer.GetTracePipeline()->GetSubPass("Pg")->GetParams();
+		m_SamplePerAllPG       += m_SamplePerLaunch;
+		curParams.samplePerALL2 = m_SamplePerAllPG;
 		m_RenderPasses++;
 		if (m_IsAccumulated) {
 			m_TmpPasses++;
@@ -1328,11 +1343,8 @@ private:
 			}
 		}
 		if (!m_IsAccumulated) {
-			auto variancePg = 0.0f;
-			for (auto i = size_t(0); i < m_AccumImagePg.size(); ++i) {
-				m_AccumImagePg[i] += m_AccumImage[i];
-			}
-			m_SamplePerAllPG += m_SamplePerAll;
+			auto variancePg   = 0.0f;
+			m_AccumBufferPG.download(m_AccumImagePg);
 			{
 				float aver1 = 0.0f;
 				float aver2 = 0.0f;
@@ -1348,11 +1360,17 @@ private:
 				aver2 /= (float)(m_AccumImagePg.size());
 				variancePg = aver2 - aver1 * aver1;
 			}
+
 			m_PrvVariance = m_CurVariance;
 			m_CurVariance = m_CurPasses * m_Variance / m_RemainPasses;
 			printf("Extrapolated var: Prv: %f Cur: %f Total: %f/%d\n", m_PrvVariance, m_CurVariance, variancePg, m_SamplePerAllPG);
 			m_RemainPasses -= m_CurPasses;
-			m_Tracer.GetTracePipeline()->GetSubPass("Pg")->GetParams().isBuilt = true;
+
+
+			
+			curParams.isBuilt = true;
+
+			
 			this->OnDwLoadSDTree();
 			this->OnBuildSDTree();
 			this->OnUpLoadSDTree();
@@ -1486,7 +1504,8 @@ private:
 	//Guiding
 	SDTreePtr                       m_SdTree             = nullptr;
 	rtlib::utils::AABB              m_WorldAABB          = {};
-	std::vector<float3>             m_AccumImagePg      = {};
+	rtlib::CUDABuffer<float3>       m_AccumBufferPG      = {};
+	std::vector<float3>             m_AccumImagePg       = {};
 	uint32_t                        m_SamplePerAllPG     = 0;
 	uint32_t                        m_SppBudget          = 0;
 	uint32_t                        m_NumPasses          = 0;

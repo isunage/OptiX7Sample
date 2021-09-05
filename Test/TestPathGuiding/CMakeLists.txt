@@ -28,9 +28,9 @@ ${CMAKE_CURRENT_SOURCE_DIR}/cuda/RayDebug.cu
 
 add_custom_command(TARGET TestPathGuiding PRE_BUILD  COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/cuda/RayTrace.h     ${TEST_TEST_PG_CUDA_PATH}/RayTrace.h )
 add_custom_command(TARGET TestPathGuiding PRE_BUILD  COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/cuda/PathGuiding.h  ${TEST_TEST_PG_CUDA_PATH}/PathGuiding.h )
-add_custom_command(TARGET TestPathGuiding POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/cuda/RayGuiding.cu  ${TEST_TEST_PG_CUDA_PATH}/RayGuiding.cu)
 add_custom_command(TARGET TestPathGuiding POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/cuda/RayDebug.cu    ${TEST_TEST_PG_CUDA_PATH}/RayDebug.cu)
+add_custom_command(TARGET TestPathGuiding POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/cuda/RayGuiding.cu  ${TEST_TEST_PG_CUDA_PATH}/RayGuiding.cu)
 rtlib_compile_ptx(TestPathGuiding ${TEST_TEST_PG_CUDA_PATH}/RayGuiding.cu ${TEST_TEST_PG_CUDA_PATH}/RayTrace.h ${TEST_TEST_PG_CUDA_PATH}/PathGuiding.h )
-rtlib_compile_ptx(TestPathGuiding ${TEST_TEST_PG_CUDA_PATH}/RayDebug.cu ${TEST_TEST_PG_CUDA_PATH}/RayTrace.h)
+rtlib_compile_ptx(TestPathGuiding ${TEST_TEST_PG_CUDA_PATH}/RayDebug.cu   ${TEST_TEST_PG_CUDA_PATH}/RayTrace.h)
 target_include_directories(TestPathGuiding PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include ${CMAKE_CURRENT_BINARY_DIR} )
 target_link_libraries(TestPathGuiding RTLib)
