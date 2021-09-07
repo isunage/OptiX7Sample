@@ -1,63 +1,36 @@
-    void pdfMat(Float& woPdf, Float& bsdfPdf, Float& dTreePdf, Float bsdfSamplingFraction, const BSDF* bsdf, const BSDFSamplingRecord& bRec, const DTreeWrapper* dTree) const {
-        dTreePdf = 0;
-
-        auto type = bsdf->getType();
-        if (!m_isBuilt || !dTree || (type & BSDF::EDelta) == (type & BSDF::EAll)) {
-            woPdf = bsdfPdf = bsdf->pdf(bRec);
-            return;
-        }
-
-        bsdfPdf = bsdf->pdf(bRec);
-        if (!std::isfinite(bsdfPdf)) {
-            woPdf = 0;
-            return;
-        }
-
-        dTreePdf = dTree->pdf(bRec.its.toWorld(bRec.wo));
-        woPdf = bsdfSamplingFraction * bsdfPdf + (1 - bsdfSamplingFraction) * dTreePdf;
-    }
-
-    Spectrum sampleMat(const BSDF* bsdf, BSDFSamplingRecord& bRec, Float& woPdf, Float& bsdfPdf, Float& dTreePdf, Float bsdfSamplingFraction, RadianceQueryRecord& rRec, const DTreeWrapper* dTree) const {
-        Point2 sample = rRec.nextSample2D();
-
-        auto type = bsdf->getType();
-        if (!m_isBuilt || !dTree || (type & BSDF::EDelta) == (type & BSDF::EAll)) {
-            //BSDFの値を取得
-            auto result = bsdf->sample(bRec, bsdfPdf, sample);
-            //WO=bsdfPdfの値になる
-            woPdf = bsdfPdf;
-            dTreePdf = 0;
-            return result;
-        }
-
-        Spectrum result;
-        if (sample.x < bsdfSamplingFraction) {
-            sample.x /= bsdfSamplingFraction;
-            result = bsdf->sample(bRec, bsdfPdf, sample);
-            if (result.isZero()) {
-                woPdf = bsdfPdf = dTreePdf = 0;
-                return Spectrum{0.0f};
-            }
-
-            // If we sampled a delta component, then we have a 0 probability
-            // of sampling that direction via guiding, thus we can return early.
-            if (bRec.sampledType & BSDF::EDelta) {
-                dTreePdf = 0;
-                woPdf = bsdfPdf * bsdfSamplingFraction;
-                return result / bsdfSamplingFraction;
-            }
-
-            result *= bsdfPdf;
-        } else {
-            sample.x = (sample.x - bsdfSamplingFraction) / (1 - bsdfSamplingFraction);
-            bRec.wo = bRec.its.toLocal(dTree->sample(rRec.sampler));
-            result = bsdf->eval(bRec);
-        }
-
-        pdfMat(woPdf, bsdfPdf, dTreePdf, bsdfSamplingFraction, bsdf, bRec, dTree);
-        if (woPdf == 0) {
-            return Spectrum{0.0f};
-        }
-
-        return result / woPdf;
-    }
+function Render():
+ 2 for i in iterations: 
+ 3  RenderImage() 
+ 5  + for Leaf in NextCache: 
+ 6  + Leaf.Value := Sqrt( 
+ 7  + Leaf.Value * Leaf.Area 
+ 8  + ) 
+ 9 
+10  NextCache.Normalize() 
+11  CurrentCache := NextCache 
+12  NextCache.Reset() 
+13 
+14  function Lo(x, ωo, 
+15  + RelThroughput): 
+16  // One sample MIS 
+17  if Random() > α: 
+18      ωi := CurrentCache(x).Sample() 
+19  else: 
+20      ωi := BSDF(x, ωo).Sample() 
+21  // MIS computations 
+22  MisPDF := (1-α) * CurrentCache(x).PDF(ωi) + α * BSDF(x, ωo).PDF(ωi) 
+24  + MisWeight := CurrentCache(x).PDF(ωi) / MisPDF 
+25  // Compute recursive estimate 
+26  BsdfCos := BSDF(x, ωo).Eval(ωi) * Cos(θi) 
+27  Li := Lo(RayTrace(x, ωi), -ωi, + RelThroughput * BsdfCos / MisPDF) 
+29  // Update guiding cache 
+30  NextCache.Leaf(x, ωi) += (1 / MisPDF) * 
+31  - Li
+32  + (BsdfCos * Li * MisWeight * RelThroughput)^2 
+33  // Update BSDF sampling fraction loss 
+34  MISLoss(x).Update( 
+35   BsdfCos * Li
+36 + * RelThroughput 
+37 ) 
+38 // Compute rendering equation estimate 
+39 return Le(x, ωo) + BsdfCos * Li / MisPDF

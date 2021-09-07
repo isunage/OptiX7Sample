@@ -9,6 +9,7 @@
 #include <vector>
 #endif
 #define PATH_GUIDING_MAX_DEPTH 1024
+#define PATHGUIDING_MODE_LI_COSINE
 //全部を実装するのは困難...
 //ではどうするか->最も実装しやすい方法で実装する
 //フィルタ...Nearest(点で扱った方が再帰が容易)
@@ -98,15 +99,15 @@ struct DTreeNode {
 	template<typename RNG>
 	RTLIB_INLINE RTLIB_HOST_DEVICE auto Sample(RNG& rng, const DTreeNode* nodes)const noexcept -> float2 {
 		const DTreeNode* cur = this;
-		int    depth  = 1;
+		int    depth = 1;
 		float2 result = make_float2(0.0f);
-		double size   = 1.0f;
+		double size = 1.0f;
 		for (;;) {
-			int   idx      = 0;
-			float topLeft  = cur->sums[0];
+			int   idx = 0;
+			float topLeft = cur->sums[0];
 			float topRight = cur->sums[1];
-			float partial  = cur->sums[0] + cur->sums[2];
-			float total    = cur->GetSumOfAll();
+			float partial = cur->sums[0] + cur->sums[2];
+			float total = cur->GetSumOfAll();
 #if 0
 			float mulOfSum = cur->sums[0] * cur->sums[1] * cur->sums[2] * cur->sums[3];
 			//if( total <=0.0f){
@@ -121,8 +122,8 @@ struct DTreeNode {
 			}
 			//(s0+s2)/(s0+s1+s2+s3)
 			float boundary = partial / total;
-			auto  origin   = make_float2(0.0f);
-			float sample   = rtlib::random_float1(rng);
+			auto  origin = make_float2(0.0f);
+			float sample = rtlib::random_float1(rng);
 			if (sample < boundary)
 			{
 				sample /= boundary;
@@ -130,11 +131,11 @@ struct DTreeNode {
 			}
 			else
 			{
-				partial  = total - partial;
+				partial = total - partial;
 				origin.x = 0.5f;
-				sample   = (sample - boundary) / (1.0f - boundary);
+				sample = (sample - boundary) / (1.0f - boundary);
 				boundary = topRight / partial;
-				idx     |= (1 << 0);
+				idx |= (1 << 0);
 			}
 
 			if (sample < boundary)
@@ -283,8 +284,8 @@ struct DTree {
 		return area;
 	}
 	RTLIB_INLINE RTLIB_HOST_DEVICE auto  GetMean()const noexcept -> float {
-		if (statisticalWeight  <= 0.0f) { return 0.0f; }
-		const float factor = 1.0f / (4.0f * RTLIB_M_PI  * statisticalWeight);
+		if (statisticalWeight <= 0.0f) { return 0.0f; }
+		const float factor = 1.0f / (4.0f * RTLIB_M_PI * statisticalWeight);
 		return factor * sum;
 	}
 	RTLIB_INLINE RTLIB_DEVICE      void  AddStatisticalWeightAtomic(float val)noexcept {
@@ -457,6 +458,7 @@ struct TraceVertex {
 	float         woPdf;
 	float         bsdfPdf;
 	float         dTreePdf;
+	float         cosine;
 	bool          isDelta;
 	RTLIB_INLINE RTLIB_HOST_DEVICE void Record(const float3& r) noexcept {
 		radiance += r;
@@ -486,6 +488,9 @@ struct TraceVertex {
 		if (throughPut.z * woPdf > 1e-4f) {
 			localRadiance.z = radiance.z / throughPut.z;
 		}
+#ifdef PATHGUIDING_MODE_LI_COSINE
+		localRadiance *= fabsf(cosine);
+#endif
 		//printf("localRadiance=(%f,%f,%f)\n",localRadiance.x,localRadiance.y,localRadiance.z);
 		float3 product = localRadiance * bsdfVal;
 		float localRadianceAvg = (localRadiance.x + localRadiance.y + localRadiance.z) / 3.0f;

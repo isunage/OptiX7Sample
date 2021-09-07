@@ -286,7 +286,7 @@ private:
 		std::vector<std::pair<std::string, std::string>> objInfos = {
 			//{TEST_TEST_PG_DATA_PATH"/Models/Lumberyard/Exterior/exterior.obj"  , TEST_TEST_PG_DATA_PATH"/Models/Lumberyard/Exterior/"},
 			//{TEST_TEST_PG_DATA_PATH"/Models/Lumberyard/Interior/interior.obj"  , TEST_TEST_PG_DATA_PATH"/Models/Lumberyard/Interior/"},
-			{TEST_TEST_PG_DATA_PATH"/Models/Sponza/Sponza.obj"                 , TEST_TEST_PG_DATA_PATH"/Models/Sponza/"             },
+			  {TEST_TEST_PG_DATA_PATH"/Models/Sponza/Sponza.obj"                 , TEST_TEST_PG_DATA_PATH"/Models/Sponza/"             },
 			//{TEST_TEST_PG_DATA_PATH"/Models/CornellBox/CornellBox-Original.obj", TEST_TEST_PG_DATA_PATH"/Models/CornellBox/"         },
 			//{TEST_TEST_PG_DATA_PATH"/Models/CornellBox/CornellBox-Water.obj"   , TEST_TEST_PG_DATA_PATH"/Models/CornellBox/"         },
 		};
@@ -1009,10 +1009,10 @@ private:
 						variancePg = aver2 - aver1 * aver1;
 					}
 					m_VariancePg = variancePg;
-					printf("Spp %d: Variance = %.7f\n", m_SamplePerAllPg, m_VariancePg);
+					printf("Spp %d: Variance = %.9f\n", m_SamplePerAllPg, m_VariancePg);
 				}
 				else {
-					printf("Spp %d: Variance = %.7f\n", m_SamplePerAll  , m_Variance  );
+					printf("Spp %d: Variance = %.9f\n", m_SamplePerAll  , m_Variance  );
 				}
 			}
 		}
