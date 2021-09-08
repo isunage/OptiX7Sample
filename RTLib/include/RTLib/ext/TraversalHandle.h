@@ -56,6 +56,7 @@ namespace rtlib{
             size_t                      sbtCount     =  0;
         public:
             void Build(const rtlib::OPXContext* context, const OptixAccelBuildOptions& accelOptions);
+            auto GetSbtCount()const noexcept -> size_t;
         };
         using  IASHandlePtr = std::shared_ptr<IASHandle>;
     }

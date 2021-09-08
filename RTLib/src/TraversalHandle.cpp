@@ -68,6 +68,10 @@ void rtlib::ext::IASHandle::Build(const rtlib::OPXContext* context, const OptixA
     this->sbtCount = sbtCount;
 }
 
+auto rtlib::ext::IASHandle::GetSbtCount()const noexcept -> size_t {
+    return this->sbtCount;
+}
+
 void rtlib::ext::InstanceSet::SetInstance(const Instance& instance) noexcept
 {
     instanceBuffer.cpuHandle.push_back(instance.instance);

@@ -505,8 +505,8 @@ private:
 	}
 	void InitFrameResources() {
 		RTLIB_CUDA_CHECK(cudaStreamCreate(&m_Stream));
-		m_FrameBuffer = rtlib::CUDABuffer<uchar4>(std::vector<uchar4>(m_FbWidth * m_FbHeight));
-		m_RefImage	  = std::vector<float3>(m_FbWidth * m_FbHeight);
+		m_FrameBuffer                = rtlib::CUDABuffer<uchar4>(std::vector<uchar4>(m_FbWidth * m_FbHeight));
+		m_RefImage	                 = std::vector<float3>(m_FbWidth * m_FbHeight);
 		m_DebugBuffers["Diffuse"]	 = rtlib::CUDABuffer<uchar4>(std::vector<uchar4>(m_FbWidth * m_FbHeight));
 		m_DebugBuffers["Specular"]	 = rtlib::CUDABuffer<uchar4>(std::vector<uchar4>(m_FbWidth * m_FbHeight));
 		m_DebugBuffers["Transmit"]	 = rtlib::CUDABuffer<uchar4>(std::vector<uchar4>(m_FbWidth * m_FbHeight));
@@ -524,9 +524,9 @@ private:
 		m_DebugBufferGLs["Normal"]   = rtlib::GLInteropBuffer<uchar4>(m_FbWidth * m_FbHeight, GL_PIXEL_UNPACK_BUFFER, GL_DYNAMIC_DRAW, m_Stream);
 		m_DebugBufferGLs["Depth"]	 = rtlib::GLInteropBuffer<uchar4>(m_FbWidth * m_FbHeight, GL_PIXEL_UNPACK_BUFFER, GL_DYNAMIC_DRAW, m_Stream);
 		m_DebugBufferGLs["STree"]	 = rtlib::GLInteropBuffer<uchar4>(m_FbWidth * m_FbHeight, GL_PIXEL_UNPACK_BUFFER, GL_DYNAMIC_DRAW, m_Stream);
-		m_AccumBuffer    = rtlib::CUDABuffer<float3>(std::vector<float3>(m_FbWidth * m_FbHeight));
-		m_AccumBufferPg  = rtlib::CUDABuffer<float3>(std::vector<float3>(m_FbWidth * m_FbHeight));
-		m_SeedBuffer     = rtlib::CUDABuffer<unsigned int>();
+		m_AccumBuffer                = rtlib::CUDABuffer<float3>(std::vector<float3>(m_FbWidth * m_FbHeight));
+		m_AccumBufferPG              = rtlib::CUDABuffer<float3>(std::vector<float3>(m_FbWidth * m_FbHeight));
+		m_SeedBuffer                 = rtlib::CUDABuffer<unsigned int>();
 		{
 			std::vector<unsigned int> seeds(m_FbWidth * m_FbHeight);
 			std::random_device rd;
@@ -559,7 +559,7 @@ private:
 		m_SdTree = std::make_unique<test::RTSTreeWrapper>(m_WorldAABB.min, m_WorldAABB.max);
 		m_SdTree->Upload();
 
-}
+	}
 	void InitTracePipeline()
 	{
 		auto tracePipeline2 = std::make_shared<test::RTPipeline<RayGenData, MissData, HitgroupData, RayTraceParams>>();
@@ -567,11 +567,11 @@ private:
 			OptixPipelineCompileOptions compileOptions = {};
 
 			compileOptions.pipelineLaunchParamsVariableName = "params";
-			compileOptions.numAttributeValues = 3;
-			compileOptions.numPayloadValues = 8;
-			compileOptions.usesPrimitiveTypeFlags = 0;
-			compileOptions.usesMotionBlur = false;
-			compileOptions.traversableGraphFlags = OPTIX_TRAVERSABLE_GRAPH_FLAG_ALLOW_ANY;
+			compileOptions.numAttributeValues               = 3;
+			compileOptions.numPayloadValues                 = 8;
+			compileOptions.usesPrimitiveTypeFlags           = 0;
+			compileOptions.usesMotionBlur                   = false;
+			compileOptions.traversableGraphFlags            = OPTIX_TRAVERSABLE_GRAPH_FLAG_ALLOW_ANY;
 
 			OptixPipelineLinkOptions linkOptions = {};
 
@@ -591,9 +591,9 @@ private:
 			moduleCompileOptions.numBoundValues = 0;
 #ifndef NDEBUG
 			moduleCompileOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_LINEINFO;
-			moduleCompileOptions.optLevel = OPTIX_COMPILE_OPTIMIZATION_DEFAULT;
+			moduleCompileOptions.optLevel   = OPTIX_COMPILE_OPTIMIZATION_DEFAULT;
 #else
-			moduleCompileOptions.optLevel = OPTIX_COMPILE_OPTIMIZATION_LEVEL_3;
+			moduleCompileOptions.optLevel   = OPTIX_COMPILE_OPTIMIZATION_LEVEL_3;
 			moduleCompileOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_NONE;
 #endif
 			tracePipeline2->LoadModuleFromPtxFile("RayGuiding", TEST_TEST_PG_CUDA_PATH"/RayGuiding.ptx", moduleCompileOptions);
@@ -616,8 +616,9 @@ private:
 		}
 		//SBTRecord
 		{
+			//RGData: Default
 			{
-				auto camera = m_CameraController.GetCamera(m_CameraFovY, m_FbAspect);
+				auto camera    = m_CameraController.GetCamera(m_CameraFovY, m_FbAspect);
 				auto [u, v, w] = camera.getUVW();
 				RayGenData rayGData = {};
 				rayGData.eye = camera.getEye();
@@ -628,6 +629,7 @@ private:
 				tracePipeline2->AddRayGRecordFromPG("Def", "Default", rayGData);
 				tracePipeline2->GetRayGRecordBuffer("Def")->Upload();
 			}
+			//RGData: Guiding
 			{
 				auto camera = m_CameraController.GetCamera(m_CameraFovY, m_FbAspect);
 				auto [u, v, w] = camera.getUVW();
@@ -640,14 +642,16 @@ private:
 				tracePipeline2->AddRayGRecordFromPG("Pg", "Guiding", rayGData);
 				tracePipeline2->GetRayGRecordBuffer("Pg")->Upload();
 			}
+			//MSData: Radiance and Occlusion
 			{
 				tracePipeline2->NewMissRecordBuffer("Def", RAY_TYPE_COUNT);
 				tracePipeline2->AddMissRecordFromPG("Def", RAY_TYPE_RADIANCE, "Radiance", { make_float4(0.0f, 0.0f, 0.0f, 0.0f) });
 				tracePipeline2->AddMissRecordFromPG("Def", RAY_TYPE_OCCLUSION, "Occlusion", { make_float4(0.0f, 0.0f, 0.0f, 0.0f) });
 				tracePipeline2->GetMissRecordBuffer("Def")->Upload();
 			}
+			//HGData: Default
 			{
-				tracePipeline2->NewHitGRecordBuffer("Def", RAY_TYPE_COUNT * m_Tracer.GetTLAS()->sbtCount);
+				tracePipeline2->NewHitGRecordBuffer("Def", RAY_TYPE_COUNT * m_Tracer.GetTLAS()->GetSbtCount());
 				{
 					size_t sbtOffset = 0;
 					for (auto& instanceSet : m_Tracer.GetTLAS()->instanceSets) {
@@ -762,7 +766,7 @@ private:
 				RayTraceParams params  = {};
 				params.frameBuffer     = m_FrameBuffer.getDevicePtr();
 				params.accumBuffer     = m_AccumBuffer.getDevicePtr();
-				params.accumBuffer2    = m_AccumBufferPg.getDevicePtr();
+				params.accumBuffer2    = m_AccumBufferPG.getDevicePtr();
 				params.seed            = m_SeedBuffer.getDevicePtr();
 				params.width           = m_FbWidth;
 				params.height          = m_FbHeight;
@@ -992,7 +996,7 @@ private:
 				m_Variance = aver2 - aver1 * aver1;
 				if (m_CurSubPassName == "Pg") {
 					auto variancePg  = 0.0f;
-					m_AccumBufferPg.download(m_AccumImagePg);
+					m_AccumBufferPG.download(m_AccumImagePg);
 					{
 						float aver1 = 0.0f;
 						float aver2 = 0.0f;
@@ -1312,8 +1316,8 @@ private:
 		auto& curDefParams = curPipeline->GetSubPass("Def")->GetParams();
 		OnClearSDTree();
 		OnUpLoadSDTree();
-		m_AccumBufferPg.resize(m_FbWidth * m_FbHeight);
-		m_AccumBufferPg.upload(std::vector<float3>(m_FbWidth * m_FbHeight));
+		m_AccumBufferPG.resize(m_FbWidth * m_FbHeight);
+		m_AccumBufferPG.upload(std::vector<float3>(m_FbWidth * m_FbHeight));
 		m_AccumImagePg            = std::vector<float3>(m_FbWidth * m_FbHeight);
 		m_SamplePerAllPg          = 0;
 		m_VariancePg              = 0.0f;
@@ -1325,7 +1329,7 @@ private:
 		m_IsAccumulated           = false;
 		m_CurIteration            = 0;
 		m_CurVariance             = std::numeric_limits<float>::max();
-		curPgParams.accumBuffer2  = m_AccumBufferPg.getDevicePtr();
+		curPgParams.accumBuffer2  = m_AccumBufferPG.getDevicePtr();
 		curPgParams.samplePerALL2 = m_SamplePerAllPg;
 		curPgParams.maxTraceDepth = curDefParams.maxTraceDepth;
 		curPgParams.isBuilt       = false;
@@ -1431,7 +1435,7 @@ private:
 			params.samplePerLaunch= m_SamplePerLaunch;
 			if (m_CurSubPassName == "Pg")
 			{
-				params.accumBuffer2  = m_AccumBufferPg.getDevicePtr();
+				params.accumBuffer2  = m_AccumBufferPG.getDevicePtr();
 				params.samplePerALL2 = m_SamplePerAllPg;
 			}
 		}
@@ -1519,7 +1523,7 @@ private:
 	//Guiding
 	SDTreePtr                       m_SdTree             = nullptr;
 	rtlib::utils::AABB              m_WorldAABB          = {};
-	rtlib::CUDABuffer<float3>       m_AccumBufferPg      = {};
+	rtlib::CUDABuffer<float3>       m_AccumBufferPG      = {};
 	std::vector<float3>             m_AccumImagePg       = {};
 	float                           m_VariancePg         = 0.0f;
 	uint32_t                        m_SamplePerAllPg     = 0;

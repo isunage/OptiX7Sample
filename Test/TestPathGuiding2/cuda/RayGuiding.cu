@@ -230,7 +230,7 @@ extern "C" __global__ void __raygen__pg() {
             depth++;
         }
         for (int j = 0; j < depth; ++j) {
-            vertices[j].Commit<ESpatialFilter::eNearest>(params.sdTree,1.0f);
+            vertices[j].Commit<SpatialFilterNearest, DirectionalFilterBox>(params.sdTree,1.0f);
         }
         seed = prd.seed;
     } while (i--);
@@ -741,7 +741,7 @@ extern "C" __global__ void __closesthit__radiance_for_phong_pg () {
             prd->woPdf         = woPdf;
             prd->throughPut   *= (bsdfVal * rtlib::max(cosine, 0.0f) / woPdf);
             prd->cosine        = cosine;
-            //setRayDirection(newDirection);
+            setRayDirection(newDirection);
             //if (isnan(prd->throughPut.x) || isnan(prd->throughPut.y) || isnan(prd->throughPut.z)) {
               // printf("prd->weight0 is nan: %f %f %f\n", prd->woPdf, prd->bsdfPdf, prd->dTreePdf);
             //}
