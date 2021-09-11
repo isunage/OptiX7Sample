@@ -6,12 +6,12 @@
 #include <RTLib/Random.h>
 #include <RTLib/VectorFunction.h>
 #include <RTLib/Math.h>
-#include "PathGuiding.h"
+#include <RayTraceConfig.h>
+#include <PathGuiding.h>
 //#define RAY_GUIDING_SAMPLE_BY_UNIFORM_SPHERE
 //#define RAY_GUIDING_SAMPLE_BY_COSINE_SPHERE
 //#define TEST_SKIP_TEXTURE_SAMPLE
 //#define TEST11_SHOW_EMISSON_COLOR
-#define TEST_MAX_TRACE_DEPTH 4
 enum RayType   {
     RAY_TYPE_RADIANCE = 0,
     RAY_TYPE_OCCLUSION,
@@ -91,7 +91,7 @@ struct HitgroupData{
     float               refrInd;
 #ifdef __CUDACC__
     __forceinline__ __device__ float3 getDiffuseColor(const float2& uv)const noexcept{ 
-    #if defined(TEST_SKIP_TEXTURE_SAMPLE)
+    #if !RAY_TRACE_ENABLE_SAMPLE
         return this->diffuse;
     #else
         auto diffTC      = tex2D<float4>(this->diffuseTex, uv.x, uv.y);
@@ -101,7 +101,7 @@ struct HitgroupData{
     #endif
     }
     __forceinline__ __device__ float3 getSpecularColor(const float2& uv)const noexcept {
-    #if defined(TEST_SKIP_TEXTURE_SAMPLE)
+    #if !RAY_TRACE_ENABLE_SAMPLE
         return this->specular;
     #else
         auto specTC      = tex2D<float4>(this->specularTex, uv.x, uv.y);
@@ -111,7 +111,7 @@ struct HitgroupData{
     #endif
     }
     __forceinline__ __device__ float3 getEmissionColor(const float2& uv)const noexcept {
-    #if defined(TEST_SKIP_TEXTURE_SAMPLE)
+    #if !RAY_TRACE_ENABLE_SAMPLE
         return this->emission;
     #else
         auto emitTC    = tex2D<float4>(this->emissionTex, uv.x, uv.y);

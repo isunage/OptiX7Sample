@@ -18,7 +18,7 @@ namespace test {
         using MeshGroupPtr = rtlib::ext::MeshGroupPtr;
         using MaterialList = rtlib::ext::MaterialList;
         using MaterialListPtr = rtlib::ext::MaterialListPtr;
-        bool Load(const std::string& objFilePath, const std::string& mtlFileDir)noexcept {
+        bool Load( const std::string& objFilePath, const std::string& mtlFileDir)noexcept {
             std::string inputFile = objFilePath;
             tinyobj::ObjReaderConfig readerConfig = {};
             readerConfig.mtl_search_path = mtlFileDir;
@@ -79,7 +79,7 @@ namespace test {
                             tinyobj::index_t idx = shapes[i].mesh.indices[3 * j + k];
                             if (indicesMap.count(idx) == 0) {
                                 size_t indicesCount = std::size(indices);
-                                indicesMap[idx] = indicesCount;
+                                indicesMap[idx]     = indicesCount;
                                 indices.push_back(idx);
                             }
                         }
@@ -248,9 +248,9 @@ namespace test {
                 };
                 struct MyEqualTo
                 {
-                    using first_argument_type = tinyobj::index_t;
+                    using first_argument_type  = tinyobj::index_t;
                     using second_argument_type = tinyobj::index_t;
-                    using result_type = bool;
+                    using result_type          = bool;
                     constexpr bool operator()(const tinyobj::index_t& x, const tinyobj::index_t& y)const
                     {
                         return (x.vertex_index == y.vertex_index) && (x.texcoord_index == y.texcoord_index) && (x.normal_index == y.normal_index);
@@ -267,13 +267,13 @@ namespace test {
                         }
                     }
                 }
-                std::cout << "VertexBuffer: " << attrib.vertices.size() / 3 << "->" << indices.size() << std::endl;
-                std::cout << "NormalBuffer: " << attrib.normals.size() / 3 << "->" << indices.size() << std::endl;
+                std::cout << "VertexBuffer: " << attrib.vertices.size() / 3 << "->"  << indices.size() << std::endl;
+                std::cout << "NormalBuffer: " << attrib.normals.size() / 3 << "->"   << indices.size() << std::endl;
                 std::cout << "TexCrdBuffer: " << attrib.texcoords.size() / 2 << "->" << indices.size() << std::endl;
                 vertexBuffer.cpuHandle.resize(indices.size());
                 texCrdBuffer.cpuHandle.resize(indices.size());
                 normalBuffer.cpuHandle.resize(indices.size());
-
+                //NormalBuffer
                 for (size_t i = 0; i < indices.size(); ++i) {
                     tinyobj::index_t idx = indices[i];
                     vertexBuffer.cpuHandle[i] = make_float3(

@@ -150,6 +150,7 @@ private:
 	static inline constexpr uint32_t            kDefaultSamplePerLaunch     = 1;
 	static inline constexpr uint32_t            kDefaultMaxTraceDepth       = 4;
 	static inline constexpr std::string_view    tracePipelineSubPassNames[] = { "Def","Pg"};
+	static inline constexpr std::string_view    debugPipelineFrameNames[]   = { "Diffuse","Specular","Emission","Transmit","TexCoord","Normal","Depth","STree"};
 	enum EventFlags {
 		eNone             = 0,
 		eOnFlushFrame     = (1 << 0),
@@ -506,24 +507,12 @@ private:
 	void InitFrameResources() {
 		RTLIB_CUDA_CHECK(cudaStreamCreate(&m_Stream));
 		m_FrameBuffer                = rtlib::CUDABuffer<uchar4>(std::vector<uchar4>(m_FbWidth * m_FbHeight));
-		m_RefImage	                 = std::vector<float3>(m_FbWidth * m_FbHeight);
-		m_DebugBuffers["Diffuse"]	 = rtlib::CUDABuffer<uchar4>(std::vector<uchar4>(m_FbWidth * m_FbHeight));
-		m_DebugBuffers["Specular"]	 = rtlib::CUDABuffer<uchar4>(std::vector<uchar4>(m_FbWidth * m_FbHeight));
-		m_DebugBuffers["Transmit"]	 = rtlib::CUDABuffer<uchar4>(std::vector<uchar4>(m_FbWidth * m_FbHeight));
-		m_DebugBuffers["Emission"]	 = rtlib::CUDABuffer<uchar4>(std::vector<uchar4>(m_FbWidth * m_FbHeight));
-		m_DebugBuffers["TexCoord"]	 = rtlib::CUDABuffer<uchar4>(std::vector<uchar4>(m_FbWidth * m_FbHeight));
-		m_DebugBuffers["Normal"]	 = rtlib::CUDABuffer<uchar4>(std::vector<uchar4>(m_FbWidth * m_FbHeight));
-		m_DebugBuffers["Depth"]		 = rtlib::CUDABuffer<uchar4>(std::vector<uchar4>(m_FbWidth * m_FbHeight));
-		m_DebugBuffers["STree"]		 = rtlib::CUDABuffer<uchar4>(std::vector<uchar4>(m_FbWidth * m_FbHeight));
 		m_FrameBufferGL				 = rtlib::GLInteropBuffer<uchar4>(m_FbWidth * m_FbHeight, GL_PIXEL_UNPACK_BUFFER, GL_DYNAMIC_DRAW, m_Stream);
-		m_DebugBufferGLs["Diffuse"]  = rtlib::GLInteropBuffer<uchar4>(m_FbWidth * m_FbHeight, GL_PIXEL_UNPACK_BUFFER, GL_DYNAMIC_DRAW, m_Stream);
-		m_DebugBufferGLs["Specular"] = rtlib::GLInteropBuffer<uchar4>(m_FbWidth * m_FbHeight, GL_PIXEL_UNPACK_BUFFER, GL_DYNAMIC_DRAW, m_Stream);
-		m_DebugBufferGLs["Transmit"] = rtlib::GLInteropBuffer<uchar4>(m_FbWidth * m_FbHeight, GL_PIXEL_UNPACK_BUFFER, GL_DYNAMIC_DRAW, m_Stream);
-		m_DebugBufferGLs["Emission"] = rtlib::GLInteropBuffer<uchar4>(m_FbWidth * m_FbHeight, GL_PIXEL_UNPACK_BUFFER, GL_DYNAMIC_DRAW, m_Stream);
-		m_DebugBufferGLs["TexCoord"] = rtlib::GLInteropBuffer<uchar4>(m_FbWidth * m_FbHeight, GL_PIXEL_UNPACK_BUFFER, GL_DYNAMIC_DRAW, m_Stream);
-		m_DebugBufferGLs["Normal"]   = rtlib::GLInteropBuffer<uchar4>(m_FbWidth * m_FbHeight, GL_PIXEL_UNPACK_BUFFER, GL_DYNAMIC_DRAW, m_Stream);
-		m_DebugBufferGLs["Depth"]	 = rtlib::GLInteropBuffer<uchar4>(m_FbWidth * m_FbHeight, GL_PIXEL_UNPACK_BUFFER, GL_DYNAMIC_DRAW, m_Stream);
-		m_DebugBufferGLs["STree"]	 = rtlib::GLInteropBuffer<uchar4>(m_FbWidth * m_FbHeight, GL_PIXEL_UNPACK_BUFFER, GL_DYNAMIC_DRAW, m_Stream);
+		m_RefImage	                 = std::vector<float3>(m_FbWidth * m_FbHeight);
+		for(auto frameName: debugPipelineFrameNames){
+			m_DebugBuffers[  frameName.data()] = rtlib::CUDABuffer<uchar4>(std::vector<uchar4>(m_FbWidth * m_FbHeight));
+			m_DebugBufferGLs[frameName.data()] = rtlib::GLInteropBuffer<uchar4>(m_FbWidth * m_FbHeight, GL_PIXEL_UNPACK_BUFFER, GL_DYNAMIC_DRAW, m_Stream);
+		}
 		m_AccumBuffer                = rtlib::CUDABuffer<float3>(std::vector<float3>(m_FbWidth * m_FbHeight));
 		m_AccumBufferPG              = rtlib::CUDABuffer<float3>(std::vector<float3>(m_FbWidth * m_FbHeight));
 		m_SeedBuffer                 = rtlib::CUDABuffer<unsigned int>();
@@ -1078,15 +1067,15 @@ private:
 
 							float camFovY = m_CameraFovY;
 							if (ImGui::SliderFloat("Camera.FovY", &camFovY, -90.0f, 90.0f)) {
-								m_CameraFovY = camFovY;
-								m_EventFlags |= EventFlags::eUpdateCamera;
+								m_CameraFovY      = camFovY;
+								m_EventFlags     |= EventFlags::eUpdateCamera;
 							}
 							float emission[3] = { m_Light.emission.x, m_Light.emission.y, m_Light.emission.z };
 							if (ImGui::SliderFloat3("light.Color", emission, 0.0f, 10.0f)) {
 								m_Light.emission.x = emission[0];
 								m_Light.emission.y = emission[1];
 								m_Light.emission.z = emission[2];
-								m_EventFlags |= EventFlags::eUpdateLight;
+								m_EventFlags      |= EventFlags::eUpdateLight;
 							}
 						}
 						else {
@@ -1097,20 +1086,20 @@ private:
 						if (m_CurPipelineName == "Trace" && m_CurSubPassName == "Def")
 						{
 							auto& curPipeline = m_Tracer.GetTracePipeline();
-							auto& curSubpass = curPipeline->GetSubPass(m_CurSubPassName);
-							auto& curParams = curSubpass->GetParams();
+							auto& curSubpass  = curPipeline->GetSubPass(m_CurSubPassName);
+							auto& curParams   = curSubpass->GetParams();
 							{
 								int samplePerLaunch = curParams.samplePerLaunch;
 								if (ImGui::SliderInt("samplePerLaunch", &samplePerLaunch, 1, 10)) {
 									curParams.samplePerLaunch = samplePerLaunch;
-									m_SamplePerLaunch = samplePerLaunch;
+									m_SamplePerLaunch         = samplePerLaunch;
 								}
 							}
 							{
 								int maxTraceDepth = curParams.maxTraceDepth;
 								if (ImGui::SliderInt("maxTraceDepth", &maxTraceDepth, 1, 10)) {
-									curParams.maxTraceDepth = maxTraceDepth;
-									m_EventFlags |= EventFlags::eFlushFrame;
+									curParams.maxTraceDepth   = maxTraceDepth;
+									m_EventFlags             |= EventFlags::eFlushFrame;
 								}
 							}
 							{
@@ -1127,49 +1116,7 @@ private:
 							}
 						}
 						if (m_CurPipelineName == "Debug") {
-							static int debugMode = 0;
-							ImGui::RadioButton("Diffuse", &debugMode, 0);
-							ImGui::SameLine();
-							ImGui::RadioButton("Specular", &debugMode, 1);
-							ImGui::SameLine();
-							ImGui::RadioButton("Transmit", &debugMode, 2);
-							ImGui::SameLine();
-							ImGui::RadioButton("Emission", &debugMode, 3);
-							ImGui::NewLine();
-							ImGui::RadioButton("TexCoord", &debugMode, 4);
-							ImGui::SameLine();
-							ImGui::RadioButton("Normal  ", &debugMode, 5);
-							ImGui::SameLine();
-							ImGui::RadioButton("Depth", &debugMode, 6);
-							ImGui::SameLine();
-							ImGui::RadioButton("STree", &debugMode, 7);
-							switch (debugMode) {
-							case 0:
-								m_DebugFrameName = "Diffuse";
-								break;
-							case 1:
-								m_DebugFrameName = "Specular";
-								break;
-							case 2:
-								m_DebugFrameName = "Transmit";
-								break;
-							case 3:
-								m_DebugFrameName = "Emission";
-								break;
-							case 4:
-								m_DebugFrameName = "TexCoord";
-								break;
-							case 5:
-								m_DebugFrameName = "Normal";
-								break;
-							case 6:
-								m_DebugFrameName = "Depth";
-								break;
-							case 7:
-								m_DebugFrameName = "STree";
-								break;
-							}
-
+							OnSelectDebugFrame();
 						}
 						if (ImGui::Button(m_PrvPipelineName.c_str())) {
 							std::swap(m_CurPipelineName, m_PrvPipelineName);
@@ -1310,6 +1257,83 @@ private:
 		m_Tracer.GetDebugPipeline()->GetHitGRecordBuffer("Def")->GetData(m_LightHgRecIndex).diffuse  = m_Light.emission;
 		m_Tracer.GetDebugPipeline()->GetHitGRecordBuffer("Def")->Upload();
 	}
+	void OnFlushFrame() {
+		//Frame�̍Ď擾
+		m_FrameBufferGL.upload(std::vector<uchar4>(m_FbWidth * m_FbHeight));
+		m_AccumBuffer.upload(std::vector<float3>(m_FbWidth * m_FbHeight));
+		for (auto& [name, debugBufferGL] : m_DebugBufferGLs)
+		{
+			debugBufferGL.upload(std::vector<uchar4>(m_FbWidth * m_FbHeight));
+		}
+		m_SamplePerAll = 0;
+	}
+	void OnUpdateParams()
+	{
+
+		//params�̍Đݒ�
+		if (m_CurPipelineName == "Trace") {
+			auto& params          = m_Tracer.GetTracePipeline()->GetSubPass(m_CurSubPassName)->GetParams();
+			params.frameBuffer    = m_FrameBuffer.getDevicePtr();
+			params.accumBuffer    = m_AccumBuffer.getDevicePtr();
+			params.seed           = m_SeedBuffer.getDevicePtr();
+			params.width          = m_FbWidth;
+			params.height         = m_FbHeight;
+			params.gasHandle      = m_Tracer.GetTLAS()->handle;
+			params.sdTree         = m_SdTree->GetGpuHandle();
+			params.light          = m_Light;
+			params.samplePerALL   = m_SamplePerAll;
+			params.samplePerLaunch= m_SamplePerLaunch;
+			if (m_CurSubPassName == "Pg")
+			{
+				params.accumBuffer2  = m_AccumBufferPG.getDevicePtr();
+				params.samplePerALL2 = m_SamplePerAllPg;
+			}
+		}
+		else {
+			auto& params          = m_Tracer.GetDebugPipeline()->GetSubPass("Def")->GetParams();
+			params.diffuseBuffer  = m_DebugBuffers["Diffuse"].getDevicePtr();
+			params.specularBuffer = m_DebugBuffers["Specular"].getDevicePtr();
+			params.emissionBuffer = m_DebugBuffers["Emission"].getDevicePtr();
+			params.transmitBuffer = m_DebugBuffers["Transmit"].getDevicePtr();
+			params.texCoordBuffer = m_DebugBuffers["TexCoord"].getDevicePtr();
+			params.normalBuffer   = m_DebugBuffers["Normal"].getDevicePtr();
+			params.depthBuffer    = m_DebugBuffers["Depth"].getDevicePtr();
+			params.sTreeColBuffer = m_DebugBuffers["STree"].getDevicePtr();
+			params.width          = m_FbWidth;
+			params.height         = m_FbHeight;
+			params.gasHandle      = m_Tracer.GetTLAS()->handle;
+			params.sdTree         = m_SdTree->GetGpuHandle();
+			params.light          = m_Light;
+		}
+	}
+	//GUI
+	void OnSelectDebugFrame(){
+		int debugMode = 0;
+		{
+			for(auto& frameName: debugPipelineFrameNames){
+				if(m_DebugFrameName==frameName){
+					break;
+				}
+				debugMode++;
+			}
+		}
+		{
+			int i = 0;
+			for(auto& frameName: debugPipelineFrameNames){
+				ImGui::RadioButton(frameName.data(), &debugMode, i);
+				if (i == std::size(debugPipelineFrameNames) / 2 -1) {
+					ImGui::NewLine();
+				}else if(i != std::size(debugPipelineFrameNames) - 1) {
+					ImGui::SameLine();
+				}
+				i++;
+			}
+		}
+		{
+			m_DebugFrameName = debugPipelineFrameNames[debugMode];
+		}
+	}
+	//PathGuiding
 	void OnPreparePG() {
 		auto& curPipeline  = m_Tracer.GetTracePipeline();
 		auto& curPgParams  = curPipeline->GetSubPass("Pg")->GetParams();
@@ -1392,69 +1416,21 @@ private:
 			m_CurIteration++;
 		}
 	}
+	//SDTree
 	void OnUpLoadSDTree() {
 		m_SdTree->Upload();
 	}
 	void OnDwLoadSDTree() {
 		m_SdTree->Download();
 	}
-	void OnClearSDTree() {
+	void OnClearSDTree()  {
 		m_SdTree->Clear();
 	}
-	void OnResetSDTree() {
+	void OnResetSDTree()  {
 		m_SdTree->Reset(m_CurIteration, m_SamplePerLaunch);
 	}
-	void OnBuildSDTree() {
+	void OnBuildSDTree()  {
 		m_SdTree->Build();
-	}
-	void OnFlushFrame() {
-		//Frame�̍Ď擾
-		m_FrameBufferGL.upload(std::vector<uchar4>(m_FbWidth * m_FbHeight));
-		m_AccumBuffer.upload(std::vector<float3>(m_FbWidth * m_FbHeight));
-		for (auto& [name, debugBufferGL] : m_DebugBufferGLs)
-		{
-			debugBufferGL.upload(std::vector<uchar4>(m_FbWidth * m_FbHeight));
-		}
-		m_SamplePerAll = 0;
-	}
-	void OnUpdateParams()
-	{
-
-		//params�̍Đݒ�
-		if (m_CurPipelineName == "Trace") {
-			auto& params          = m_Tracer.GetTracePipeline()->GetSubPass(m_CurSubPassName)->GetParams();
-			params.frameBuffer    = m_FrameBuffer.getDevicePtr();
-			params.accumBuffer    = m_AccumBuffer.getDevicePtr();
-			params.seed           = m_SeedBuffer.getDevicePtr();
-			params.width          = m_FbWidth;
-			params.height         = m_FbHeight;
-			params.gasHandle      = m_Tracer.GetTLAS()->handle;
-			params.sdTree         = m_SdTree->GetGpuHandle();
-			params.light          = m_Light;
-			params.samplePerALL   = m_SamplePerAll;
-			params.samplePerLaunch= m_SamplePerLaunch;
-			if (m_CurSubPassName == "Pg")
-			{
-				params.accumBuffer2  = m_AccumBufferPG.getDevicePtr();
-				params.samplePerALL2 = m_SamplePerAllPg;
-			}
-		}
-		else {
-			auto& params          = m_Tracer.GetDebugPipeline()->GetSubPass("Def")->GetParams();
-			params.diffuseBuffer  = m_DebugBuffers["Diffuse"].getDevicePtr();
-			params.specularBuffer = m_DebugBuffers["Specular"].getDevicePtr();
-			params.emissionBuffer = m_DebugBuffers["Emission"].getDevicePtr();
-			params.transmitBuffer = m_DebugBuffers["Transmit"].getDevicePtr();
-			params.texCoordBuffer = m_DebugBuffers["TexCoord"].getDevicePtr();
-			params.normalBuffer   = m_DebugBuffers["Normal"].getDevicePtr();
-			params.depthBuffer    = m_DebugBuffers["Depth"].getDevicePtr();
-			params.sTreeColBuffer = m_DebugBuffers["STree"].getDevicePtr();
-			params.width          = m_FbWidth;
-			params.height         = m_FbHeight;
-			params.gasHandle      = m_Tracer.GetTLAS()->handle;
-			params.sdTree         = m_SdTree->GetGpuHandle();
-			params.light          = m_Light;
-		}
 	}
 private:
 	static void frameBufferSizeCallback(GLFWwindow* window, int fbWidth, int fbHeight)
@@ -1475,13 +1451,13 @@ private:
 		Test20Application* app = reinterpret_cast<Test20Application*>(glfwGetWindowUserPointer(window));
 		if (app) {
 			app->m_DelCursorPos.x = xPos - app->m_CurCursorPos.x;
-			app->m_DelCursorPos.y = yPos - app->m_CurCursorPos.y;;
+			app->m_DelCursorPos.y = yPos - app->m_CurCursorPos.y;
 			app->m_CurCursorPos.x = xPos;
 			app->m_CurCursorPos.y = yPos;
 		}
 	}
 private:
-	using RectRendererPtr     = std::shared_ptr<rtlib::ext::RectRenderer>;
+	using RectRendererPtr    = std::shared_ptr<rtlib::ext::RectRenderer>;
 	using CUDABufferMap      = std::unordered_map<std::string, rtlib::CUDABuffer<uchar4>>;
 	using GLInteropBufferMap = std::unordered_map<std::string, rtlib::GLInteropBuffer<uchar4>>;
 	using SDTreePtr          = std::unique_ptr<test::RTSTreeWrapper>;
@@ -1499,7 +1475,6 @@ private:
 	float                           m_DelTime            = 0.0f;
 	float                           m_CameraFovY         = 30.0f;
 	//State
-
 	rtlib::GLTexture2D<uchar4>      m_GLTexture          = {};
 	RectRendererPtr                 m_RectRenderer       = {};
 	rtlib::CameraController         m_CameraController   = {};

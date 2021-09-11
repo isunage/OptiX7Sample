@@ -92,7 +92,7 @@ extern "C" __global__ void __closesthit__debug(){
     const float3 n1  = optixTransformNormalFromObjectToWorldSpace(hgData->normals[hgData->indices[primitiveID].y]);
     const float3 n2  = optixTransformNormalFromObjectToWorldSpace(hgData->normals[hgData->indices[primitiveID].z]);
     const float3 n_base = rtlib::normalize((1.0f - texCoord.x - texCoord.y) * n0 + texCoord.x * n1 + texCoord.y * n2);
-    const float3 normal = faceForward(n0, make_float3(-rayDirection.x,-rayDirection.y,-rayDirection.z), n_base);
+    const float3 normal = faceForward(n_base, make_float3(-rayDirection.x,-rayDirection.y,-rayDirection.z), n_base);
     auto t0          = hgData->texCoords[hgData->indices[primitiveID].x];
     auto t1          = hgData->texCoords[hgData->indices[primitiveID].y];
     auto t2          = hgData->texCoords[hgData->indices[primitiveID].z];

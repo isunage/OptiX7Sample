@@ -160,7 +160,7 @@ extern "C" __global__ void __raygen__pg() {
     unsigned int seed = params.seed[params.width * idx.y + idx.x];
     float3 result = make_float3(0.0f, 0.0f, 0.0f);
     size_t i = params.samplePerLaunch;
-    TraceVertex vertices[32] = {};
+    TraceVertex vertices[RAY_TRACE_MAX_VERTEX_COUNT] = {};
     do {
         rtlib::Xorshift32 xor32(seed);
         const float2 jitter = rtlib::random_float2(xor32);
@@ -230,7 +230,7 @@ extern "C" __global__ void __raygen__pg() {
             depth++;
         }
         for (int j = 0; j < depth; ++j) {
-            vertices[j].Commit<SpatialFilterNearest, DirectionalFilterBox>(params.sdTree,1.0f);
+            vertices[j].Commit<RAY_TRACE_S_FILTER, RAY_TRACE_D_FILTER>(params.sdTree,1.0f);
         }
         seed = prd.seed;
     } while (i--);
