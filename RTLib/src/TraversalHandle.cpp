@@ -49,6 +49,14 @@ void rtlib::ext::GASHandle::Build(const rtlib::OPXContext* context, const OptixA
     this->sbtCount = sbtCount;
 }
 
+void rtlib::ext::GASHandle::AddMesh(const MeshPtr& mesh)noexcept{
+    this->meshes.push_back(mesh);
+}
+
+auto rtlib::ext::GASHandle::GetSbtCount()const noexcept -> size_t {
+    return this->sbtCount;
+}
+
 void rtlib::ext::IASHandle::Build(const rtlib::OPXContext* context, const OptixAccelBuildOptions& accelOptions) {
     auto buildInputs = std::vector <OptixBuildInput>(this->instanceSets.size());
     size_t i = 0;

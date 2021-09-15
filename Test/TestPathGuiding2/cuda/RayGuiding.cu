@@ -96,7 +96,7 @@ extern "C" __global__ void __raygen__def() {
     const float3 u = rgData->u;
     const float3 v = rgData->v;
     const float3 w = rgData->w;
-    unsigned int seed = params.seed[params.width * idx.y + idx.x];
+    unsigned int seed = params.seedBuffer[params.width * idx.y + idx.x];
     float3 result = make_float3(0.0f, 0.0f, 0.0f);
     size_t i = params.samplePerLaunch;
     do {
@@ -147,7 +147,7 @@ extern "C" __global__ void __raygen__def() {
             static_cast<unsigned char>(255.99 * rtlib::linear_to_gamma(frameColor.y)),
             static_cast<unsigned char>(255.99 * rtlib::linear_to_gamma(frameColor.z)), 255);
     }
-    params.seed[params.width * idx.y + idx.x] = seed;
+    params.seedBuffer[params.width * idx.y + idx.x] = seed;
 }
 extern "C" __global__ void __raygen__pg() {
 
@@ -157,7 +157,7 @@ extern "C" __global__ void __raygen__pg() {
     const float3 u = rgData->u;
     const float3 v = rgData->v;
     const float3 w = rgData->w;
-    unsigned int seed = params.seed[params.width * idx.y + idx.x];
+    unsigned int seed = params.seedBuffer[params.width * idx.y + idx.x];
     float3 result = make_float3(0.0f, 0.0f, 0.0f);
     size_t i = params.samplePerLaunch;
     TraceVertex vertices[RAY_TRACE_MAX_VERTEX_COUNT] = {};
@@ -202,28 +202,28 @@ extern "C" __global__ void __raygen__pg() {
             //OK
             //Result�̍X�V
             result += prvThroughPut * prd.emission;
-            if (isnan(result.x) || isnan(result.y) || isnan(result.z)) {
-                printf("result is nan Bug(%d,%d,%d): Result(%f %f %f) prvThroughPut(%lf %lf %lf) prd.emission(%lf %lf %lf) prd.pdf: (%lf %lf %lf) prd.done: %d\n",
-                    idx.x, idx.y, depth,
-                    result.x, result.y, result.z,
-                    prvThroughPut.x, prvThroughPut.y, prvThroughPut.z,
-                    prd.emission.x , prd.emission.y , prd.emission.z ,
-                    prd.woPdf, prd.bsdfPdf, prd.dTreePdf, (int)prd.done
-                );
-            }
+            //if (isnan(result.x) || isnan(result.y) || isnan(result.z)) {
+              //  printf("result is nan Bug(%d,%d,%d): Result(%f %f %f) prvThroughPut(%lf %lf %lf) prd.emission(%lf %lf %lf) prd.pdf: (%lf %lf %lf) prd.done: %d\n",
+              //      idx.x, idx.y, depth,
+              //      result.x, result.y, result.z,
+              //      prvThroughPut.x, prvThroughPut.y, prvThroughPut.z,
+              //      prd.emission.x , prd.emission.y , prd.emission.z ,
+              //      prd.woPdf, prd.bsdfPdf, prd.dTreePdf, (int)prd.done
+              //  );
+            //}
             bool isValidThroughPut =  ( !isnan(prd.throughPut.x) &&   !isnan(prd.throughPut.y) &&   !isnan(prd.throughPut.z)  &&
                                       isfinite(prd.throughPut.x) && isfinite(prd.throughPut.y) && isfinite(prd.throughPut.z)  &&
                                       (prd.throughPut.x >= 0.0f  && prd.throughPut.y >= 0.0f   && prd.throughPut.z >= 0.0f));
             //ThroughPut�̍X�V
-            if (!isValidThroughPut) {
-               printf("prd.ThroughPut is Invalid Bug(%d,%d,%d): Result(%f %f %f)  prd.throughPut(%lf %lf %lf) prd.emission(%lf %lf %lf) prd.pdf: (%lf %lf %lf) prd.done: %d\n",
-                    idx.x, idx.y, depth,
-                   result.x, result.y, result.z,
-                   prd.throughPut.x, prd.throughPut.y, prd.throughPut.z,
-                   prd.emission.x, prd.emission.y, prd.emission.z,
-                   prd.woPdf, prd.bsdfPdf, prd.dTreePdf, (int)prd.done
-               );
-           }
+            //if (!isValidThroughPut) {
+              // printf("prd.ThroughPut is Invalid Bug(%d,%d,%d): Result(%f %f %f)  prd.throughPut(%lf %lf %lf) prd.emission(%lf %lf %lf) prd.pdf: (%lf %lf %lf) prd.done: %d\n",
+              //      idx.x, idx.y, depth,
+              //     result.x, result.y, result.z,
+              //     prd.throughPut.x, prd.throughPut.y, prd.throughPut.z,
+              //     prd.emission.x, prd.emission.y, prd.emission.z,
+              //     prd.woPdf, prd.bsdfPdf, prd.dTreePdf, (int)prd.done
+              // );
+           //}
             if (prd.done || depth >= params.maxTraceDepth || !isValidThroughPut) {
                 break;
             }
@@ -252,7 +252,7 @@ extern "C" __global__ void __raygen__pg() {
             static_cast<unsigned char>(255.99 * rtlib::linear_to_gamma(frameColor2.y)),
             static_cast<unsigned char>(255.99 * rtlib::linear_to_gamma(frameColor2.z)), 255);
     }
-    params.seed[params.width * idx.y + idx.x] = seed;
+    params.seedBuffer[params.width * idx.y + idx.x] = seed;
 }
 extern "C" __global__ void __miss__radiance() {
     auto* msData = reinterpret_cast<MissData*>(optixGetSbtDataPointer());
@@ -635,9 +635,9 @@ extern "C" __global__ void __closesthit__radiance_for_phong_pg () {
 
     const auto n0           = optixTransformNormalFromObjectToWorldSpace(rtlib::normalize(rtlib::cross(v1 - v0, v2 - v0)));
     const auto normal       = faceForward(n0, make_float3(-rayDirection.x, -rayDirection.y, -rayDirection.z), n0);
-    if (isnan(normal.x) || isnan(normal.y) || isnan(normal.z)) {
-        printf("normal is nan!\n");
-    }
+    //if (isnan(normal.x) || isnan(normal.y) || isnan(normal.z)) {
+    //    printf("normal is nan!\n");
+    //}
      
     const auto barycentric  = optixGetTriangleBarycentrics();
     const auto t0           = hgData->texCoords[hgData->indices[primitiveID].x];
@@ -686,18 +686,18 @@ extern "C" __global__ void __closesthit__radiance_for_phong_pg () {
         newDirection1   = dTree->Sample(xor32);
         cosine1         = rtlib::dot(normal, newDirection1);
 #endif
-        if (isnan(newDirection1.x) || isnan(newDirection1.y) || isnan(newDirection1.z))
-        {
-            printf("newDirection1 is nan!\n");
-        }
+        //if (isnan(newDirection1.x) || isnan(newDirection1.y) || isnan(newDirection1.z))
+        //{
+        // printf("newDirection1 is nan!\n");
+        //}
     }
     {
         rtlib::ONB onb(normal);
         newDirection2 = onb.local(rtlib::random_cosine_direction(xor32));
         cosine2       = rtlib::dot(normal, newDirection2);
-        if (isnan(newDirection2.x) || isnan(newDirection2.y) || isnan(newDirection2.z)) {
-            printf("newDirection2 is nan: newDirection2 = (%f, %f, %f) normal = (%f, %f, %f) n0 = (%f, %f, %f)\n", newDirection2.x, newDirection2.y, newDirection2.z, normal.x, normal.y, normal.z, n0.x, n0.y, n0.z);
-        }
+        //if (isnan(newDirection2.x) || isnan(newDirection2.y) || isnan(newDirection2.z)) {
+        //    printf("newDirection2 is nan: newDirection2 = (%f, %f, %f) normal = (%f, %f, %f) n0 = (%f, %f, %f)\n", newDirection2.x, newDirection2.y, newDirection2.z, normal.x, normal.y, normal.z, n0.x, n0.y, n0.z);
+        //}
     }
     {
         rtlib::ONB onb(reflectDir);
@@ -707,10 +707,10 @@ extern "C" __global__ void __closesthit__radiance_for_phong_pg () {
         newDirection3     = onb.local(make_float3(sinTht * cosf(phi), sinTht * sinf(phi), cosTht));
         cosine3 = rtlib::dot(normal, newDirection3);
 
-        if (isnan(newDirection3.x) || isnan(newDirection3.y) || isnan(newDirection3.z))
-        {
-            printf("newDirection3 is nan: newDirection3 = (%f, %f, %f) normal = (%f, %f, %f) n0 = (%f, %f, %f)\n", newDirection3.x, newDirection3.y, newDirection3.z, normal.x, normal.y, normal.z, n0.x, n0.y, n0.z);
-        }
+        //if (isnan(newDirection3.x) || isnan(newDirection3.y) || isnan(newDirection3.z))
+        //{
+        //    printf("newDirection3 is nan: newDirection3 = (%f, %f, %f) normal = (%f, %f, %f) n0 = (%f, %f, %f)\n", newDirection3.x, newDirection3.y, newDirection3.z, normal.x, normal.y, normal.z, n0.x, n0.y, n0.z);
+        //}
     }
     const auto  a_diffuse    = ( diffuse.x +  diffuse.y +  diffuse.z) / 3.0f;
     const auto  a_specular   = (specular.x + specular.y + specular.z) / 3.0f;

@@ -37,7 +37,8 @@ auto rtlib::ext::MeshGroup::GetUniqueNames() const noexcept -> std::vector<std::
 
 auto rtlib::ext::MeshGroup::LoadMesh(const std::string& name) const -> MeshPtr
 {
-	auto mesh = std::make_shared<Mesh>();
+	auto mesh              = std::make_shared<Mesh>();
+	mesh->m_Name           = name;
 	mesh->m_SharedResource = this->GetSharedResource();
 	mesh->m_UniqueResource = this->GetUniqueResource(name);
 	return mesh;

@@ -530,7 +530,7 @@ public:
 				RayTraceParams params = {};
 				params.frameBuffer = m_FrameBuffer.getDevicePtr();
 				params.accumBuffer = m_AccumBuffer.getDevicePtr();
-				params.seed = m_SeedBuffer.getDevicePtr();
+				params.seedBuffer = m_SeedBuffer.getDevicePtr();
 				params.width = m_FbWidth;
 				params.height = m_FbHeight;
 				params.maxTraceDepth = kDefaultMaxTraceDepth;
@@ -551,7 +551,7 @@ public:
 				RayTraceParams params = {};
 				params.frameBuffer = m_FrameBuffer.getDevicePtr();
 				params.accumBuffer = m_AccumBuffer.getDevicePtr();
-				params.seed = m_SeedBuffer.getDevicePtr();
+				params.seedBuffer = m_SeedBuffer.getDevicePtr();
 				params.width = m_FbWidth;
 				params.height = m_FbHeight;
 				params.maxTraceDepth = kDefaultMaxTraceDepth;
@@ -573,7 +573,7 @@ public:
 				RayTraceParams params = {};
 				params.frameBuffer = m_FrameBuffer.getDevicePtr();
 				params.accumBuffer = m_AccumBuffer.getDevicePtr();
-				params.seed = m_SeedBuffer.getDevicePtr();
+				params.seedBuffer = m_SeedBuffer.getDevicePtr();
 				params.width = m_FbWidth;
 				params.height = m_FbHeight;
 				params.maxTraceDepth = kDefaultMaxTraceDepth;
@@ -964,15 +964,15 @@ private:
 			m_GLTexture.setParameteri(GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE, false);
 		}
 		m_Tracer2.GetTracePipeline()->GetSubPass("Def")->GetParams().accumBuffer = m_AccumBuffer.getDevicePtr();
-		m_Tracer2.GetTracePipeline()->GetSubPass("Def")->GetParams().seed        = m_SeedBuffer.getDevicePtr();
+		m_Tracer2.GetTracePipeline()->GetSubPass("Def")->GetParams().seedBuffer        = m_SeedBuffer.getDevicePtr();
 		m_Tracer2.GetTracePipeline()->GetSubPass("Def")->GetParams().width       = m_FbWidth;
 		m_Tracer2.GetTracePipeline()->GetSubPass("Def")->GetParams().height      = m_FbHeight;
 		m_Tracer2.GetTracePipeline()->GetSubPass("Nee")->GetParams().accumBuffer = m_AccumBuffer.getDevicePtr();
-		m_Tracer2.GetTracePipeline()->GetSubPass("Nee")->GetParams().seed        = m_SeedBuffer.getDevicePtr();
+		m_Tracer2.GetTracePipeline()->GetSubPass("Nee")->GetParams().seedBuffer        = m_SeedBuffer.getDevicePtr();
 		m_Tracer2.GetTracePipeline()->GetSubPass("Nee")->GetParams().width       = m_FbWidth;
 		m_Tracer2.GetTracePipeline()->GetSubPass("Nee")->GetParams().height      = m_FbHeight;
 		m_Tracer2.GetTracePipeline()->GetSubPass("Mis")->GetParams().accumBuffer = m_AccumBuffer.getDevicePtr();
-		m_Tracer2.GetTracePipeline()->GetSubPass("Mis")->GetParams().seed        = m_SeedBuffer.getDevicePtr();
+		m_Tracer2.GetTracePipeline()->GetSubPass("Mis")->GetParams().seedBuffer        = m_SeedBuffer.getDevicePtr();
 		m_Tracer2.GetTracePipeline()->GetSubPass("Mis")->GetParams().width       = m_FbWidth;
 		m_Tracer2.GetTracePipeline()->GetSubPass("Mis")->GetParams().height      = m_FbHeight;
 		m_Tracer2.GetDebugPipeline()->GetSubPass("Def")->GetParams().width       = m_FbWidth;
@@ -1028,7 +1028,7 @@ private:
 			auto& params        = m_Tracer2.GetTracePipeline()->GetSubPass(m_CurSubPassName)->GetParams();
 			params.frameBuffer  = m_FrameBuffer.getDevicePtr();
 			params.accumBuffer  = m_AccumBuffer.getDevicePtr();
-			params.seed         = m_SeedBuffer.getDevicePtr();
+			params.seedBuffer         = m_SeedBuffer.getDevicePtr();
 			params.width        = m_FbWidth;
 			params.height       = m_FbHeight;
 			//params.maxTraceDepth   = m_MaxTraceDepth;

@@ -58,7 +58,7 @@ namespace rtlib{
             std::unordered_map<std::string, std::array<float,4>>  m_Float4Data;
             std::unordered_map<std::string, std::string>          m_StringData;
         };
-        using MaterialList = std::vector<Material>;
+        using MaterialList    = std::vector<Material>;
         using MaterialListPtr = std::shared_ptr<MaterialList>;
     }
 }

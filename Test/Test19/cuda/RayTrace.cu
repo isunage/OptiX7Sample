@@ -94,7 +94,7 @@ extern "C" __global__ void __raygen__rg(){
     const float3 u              = rgData->u;
 	const float3 v              = rgData->v;
 	const float3 w              = rgData->w;
-    unsigned int seed           = params.seed[params.width * idx.y + idx.x];
+    unsigned int seed           = params.seedBuffer[params.width * idx.y + idx.x];
     float3 result               = make_float3(0.0f, 0.0f, 0.0f);
     size_t i                    = params.samplePerLaunch;
     do {
@@ -137,7 +137,7 @@ extern "C" __global__ void __raygen__rg(){
         static_cast<unsigned char>(255.99 * rtlib::linear_to_gamma(frameColor.y)),
         static_cast<unsigned char>(255.99 * rtlib::linear_to_gamma(frameColor.z)), 255);
     params.accumBuffer[params.width * idx.y + idx.x] = accumColor;
-    params.seed[params.width * idx.y + idx.x]        = seed;
+    params.seedBuffer[params.width * idx.y + idx.x]        = seed;
 }
 extern "C" __global__ void __miss__radiance(){
     auto* msData = reinterpret_cast<MissData*>(optixGetSbtDataPointer());

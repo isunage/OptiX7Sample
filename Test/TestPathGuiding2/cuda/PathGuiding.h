@@ -177,7 +177,7 @@ struct DTreeNode {
 			if (total <= 0.0f)
 #endif
 			{
-				printf("Bug!\n");
+				//printf("Bug!\n");
 				result += rtlib::random_float2(rng) * size;
 				break;
 			}
@@ -185,6 +185,7 @@ struct DTreeNode {
 			float boundary = partial / total;
 			auto  origin = make_float2(0.0f);
 			float sample = rtlib::random_float1(rng);
+
 			if (sample < boundary)
 			{
 				sample /= boundary;
@@ -192,11 +193,11 @@ struct DTreeNode {
 			}
 			else
 			{
-				partial = total - partial;
+				partial  = total - partial;
 				origin.x = 0.5f;
-				sample = (sample - boundary) / (1.0f - boundary);
+				sample   = (sample - boundary) / (1.0f - boundary);
 				boundary = topRight / partial;
-				idx |= (1 << 0);
+				idx     |= (1 << 0);
 			}
 
 			if (sample < boundary)
@@ -245,12 +246,12 @@ struct DTreeNode {
 				result = 0.0f;
 				break;
 			}
-			if (isnan(cur->sums[idx])) {
-				printf("sums = (%f, %f, %f, %f)\n", cur->sums[0], cur->sums[1], cur->sums[2], cur->sums[3]);
-			}
-			if (cur == nullptr) {
-				printf("cur = nullptr\n");
-			}
+			//if (isnan(cur->sums[idx])) {
+			//	printf("sums = (%f, %f, %f, %f)\n", cur->sums[0], cur->sums[1], cur->sums[2], cur->sums[3]);
+			//}
+			//if (cur == nullptr) {
+			//	printf("cur = nullptr\n");
+			//}
 			const auto factor = 4.0f * cur->GetSum(idx) / total;
 			result *= factor;
 			if (cur->IsLeaf(idx)) {
@@ -260,9 +261,9 @@ struct DTreeNode {
 			idx = cur->GetChildIdx(p);
 			++depth;
 		}
-		if (isnan(result)) {
-			printf("result is nan\n");
-		}
+		//if (isnan(result)) {
+		//	printf("result is nan\n");
+		//}
 		return result;
 	}
 
@@ -384,7 +385,6 @@ struct DTree {
 			}
 		}
 	};
-
 	RTLIB_INLINE RTLIB_HOST_DEVICE auto  GetArea()const noexcept -> float {
 		return area;
 	}
@@ -407,7 +407,6 @@ struct DTree {
 		sum += val;
 #endif
 	}
-
 	template<DirectionalFilter dFilter>
 	RTLIB_INLINE RTLIB_DEVICE      void  RecordIrradiance(float2 p, float irradiance, float statisticalWeight)noexcept {
 		Impl<dFilter>::RecordIrradiance(*this, p, irradiance, statisticalWeight);

@@ -288,8 +288,8 @@ private:
 			//{TEST_TEST_PG_DATA_PATH"/Models/Lumberyard/Exterior/exterior.obj"  , TEST_TEST_PG_DATA_PATH"/Models/Lumberyard/Exterior/"},
 			//{TEST_TEST_PG_DATA_PATH"/Models/Lumberyard/Interior/interior.obj"  , TEST_TEST_PG_DATA_PATH"/Models/Lumberyard/Interior/"},
 			//  {TEST_TEST_PG_DATA_PATH"/Models/Sponza/Sponza.obj"                 , TEST_TEST_PG_DATA_PATH"/Models/Sponza/"             },
-			{TEST_TEST_PG_DATA_PATH"/Models/CornellBox/CornellBox-Original.obj", TEST_TEST_PG_DATA_PATH"/Models/CornellBox/"         },
-			//{TEST_TEST_PG_DATA_PATH"/Models/CornellBox/CornellBox-Water.obj"   , TEST_TEST_PG_DATA_PATH"/Models/CornellBox/"         },
+			//{TEST_TEST_PG_DATA_PATH"/Models/CornellBox/CornellBox-Original.obj", TEST_TEST_PG_DATA_PATH"/Models/CornellBox/"         },
+			{TEST_TEST_PG_DATA_PATH"/Models/CornellBox/CornellBox-Glossy.obj"   , TEST_TEST_PG_DATA_PATH"/Models/CornellBox/"         },
 		};
 		m_MaterialSet = rtlib::ext::MaterialListPtr(new rtlib::ext::MaterialList());
 		{
@@ -361,14 +361,13 @@ private:
 		m_Tracer.NewGASHandle("world");
 		auto worldGASHandle = m_Tracer.GetGASHandle("world");
 		{
-			bool isLightFound = false;
 			OptixAccelBuildOptions accelOptions = {};
 			accelOptions.buildFlags = OPTIX_BUILD_FLAG_ALLOW_COMPACTION | OPTIX_BUILD_FLAG_PREFER_FAST_TRACE;
 			accelOptions.operation = OPTIX_BUILD_OPERATION_BUILD;
 			for (auto& [name, meshGroup] : m_Tracer.GetMeshGroups()) {
 				for (auto& meshUniqueName : meshGroup->GetUniqueNames()) {
 					if (meshUniqueName != "light") {
-						worldGASHandle->meshes.push_back(meshGroup->LoadMesh(meshUniqueName));
+						worldGASHandle->AddMesh(meshGroup->LoadMesh(meshUniqueName));
 					}
 					else {
 						isLightFound = true;
@@ -386,7 +385,7 @@ private:
 			accelOptions.buildFlags = OPTIX_BUILD_FLAG_ALLOW_COMPACTION | OPTIX_BUILD_FLAG_PREFER_FAST_TRACE;
 			accelOptions.operation  = OPTIX_BUILD_OPERATION_BUILD;
 			for (auto& [name, meshGroup] : m_Tracer.GetMeshGroups()) {
-				lightGASHandle->meshes.push_back(meshGroup->LoadMesh("light"));
+				lightGASHandle->AddMesh(meshGroup->LoadMesh("light"));
 			}
 			lightGASHandle->Build(m_Tracer.GetContext().get(), accelOptions);
 		}
@@ -459,7 +458,7 @@ private:
 
 			lightMesh->GetUniqueResource()->matIndBuffer.Upload();
 			lightMesh->GetUniqueResource()->triIndBuffer.Upload();
-			lightGASHandle->meshes.push_back(lightMesh);
+			lightGASHandle->AddMesh(lightMesh);
 			lightGASHandle->Build(m_Tracer.GetContext().get(), accelOptions);
 		}
 		//IAS1: First
@@ -487,21 +486,21 @@ private:
 		m_Light = ParallelLight();
 		{
 			auto& lightGASHandle = m_Tracer.GetGASHandle("light");
-			auto  lightMesh = lightGASHandle->meshes[0];
-			auto  lightVertices = std::vector<float3>();
+			auto  lightMesh      = lightGASHandle->meshes[0];
+			auto  lightVertices  = std::vector<float3>();
 			for (auto& index : lightMesh->GetUniqueResource()->triIndBuffer.cpuHandle) {
 				lightVertices.push_back(lightMesh->GetSharedResource()->vertexBuffer.cpuHandle[index.x]);
 				lightVertices.push_back(lightMesh->GetSharedResource()->vertexBuffer.cpuHandle[index.y]);
 				lightVertices.push_back(lightMesh->GetSharedResource()->vertexBuffer.cpuHandle[index.z]);
 			}
-			auto lightAABB = rtlib::utils::AABB(lightVertices);
-			auto lightV3 = lightAABB.max - lightAABB.min;
-			m_Light.corner = lightAABB.min;
-			m_Light.v1 = make_float3(0.0f, 0.0f, lightV3.z);
-			m_Light.v2 = make_float3(lightV3.x, 0.0f, 0.0f);
-			m_Light.normal = make_float3(0.0f, -1.0f, 0.0f);
+			auto lightAABB     = rtlib::utils::AABB(lightVertices);
+			auto lightV3       = lightAABB.max - lightAABB.min;
+			m_Light.corner     = lightAABB.min;
+			m_Light.v1         = make_float3(0.0f, 0.0f, lightV3.z);
+			m_Light.v2         = make_float3(lightV3.x, 0.0f, 0.0f);
+			m_Light.normal     = make_float3(0.0f, -1.0f, 0.0f);
 			auto lightMaterial = (*m_MaterialSet)[lightMesh->GetUniqueResource()->materials[0]];
-			m_Light.emission = lightMaterial.GetFloat3As<float3>("emitCol");
+			m_Light.emission   = lightMaterial.GetFloat3As<float3>("emitCol");
 		}
 	}
 	void InitFrameResources() {
@@ -732,7 +731,7 @@ private:
 				params.frameBuffer     = m_FrameBuffer.getDevicePtr();
 				params.accumBuffer     = m_AccumBuffer.getDevicePtr();
 				params.accumBuffer2    = nullptr;
-				params.seed            = m_SeedBuffer.getDevicePtr();
+				params.seedBuffer            = m_SeedBuffer.getDevicePtr();
 				params.width           = m_FbWidth;
 				params.height          = m_FbHeight;
 				params.maxTraceDepth   = kDefaultMaxTraceDepth;
@@ -756,7 +755,7 @@ private:
 				params.frameBuffer     = m_FrameBuffer.getDevicePtr();
 				params.accumBuffer     = m_AccumBuffer.getDevicePtr();
 				params.accumBuffer2    = m_AccumBufferPG.getDevicePtr();
-				params.seed            = m_SeedBuffer.getDevicePtr();
+				params.seedBuffer      = m_SeedBuffer.getDevicePtr();
 				params.width           = m_FbWidth;
 				params.height          = m_FbHeight;
 				params.maxTraceDepth   = kDefaultMaxTraceDepth;
@@ -1210,12 +1209,12 @@ private:
 			m_GLTexture.setParameteri(GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE, false);
 		}
 		m_Tracer.GetTracePipeline()->GetSubPass("Def")->GetParams().accumBuffer = m_AccumBuffer.getDevicePtr();
-		m_Tracer.GetTracePipeline()->GetSubPass("Def")->GetParams().seed        = m_SeedBuffer.getDevicePtr();
+		m_Tracer.GetTracePipeline()->GetSubPass("Def")->GetParams().seedBuffer        = m_SeedBuffer.getDevicePtr();
 		m_Tracer.GetTracePipeline()->GetSubPass("Def")->GetParams().width       = m_FbWidth;
 		m_Tracer.GetTracePipeline()->GetSubPass("Def")->GetParams().height      = m_FbHeight;
 
 		m_Tracer.GetTracePipeline()->GetSubPass("Pg")->GetParams().accumBuffer  = m_AccumBuffer.getDevicePtr();
-		m_Tracer.GetTracePipeline()->GetSubPass("Pg")->GetParams().seed         = m_SeedBuffer.getDevicePtr();
+		m_Tracer.GetTracePipeline()->GetSubPass("Pg")->GetParams().seedBuffer         = m_SeedBuffer.getDevicePtr();
 		m_Tracer.GetTracePipeline()->GetSubPass("Pg")->GetParams().width        = m_FbWidth;
 		m_Tracer.GetTracePipeline()->GetSubPass("Pg")->GetParams().height       = m_FbHeight;
 
@@ -1226,6 +1225,7 @@ private:
 	{
 		auto camera = m_CameraController.GetCamera(m_CameraFovY, m_FbAspect);
 		auto [u, v, w] = camera.getUVW();
+
 		m_Tracer.GetTracePipeline()->GetRayGRecordBuffer("Def")->GetData().eye = camera.getEye();
 		m_Tracer.GetTracePipeline()->GetRayGRecordBuffer("Def")->GetData().u = u;
 		m_Tracer.GetTracePipeline()->GetRayGRecordBuffer("Def")->GetData().v = v;
@@ -1275,7 +1275,7 @@ private:
 			auto& params          = m_Tracer.GetTracePipeline()->GetSubPass(m_CurSubPassName)->GetParams();
 			params.frameBuffer    = m_FrameBuffer.getDevicePtr();
 			params.accumBuffer    = m_AccumBuffer.getDevicePtr();
-			params.seed           = m_SeedBuffer.getDevicePtr();
+			params.seedBuffer           = m_SeedBuffer.getDevicePtr();
 			params.width          = m_FbWidth;
 			params.height         = m_FbHeight;
 			params.gasHandle      = m_Tracer.GetTLAS()->handle;

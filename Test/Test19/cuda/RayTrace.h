@@ -33,7 +33,7 @@ struct ParallelLight {
 struct RayTraceParams {
     uchar4*                frameBuffer;
     float3*                accumBuffer;
-    unsigned int*          seed;       
+    unsigned int*          seedBuffer;       
     unsigned int           width;      
     unsigned int           height;
     unsigned int           samplePerLaunch;

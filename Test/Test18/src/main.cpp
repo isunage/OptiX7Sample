@@ -488,7 +488,7 @@ public:
 					{
 						params.frameBuffer = m_FrameBuffer.getDevicePtr();
 						params.accumBuffer = m_AccumBuffer.getDevicePtr();
-						params.seed = m_SeedBuffer.getDevicePtr();
+						params.seedBuffer = m_SeedBuffer.getDevicePtr();
 						params.width = m_FbWidth;
 						params.height = m_FbHeight;
 						params.maxTraceDepth = kDefaultMaxTraceDepth;
@@ -504,7 +504,7 @@ public:
 					{
 						params.frameBuffer     = m_FrameBuffer.getDevicePtr();
 						params.accumBuffer     = m_AccumBuffer.getDevicePtr();
-						params.seed            = m_SeedBuffer.getDevicePtr();
+						params.seedBuffer            = m_SeedBuffer.getDevicePtr();
 						params.width           = m_FbWidth;
 						params.height          = m_FbHeight;
 						params.maxTraceDepth   = kDefaultMaxTraceDepth;
@@ -746,11 +746,11 @@ private:
 			m_GLTexture.setParameteri(GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE, false);
 		}
 		m_Tracer.GetTracePipeline()->subPasses["Default"].paramsBuffer.cpuHandle[0].accumBuffer = m_AccumBuffer.getDevicePtr();
-		m_Tracer.GetTracePipeline()->subPasses["Default"].paramsBuffer.cpuHandle[0].seed        = m_SeedBuffer.getDevicePtr();
+		m_Tracer.GetTracePipeline()->subPasses["Default"].paramsBuffer.cpuHandle[0].seedBuffer        = m_SeedBuffer.getDevicePtr();
 		m_Tracer.GetTracePipeline()->subPasses["Default"].paramsBuffer.cpuHandle[0].width       = m_FbWidth;
 		m_Tracer.GetTracePipeline()->subPasses["Default"].paramsBuffer.cpuHandle[0].height      = m_FbHeight;
 		m_Tracer.GetTracePipeline()->subPasses["NEE"].paramsBuffer.cpuHandle[0].accumBuffer     = m_AccumBuffer.getDevicePtr();
-		m_Tracer.GetTracePipeline()->subPasses["NEE"].paramsBuffer.cpuHandle[0].seed            = m_SeedBuffer.getDevicePtr();
+		m_Tracer.GetTracePipeline()->subPasses["NEE"].paramsBuffer.cpuHandle[0].seedBuffer            = m_SeedBuffer.getDevicePtr();
 		m_Tracer.GetTracePipeline()->subPasses["NEE"].paramsBuffer.cpuHandle[0].width           = m_FbWidth;
 		m_Tracer.GetTracePipeline()->subPasses["NEE"].paramsBuffer.cpuHandle[0].height          = m_FbHeight;
 		m_Tracer.GetDebugPipeline()->subPasses["Default"].paramsBuffer.cpuHandle[0].width       = m_FbWidth;
@@ -801,7 +801,7 @@ private:
 			auto& params           = m_Tracer.GetTracePipeline()->subPasses[m_CurSubPassName].paramsBuffer.cpuHandle[0];
 			params.frameBuffer     = m_FrameBuffer.getDevicePtr();
 			params.accumBuffer     = m_AccumBuffer.getDevicePtr();
-			params.seed            = m_SeedBuffer.getDevicePtr();
+			params.seedBuffer            = m_SeedBuffer.getDevicePtr();
 			params.width           = m_FbWidth;
 			params.height          = m_FbHeight;
 			//params.maxTraceDepth   = m_MaxTraceDepth;
