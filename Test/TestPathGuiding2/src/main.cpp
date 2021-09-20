@@ -20,6 +20,7 @@
 #include <unordered_map>
 #include <random>
 #include <sstream>
+#include <chrono>
 #include <string>
 namespace test {
 	std::string SpecifyMaterialType(const rtlib::ext::Material& material) {
@@ -281,15 +282,15 @@ private:
 	void InitCamera() {
 		m_CameraController = rtlib::CameraController({ 0.0f,1.0f, 5.0f });
 		m_CameraController.SetMouseSensitivity(0.125f);
-		m_CameraController.SetMovementSpeed(50.0f);
+		m_CameraController.SetMovementSpeed(10.0f);
 	}
 	void LoadScene(){
 		std::vector<std::pair<std::string, std::string>> objInfos = {
 			//{TEST_TEST_PG_DATA_PATH"/Models/Lumberyard/Exterior/exterior.obj"  , TEST_TEST_PG_DATA_PATH"/Models/Lumberyard/Exterior/"},
 			//{TEST_TEST_PG_DATA_PATH"/Models/Lumberyard/Interior/interior.obj"  , TEST_TEST_PG_DATA_PATH"/Models/Lumberyard/Interior/"},
-			//  {TEST_TEST_PG_DATA_PATH"/Models/Sponza/Sponza.obj"                 , TEST_TEST_PG_DATA_PATH"/Models/Sponza/"             },
-			//{TEST_TEST_PG_DATA_PATH"/Models/CornellBox/CornellBox-Original.obj", TEST_TEST_PG_DATA_PATH"/Models/CornellBox/"         },
-			{TEST_TEST_PG_DATA_PATH"/Models/CornellBox/CornellBox-Glossy.obj"   , TEST_TEST_PG_DATA_PATH"/Models/CornellBox/"         },
+			//{TEST_TEST_PG_DATA_PATH"/Models/Sponza/Sponza.obj"                 , TEST_TEST_PG_DATA_PATH"/Models/Sponza/"    },
+			//{TEST_TEST_PG_DATA_PATH"/Models/CornellBox/CornellBox-Original.obj", TEST_TEST_PG_DATA_PATH"/Models/CornellBox/"},
+			{TEST_TEST_PG_DATA_PATH"/Models/CornellBox/CornellBox-Water.obj"     , TEST_TEST_PG_DATA_PATH"/Models/CornellBox/"},
 		};
 		m_MaterialSet = rtlib::ext::MaterialListPtr(new rtlib::ext::MaterialList());
 		{
@@ -299,8 +300,8 @@ private:
 				if (!objMeshGroup->Load2(objInfo.first, objInfo.second)) {
 					throw std::runtime_error("Failed To Load Model!");
 				}
-				auto& meshGroup   = objMeshGroup->GetMeshGroup();
-				auto& materialSet = objMeshGroup->GetMaterialList();
+				auto  meshGroup   = objMeshGroup->GetMeshGroup();
+				auto  materialSet = objMeshGroup->GetMaterialList();
 				for (auto& [name, uniqueResource] : meshGroup->GetUniqueResources()) {
 					for (auto& material : uniqueResource->materials) {
 						material += materialOffset;
@@ -324,7 +325,7 @@ private:
 					material.SetString("diffTex", "");
 				}
 				if (material.GetString("diffTex") != "") {
-					auto diffCol = material.GetFloat3As<float3>("diffCol");
+					auto diffCol    = material.GetFloat3As<float3>("diffCol");
 					auto avgDiffCol = rtlib::dot(diffCol, make_float3(1.0f)) / 3.0f;
 					if (avgDiffCol == 0.0f)
 					{
@@ -335,7 +336,7 @@ private:
 					material.SetString("specTex", "");
 				}
 				if (material.GetString("specTex") != "") {
-					auto specCol = material.GetFloat3As<float3>("specCol");
+					auto specCol    = material.GetFloat3As<float3>("specCol");
 					auto avgSpecCol = rtlib::dot(specCol, make_float3(1.0f)) / 3.0f;
 					if (avgSpecCol == 0.0f)
 					{
@@ -346,7 +347,7 @@ private:
 					material.SetString("emitTex", "");
 				}
 				if (material.GetString("emitTex") != "") {
-					auto emitCol = material.GetFloat3As<float3>("emitCol");
+					auto emitCol    = material.GetFloat3As<float3>("emitCol");
 					auto avgEmitCol = rtlib::dot(emitCol, make_float3(1.0f)) / 3.0f;
 					if (avgEmitCol == 0.0f)
 					{
@@ -363,8 +364,8 @@ private:
 		{
 			OptixAccelBuildOptions accelOptions = {};
 			accelOptions.buildFlags = OPTIX_BUILD_FLAG_ALLOW_COMPACTION | OPTIX_BUILD_FLAG_PREFER_FAST_TRACE;
-			accelOptions.operation = OPTIX_BUILD_OPERATION_BUILD;
-			for (auto& [name, meshGroup] : m_Tracer.GetMeshGroups()) {
+			accelOptions.operation  = OPTIX_BUILD_OPERATION_BUILD;
+			for (auto& [name, meshGroup]  : m_Tracer.GetMeshGroups()) {
 				for (auto& meshUniqueName : meshGroup->GetUniqueNames()) {
 					if (meshUniqueName != "light") {
 						worldGASHandle->AddMesh(meshGroup->LoadMesh(meshUniqueName));
@@ -375,7 +376,6 @@ private:
 				}
 			}
 			worldGASHandle->Build(m_Tracer.GetContext().get(), accelOptions);
-
 		}
 		//GAS2: Light
 		m_Tracer.NewGASHandle("light");
@@ -398,8 +398,8 @@ private:
 			}
 			OptixAccelBuildOptions accelOptions = {};
 			accelOptions.buildFlags = OPTIX_BUILD_FLAG_ALLOW_COMPACTION | OPTIX_BUILD_FLAG_PREFER_FAST_TRACE;
-			accelOptions.operation = OPTIX_BUILD_OPERATION_BUILD;
-			auto lightMesh = rtlib::ext::Mesh::New();
+			accelOptions.operation  = OPTIX_BUILD_OPERATION_BUILD;
+			auto lightMesh          = rtlib::ext::Mesh::New();
 			lightMesh->SetSharedResource(rtlib::ext::MeshSharedResource::New());
 			lightMesh->GetSharedResource()->name = "light";
 			lightMesh->GetSharedResource()->vertexBuffer.cpuHandle = {
@@ -408,85 +408,72 @@ private:
 				{aabb.max.x,aabb.max.y - 1e-3f,aabb.max.z},
 				{aabb.min.x,aabb.max.y - 1e-3f,aabb.max.z}
 			};
-			lightMesh->GetSharedResource()->texCrdBuffer.cpuHandle = {
-				{0.0f,0.0f},
-				{1.0f,0.0f},
-				{1.0f,1.0f},
-				{0.0f,1.0f},
-			};
-			lightMesh->GetSharedResource()->normalBuffer.cpuHandle = {
-				{0.0f,-1.0f,0.0f},
-				{0.0f,-1.0f,0.0f},
-				{0.0f,-1.0f,0.0f},
-				{0.0f,-1.0f,0.0f},
-			};
+			lightMesh->GetSharedResource()->texCrdBuffer.cpuHandle = { {0.0f,0.0f}      , {1.0f,0.0f}      , {1.0f,1.0f}      , {0.0f,1.0f},     };
+			lightMesh->GetSharedResource()->normalBuffer.cpuHandle = { {0.0f,-1.0f,0.0f}, {0.0f,-1.0f,0.0f}, {0.0f,-1.0f,0.0f}, {0.0f,-1.0f,0.0f}};
 			unsigned int curMaterialSetCount = m_MaterialSet->size();
 			auto lightMaterial = rtlib::ext::Material{};
 			{
-				lightMaterial.SetString("name", "light");
-				lightMaterial.SetFloat3("diffCol", kDefaultLightColor);
-				lightMaterial.SetString("diffTex", "");
-				lightMaterial.SetFloat3("emitCol", kDefaultLightColor);
-				lightMaterial.SetString("emitTex", "");
-				lightMaterial.SetFloat3("specCol", kDefaultLightColor);
-				lightMaterial.SetString("specTex", "");
+				lightMaterial.SetString("name"    , "light");
+				lightMaterial.SetFloat3("diffCol" , kDefaultLightColor);
+				lightMaterial.SetString("diffTex" , "");
+				lightMaterial.SetFloat3("emitCol" , kDefaultLightColor);
+				lightMaterial.SetString("emitTex" , "");
+				lightMaterial.SetFloat3("specCol" , kDefaultLightColor);
+				lightMaterial.SetString("specTex" , "");
 				lightMaterial.SetFloat1("shinness", 0.0f);
-				lightMaterial.SetString("shinTex", "");
-				lightMaterial.SetFloat3("tranCol", kDefaultLightColor);
+				lightMaterial.SetString("shinTex" , "");
+				lightMaterial.SetFloat3("tranCol" , kDefaultLightColor);
 				lightMaterial.SetFloat1("refrIndx", 0.0f);
 				lightMaterial.SetUInt32("illum"   , 2);
 			}
-			m_MaterialSet->push_back(
-				lightMaterial
-			);
+			m_MaterialSet->push_back( lightMaterial );
 			lightMesh->GetSharedResource()->vertexBuffer.Upload();
 			lightMesh->GetSharedResource()->texCrdBuffer.Upload();
 			lightMesh->GetSharedResource()->normalBuffer.Upload();
 			lightMesh->SetUniqueResource(rtlib::ext::MeshUniqueResource::New());
-			lightMesh->GetUniqueResource()->name = "light";
-			lightMesh->GetUniqueResource()->materials = {
-				curMaterialSetCount
-			};
-			lightMesh->GetUniqueResource()->matIndBuffer.cpuHandle = {
-				0,0,
-			};
-
-			lightMesh->GetUniqueResource()->triIndBuffer.cpuHandle = {
-				{0,1,2},
-				{2,3,0}
-			};
-
+			lightMesh->GetUniqueResource()->name                   = "light";
+			lightMesh->GetUniqueResource()->materials              = { curMaterialSetCount };
+			lightMesh->GetUniqueResource()->matIndBuffer.cpuHandle = { 0,0 };
+			lightMesh->GetUniqueResource()->triIndBuffer.cpuHandle = { {0,1,2}, {2,3,0} };
 			lightMesh->GetUniqueResource()->matIndBuffer.Upload();
 			lightMesh->GetUniqueResource()->triIndBuffer.Upload();
+			//AddMesh
 			lightGASHandle->AddMesh(lightMesh);
+			//Build
 			lightGASHandle->Build(m_Tracer.GetContext().get(), accelOptions);
 		}
 		//IAS1: First
 		m_Tracer.NewIASHandle("TLAS");
-		m_Tracer.SetTLASName("TLAS");
+		m_Tracer.SetTLASName( "TLAS");
 		auto tlasHandle = m_Tracer.GetIASHandle("TLAS");
 		{
 			OptixAccelBuildOptions accelOptions = {};
 			accelOptions.buildFlags = OPTIX_BUILD_FLAG_ALLOW_COMPACTION | OPTIX_BUILD_FLAG_PREFER_FAST_TRACE;
-			accelOptions.operation = OPTIX_BUILD_OPERATION_BUILD;
+			accelOptions.operation  = OPTIX_BUILD_OPERATION_BUILD;
+			//World
 			auto worldInstance = rtlib::ext::Instance();
 			worldInstance.Init(m_Tracer.GetGASHandle("world"));
+			worldInstance.SetSbtOffset(0);
+			//Light
 			auto lightInstance = rtlib::ext::Instance();
 			lightInstance.Init(m_Tracer.GetGASHandle("light"));
 			lightInstance.SetSbtOffset(worldInstance.GetSbtCount() * RAY_TYPE_COUNT);
-			tlasHandle->instanceSets.resize(1);
-			tlasHandle->instanceSets[0] = std::make_shared<rtlib::ext::InstanceSet>();
-			tlasHandle->instanceSets[0]->SetInstance(worldInstance);
-			tlasHandle->instanceSets[0]->SetInstance(lightInstance);
-			tlasHandle->instanceSets[0]->Upload();
+			//InstanceSet
+			auto instanceSet   = std::make_shared<rtlib::ext::InstanceSet>();
+			instanceSet->SetInstance(worldInstance);
+			instanceSet->SetInstance(lightInstance);
+			instanceSet->Upload();
+			//AddInstanceSet
+			tlasHandle->AddInstanceSet(instanceSet);
+			//Build
 			tlasHandle->Build(m_Tracer.GetContext().get(), accelOptions);
 		}
 	}
 	void InitLight() {
 		m_Light = ParallelLight();
 		{
-			auto& lightGASHandle = m_Tracer.GetGASHandle("light");
-			auto  lightMesh      = lightGASHandle->meshes[0];
+			auto  lightGASHandle = m_Tracer.GetGASHandle("light");
+			auto  lightMesh      = lightGASHandle->GetMesh(0);
 			auto  lightVertices  = std::vector<float3>();
 			for (auto& index : lightMesh->GetUniqueResource()->triIndBuffer.cpuHandle) {
 				lightVertices.push_back(lightMesh->GetSharedResource()->vertexBuffer.cpuHandle[index.x]);
@@ -505,16 +492,16 @@ private:
 	}
 	void InitFrameResources() {
 		RTLIB_CUDA_CHECK(cudaStreamCreate(&m_Stream));
-		m_FrameBuffer                = rtlib::CUDABuffer<uchar4>(std::vector<uchar4>(m_FbWidth * m_FbHeight));
-		m_FrameBufferGL				 = rtlib::GLInteropBuffer<uchar4>(m_FbWidth * m_FbHeight, GL_PIXEL_UNPACK_BUFFER, GL_DYNAMIC_DRAW, m_Stream);
-		m_RefImage	                 = std::vector<float3>(m_FbWidth * m_FbHeight);
+		m_FrameBuffer   = rtlib::CUDABuffer<uchar4>(std::vector<uchar4>(m_FbWidth * m_FbHeight));
+		m_FrameBufferGL = rtlib::GLInteropBuffer<uchar4>(m_FbWidth * m_FbHeight, GL_PIXEL_UNPACK_BUFFER, GL_DYNAMIC_DRAW, m_Stream);
+		m_RefImage	    = std::vector<float3>(m_FbWidth * m_FbHeight);
 		for(auto frameName: debugPipelineFrameNames){
 			m_DebugBuffers[  frameName.data()] = rtlib::CUDABuffer<uchar4>(std::vector<uchar4>(m_FbWidth * m_FbHeight));
 			m_DebugBufferGLs[frameName.data()] = rtlib::GLInteropBuffer<uchar4>(m_FbWidth * m_FbHeight, GL_PIXEL_UNPACK_BUFFER, GL_DYNAMIC_DRAW, m_Stream);
 		}
-		m_AccumBuffer                = rtlib::CUDABuffer<float3>(std::vector<float3>(m_FbWidth * m_FbHeight));
-		m_AccumBufferPG              = rtlib::CUDABuffer<float3>(std::vector<float3>(m_FbWidth * m_FbHeight));
-		m_SeedBuffer                 = rtlib::CUDABuffer<unsigned int>();
+		m_AccumBuffer    = rtlib::CUDABuffer<float3>(std::vector<float3>(m_FbWidth * m_FbHeight));
+		m_AccumBufferPG  = rtlib::CUDABuffer<float3>(std::vector<float3>(m_FbWidth * m_FbHeight));
+		m_SeedBuffer     = rtlib::CUDABuffer<unsigned int>();
 		{
 			std::vector<unsigned int> seeds(m_FbWidth * m_FbHeight);
 			std::random_device rd;
@@ -526,16 +513,16 @@ private:
 		m_GLTexture = rtlib::GLTexture2D<uchar4>();
 		{
 			m_GLTexture.allocate({ (size_t)m_FbWidth, (size_t)m_FbHeight });
-			m_GLTexture.setParameteri(GL_TEXTURE_MAG_FILTER, GL_LINEAR, false);
-			m_GLTexture.setParameteri(GL_TEXTURE_MIN_FILTER, GL_LINEAR, false);
-			m_GLTexture.setParameteri(GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE, false);
-			m_GLTexture.setParameteri(GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE, false);
+			m_GLTexture.setParameteri(GL_TEXTURE_MAG_FILTER, GL_LINEAR       , false);
+			m_GLTexture.setParameteri(GL_TEXTURE_MIN_FILTER, GL_LINEAR       , false);
+			m_GLTexture.setParameteri(GL_TEXTURE_WRAP_S    , GL_CLAMP_TO_EDGE, false);
+			m_GLTexture.setParameteri(GL_TEXTURE_WRAP_T    , GL_CLAMP_TO_EDGE, false);
 		}
 	}
 	void InitSDTree() {
 		m_WorldAABB = rtlib::utils::AABB();
 
-		for (auto& mesh : m_Tracer.GetGASHandle("world")->meshes) {
+		for (auto& mesh : m_Tracer.GetGASHandle("world")->GetMeshes()) {
 			for (auto& index : mesh->GetUniqueResource()->triIndBuffer.cpuHandle)
 			{
 				m_WorldAABB.Update(mesh->GetSharedResource()->vertexBuffer.cpuHandle[index.x]);
@@ -563,7 +550,7 @@ private:
 
 			OptixPipelineLinkOptions linkOptions = {};
 
-			linkOptions.maxTraceDepth = 2;
+			linkOptions.maxTraceDepth = 1;
 #ifndef NDEBUG
 			linkOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_LINEINFO;
 #else
@@ -642,9 +629,9 @@ private:
 				tracePipeline2->NewHitGRecordBuffer("Def", RAY_TYPE_COUNT * m_Tracer.GetTLAS()->GetSbtCount());
 				{
 					size_t sbtOffset = 0;
-					for (auto& instanceSet : m_Tracer.GetTLAS()->instanceSets) {
+					for (auto& instanceSet : m_Tracer.GetTLAS()->GetInstanceSets()) {
 						for (auto& baseGASHandle : instanceSet->baseGASHandles) {
-							for (auto& mesh : baseGASHandle->meshes) {
+							for (auto& mesh : baseGASHandle->GetMeshes()) {
 								for (size_t i = 0; i < mesh->GetUniqueResource()->materials.size(); ++i) {
 									auto materialId = mesh->GetUniqueResource()->materials[i];
 									auto& material = (*m_MaterialSet)[materialId];
@@ -683,12 +670,12 @@ private:
 				tracePipeline2->GetHitGRecordBuffer("Def")->Upload();
 			}
 			{
-				tracePipeline2->NewHitGRecordBuffer("Pg", RAY_TYPE_COUNT * m_Tracer.GetTLAS()->sbtCount);
+				tracePipeline2->NewHitGRecordBuffer("Pg", RAY_TYPE_COUNT * m_Tracer.GetTLAS()->GetSbtCount());
 				{
 					size_t sbtOffset = 0;
-					for (auto& instanceSet : m_Tracer.GetTLAS()->instanceSets) {
+					for (auto& instanceSet : m_Tracer.GetTLAS()->GetInstanceSets()) {
 						for (auto& baseGASHandle : instanceSet->baseGASHandles) {
-							for (auto& mesh : baseGASHandle->meshes) {
+							for (auto& mesh : baseGASHandle->GetMeshes()) {
 								for (size_t i = 0; i < mesh->GetUniqueResource()->materials.size(); ++i) {
 									auto materialId = mesh->GetUniqueResource()->materials[i];
 									auto& material  = (*m_MaterialSet)[materialId];
@@ -731,11 +718,11 @@ private:
 				params.frameBuffer     = m_FrameBuffer.getDevicePtr();
 				params.accumBuffer     = m_AccumBuffer.getDevicePtr();
 				params.accumBuffer2    = nullptr;
-				params.seedBuffer            = m_SeedBuffer.getDevicePtr();
+				params.seedBuffer      = m_SeedBuffer.getDevicePtr();
 				params.width           = m_FbWidth;
 				params.height          = m_FbHeight;
 				params.maxTraceDepth   = kDefaultMaxTraceDepth;
-				params.gasHandle       = m_Tracer.GetTLAS()->handle;
+				params.gasHandle       = m_Tracer.GetTLAS()->GetHandle();
 				params.light           = m_Light;
 				params.samplePerALL    = 0;
 				params.samplePerALL2   = 0;
@@ -759,7 +746,7 @@ private:
 				params.width           = m_FbWidth;
 				params.height          = m_FbHeight;
 				params.maxTraceDepth   = kDefaultMaxTraceDepth;
-				params.gasHandle       = m_Tracer.GetTLAS()->handle;
+				params.gasHandle       = m_Tracer.GetTLAS()->GetHandle();
 				params.sdTree          = m_SdTree->GetGpuHandle();
 				params.light           = m_Light;
 				params.samplePerALL    = 0;
@@ -847,12 +834,12 @@ private:
 				debugPipeline2->GetMissRecordBuffer("Def")->Upload();
 			}
 			{
-				debugPipeline2->NewHitGRecordBuffer("Def", RAY_TYPE_COUNT * m_Tracer.GetTLAS()->sbtCount);
+				debugPipeline2->NewHitGRecordBuffer("Def", RAY_TYPE_COUNT * m_Tracer.GetTLAS()->GetSbtCount());
 				{
 					size_t sbtOffset = 0;
-					for (auto& instanceSet : m_Tracer.GetTLAS()->instanceSets) {
+					for (auto& instanceSet : m_Tracer.GetTLAS()->GetInstanceSets()) {
 						for (auto& baseGASHandle : instanceSet->baseGASHandles) {
-							for (auto& mesh : baseGASHandle->meshes) {
+							for (auto& mesh : baseGASHandle->GetMeshes()) {
 								for (size_t i = 0; i < mesh->GetUniqueResource()->materials.size(); ++i) {
 									auto materialId = mesh->GetUniqueResource()->materials[i];
 									auto& material = (*m_MaterialSet)[materialId];
@@ -890,7 +877,7 @@ private:
 				RayDebugParams params = {};
 				params.width = m_FbWidth;
 				params.height = m_FbHeight;
-				params.gasHandle = m_Tracer.GetTLAS()->handle;
+				params.gasHandle = m_Tracer.GetTLAS()->GetHandle();
 				params.light = m_Light;
 
 				debugPipeline2->NewSubPass("Def");
@@ -959,8 +946,10 @@ private:
 			if (m_CurSubPassName == "Pg") {
 				params.samplePerALL2 = m_SamplePerAllPg;
 			}
+			auto start = std::chrono::system_clock::now();
 			curPipeline->Launch(m_FbWidth, m_FbHeight, m_CurSubPassName, m_Stream);
 			m_FrameBufferGL.unmap();
+			auto end   = std::chrono::system_clock::now();
 			m_SamplePerAll     += params.samplePerLaunch;
 			if (m_CurSubPassName == "Pg") {
 				m_SamplePerAllPg += params.samplePerLaunch;
@@ -1001,10 +990,10 @@ private:
 						variancePg = aver2 - aver1 * aver1;
 					}
 					m_VariancePg = variancePg;
-					printf("Spp %d: Variance = %.9f\n", m_SamplePerAllPg, m_VariancePg);
+					printf("Spp %d: Time = %d (ms), Variance = %.9f\n", m_SamplePerAllPg, std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count(), m_VariancePg);
 				}
 				else {
-					printf("Spp %d: Variance = %.9f\n", m_SamplePerAll  , m_Variance  );
+					printf("Spp %d: Time = %d (ms), Variance = %.9f\n", m_SamplePerAll  , std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count(), m_Variance  );
 				}
 			}
 		}
@@ -1084,8 +1073,8 @@ private:
 
 						if (m_CurPipelineName == "Trace" && m_CurSubPassName == "Def")
 						{
-							auto& curPipeline = m_Tracer.GetTracePipeline();
-							auto& curSubpass  = curPipeline->GetSubPass(m_CurSubPassName);
+							auto  curPipeline = m_Tracer.GetTracePipeline();
+							auto  curSubpass  = curPipeline->GetSubPass(m_CurSubPassName);
 							auto& curParams   = curSubpass->GetParams();
 							{
 								int samplePerLaunch = curParams.samplePerLaunch;
@@ -1275,10 +1264,10 @@ private:
 			auto& params          = m_Tracer.GetTracePipeline()->GetSubPass(m_CurSubPassName)->GetParams();
 			params.frameBuffer    = m_FrameBuffer.getDevicePtr();
 			params.accumBuffer    = m_AccumBuffer.getDevicePtr();
-			params.seedBuffer           = m_SeedBuffer.getDevicePtr();
+			params.seedBuffer     = m_SeedBuffer.getDevicePtr();
 			params.width          = m_FbWidth;
 			params.height         = m_FbHeight;
-			params.gasHandle      = m_Tracer.GetTLAS()->handle;
+			params.gasHandle      = m_Tracer.GetTLAS()->GetHandle();
 			params.sdTree         = m_SdTree->GetGpuHandle();
 			params.light          = m_Light;
 			params.samplePerALL   = m_SamplePerAll;
@@ -1291,17 +1280,17 @@ private:
 		}
 		else {
 			auto& params          = m_Tracer.GetDebugPipeline()->GetSubPass("Def")->GetParams();
-			params.diffuseBuffer  = m_DebugBuffers["Diffuse"].getDevicePtr();
+			params.diffuseBuffer  = m_DebugBuffers[ "Diffuse"].getDevicePtr();
 			params.specularBuffer = m_DebugBuffers["Specular"].getDevicePtr();
 			params.emissionBuffer = m_DebugBuffers["Emission"].getDevicePtr();
 			params.transmitBuffer = m_DebugBuffers["Transmit"].getDevicePtr();
 			params.texCoordBuffer = m_DebugBuffers["TexCoord"].getDevicePtr();
-			params.normalBuffer   = m_DebugBuffers["Normal"].getDevicePtr();
-			params.depthBuffer    = m_DebugBuffers["Depth"].getDevicePtr();
-			params.sTreeColBuffer = m_DebugBuffers["STree"].getDevicePtr();
+			params.normalBuffer   = m_DebugBuffers[  "Normal"].getDevicePtr();
+			params.depthBuffer    = m_DebugBuffers[   "Depth"].getDevicePtr();
+			params.sTreeColBuffer = m_DebugBuffers[   "STree"].getDevicePtr();
 			params.width          = m_FbWidth;
 			params.height         = m_FbHeight;
-			params.gasHandle      = m_Tracer.GetTLAS()->handle;
+			params.gasHandle      = m_Tracer.GetTLAS()->GetHandle();
 			params.sdTree         = m_SdTree->GetGpuHandle();
 			params.light          = m_Light;
 		}
@@ -1357,6 +1346,7 @@ private:
 		curPgParams.samplePerALL2 = m_SamplePerAllPg;
 		curPgParams.maxTraceDepth = curDefParams.maxTraceDepth;
 		curPgParams.isBuilt       = false;
+
 		m_CurSubPassName          = "Pg";
 		m_EventFlags             |= EventFlags::eFlushFrame;
 	}
@@ -1494,7 +1484,6 @@ private:
 	float                           m_PrvVariance        = std::numeric_limits<float>::max();
 	float                           m_CurError           = 0.0f;
 	float                           m_PrvError           = std::numeric_limits<float>::max();
-
 	//Guiding
 	SDTreePtr                       m_SdTree             = nullptr;
 	rtlib::utils::AABB              m_WorldAABB          = {};

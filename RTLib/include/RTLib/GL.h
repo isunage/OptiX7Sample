@@ -65,7 +65,7 @@ namespace rtlib{
         template<size_t N>
         explicit GLBuffer(const std::array<T,N>& hostData,GLenum target, GLenum usage)
         :GLBuffer(std::data(hostData),std::size(hostData),target,usage){}
-        explicit GLBuffer(const std::vector<T>& hostData, GLenum target, GLenum GLenum) 
+        explicit GLBuffer(const std::vector<T>& hostData, GLenum target, GLenum usage) 
         :GLBuffer(std::data(hostData),std::size(hostData),target,usage){}
         //bool
         explicit operator bool()const noexcept{

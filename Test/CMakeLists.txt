@@ -30,10 +30,10 @@ add_subdirectory(Test16)
 add_subdirectory(Test17)
 ## fix shader
 add_subdirectory(Test18)
-## practical path guiding
 add_subdirectory(Test19)
-
 add_subdirectory(Test20)
 add_subdirectory(Test21)
+## practical path guiding(Muller2017)
 add_subdirectory(TestPathGuiding)
 add_subdirectory(TestPathGuiding2)
+add_subdirectory(TestPathGuiding3)

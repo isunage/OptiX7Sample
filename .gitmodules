@@ -16,3 +16,6 @@
 [submodule "RTLib/thirdparty/imgui"]
 	path = RTLib/thirdparty/imgui
 	url = https://github.com/ocornut/imgui.git
+[submodule "RTLib/thirdparty/range-v3"]
+	path = RTLib/thirdparty/range-v3
+	url = https://github.com/ericniebler/range-v3

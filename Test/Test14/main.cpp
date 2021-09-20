@@ -190,7 +190,7 @@ int main() {
             AABB      lightAABB = {};
             ShapeInfo lightShapeInfo = {};
             for (size_t i = 0; i < shapeInfos.size(); ++i) {
-                if (shapeInfos[i].name == "light0") {
+                if (shapeInfos[i].name == "light") {
                     lightShapeInfo = shapeInfos[i];
                 }
             }

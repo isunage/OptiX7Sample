@@ -18,23 +18,23 @@ namespace test{
             std::string programName= "";
         };
     private:
-        using Context = rtlib::OPXContext;
-        using ContextPtr = std::shared_ptr<Context>;
-        using Module = rtlib::OPXModule;
-        using ModuleMap = std::unordered_map<std::string, Module>;
-        using Pipeline = rtlib::OPXPipeline;
-        using RayGProgramGroup = rtlib::OPXRaygenPG;
-        using MissProgramGroup = rtlib::OPXMissPG;
-        using HitGProgramGroup = rtlib::OPXHitgroupPG;
-        using RayGProgramGroupMap = std::unordered_map<std::string, RayGProgramGroup>;
-        using MissProgramGroupMap = std::unordered_map<std::string, MissProgramGroup>;
-        using HitGProgramGroupMap = std::unordered_map<std::string, HitGProgramGroup>;
-        using RayGRecordBuffer    = RTRecordBuffer<RayG_t>;
-        using MissRecordBuffer    = RTRecordArrayBuffer<Miss_t>;
-        using HitGRecordBuffer    = RTRecordArrayBuffer<HitG_t>;
-        using RayGRecordBufferPtr = std::shared_ptr<RayGRecordBuffer>;
-        using MissRecordBufferPtr = std::shared_ptr<MissRecordBuffer>;
-        using HitGRecordBufferPtr = std::shared_ptr<HitGRecordBuffer>;
+        using Context                = rtlib::OPXContext;
+        using ContextPtr             = std::shared_ptr<Context>;
+        using Module                 = rtlib::OPXModule;
+        using ModuleMap              = std::unordered_map<std::string, Module>;
+        using Pipeline               = rtlib::OPXPipeline;
+        using RayGProgramGroup       = rtlib::OPXRaygenPG;
+        using MissProgramGroup       = rtlib::OPXMissPG;
+        using HitGProgramGroup       = rtlib::OPXHitgroupPG;
+        using RayGProgramGroupMap    = std::unordered_map<std::string, RayGProgramGroup>;
+        using MissProgramGroupMap    = std::unordered_map<std::string, MissProgramGroup>;
+        using HitGProgramGroupMap    = std::unordered_map<std::string, HitGProgramGroup>;
+        using RayGRecordBuffer       = RTRecordBuffer<RayG_t>;
+        using MissRecordBuffer       = RTRecordArrayBuffer<Miss_t>;
+        using HitGRecordBuffer       = RTRecordArrayBuffer<HitG_t>;
+        using RayGRecordBufferPtr    = std::shared_ptr<RayGRecordBuffer>;
+        using MissRecordBufferPtr    = std::shared_ptr<MissRecordBuffer>;
+        using HitGRecordBufferPtr    = std::shared_ptr<HitGRecordBuffer>;
         using RayGRecordBufferPtrMap = std::unordered_map<std::string, std::shared_ptr<RayGRecordBuffer>>;
         using MissRecordBufferPtrMap = std::unordered_map<std::string, std::shared_ptr<MissRecordBuffer>>;
         using HitGRecordBufferPtrMap = std::unordered_map<std::string, std::shared_ptr<HitGRecordBuffer>>;
@@ -45,16 +45,17 @@ namespace test{
         using PipelineLinkOptions    = OptixPipelineLinkOptions;
     public:
         void Init(const ContextPtr& context, const PipelineCompileOptions& compileOptions,const PipelineLinkOptions& linkOptions) {
-            m_Context = context;
+            m_Context                = context;
             m_PipelineCompileOptions = compileOptions;
-            m_PipelineLinkOptions = linkOptions;
-            m_Pipeline = context->createPipeline(compileOptions);
+            m_PipelineLinkOptions    = linkOptions;
+            m_Pipeline               = context->createPipeline(compileOptions);
         }
         void Link() {
             m_Pipeline.link(m_PipelineLinkOptions);
         }
         void Launch(int fbWidth, int fbHeight, const std::string& subPassName, CUstream stream = nullptr)
         {
+            char* tmp = "C";
             auto subPass = GetSubPass(subPassName);
             subPass->UploadParams();
             m_Pipeline.launch(stream, subPass->GetParamsPtr(), subPass->GetShaderBindingTable(), fbWidth, fbHeight, subPass->GetTraceCallDepth());

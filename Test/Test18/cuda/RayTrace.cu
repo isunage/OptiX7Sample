@@ -1,8 +1,8 @@
 #define __CUDACC__
 #include "RayTrace.h"
 struct RadiancePRD {
-    float3        origin;
-    float3        direction;
+    //float3        origin;
+    //float3        direction;
     float3        emitted;
     float3        radiance;
     float3        attenuation;
@@ -10,7 +10,7 @@ struct RadiancePRD {
     unsigned int  seed;
     int           countEmitted;
     int           done;
-    int           pad;
+    //int           pad;
 };
 extern "C" {
     __constant__ RayTraceParams params;

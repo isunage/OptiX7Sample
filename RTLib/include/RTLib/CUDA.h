@@ -328,19 +328,24 @@ namespace rtlib{
             m_Array.reset();
         }
         void createTextureObject(cudaTextureReadMode readMode,bool useSRGB){
+            cudaTextureFilterMode filterMode = cudaFilterModePoint;
+            if (readMode == cudaReadModeNormalizedFloat)
+            {
+                filterMode = cudaFilterModeLinear;
+            }
             cudaResourceDesc resDesc            = {};
             resDesc.resType                     = cudaResourceTypeArray;
             resDesc.res.array.array             = m_Array.getHandle();
             cudaTextureDesc texDesc             = {};
             texDesc.addressMode[0]              = cudaAddressModeWrap;
             texDesc.addressMode[1]              = cudaAddressModeWrap;
-            texDesc.filterMode                  = cudaFilterModeLinear;
+            texDesc.filterMode                  = filterMode;
             texDesc.readMode                    = readMode;
             texDesc.normalizedCoords            = true;
             texDesc.maxAnisotropy               = 1;
             texDesc.maxMipmapLevelClamp         = 99;
             texDesc.minMipmapLevelClamp         = 0;
-            texDesc.mipmapFilterMode            = cudaFilterModeLinear;
+            texDesc.mipmapFilterMode            = filterMode;
             texDesc.borderColor[0]              = 1.0f;
             texDesc.sRGB                        = useSRGB;
             RTLIB_CUDA_CHECK(cudaCreateTextureObject(&m_Handle,&resDesc,&texDesc,nullptr));

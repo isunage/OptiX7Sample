@@ -53,7 +53,7 @@ void test::RTTracer::LoadTexture(const std::string& keyName, const std::string& 
     }
 
     this->m_Textures[keyName] = rtlib::CUDATexture2D<uchar4>();
-    this->m_Textures[keyName].allocate(texWidth, texHeight, cudaTextureReadMode::cudaReadModeElementType);
+    this->m_Textures[keyName].allocate(texWidth, texHeight, cudaTextureReadMode::cudaReadModeNormalizedFloat);
     this->m_Textures[keyName].upload(pixels.get(), texWidth, texHeight);
 }
 

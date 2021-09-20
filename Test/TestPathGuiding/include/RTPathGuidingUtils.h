@@ -132,7 +132,8 @@ namespace test {
 			if (GetMean() <= 0.0f) {
 				return 1.0f / (4.0f * RTLIB_M_PI);
 			}
-			return m_Area * m_Nodes[0].Pdf(rtlib::dir_to_canonical(dir),m_Nodes.data()) / (4.0f * RTLIB_M_PI);
+			auto dir2 = rtlib::dir_to_canonical(dir);
+			return m_Area * m_Nodes[0].Pdf(dir2,m_Nodes.data()) / (4.0f * RTLIB_M_PI);
 		}
 		void Dump(std::fstream& jsonFile)const noexcept {
 			jsonFile << "{\n";

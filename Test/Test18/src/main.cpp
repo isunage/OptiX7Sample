@@ -445,12 +445,12 @@ public:
 										radianceHgData.diffuseTex = m_Tracer.GetTexture(material.diffTex).getHandle();
 										radianceHgData.specularTex = m_Tracer.GetTexture(material.specTex).getHandle();
 										radianceHgData.emissionTex = m_Tracer.GetTexture(material.emitTex).getHandle();
-										radianceHgData.diffuse = material.diffCol;
+										radianceHgData.diffuse  = material.diffCol;
 										radianceHgData.specular = material.specCol;
 										radianceHgData.emission = material.emitCol;
 										radianceHgData.shinness = material.shinness;
 										radianceHgData.transmit = material.tranCol;
-										radianceHgData.refrInd = material.refrInd;
+										radianceHgData.refrInd  = material.refrInd;
 									}
 									if (material.name == "light") {
 										m_LightHgRecIndex = RAY_TYPE_COUNT * sbtOffset + RAY_TYPE_COUNT * i + RAY_TYPE_RADIANCE;

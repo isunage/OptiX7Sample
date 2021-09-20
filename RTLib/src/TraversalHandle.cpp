@@ -62,11 +62,11 @@ void rtlib::ext::IASHandle::Build(const rtlib::OPXContext* context, const OptixA
     size_t i = 0;
     size_t sbtCount = 0;
     for (auto& instanceSet : this->instanceSets) {
-        buildInputs[i].type = OPTIX_BUILD_INPUT_TYPE_INSTANCES;
-        buildInputs[i].instanceArray.instances = reinterpret_cast<CUdeviceptr>(instanceSet->instanceBuffer.gpuHandle.getDevicePtr());
+        buildInputs[i].type                       = OPTIX_BUILD_INPUT_TYPE_INSTANCES;
+        buildInputs[i].instanceArray.instances    = reinterpret_cast<CUdeviceptr>(instanceSet->instanceBuffer.gpuHandle.getDevicePtr());
         buildInputs[i].instanceArray.numInstances = instanceSet->instanceBuffer.gpuHandle.getCount();
         for (auto& baseGasHandle : instanceSet->baseGASHandles) {
-            sbtCount += baseGasHandle->sbtCount;
+            sbtCount += baseGasHandle->GetSbtCount();
         }
         ++i;
     }
@@ -74,6 +74,22 @@ void rtlib::ext::IASHandle::Build(const rtlib::OPXContext* context, const OptixA
     this->handle = iasHandle;
     this->buffer = std::move(outputBuffer);
     this->sbtCount = sbtCount;
+}
+
+void rtlib::ext::IASHandle::AddInstanceSet(const rtlib::ext::InstanceSetPtr& instanceSet)noexcept {
+    instanceSets.push_back(instanceSet);
+}
+
+auto rtlib::ext::IASHandle::GetInstanceSet( size_t idx)const noexcept -> const rtlib::ext::InstanceSetPtr& {
+    return instanceSets[idx];
+}
+
+auto rtlib::ext::IASHandle::GetInstanceSets()const noexcept -> const std::vector<rtlib::ext::InstanceSetPtr > & {
+    return instanceSets;
+}
+
+auto rtlib::ext::IASHandle::GetInstanceSets() noexcept -> std::vector<rtlib::ext::InstanceSetPtr >& {
+    return instanceSets;
 }
 
 auto rtlib::ext::IASHandle::GetSbtCount()const noexcept -> size_t {
@@ -115,7 +131,7 @@ void rtlib::ext::InstanceSet::Upload() noexcept
 
 void rtlib::ext::Instance::Init(const rtlib::ext::GASHandlePtr& gasHandle) {
     type                       = InstanceType::GAS;
-    instance.traversableHandle = gasHandle->handle;
+    instance.traversableHandle = gasHandle->GetHandle();
     instance.instanceId        = 0;
     instance.sbtOffset         = 0;
     instance.visibilityMask    = 255;
@@ -131,7 +147,7 @@ void rtlib::ext::Instance::Init(const rtlib::ext::GASHandlePtr& gasHandle) {
 
 void rtlib::ext::Instance::Init(const rtlib::ext::IASHandlePtr& iasHandle) {
     type                       = InstanceType::IAS;
-    instance.traversableHandle = iasHandle->handle;
+    instance.traversableHandle = iasHandle->GetHandle();
     instance.instanceId        = 0;
     instance.sbtOffset         = 0;
     instance.visibilityMask    = 255;
@@ -158,10 +174,10 @@ void rtlib::ext::Instance::SetSbtOffset(size_t offset) noexcept
 auto rtlib::ext::Instance::GetSbtCount() const noexcept -> size_t
 {
     if (type == InstanceType::GAS) {
-        return baseGASHandle->sbtCount;
+        return baseGASHandle->GetSbtCount();
     }
     else
     {
-        return baseIASHandle->sbtCount;
+        return baseIASHandle->GetSbtCount();
     }
 }

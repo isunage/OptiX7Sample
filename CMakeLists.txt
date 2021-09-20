@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.19)
 project(OptiX7Sample)
 set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 if(WIN32)
     add_definitions(-DNOMINMAX -D_CRT_SECURE_NO_WARNINGS)
 endif()

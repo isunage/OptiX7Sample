@@ -298,8 +298,8 @@ private:
 				if (!objMeshGroup->Load2(objInfo.first, objInfo.second)) {
 					throw std::runtime_error("Failed To Load Model!");
 				}
-				auto& meshGroup   = objMeshGroup->GetMeshGroup();
-				auto& materialSet = objMeshGroup->GetMaterialList();
+				auto  meshGroup   = objMeshGroup->GetMeshGroup();
+				auto  materialSet = objMeshGroup->GetMaterialList();
 				for (auto& [name, uniqueResource] : meshGroup->GetUniqueResources()) {
 					for (auto& material : uniqueResource->materials) {
 						material += materialOffset;
@@ -367,7 +367,7 @@ private:
 			for (auto& [name, meshGroup] : m_Tracer.GetMeshGroups()) {
 				for (auto& meshUniqueName : meshGroup->GetUniqueNames()) {
 					if (meshUniqueName != "light") {
-						worldGASHandle->meshes.push_back(meshGroup->LoadMesh(meshUniqueName));
+						worldGASHandle->AddMesh(meshGroup->LoadMesh(meshUniqueName));
 					}
 					else {
 						isLightFound = true;
@@ -385,7 +385,7 @@ private:
 			accelOptions.buildFlags = OPTIX_BUILD_FLAG_ALLOW_COMPACTION | OPTIX_BUILD_FLAG_PREFER_FAST_TRACE;
 			accelOptions.operation  = OPTIX_BUILD_OPERATION_BUILD;
 			for (auto& [name, meshGroup] : m_Tracer.GetMeshGroups()) {
-				lightGASHandle->meshes.push_back(meshGroup->LoadMesh("light"));
+				lightGASHandle->AddMesh(meshGroup->LoadMesh("light"));
 			}
 			lightGASHandle->Build(m_Tracer.GetContext().get(), accelOptions);
 		}
@@ -458,7 +458,7 @@ private:
 
 			lightMesh->GetUniqueResource()->matIndBuffer.Upload();
 			lightMesh->GetUniqueResource()->triIndBuffer.Upload();
-			lightGASHandle->meshes.push_back(lightMesh);
+			lightGASHandle->AddMesh(lightMesh);
 			lightGASHandle->Build(m_Tracer.GetContext().get(), accelOptions);
 		}
 		//IAS1: First
@@ -474,20 +474,22 @@ private:
 			auto lightInstance = rtlib::ext::Instance();
 			lightInstance.Init(m_Tracer.GetGASHandle("light"));
 			lightInstance.SetSbtOffset(worldInstance.GetSbtCount() * RAY_TYPE_COUNT);
-			tlasHandle->instanceSets.resize(1);
-			tlasHandle->instanceSets[0] = std::make_shared<rtlib::ext::InstanceSet>();
-			tlasHandle->instanceSets[0]->SetInstance(worldInstance);
-			tlasHandle->instanceSets[0]->SetInstance(lightInstance);
-			tlasHandle->instanceSets[0]->Upload();
+
+			auto instanceSet = std::make_shared<rtlib::ext::InstanceSet>();
+			instanceSet->SetInstance(worldInstance);
+			instanceSet->SetInstance(lightInstance);
+			instanceSet->Upload();
+
+			tlasHandle->AddInstanceSet(instanceSet);
 			tlasHandle->Build(m_Tracer.GetContext().get(), accelOptions);
 		}
 	}
 	void InitLight() {
 		m_Light = ParallelLight();
 		{
-			auto& lightGASHandle = m_Tracer.GetGASHandle("light");
-			auto  lightMesh = lightGASHandle->meshes[0];
-			auto  lightVertices = std::vector<float3>();
+			auto  lightGASHandle = m_Tracer.GetGASHandle("light");
+			auto  lightMesh      = lightGASHandle->GetMesh(0);
+			auto  lightVertices  = std::vector<float3>();
 			for (auto& index : lightMesh->GetUniqueResource()->triIndBuffer.cpuHandle) {
 				lightVertices.push_back(lightMesh->GetSharedResource()->vertexBuffer.cpuHandle[index.x]);
 				lightVertices.push_back(lightMesh->GetSharedResource()->vertexBuffer.cpuHandle[index.y]);
@@ -547,7 +549,7 @@ private:
 	void InitSDTree() {
 		m_WorldAABB = rtlib::utils::AABB();
 
-		for (auto& mesh : m_Tracer.GetGASHandle("world")->meshes) {
+		for (auto& mesh : m_Tracer.GetGASHandle("world")->GetMeshes()) {
 			for (auto& index : mesh->GetUniqueResource()->triIndBuffer.cpuHandle)
 			{
 				m_WorldAABB.Update(mesh->GetSharedResource()->vertexBuffer.cpuHandle[index.x]);
@@ -647,12 +649,12 @@ private:
 				tracePipeline2->GetMissRecordBuffer("Def")->Upload();
 			}
 			{
-				tracePipeline2->NewHitGRecordBuffer("Def", RAY_TYPE_COUNT * m_Tracer.GetTLAS()->sbtCount);
+				tracePipeline2->NewHitGRecordBuffer("Def", RAY_TYPE_COUNT * m_Tracer.GetTLAS()->GetSbtCount());
 				{
 					size_t sbtOffset = 0;
-					for (auto& instanceSet : m_Tracer.GetTLAS()->instanceSets) {
+					for (auto& instanceSet : m_Tracer.GetTLAS()->GetInstanceSets()) {
 						for (auto& baseGASHandle : instanceSet->baseGASHandles) {
-							for (auto& mesh : baseGASHandle->meshes) {
+							for (auto& mesh : baseGASHandle->GetMeshes()) {
 								for (size_t i = 0; i < mesh->GetUniqueResource()->materials.size(); ++i) {
 									auto materialId = mesh->GetUniqueResource()->materials[i];
 									auto& material = (*m_MaterialSet)[materialId];
@@ -691,12 +693,12 @@ private:
 				tracePipeline2->GetHitGRecordBuffer("Def")->Upload();
 			}
 			{
-				tracePipeline2->NewHitGRecordBuffer("Pg", RAY_TYPE_COUNT * m_Tracer.GetTLAS()->sbtCount);
+				tracePipeline2->NewHitGRecordBuffer("Pg", RAY_TYPE_COUNT * m_Tracer.GetTLAS()->GetSbtCount());
 				{
 					size_t sbtOffset = 0;
-					for (auto& instanceSet : m_Tracer.GetTLAS()->instanceSets) {
+					for (auto& instanceSet : m_Tracer.GetTLAS()->GetInstanceSets()) {
 						for (auto& baseGASHandle : instanceSet->baseGASHandles) {
-							for (auto& mesh : baseGASHandle->meshes) {
+							for (auto& mesh      : baseGASHandle->GetMeshes()) {
 								for (size_t i = 0; i < mesh->GetUniqueResource()->materials.size(); ++i) {
 									auto materialId = mesh->GetUniqueResource()->materials[i];
 									auto& material  = (*m_MaterialSet)[materialId];
@@ -743,7 +745,7 @@ private:
 				params.width           = m_FbWidth;
 				params.height          = m_FbHeight;
 				params.maxTraceDepth   = kDefaultMaxTraceDepth;
-				params.gasHandle       = m_Tracer.GetTLAS()->handle;
+				params.gasHandle       = m_Tracer.GetTLAS()->GetHandle();
 				params.light           = m_Light;
 				params.samplePerALL    = 0;
 				params.samplePerALL2   = 0;
@@ -767,7 +769,7 @@ private:
 				params.width           = m_FbWidth;
 				params.height          = m_FbHeight;
 				params.maxTraceDepth   = kDefaultMaxTraceDepth;
-				params.gasHandle       = m_Tracer.GetTLAS()->handle;
+				params.gasHandle       = m_Tracer.GetTLAS()->GetHandle();
 				params.sdTree          = m_SdTree->GetGpuHandle();
 				params.light           = m_Light;
 				params.samplePerALL    = 0;
@@ -855,12 +857,12 @@ private:
 				debugPipeline2->GetMissRecordBuffer("Def")->Upload();
 			}
 			{
-				debugPipeline2->NewHitGRecordBuffer("Def", RAY_TYPE_COUNT * m_Tracer.GetTLAS()->sbtCount);
+				debugPipeline2->NewHitGRecordBuffer("Def", RAY_TYPE_COUNT * m_Tracer.GetTLAS()->GetSbtCount());
 				{
 					size_t sbtOffset = 0;
-					for (auto& instanceSet : m_Tracer.GetTLAS()->instanceSets) {
+					for (auto& instanceSet : m_Tracer.GetTLAS()->GetInstanceSets()) {
 						for (auto& baseGASHandle : instanceSet->baseGASHandles) {
-							for (auto& mesh : baseGASHandle->meshes) {
+							for (auto& mesh : baseGASHandle->GetMeshes()) {
 								for (size_t i = 0; i < mesh->GetUniqueResource()->materials.size(); ++i) {
 									auto materialId = mesh->GetUniqueResource()->materials[i];
 									auto& material = (*m_MaterialSet)[materialId];
@@ -898,7 +900,7 @@ private:
 				RayDebugParams params = {};
 				params.width = m_FbWidth;
 				params.height = m_FbHeight;
-				params.gasHandle = m_Tracer.GetTLAS()->handle;
+				params.gasHandle = m_Tracer.GetTLAS()->GetHandle();
 				params.light = m_Light;
 
 				debugPipeline2->NewSubPass("Def");
@@ -1092,9 +1094,9 @@ private:
 
 						if (m_CurPipelineName == "Trace" && m_CurSubPassName == "Def")
 						{
-							auto& curPipeline = m_Tracer.GetTracePipeline();
-							auto& curSubpass = curPipeline->GetSubPass(m_CurSubPassName);
-							auto& curParams = curSubpass->GetParams();
+							auto  curPipeline = m_Tracer.GetTracePipeline();
+							auto  curSubpass  = curPipeline->GetSubPass(m_CurSubPassName);
+							auto& curParams   = curSubpass->GetParams();
 							{
 								int samplePerLaunch = curParams.samplePerLaunch;
 								if (ImGui::SliderInt("samplePerLaunch", &samplePerLaunch, 1, 10)) {
@@ -1424,7 +1426,7 @@ private:
 			params.seedBuffer           = m_SeedBuffer.getDevicePtr();
 			params.width          = m_FbWidth;
 			params.height         = m_FbHeight;
-			params.gasHandle      = m_Tracer.GetTLAS()->handle;
+			params.gasHandle      = m_Tracer.GetTLAS()->GetHandle();
 			params.sdTree         = m_SdTree->GetGpuHandle();
 			params.light          = m_Light;
 			params.samplePerALL   = m_SamplePerAll;
@@ -1447,7 +1449,7 @@ private:
 			params.sTreeColBuffer = m_DebugBuffers["STree"].getDevicePtr();
 			params.width          = m_FbWidth;
 			params.height         = m_FbHeight;
-			params.gasHandle      = m_Tracer.GetTLAS()->handle;
+			params.gasHandle      = m_Tracer.GetTLAS()->GetHandle();
 			params.sdTree         = m_SdTree->GetGpuHandle();
 			params.light          = m_Light;
 		}

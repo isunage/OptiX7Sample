@@ -402,10 +402,10 @@ int main() {
         }
         {
             constexpr std::array<float, 5 * 4> screenVertices = {
-                -1.0f,-1.0f,0.0f,0.0f, 1.0f,
-                 1.0f,-1.0f,0.0f,1.0f, 1.0f,
-                 1.0f, 1.0f,0.0f,1.0f, 0.0f,
-                -1.0f, 1.0f,0.0f,0.0f, 0.0f
+                -1.0f,-1.0f,0.0f,1.0f, 0.0f,
+                 1.0f,-1.0f,0.0f,0.0f, 0.0f,
+                 1.0f, 1.0f,0.0f,0.0f, 1.0f,
+                -1.0f, 1.0f,0.0f,1.0f, 1.0f
             };
             constexpr std::array<uint32_t, 6>  screenIndices  = {
                 0,1,2,

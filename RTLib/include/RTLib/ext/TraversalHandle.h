@@ -5,14 +5,32 @@
 namespace rtlib{
     namespace ext {
         struct Instance;
-        struct GASHandle {
-            OptixTraversableHandle   handle   = {};
-            rtlib::CUDABuffer<void>  buffer   = {};
-            std::vector<MeshPtr>     meshes   = {};
+        class GASHandle {
+            OptixTraversableHandle   handle = {};
+            rtlib::CUDABuffer<void>  buffer = {};
+            std::vector<MeshPtr>     meshes = {};
             size_t                   sbtCount = 0;
         public:
             void Build(const rtlib::OPXContext* context, const OptixAccelBuildOptions& accelOptions);
+            //AddMesh
             void AddMesh(const MeshPtr& mesh)noexcept;
+            //GetMesh
+            auto GetMesh(size_t idx)const noexcept -> MeshPtr
+            {
+                return meshes[idx];
+            }
+            auto GetMeshes()const noexcept -> const std::vector<MeshPtr>& {
+                return meshes;
+            }
+            auto GetMeshes() noexcept -> std::vector<MeshPtr>& {
+                return meshes;
+            }
+            //GetHandle
+            auto GetHandle()const noexcept -> OptixTraversableHandle
+            {
+                return handle;
+            }
+            //GetSbtCount
             auto GetSbtCount()const noexcept -> size_t;
         };
         using  GASHandlePtr = std::shared_ptr<GASHandle>;
@@ -51,13 +69,25 @@ namespace rtlib{
             auto GetInstance(size_t i)const noexcept -> Instance;
         };
         using  InstanceSetPtr = std::shared_ptr<InstanceSet>;
-        struct IASHandle {
+        class IASHandle{
             OptixTraversableHandle      handle       = {};
             rtlib::CUDABuffer<void>     buffer       = {};
             std::vector<InstanceSetPtr> instanceSets = {};
             size_t                      sbtCount     =  0;
         public:
             void Build(const rtlib::OPXContext* context, const OptixAccelBuildOptions& accelOptions);
+            //Add InstanceSet
+            void AddInstanceSet(const InstanceSetPtr& instanceSet)noexcept;
+            //Get InstanceSet
+            auto GetInstanceSet(size_t idx)const noexcept -> const rtlib::ext::InstanceSetPtr&;
+            auto GetInstanceSets()      noexcept ->       std::vector<rtlib::ext::InstanceSetPtr >&;
+            auto GetInstanceSets()const noexcept -> const std::vector<rtlib::ext::InstanceSetPtr >&;
+            //GetHandle
+            auto GetHandle()const noexcept -> OptixTraversableHandle
+            {
+                return handle;
+            }
+            //Get SbtCount
             auto GetSbtCount()const noexcept -> size_t;
         };
         using  IASHandlePtr = std::shared_ptr<IASHandle>;

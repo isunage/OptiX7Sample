@@ -135,10 +135,10 @@ namespace rtlib{
                 unsigned long long  rnd_v1 = rng.next();
                 unsigned long long  rnd_v2 = rng.next();
                 return make_float4(
-                    util::to_float(to_upper(rnd_v1)),
-                    util::to_float(to_lower(rnd_v1)),
-                    util::to_float(to_upper(rnd_v2)),
-                    util::to_float(to_lower(rnd_v2))
+                    to_uniform_float(to_upper(rnd_v1)),
+                    to_uniform_float(to_lower(rnd_v1)),
+                    to_uniform_float(to_upper(rnd_v2)),
+                    to_uniform_float(to_lower(rnd_v2))
                 );
             }
 

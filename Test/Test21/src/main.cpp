@@ -25,15 +25,9 @@ namespace test {
 		auto tranCol  = material.GetFloat3As<float3>("tranCol");
 		auto refrIndx = material.GetFloat1("refrIndx");
 		auto shinness = material.GetFloat1("shinness");
-		if (emitCol.x + emitCol.y + emitCol.z != 0.0f) {
-			return "Emission";
-		}
-		else if (refrIndx > 1.61f &&
-			tranCol.x + tranCol.y + tranCol.z != 0.0f) {
+		auto illum    = material.GetUInt32("illum");
+		if (illum == 7) {
 			return "Refraction";
-		}
-		else if (shinness > 300) {
-			return "Specular";
 		}
 		else {
 			return "Phong";
@@ -113,7 +107,7 @@ public:
 	void LoadScene() {
 		auto objMeshGroup = std::make_shared<test::ObjMeshGroup>();
 		//if (!objMeshGroup->Load(TEST_TEST21_DATA_PATH"/Models/CornellBox/CornellBox-Original.obj", TEST_TEST21_DATA_PATH"/Models/CornellBox/")) {
-		if (!objMeshGroup->Load(TEST_TEST21_DATA_PATH"/Models/Sponza/Sponza.obj", TEST_TEST21_DATA_PATH"/Models/Sponza/")) {
+		if (!objMeshGroup->Load(TEST_TEST21_DATA_PATH"/Models/CornellBox/CornellBox-Water.obj", TEST_TEST21_DATA_PATH"/Models/CornellBox/")) {
 			throw std::runtime_error("Failed To Load Model!");
 		}
 		m_MaterialSet = objMeshGroup->GetMaterialList();
@@ -207,6 +201,7 @@ public:
 				lightMaterial.SetString("shinTex", "");
 				lightMaterial.SetFloat3("tranCol", {  0.0f,  0.0f,  0.0f });
 				lightMaterial.SetFloat1("refrIndx", 0.0f);
+				lightMaterial.SetUInt32(   "illum", 0);
 			}
 			m_MaterialSet->push_back(
 				lightMaterial

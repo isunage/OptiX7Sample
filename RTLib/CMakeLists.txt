@@ -34,7 +34,7 @@ ${CMAKE_CURRENT_SOURCE_DIR}/src/RectRenderer.cpp
 ##include directories
 target_include_directories(RTLib PUBLIC ${RTLIB_INCLUDE_DIR} ${CMAKE_CURRENT_BINARY_DIR})
 ##link libraries
-target_link_libraries(RTLib PUBLIC CUDA::cudart CUDA::nvrtc glad glm::glm stb glfw tinyobjloader OptiX::OptiX imgui imgui-glfw)
+target_link_libraries(RTLib PUBLIC CUDA::cudart CUDA::nvrtc glad glm::glm stb glfw tinyobjloader OptiX::OptiX imgui imgui-glfw range-v3)
 
 set(RTLIB_OPTIX_INCLUDE_DIR ${RTLIB_OPTIX_INCLUDE_DIR} PARENT_SCOPE)
 set(RTLIB_INCLUDE_DIR       ${RTLIB_INCLUDE_DIR}       PARENT_SCOPE)
