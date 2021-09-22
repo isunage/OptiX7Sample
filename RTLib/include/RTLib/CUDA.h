@@ -212,6 +212,20 @@ namespace rtlib{
             gpuHandle.resize(cpuHandle.size());
             gpuHandle.upload(cpuHandle);
         }
+        void Reset() {
+            cpuHandle.clear();
+            gpuHandle.reset();
+        }
+        //destructor
+        ~CUDAUploadBuffer()noexcept {
+            try {
+                this->Reset();
+            }
+            catch (rtlib::CUDAException& err) {
+                std::cerr << "~CUDAUploadBuffer() Catch Error!\n";
+                std::cerr << err.what() << std::endl;
+            }
+        }
     };
     template<typename T>
     struct CUDADownloadBuffer{
@@ -224,6 +238,20 @@ namespace rtlib{
         void Download(size_t count) {
             cpuHandle.resize(count);
             gpuHandle.download(cpuHandle.data(),count);
+        }
+        void Reset() {
+            cpuHandle.clear();
+            gpuHandle.reset();
+        }
+        //destructor
+        ~CUDADownloadBuffer()noexcept {
+            try {
+                this->Reset();
+            }
+            catch (rtlib::CUDAException& err) {
+                std::cerr << "~CUDADownloadBuffer() Catch Error!\n";
+                std::cerr << err.what() << std::endl;
+            }
         }
     };
     /*****Textures*********/

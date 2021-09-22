@@ -30,7 +30,7 @@ struct ParallelLight {
     float3   corner;
     float3   v1, v2;
     float3   normal;
-    float3 emission;
+    float3   emission;
 };
 struct RadianceRec {
     float3 origin;
@@ -40,13 +40,11 @@ struct RadianceRec {
 struct RayTraceParams {
     uchar4*                frameBuffer;
     float3*                accumBuffer;
-    float3*                accumBuffer2;
     unsigned int*          seedBuffer;       
     unsigned int           width;      
     unsigned int           height;
     unsigned int           samplePerLaunch;
     unsigned int           samplePerALL;
-    unsigned int           samplePerALL2;
     unsigned int           maxTraceDepth;
     OptixTraversableHandle gasHandle;
     STree                  sdTree;

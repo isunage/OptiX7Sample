@@ -26,11 +26,12 @@ enum MaterialType {
     MATERIAL_TYPE_OCCLUSION,
     MATERIAL_TYPE_COUNT
 };
+
 struct ParallelLight {
     float3   corner;
     float3   v1, v2;
     float3   normal;
-    float3 emission;
+    float3   emission;
 };
 struct RadianceRec {
     float3 origin;

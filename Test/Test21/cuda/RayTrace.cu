@@ -309,11 +309,10 @@ extern "C" __global__ void __closesthit__radiance_for_refraction(){
         }
         else {
             float  cosine_o   = sqrtf(1.0f - sine_o_2);
-            float3 refractDir = (rayDirection - (cosine_o - cosine_i) * normal) / refInd;
+            float3 refractDir = rtlib::normalize((rayDirection - (cosine_o - cosine_i) * normal) / refInd);
             //printf("refract: %lf %lf %lf\n", refractDir.x, refractDir.y, refractDir.z);
             setRayOrigin(position-0.001f * normal);
             setRayDirection(refractDir);
-            prd->attenuation *= transmit;
         }
         prd->countEmitted   = true;
     }
@@ -326,7 +325,7 @@ extern "C" __global__ void __closesthit__radiance_for_emission(){
     const float3 v0 = optixTransformPointFromObjectToWorldSpace(hgData->vertices[hgData->indices[primitiveID].x]);
     const float3 v1 = optixTransformPointFromObjectToWorldSpace(hgData->vertices[hgData->indices[primitiveID].y]);
     const float3 v2 = optixTransformPointFromObjectToWorldSpace(hgData->vertices[hgData->indices[primitiveID].z]);
-    //const float3 n0 = rtlib::normalize(rtlib::cross(v1 - v0, v2 - v0));
+    const float3 n0 = rtlib::normalize(rtlib::cross(v1 - v0, v2 - v0));
     //const float3 normal = faceForward(n0, make_float3(-rayDirection.x, -rayDirection.y, -rayDirection.z), n0);
     const float2 barycentric = optixGetTriangleBarycentrics();
     const auto t0 = hgData->texCoords[hgData->indices[primitiveID].x];
@@ -335,7 +334,7 @@ extern "C" __global__ void __closesthit__radiance_for_emission(){
     const auto texCoord   = (1.0f - barycentric.x - barycentric.y) * t0 + barycentric.x * t1 + barycentric.y * t2;
     const float3 position = optixGetWorldRayOrigin() + optixGetRayTmax() * rayDirection;
     RadiancePRD* prd      = getRadiancePRD();
-    if (prd->countEmitted) {
+    if (prd->countEmitted && rtlib::dot(n0,rayDirection)<0.0f) {
         prd->emitted = hgData->getEmissionColor(texCoord) * prd->attenuation;
     }
     prd->countEmitted = false;
@@ -383,7 +382,7 @@ extern "C" __global__ void __closesthit__radiance_for_phong_nee(){
             const auto phi    = rtlib::random_float1(0.0f, RTLIB_M_2PI, xor32);
             rtlib::ONB onb(reflectDir);
             newDirection      = onb.local(make_float3(sinTht*cosf(phi),sinTht*sinf(phi),cosTht));
-            weight            = specular * fabsf(rtlib::dot(newDirection, normal))/ a_specular;
+            weight            = specular * rtlib::max(rtlib::dot(newDirection, normal),0.0f)/ a_specular;
         }
         
         setRayOrigin(position);
@@ -401,18 +400,18 @@ extern "C" __global__ void __closesthit__radiance_for_phong_nee(){
         const float  ndl      = rtlib::dot(normal, lightDir);
         const float  lndl     =-rtlib::dot(light.normal, lightDir);
         float weight          = 0.0f;
-        const auto cosine     = fabsf(rtlib::dot(lightDir, reflectDir));
+        const auto cosine     = rtlib::max(rtlib::dot(lightDir, reflectDir),0.0f);
         const auto phongBrdf  = diffuse + specular * (shinness + 2.0f) * powf(cosine, shinness) / 2.0f;
         prd->attenuation2     = prvAttenuation* phongBrdf;
         if (ndl > 0.0f && lndl > 0.0f) {
-            const bool occluded = traceOccluded(params.gasHandle, position, lightDir, 0.01f, Ldist - 0.01f);
+            const bool occluded = traceOccluded(params.gasHandle, position, lightDir, 0.001f, Ldist - 0.001f);
             if (!occluded) {
                 //printf("not Occluded!\n");
                 const float A = rtlib::length(rtlib::cross(light.v1, light.v2));
                 weight = ndl * lndl * A / (RTLIB_M_PI * Ldist * Ldist);
             }
         }
-        prd->radiance += light.emission/RTLIB_M_PI * weight;
+        prd->radiance = (light.emission) * weight;
         
     }
     prd->seed = xor32.m_seed;

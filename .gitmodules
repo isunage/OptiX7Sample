@@ -19,3 +19,6 @@
 [submodule "RTLib/thirdparty/range-v3"]
 	path = RTLib/thirdparty/range-v3
 	url = https://github.com/ericniebler/range-v3
+[submodule "RTLib/thirdparty/json"]
+	path = RTLib/thirdparty/json
+	url = https://github.com/nlohmann/json

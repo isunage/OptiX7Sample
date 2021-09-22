@@ -102,7 +102,7 @@ namespace rtlib{
 
             }
             else {
-                std::cout << "NOT RESIZED!\n";
+                //std::cout << "NOT RESIZED!\n";
             }
             return false;
         }

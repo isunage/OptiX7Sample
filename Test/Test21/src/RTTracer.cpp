@@ -24,6 +24,9 @@ auto test::RTTracer::GetMeshGroup(const std::string& mgName) const -> rtlib::ext
 	return m_MeshGroups.at(mgName);
 }
 
+auto test::RTTracer::GetMeshGroups()const -> const MeshGroupMap& {
+    return m_MeshGroups;
+}
 //MaterialList
 
 void test::RTTracer::AddMaterialList(const std::string& mlName, const rtlib::ext::MaterialListPtr& materialList) noexcept {

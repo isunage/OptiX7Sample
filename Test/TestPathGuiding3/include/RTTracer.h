@@ -1,18 +1,23 @@
-#ifndef TEST_RT_TRACER_H
-#define TEST_RT_TRACER_H
-#include "RTPipeline.h"
-#include <cuda/RayTrace.h>
-#include <RTLib/Optix.h>
+#ifndef RT_TRACER_H
+#define RT_TRACER_H
 #include <RTLib/CUDA.h>
-#include <RTLib/ext/TraversalHandle.h>
-#include <RTLib/ext/Material.h>
-namespace test {
-	class RTTracer {
-	public:
-		virtual void Initialize() = 0;
-		virtual void Launch()     = 0;
-		virtual void CleanUp()    = 0;
-		virtual void Update()     = 0;
-	};
+namespace test{
+    struct RTTraceConfig
+    {
+        int      width;
+        int      height;
+        int      depth;
+        bool     isSync;
+        CUstream stream;
+        void*    pUserData;
+    };
+    class RTTracer{
+    public:
+        virtual void Initialize()                        = 0;
+        virtual void Launch(const RTTraceConfig& config) = 0;
+        virtual void CleanUp()                           = 0;
+        virtual void Update()                            = 0;
+        virtual ~RTTracer(){}
+    };
 }
 #endif

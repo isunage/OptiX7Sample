@@ -55,7 +55,6 @@ namespace test{
         }
         void Launch(int fbWidth, int fbHeight, const std::string& subPassName, CUstream stream = nullptr)
         {
-            char* tmp = "C";
             auto subPass = GetSubPass(subPassName);
             subPass->UploadParams();
             m_Pipeline.launch(stream, subPass->GetParamsPtr(), subPass->GetShaderBindingTable(), fbWidth, fbHeight, subPass->GetTraceCallDepth());

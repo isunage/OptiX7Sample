@@ -29,7 +29,7 @@ struct ParallelLight {
     float3   corner;
     float3   v1, v2;
     float3   normal;
-    float3 emission;
+    float3   emission;
 };
 struct RayTraceParams {
     uchar4*                frameBuffer;

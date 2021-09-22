@@ -1,5 +1,6 @@
 #ifndef RTLIB_EXT_MATERIAL_H
 #define RTLIB_EXT_MATERIAL_H
+#include <memory>
 #include <string>
 #include <array>
 #include <vector>

@@ -93,12 +93,15 @@ struct DTreeNode {
 		DTreeNode* cur = this;
 		int        idx = cur->GetChildIdx(p);
 		int      depth = 1;
-		while (depth < PATH_GUIDING_DTREE_MAX_DEPTH && !cur->IsLeaf(idx)) {
+		while (depth < PATH_GUIDING_DTREE_MAX_DEPTH) {
 			//Leafだったら加算する
+			if (cur->IsLeaf(idx)) {
+				cur->AddSumAtomic(idx, irradiance);
+				break;
+			}
 			cur = &nodes[cur->children[idx]];
 			idx = cur->GetChildIdx(p);
 			++depth;
-			cur->AddSumAtomic(idx, irradiance);
 		}
 		return;
 	}
@@ -122,23 +125,25 @@ struct DTreeNode {
 			auto  top = stackNodes[stackNodeSize - 1];
 			stackNodeSize--;
 
-			if (stackNodeSize <= stackNodeCapacity - 4) {
-				float childSize = top.nodeSize / 2.0f;
-				for (int i = 0; i < 4; ++i) {
-					float2 childOrigin = top.nodeOrigin;
-					if (i & 1) { childOrigin.x += childSize; }
-					if (i & 2) { childOrigin.y += childSize; }
-					float w = ComputeOverlappingVolume(origin, origin + make_float2(size), childOrigin, childOrigin + make_float2(childSize));
-					if (w > 0.0f) {
-						if (top.curNode->IsLeaf(i)) {
-							top.curNode->AddSumAtomic(i, value * w);
-						}
-						else {
-							stackNodeSize++;
-							stackNodes[stackNodeSize - 1].curNode = &nodes[top.curNode->GetChild(i)];
-							stackNodes[stackNodeSize - 1].nodeOrigin = childOrigin;
-							stackNodes[stackNodeSize - 1].nodeSize = childSize;
-						}
+			if (stackNodeSize > stackNodeCapacity - 4) {
+				continue;
+			}
+
+			float childSize = top.nodeSize / 2.0f;
+			for (int i = 0; i < 4; ++i) {
+				float2 childOrigin = top.nodeOrigin;
+				if (i & 1) { childOrigin.x += childSize; }
+				if (i & 2) { childOrigin.y += childSize; }
+				float w = ComputeOverlappingVolume(origin, origin + make_float2(size), childOrigin, childOrigin + make_float2(childSize));
+				if (w > 0.0f) {
+					if (top.curNode->IsLeaf(i)) {
+						top.curNode->AddSumAtomic(i, value * w);
+					}
+					else {
+						stackNodeSize++;
+						stackNodes[stackNodeSize - 1].curNode = &nodes[top.curNode->GetChild(i)];
+						stackNodes[stackNodeSize - 1].nodeOrigin = childOrigin;
+						stackNodes[stackNodeSize - 1].nodeSize = childSize;
 					}
 				}
 			}
@@ -155,9 +160,9 @@ struct DTreeNode {
 	template<typename RNG>
 	RTLIB_INLINE RTLIB_HOST_DEVICE auto Sample(RNG& rng, const DTreeNode* nodes)const noexcept -> float2 {
 		const DTreeNode* cur = this;
-		int    depth  = 1;
+		int    depth = 1;
 		float2 result = make_float2(0.0f);
-		float  size   = 1.0f;
+		double size = 1.0f;
 		for (;;) {
 			int   idx = 0;
 			float topLeft = cur->sums[0];
@@ -183,7 +188,7 @@ struct DTreeNode {
 
 			if (sample < boundary)
 			{
-				sample  /= boundary;
+				sample /= boundary;
 				boundary = topLeft / partial;
 			}
 			else
@@ -476,7 +481,10 @@ struct STreeNode {
 		const STreeNode* cur = this;
 		int              idx = cur->GetChildIdx(p);
 		int            depth = 1;
-		while (depth < PATH_GUIDING_STREE_MAX_DEPTH && !cur->IsLeaf()) {
+		while (depth < PATH_GUIDING_STREE_MAX_DEPTH) {
+			if (cur->IsLeaf()) {
+				break;
+			}
 			reinterpret_cast<float*>(&size)[cur->axis] /= 2.0f;
 			cur = &nodes[cur->children[idx]];
 			idx = cur->GetChildIdx(p);
