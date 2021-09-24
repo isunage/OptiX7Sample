@@ -124,7 +124,7 @@ extern "C" __global__ void __raygen__rg(){
             depth++;
         }
         seed = prd.seed;
-    } while (i--);
+    } while(--i);
     const float3 prevAccumColor = params.accumBuffer[params.width * idx.y + idx.x];
     const float3 accumColor     = prevAccumColor + result;
     float3 frameColor           = accumColor / (static_cast<float>(params.samplePerALL + params.samplePerLaunch));
@@ -196,7 +196,7 @@ extern "C" __global__ void __closesthit__radiance_for_diffuse_nee(){
             }
         }
         prd->attenuation2 = prd->attenuation;
-        prd->radiance    += light.emission/RTLIB_M_PI * weight;
+        prd->radiance    += light.emission * weight;
         
     }
     prd->seed = xor32.m_seed;

@@ -123,7 +123,7 @@ extern "C" __global__ void __raygen__rg(){
             depth++;
         }
         seed = prd.seed;
-    } while (i--);
+    } while(--i);
     const float3 prevAccumColor = params.accumBuffer[params.width * idx.y + idx.x];
     const float3 accumColor     = prevAccumColor + result;
     float3 frameColor           = accumColor / (static_cast<float>(params.samplePerALL + params.samplePerLaunch));

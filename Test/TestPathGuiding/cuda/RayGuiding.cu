@@ -133,7 +133,7 @@ extern "C" __global__ void __raygen__def() {
             depth++;
         }
         seed = prd.seed;
-    } while (i--);
+    } while(--i);
     {
         const float3 prevAccumColor = params.accumBuffer[params.width * idx.y + idx.x];
         const float3 accumColor     = prevAccumColor + result;
@@ -229,7 +229,7 @@ extern "C" __global__ void __raygen__pg() {
             vertices[j].Commit(1.0f);
         }
         seed = prd.seed;
-    } while (i--);
+    } while(--i);
     {
         const float3 prevAccumColor = params.accumBuffer[params.width * idx.y + idx.x];
         const float3 accumColor = prevAccumColor + result;

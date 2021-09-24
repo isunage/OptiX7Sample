@@ -492,6 +492,12 @@ namespace test {
 			m_GpuDTreeWrappers.upload(dTreeWrappers);
 			m_GpuDTreeNodesBuilding.upload(dTreeNodesBuilding);
 			m_GpuDTreeNodesSampling.upload(dTreeNodesSampling);
+#ifndef NDEBUG
+			std::cout << "GpuSTreeNode         : " << m_GpuSTreeNodes.getDevicePtr() << std::endl;
+			std::cout << "GpuDTreeWrappers     : " << m_GpuDTreeWrappers.getDevicePtr() << std::endl;
+			std::cout << "GpuDTreeNodesBuilding: " << m_GpuDTreeNodesBuilding.getDevicePtr() << std::endl;
+			std::cout << "GpuDTreeNodesBuilding: " << m_GpuDTreeNodesSampling.getDevicePtr() << std::endl;
+#endif
 #if 0
 			std::cout << "Upload(Info)\n";
 			std::cout << "GpuSTreeNodes          : " << m_GpuSTreeNodes.getSizeInBytes()         / (1024.0f * 1024.0f) << "MB\n";

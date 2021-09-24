@@ -45,25 +45,25 @@ void test::RTTextureAssetManager::FreeAsset(const std::string& keyName)
 
 auto test::RTTextureAssetManager::GetAsset(const std::string& keyName) const -> const rtlib::CUDATexture2D<uchar4>&
 {
-    // TODO: return ƒXƒe[ƒgƒƒ“ƒg‚ğ‚±‚±‚É‘}“ü‚µ‚Ü‚·
+    // TODO: return ï¿½Xï¿½eï¿½[ï¿½gï¿½ï¿½ï¿½ï¿½ï¿½gï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½É‘}ï¿½ï¿½ï¿½ï¿½ï¿½Ü‚ï¿½
     return m_Textures.at(keyName);
 }
 
 auto test::RTTextureAssetManager::GetAsset(const std::string& keyName) -> rtlib::CUDATexture2D<uchar4>&
 {
-    // TODO: return ƒXƒe[ƒgƒƒ“ƒg‚ğ‚±‚±‚É‘}“ü‚µ‚Ü‚·
+    // TODO: return ï¿½Xï¿½eï¿½[ï¿½gï¿½ï¿½ï¿½ï¿½ï¿½gï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½É‘}ï¿½ï¿½ï¿½ï¿½ï¿½Ü‚ï¿½
     return m_Textures.at(keyName);
 }
 
 auto test::RTTextureAssetManager::GetAssets() const -> const std::unordered_map<std::string, rtlib::CUDATexture2D<uchar4>>&
 {
-    // TODO: return ƒXƒe[ƒgƒƒ“ƒg‚ğ‚±‚±‚É‘}“ü‚µ‚Ü‚·
+    // TODO: return ï¿½Xï¿½eï¿½[ï¿½gï¿½ï¿½ï¿½ï¿½ï¿½gï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½É‘}ï¿½ï¿½ï¿½ï¿½ï¿½Ü‚ï¿½
     return m_Textures;
 }
 
 auto test::RTTextureAssetManager::GetAssets() -> std::unordered_map<std::string, rtlib::CUDATexture2D<uchar4>>&
 {
-    // TODO: return ƒXƒe[ƒgƒƒ“ƒg‚ğ‚±‚±‚É‘}“ü‚µ‚Ü‚·
+    // TODO: return ï¿½Xï¿½eï¿½[ï¿½gï¿½ï¿½ï¿½ï¿½ï¿½gï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½É‘}ï¿½ï¿½ï¿½ï¿½ï¿½Ü‚ï¿½
     return m_Textures;
 }
 
@@ -276,13 +276,13 @@ void test::RTObjModelAssetManager::FreeAsset(const std::string& keyName)
 
 auto test::RTObjModelAssetManager::GetAsset(const std::string& keyName) const -> const RTObjModel&
 {
-    // TODO: return ƒXƒe[ƒgƒƒ“ƒg‚ğ‚±‚±‚É‘}“ü‚µ‚Ü‚·
+    // TODO: return ï¿½Xï¿½eï¿½[ï¿½gï¿½ï¿½ï¿½ï¿½ï¿½gï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½É‘}ï¿½ï¿½ï¿½ï¿½ï¿½Ü‚ï¿½
     return m_ObjModels.at(keyName);
 }
 
 auto test::RTObjModelAssetManager::GetAsset(const std::string& keyName) -> RTObjModel&
 {
-    // TODO: return ƒXƒe[ƒgƒƒ“ƒg‚ğ‚±‚±‚É‘}“ü‚µ‚Ü‚·
+    // TODO: return ï¿½Xï¿½eï¿½[ï¿½gï¿½ï¿½ï¿½ï¿½ï¿½gï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½É‘}ï¿½ï¿½ï¿½ï¿½ï¿½Ü‚ï¿½
     return m_ObjModels.at(keyName);
 }
 
@@ -293,13 +293,13 @@ bool test::RTObjModelAssetManager::HasAsset(const std::string& keyName) const no
 
 auto test::RTObjModelAssetManager::GetAssets() const -> const std::unordered_map<std::string, RTObjModel>&
 {
-    // TODO: return ƒXƒe[ƒgƒƒ“ƒg‚ğ‚±‚±‚É‘}“ü‚µ‚Ü‚·
+    // TODO: return ï¿½Xï¿½eï¿½[ï¿½gï¿½ï¿½ï¿½ï¿½ï¿½gï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½É‘}ï¿½ï¿½ï¿½ï¿½ï¿½Ü‚ï¿½
     return m_ObjModels;
 }
 
 auto test::RTObjModelAssetManager::GetAssets()       ->       std::unordered_map<std::string, RTObjModel>&
 {
-    // TODO: return ƒXƒe[ƒgƒƒ“ƒg‚ğ‚±‚±‚É‘}“ü‚µ‚Ü‚·
+    // TODO: return ï¿½Xï¿½eï¿½[ï¿½gï¿½ï¿½ï¿½ï¿½ï¿½gï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½É‘}ï¿½ï¿½ï¿½ï¿½ï¿½Ü‚ï¿½
     return m_ObjModels;
 }
 

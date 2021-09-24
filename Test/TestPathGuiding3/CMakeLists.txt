@@ -9,8 +9,10 @@ configure_file(
 set(PATH_GUIDING_MAX_DEPTH       1024)
 set(RAY_TRACE_S_FILTER SpatialFilterNearest)
 set(RAY_TRACE_D_FILTER DirectionalFilterNearest)
-set(PATH_GUIDING_STREE_MAX_DEPTH 32)
-set(PATH_GUIDING_DTREE_MAX_DEPTH 16)
+# floatの指数部23->2^-23,2^-23,2^-23
+set(PATH_GUIDING_STREE_MAX_DEPTH 69)
+# floatの指数部23
+set(PATH_GUIDING_DTREE_MAX_DEPTH 24)
 set(PATH_GUIDING_LI_COSINE       1)
 
 configure_file(

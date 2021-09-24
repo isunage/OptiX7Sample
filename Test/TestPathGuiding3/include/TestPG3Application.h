@@ -42,7 +42,7 @@ private:
 	using InstanceASMap     = std::unordered_map<std::string, rtlib::ext::IASHandlePtr>;
 public:
 	static auto  New() -> std::shared_ptr<test::RTApplication> { return std::make_shared<TestPG3Application>(); }
-	// RTApplication ‚ð‰î‚µ‚ÄŒp³‚³‚ê‚Ü‚µ‚½
+	// RTApplication ï¿½ï¿½ï¿½î‚µï¿½ÄŒpï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ü‚ï¿½ï¿½ï¿½
 	virtual void Initialize() override
 	{
 		this->InitGLFW();
@@ -95,6 +95,7 @@ public:
 	auto GetFbHeight()const -> int  { return m_FbHeight; }
 	auto GetMaxTraceDepth()const->unsigned int { return m_MaxTraceDepth; }
 	bool IsFrameResized()const { return m_ResizeFrame;  }
+	bool IsFrameFlushed()const { return m_FlushFrame;   }
 	bool IsCameraUpdated()const{ return m_UpdateCamera; }
 	bool IsLightUpdated()const { return m_UpdateLight;  }
 	auto GetOPXContext() const->std::shared_ptr<rtlib::OPXContext>;
@@ -192,17 +193,21 @@ private:
 	double                               m_DelTime         = 0.0;
 	float                                m_FovY            = 30.0f;
 	bool                                 m_ResizeFrame     = false;
+	bool                                 m_FlushFrame      = false;
 	bool                                 m_UpdateLight     = false;
 	bool                                 m_UpdateCamera    = false;
 	bool                                 m_LaunchDebug     = false;
 	bool                                 m_LockUpdate      = false;
+	bool                                 m_TraceGuide      = false;
 	std::string                          m_CurRenderFrame  = "Default";
 	std::string                          m_CurDebugFrame   = "Diffuse";
 	unsigned int                         m_SamplePerALL    = 0;
 	unsigned int                         m_SamplePerLaunch = 1;
+	unsigned int                         m_SamplePerBudget = 1;
+	unsigned int                         m_SampleForPrvDbg = 0;
 	unsigned int                         m_MaxTraceDepth   = 4;
 	//Renderer
-	Renderer                             m_Renderer        = nullptr;
+	Renderer                             m_Renderer         = nullptr;
 	//RenderTexture
 	RenderTexture                        m_RenderTexture    = {};
 	RenderTexture                        m_DebugTexture     = {};

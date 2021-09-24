@@ -86,7 +86,7 @@ extern "C" __global__ void     __raygen__rg(){
             rayDirection = prd.direction;
             depth++;
         }
-    } while (i--);
+    } while(--i);
     float3 accumColor = result / static_cast<float>(params.samplePerLaunch);
     accumColor /= (accumColor + make_float3(1.0f, 1.0f, 1.0f));
     params.image[params.width * idx.y + idx.x] = make_uchar4(static_cast<unsigned char>(255.99 * accumColor.x), static_cast<unsigned char>(255.99 * accumColor.y), static_cast<unsigned char>(255.99 * accumColor.z), 255);

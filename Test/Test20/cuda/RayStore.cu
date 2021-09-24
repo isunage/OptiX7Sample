@@ -143,7 +143,7 @@ extern "C" __global__ void __raygen__rg(){
                 params.radianceRecData[curRecCount+j].data      = radianceRecs[depth].data/(radianceRecs[j].data+make_float3(1e-5f));
             }
         }
-    } while (i--);
+    } while (--i);
     const float3 prevAccumColor = params.accumBuffer[params.width * idx.y + idx.x];
     const float3 accumColor     = prevAccumColor + result;
     float3 frameColor           = accumColor / (static_cast<float>(params.samplePerALL + params.samplePerLaunch));

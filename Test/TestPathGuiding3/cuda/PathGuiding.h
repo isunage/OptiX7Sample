@@ -483,14 +483,17 @@ struct STreeNode {
 		int            depth = 1;
 		while (depth < PATH_GUIDING_STREE_MAX_DEPTH) {
 			if (cur->IsLeaf()) {
-				break;
+				return cur->dTree;
 			}
 			reinterpret_cast<float*>(&size)[cur->axis] /= 2.0f;
 			cur = &nodes[cur->children[idx]];
 			idx = cur->GetChildIdx(p);
 			++depth;
 		}
-		return cur->dTree;
+#ifndef NDEBUG
+		printf("STree Stack is Overflowed!");
+#endif
+		return nullptr;
 	}
 	RTLIB_INLINE RTLIB_HOST_DEVICE auto  GetDTreeWrapper()const noexcept -> DTreeWrapper* {
 		return dTree;
