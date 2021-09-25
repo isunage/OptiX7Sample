@@ -187,22 +187,20 @@ extern "C" __global__ void __raygen__pg() {
         for (;;) {
             float3 prvThroughPut = prd.throughPut;
             traceRadiance(params.gasHandle, rayOrigin, rayDirection, 0.01f, 1e16f, &prd);
-            if(!params.isFinal){
-                vertices[depth].rayOrigin      = rayOrigin;
-                vertices[depth].rayDirection   = rayDirection;
-                vertices[depth].dTree          = prd.dTree;
-                vertices[depth].dTreeVoxelSize = prd.dTreeVoxelSize;
-                vertices[depth].throughPut     = prd.throughPut;
-                vertices[depth].bsdfVal        = prd.bsdfVal;
-                vertices[depth].radiance       = make_float3(0.0f);
-                vertices[depth].woPdf          = prd.woPdf;
-                vertices[depth].bsdfPdf        = prd.bsdfPdf;
-                vertices[depth].dTreePdf       = prd.dTreePdf;
-                vertices[depth].cosine         = prd.cosine;
-                vertices[depth].isDelta        = prd.isDelta;
-                for (int j = 0; j < depth; ++j) {
-                    vertices[j].Record(prvThroughPut * prd.emission);
-                }
+            vertices[depth].rayOrigin      = rayOrigin;
+            vertices[depth].rayDirection   = rayDirection;
+            vertices[depth].dTree          = prd.dTree;
+            vertices[depth].dTreeVoxelSize = prd.dTreeVoxelSize;
+            vertices[depth].throughPut     = prd.throughPut;
+            vertices[depth].bsdfVal        = prd.bsdfVal;
+            vertices[depth].radiance       = make_float3(0.0f);
+            vertices[depth].woPdf          = prd.woPdf;
+            vertices[depth].bsdfPdf        = prd.bsdfPdf;
+            vertices[depth].dTreePdf       = prd.dTreePdf;
+            vertices[depth].cosine         = prd.cosine;
+            vertices[depth].isDelta        = prd.isDelta;
+            for (int j = 0; j < depth; ++j) {
+                vertices[j].Record(prvThroughPut * prd.emission);
             }
             //OK
             //Result�̍X�V
@@ -215,10 +213,8 @@ extern "C" __global__ void __raygen__pg() {
             }
             depth++;
         }
-        if(!params.isFinal){
-            for (int j = 0; j < depth; ++j) {
-                vertices[j].Commit<RAY_TRACE_S_FILTER, RAY_TRACE_D_FILTER>(params.sdTree, 1.0f);
-            }
+        for (int j = 0; j < depth; ++j) {
+            vertices[j].Commit<RAY_TRACE_S_FILTER, RAY_TRACE_D_FILTER>(params.sdTree, 1.0f);
         }
         seed = prd.seed;
     } while(--i);
@@ -328,6 +324,13 @@ extern "C" __global__ void __closesthit__radiance_for_diffuse_pg() {
     auto  dTreeVoxelSize = make_float3(0.0f);
     const auto dTree     = params.sdTree.GetDTreeWrapper(position, dTreeVoxelSize);
 
+    // Possible Error: dTree Stack Overflow!
+    //if (!dTree) {
+    // float3 relPosition  = (position - params.sdTree.aabbMin) / (params.sdTree.aabbMax - params.sdTree.aabbMin);
+    // float3 relVoxelSize = dTreeVoxelSize/ (params.sdTree.aabbMax - params.sdTree.aabbMin);
+    // printf("dTree is NULL! Position: (%f %f %f) Size: (%f %f %f)\n", relPosition.x, relPosition.y, relPosition.z, relVoxelSize.x, relVoxelSize.y, relVoxelSize.z);
+    //}
+
     float3 newDirection1 = make_float3(0.0f);
     float3 newDirection2 = make_float3(0.0f);
     float  cosine1      = 0.0f;
@@ -344,7 +347,7 @@ extern "C" __global__ void __closesthit__radiance_for_diffuse_pg() {
     rtlib::Xorshift32 xor32(prd->seed);
 
     setRayOrigin(position);
-    if(params.isBuilt){
+    {
         newDirection1 = dTree->Sample(xor32);
         cosine1 = rtlib::dot(normal, newDirection1);
 
@@ -362,14 +365,15 @@ extern "C" __global__ void __closesthit__radiance_for_diffuse_pg() {
         }
     }
 
+
     const float rnd          = rtlib::random_float1(xor32);
     const auto  newDirection = rnd < 0.5f ? newDirection1 : newDirection2;
     const auto  cosine       = rnd < 0.5f ? cosine1 : cosine2;
     const auto  bsdfPdf      = rtlib::max(cosine / RTLIB_M_PI, 0.0f);
+    const auto  dTreePdf     = rtlib::max(dTree->Pdf(newDirection), 0.0f);
+    const auto  woPdf        = 0.5f * bsdfPdf + 0.5f * dTreePdf;
     //両方とも正なら
-    if (params.isBuilt) {
-        const auto  dTreePdf = rtlib::max(dTree->Pdf(newDirection), 0.0f);
-        const auto  woPdf = 0.5f * bsdfPdf + 0.5f * dTreePdf;
+    if (params.isBuilt && woPdf > 0.0f) {
         prd->bsdfPdf     = bsdfPdf;
         prd->dTreePdf    = dTreePdf;
         prd->woPdf       = woPdf;
@@ -558,6 +562,7 @@ extern "C" __global__ void __closesthit__radiance_for_phong_def() {
 
     auto  newDirection = make_float3(0.0f);
     auto  cosine = 0.0f;
+    auto  weight = make_float3(0.0f);
 
     const auto rnd = rtlib::random_float1(xor32);
     const auto a_diffuse = (diffuse.x + diffuse.y + diffuse.z) / 3.0f;
@@ -628,7 +633,7 @@ extern "C" __global__ void __closesthit__radiance_for_phong_pg() {
 
     const auto texCoord = (1.0f - barycentric.x - barycentric.y) * t0 + barycentric.x * t1 + barycentric.y * t2;
     const auto emission = hgData->getEmissionColor(texCoord);
-    const auto diffuse  = hgData->getDiffuseColor(texCoord);
+    const auto diffuse = hgData->getDiffuseColor(texCoord);
     const auto specular = hgData->getSpecularColor(texCoord);
     const auto shinness = hgData->shinness;
     const auto distance = optixGetRayTmax();
@@ -642,20 +647,21 @@ extern "C" __global__ void __closesthit__radiance_for_phong_pg() {
     float  cosine2 = 0.0f;
     float  cosine3 = 0.0f;
     //payLoad
-    RadiancePRD* prd    = getRadiancePRD();
+    RadiancePRD* prd = getRadiancePRD();
     auto dTreeVoxelSize = make_float3(0.0f);
-    const auto dTree    = params.sdTree.GetDTreeWrapper(position, dTreeVoxelSize);
-    prd->dTree          = dTree;
+    const auto dTree = params.sdTree.GetDTreeWrapper(position, dTreeVoxelSize);
+    prd->dTree = dTree;
     prd->dTreeVoxelSize = dTreeVoxelSize;
-    prd->emission       = emission;
-    prd->distance       = distance;
-    prd->isDelta        = false;
+    prd->emission = emission;
+    prd->distance = distance;
+    prd->isDelta = false;
     rtlib::Xorshift32 xor32(prd->seed);
     //const auto isValid = false;
     setRayOrigin(position);
-    if(params.isBuilt){
+    {
         newDirection1 = dTree->Sample(xor32);
         cosine1 = rtlib::dot(normal, newDirection1);
+
     }
     {
         rtlib::ONB onb(normal);
@@ -671,20 +677,20 @@ extern "C" __global__ void __closesthit__radiance_for_phong_pg() {
         newDirection3 = onb.local(make_float3(sinTht * cosf(phi), sinTht * sinf(phi), cosTht));
         cosine3 = rtlib::dot(normal, newDirection3);
     }
-    const auto  a_diffuse  = (diffuse.x + diffuse.y + diffuse.z) / 3.0f;
+    const auto  a_diffuse = (diffuse.x + diffuse.y + diffuse.z) / 3.0f;
     const auto  a_specular = (specular.x + specular.y + specular.z) / 3.0f;
-    const float rnd1       = rtlib::random_float1(xor32);
-    const float rnd2       = rtlib::random_float1(xor32);
+    const float rnd1 = rtlib::random_float1(xor32);
+    const float rnd2 = rtlib::random_float1(xor32);
 
     if (rnd1 < a_diffuse) {
         const auto  newDirection = rnd2 < 0.5f ? newDirection1 : newDirection2;
         const auto  cosine       = rnd2 < 0.5f ?       cosine1 :       cosine2;
         const auto  bsdfPdf      = rtlib::max(cosine / RTLIB_M_PI     , 0.0f);
+        const auto  dTreePdf     = rtlib::max(dTree->Pdf(newDirection), 0.0f);
+        const auto  woPdf        = 0.5f * dTreePdf + 0.5f * bsdfPdf;
         const auto  bsdfVal      = diffuse / (RTLIB_M_PI * a_diffuse);
         //両方とも正なら
-        if (params.isBuilt) {
-            const auto  dTreePdf = rtlib::max(dTree->Pdf(newDirection), 0.0f);
-            const auto  woPdf = 0.5f * dTreePdf + 0.5f * bsdfPdf;
+        if (params.isBuilt && woPdf > 0.0f) {
             prd->bsdfVal  = bsdfVal;
             prd->dTreePdf = dTreePdf;
             prd->bsdfPdf  = bsdfPdf;
@@ -708,12 +714,12 @@ extern "C" __global__ void __closesthit__radiance_for_phong_pg() {
         const auto  newDirection = rnd2 < 0.5f ? newDirection1 : newDirection3;
         const auto  cosine       = rnd2 < 0.5f ? cosine1       : cosine3;
         const auto  bsdfPdf  = (shinness + 2.0f) * powf(rtlib::max(rtlib::dot(reflectDir, newDirection), 0.0f), shinness) / RTLIB_M_2PI;
+        const auto  dTreePdf = rtlib::max(dTree->Pdf(newDirection), 0.0f);
+        const auto  woPdf    = 0.5f * dTreePdf + 0.5f * bsdfPdf;
         const auto  bsdfVal  = specular * bsdfPdf / a_specular;
         //両方とも正なら
-        if (params.isBuilt)
+        if (params.isBuilt && woPdf > 0.0f)
         {
-            const auto  dTreePdf = rtlib::max(dTree->Pdf(newDirection), 0.0f);
-            const auto  woPdf = 0.5f * dTreePdf + 0.5f * bsdfPdf;
             //printf("Hit1! %f %f\n", woPdf,dTreePdf);
             prd->dTreePdf    = dTreePdf;
             prd->bsdfPdf     = bsdfPdf;

@@ -459,7 +459,6 @@ private:
 		m_Params.cpuHandle[0].frameBuffer     = pUserData->frameBuffer;
 		m_Params.cpuHandle[0].seedBuffer      = m_SeedBuffer.getDevicePtr();
 		m_Params.cpuHandle[0].isBuilt         = m_CurIteration > 0;
-		m_Params.cpuHandle[0].isFinal         = m_SampleForPass >= m_SampleForRemain;
 		m_Params.cpuHandle[0].samplePerALL    = m_SamplePerAll;
 		m_Params.cpuHandle[0].samplePerLaunch = m_SamplePerLaunch;
 		cudaMemcpyAsync(m_Params.gpuHandle.getDevicePtr(), &m_Params.cpuHandle[0], sizeof(RayTraceParams), cudaMemcpyHostToDevice, config.stream);

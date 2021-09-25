@@ -182,30 +182,44 @@ private:
 	}
 private:
 	//Window
-	GLFWwindow*							 m_Window		   = nullptr;
-	int                                  m_FbWidth	       = 1024;
-	int                                  m_FbHeight		   = 1024;
-	float                                m_FbAspect		   = 1.0f;
-	const char*							 m_Title		   = "TestPG3";
-	float2                               m_CurCursorPos    = {};
-	float2                               m_DelCursorPos    = {};
-	double                               m_CurTime         = 0.0;
-	double                               m_DelTime         = 0.0;
-	float                                m_FovY            = 30.0f;
-	bool                                 m_ResizeFrame     = false;
-	bool                                 m_FlushFrame      = false;
-	bool                                 m_UpdateLight     = false;
-	bool                                 m_UpdateCamera    = false;
-	bool                                 m_LaunchDebug     = false;
-	bool                                 m_LockUpdate      = false;
-	bool                                 m_TraceGuide      = false;
-	std::string                          m_CurRenderFrame  = "Default";
-	std::string                          m_CurDebugFrame   = "Diffuse";
-	unsigned int                         m_SamplePerALL    = 0;
-	unsigned int                         m_SamplePerLaunch = 1;
-	unsigned int                         m_SamplePerBudget = 1;
-	unsigned int                         m_SampleForPrvDbg = 0;
-	unsigned int                         m_MaxTraceDepth   = 4;
+	GLFWwindow*							 m_Window		    = nullptr;
+	int                                  m_FbWidth	        = 1024;
+	int                                  m_FbHeight		    = 1024;
+	float                                m_FbAspect		    = 1.0f;
+	const char*							 m_Title		    = "TestPG3";
+	//Cursor
+	float2                               m_CurCursorPos     = {};
+	float2                               m_DelCursorPos     = {};
+	//Time
+	double                               m_CurFrameTime     = 0.0;
+	double                               m_DelFrameTime     = 0.0;
+	double                               m_DelTraceTime     = 0.0;
+	//Camera
+	float                                m_CameraFovY       = 30.0f;
+	float                                m_MovementSpeed    = 10.0f;
+	float                                m_MouseSensitity   = 0.125f;
+	//Flag
+	bool                                 m_ResizeFrame      = false;
+	bool                                 m_FlushFrame       = false;
+	bool                                 m_UpdateLight      = false;
+	bool                                 m_UpdateCamera     = false;
+	bool                                 m_LaunchDebug      = false;
+	bool                                 m_LockUpdate       = false;
+	bool                                 m_TraceGuide       = false;
+	//SaveDir
+	std::array<char, 64>                 m_GlobalSettingPath = { "./Config.json" };
+	std::array<char, 64>                 m_ImgRenderPath    = { "." };
+	std::array<char, 64>                 m_ImgDebugPath     = { "." };
+	//FrameName
+	std::string                          m_CurRenderFrame   = "Default";
+	std::string                          m_CurDebugFrame    = "Diffuse";
+	//MaxTraceDepth
+	unsigned int                         m_MaxTraceDepth    = 4;
+	//Sample
+	unsigned int                         m_SamplePerALL     = 0;
+	unsigned int                         m_SamplePerLaunch  = 1;
+	unsigned int                         m_SamplePerBudget  = 1;
+	unsigned int                         m_SampleForPrvDbg  = 0;
 	//Renderer
 	Renderer                             m_Renderer         = nullptr;
 	//RenderTexture
