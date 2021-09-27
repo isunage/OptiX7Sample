@@ -2,6 +2,7 @@
 #define RTLIB_H
 #include <cuda_runtime.h>
 #if defined(__cplusplus) && !defined(__CUDA_ARCH__)
+#include <bitset>
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
@@ -597,6 +598,13 @@ namespace rtlib {
             phi += RTLIB_M_2PI;
         }
         return make_float2(tht/ RTLIB_M_PI, phi/RTLIB_M_2PI);
+    }
+    RTLIB_INLINE RTLIB_DEVICE int pop_count32(unsigned int ui32) {
+#ifdef __CUDA_ARCH__
+        return __popc(ui32);
+#else
+        return std::bitset<32>(ui32).count();
+#endif
     }
 }
 #endif

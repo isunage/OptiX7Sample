@@ -33,7 +33,12 @@ add_subdirectory(Test18)
 add_subdirectory(Test19)
 add_subdirectory(Test20)
 add_subdirectory(Test21)
+## Ray Trace Framework
+add_subdirectory(Test22)
 ## practical path guiding(Muller2017)
 add_subdirectory(TestPathGuiding)
 add_subdirectory(TestPathGuiding2)
 add_subdirectory(TestPathGuiding3)
+## ReSTIR                (NVIDIA)
+
+## ReSTIR-GI             (NVIDIA)

@@ -185,6 +185,10 @@ namespace test {
 		float                    m_StatisticalWeight;
 		int                      m_MaxDepth;
 	};
+	class  RTDTree2 {
+		std::vector<unsigned int> indices;
+		std::vector<float4>       sums;
+	};
 	struct RTDTreeWrapper {
 		auto GetApproxMemoryFootPrint()const noexcept->size_t {
 			return building.GetApproxMemoryFootPrint() + sampling.GetApproxMemoryFootPrint();
