@@ -1176,7 +1176,7 @@ void Test22Application::Trace()
 	}
 
 	auto beginTraceTime = glfwGetTime();
-	if (!m_TraceGuide)
+	if (!m_TraceNEE)
 	{
 		Test22SimpleTracer::UserData userData = {};
 		userData.frameBuffer = m_FrameBuffer->GetCUGLBuffer("Default").map();
@@ -1402,11 +1402,11 @@ void Test22Application::DrawGui()
 		if (ImGui::InputText("ImgRootDir", m_ImgRenderPath.data(), m_ImgRenderPath.size()))
 		{
 		}
-		if (!m_TraceGuide)
+		if (!m_TraceNEE)
 		{
 			if (ImGui::Button("NEE"))
 			{
-				m_TraceGuide = true;
+				m_TraceNEE = true;
 				m_FlushFrame = true;
 			}
 
@@ -1415,7 +1415,7 @@ void Test22Application::DrawGui()
 		else {
 			if (ImGui::Button("Def"))
 			{
-				m_TraceGuide = false;
+				m_TraceNEE = false;
 				m_FlushFrame = true;
 			}
 
@@ -1438,7 +1438,7 @@ void Test22Application::DrawGui()
 						std::memcpy(imageData.data() + (m_FbHeight - 1 - i) * m_FbWidth, imagePixels.get() + i * m_FbWidth, sizeof(uchar4) * m_FbWidth);
 					}
 				}
-				auto savePath = imgRenderPath / (m_TraceGuide ? "Guide_" : "Trace_");
+				auto savePath = imgRenderPath / (m_TraceNEE ? "Trace_NEE_" : "Trace_Def_");
 				savePath += std::to_string(m_SamplePerALL);
 				savePath += ".png";
 				stbi_write_png(savePath.string().c_str(), m_FbWidth, m_FbHeight, 4, imageData.data(), m_FbWidth * 4);

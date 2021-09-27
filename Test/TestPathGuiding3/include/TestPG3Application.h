@@ -98,6 +98,7 @@ public:
 	bool IsFrameFlushed()const { return m_FlushFrame;   }
 	bool IsCameraUpdated()const{ return m_UpdateCamera; }
 	bool IsLightUpdated()const { return m_UpdateLight;  }
+	bool IsTraceChanged()const { return m_ChangeTrace; }
 	auto GetOPXContext() const->std::shared_ptr<rtlib::OPXContext>;
 	auto GetOPXPipeline(const std::string& name)->rtlib::OPXPipeline&;
 	auto GetRGProgramGroup(const std::string& name)->rtlib::OPXRaygenPG &;
@@ -203,9 +204,12 @@ private:
 	bool                                 m_FlushFrame       = false;
 	bool                                 m_UpdateLight      = false;
 	bool                                 m_UpdateCamera     = false;
+	bool                                 m_ChangeTrace      = false;
+
 	bool                                 m_LaunchDebug      = false;
 	bool                                 m_LockUpdate       = false;
 	bool                                 m_TraceGuide       = false;
+	bool                                 m_TraceNEE         = false;
 	//SaveDir
 	std::array<char, 64>                 m_GlobalSettingPath = { "./Config.json" };
 	std::array<char, 64>                 m_ImgRenderPath    = { "." };
@@ -249,8 +253,10 @@ private:
 	//STree
 	std::shared_ptr<test::RTSTreeWrapper>m_STree            = {};
 	//Tracer
-	std::shared_ptr<test::RTTracer>      m_TraceActor       = {};
+	std::shared_ptr<test::RTTracer>      m_SimpleActor      = {};
+	std::shared_ptr<test::RTTracer>      m_SimpleNEEActor   = {};
 	std::shared_ptr<test::RTTracer>      m_GuideActor       = {};
+	std::shared_ptr<test::RTTracer>      m_GuideNEEActor    = {};
 	std::shared_ptr<test::RTTracer>      m_DebugActor       = {};
 };
 #endif

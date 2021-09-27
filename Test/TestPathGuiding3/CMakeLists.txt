@@ -44,6 +44,7 @@ add_executable(TestPathGuiding3
     ${CMAKE_CURRENT_SOURCE_DIR}/src/TestPG3Application.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/RTAssets.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/cuda/RayTrace.cu
+    ${CMAKE_CURRENT_SOURCE_DIR}/cuda/RayGuide.cu
     ${CMAKE_CURRENT_SOURCE_DIR}/cuda/RayDebug.cu
 )
 
@@ -51,8 +52,10 @@ add_custom_command(TARGET TestPathGuiding3 PRE_BUILD  COMMAND ${CMAKE_COMMAND} -
 add_custom_command(TARGET TestPathGuiding3 PRE_BUILD  COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/cuda/PathGuiding.h  ${TEST_TEST_PG_CUDA_PATH}/PathGuiding.h )
 add_custom_command(TARGET TestPathGuiding3 POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/cuda/RayDebug.cu    ${TEST_TEST_PG_CUDA_PATH}/RayDebug.cu)
 add_custom_command(TARGET TestPathGuiding3 POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/cuda/RayTrace.cu    ${TEST_TEST_PG_CUDA_PATH}/RayTrace.cu)
+add_custom_command(TARGET TestPathGuiding3 POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/cuda/RayGuide.cu    ${TEST_TEST_PG_CUDA_PATH}/RayGuide.cu)
 
-rtlib_compile_ptx(TestPathGuiding3 ${TEST_TEST_PG_CUDA_PATH}/RayTrace.cu ${TEST_TEST_PG_CUDA_PATH} )
+rtlib_compile_ptx(TestPathGuiding3 ${TEST_TEST_PG_CUDA_PATH}/RayTrace.cu   ${TEST_TEST_PG_CUDA_PATH} )
+rtlib_compile_ptx(TestPathGuiding3 ${TEST_TEST_PG_CUDA_PATH}/RayGuide.cu   ${TEST_TEST_PG_CUDA_PATH} )
 rtlib_compile_ptx(TestPathGuiding3 ${TEST_TEST_PG_CUDA_PATH}/RayDebug.cu   ${TEST_TEST_PG_CUDA_PATH} )
 
 target_include_directories(TestPathGuiding3 PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_BINARY_DIR}/cuda)

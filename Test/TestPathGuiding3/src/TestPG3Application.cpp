@@ -1,9 +1,12 @@
 #include "../include/TestPG3Application.h"
+#include <RTLib/Optix.h>
 #include <RTLib/Utils.h>
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <stb_image_write.h>
 #include <nlohmann/json.hpp>
+#include <string>
 #include <random>
+using namespace std::string_literals;
 //Init
 //SimpleTracer
 class TestPG3SimpleTracer : public test::RTTracer
@@ -82,7 +85,7 @@ public:
 			m_RGRecordBuffer.cpuHandle[0].data.w = w;
 			m_RGRecordBuffer.Upload();
 		}
-		if (m_ParentApp->IsCameraUpdated() || m_ParentApp->IsFrameResized() || m_ParentApp->IsFrameFlushed() || m_Params.cpuHandle[0].maxTraceDepth != m_ParentApp->GetMaxTraceDepth() || m_ParentApp->IsLightUpdated())
+		if (m_ParentApp->IsCameraUpdated() || m_ParentApp->IsFrameResized() || m_ParentApp->IsFrameFlushed() || m_ParentApp->IsTraceChanged() || m_ParentApp->IsLightUpdated())
 		{
 			m_Params.cpuHandle[0].maxTraceDepth = m_ParentApp->GetMaxTraceDepth();
 			m_AccumBuffer.resize(m_ParentApp->GetFbWidth() * m_ParentApp->GetFbHeight());
@@ -250,6 +253,247 @@ private:
 	unsigned int m_LightHgRecIndex = 0;
 	unsigned int m_SamplePerAll = 0;
 };
+//  NEETracer
+class TestPG3SimpleNEETracer : public test::RTTracer
+{
+public:
+	struct UserData
+	{
+		uchar4* frameBuffer;
+		unsigned int samplePerAll;
+		unsigned int samplePerLaunch;
+	};
+
+private:
+	using RayGRecord = rtlib::SBTRecord<RayGenData>;
+	using MissRecord = rtlib::SBTRecord<MissData>;
+	using HitGRecord = rtlib::SBTRecord<HitgroupData>;
+
+public:
+	TestPG3SimpleNEETracer(TestPG3Application* app)
+	{
+		m_ParentApp = app;
+	}
+	// RTTracer ����Čp������܂���
+	virtual void Initialize() override
+	{
+		this->InitFrameResources();
+		this->InitShaderBindingTable();
+		this->InitLaunchParams();
+	}
+	virtual void Launch(const test::RTTraceConfig& config) override
+	{
+		UserData* pUserData = (UserData*)config.pUserData;
+		if (!pUserData)
+		{
+			return;
+		}
+		m_Params.cpuHandle[0].width = config.width;
+		m_Params.cpuHandle[0].height = config.height;
+		m_Params.cpuHandle[0].accumBuffer = m_AccumBuffer.getDevicePtr();
+		m_Params.cpuHandle[0].frameBuffer = pUserData->frameBuffer;
+		m_Params.cpuHandle[0].seedBuffer = m_SeedBuffer.getDevicePtr();
+		m_Params.cpuHandle[0].samplePerLaunch = pUserData->samplePerLaunch;
+		cudaMemcpyAsync(m_Params.gpuHandle.getDevicePtr(), &m_Params.cpuHandle[0], sizeof(RayTraceParams), cudaMemcpyHostToDevice, config.stream);
+		auto& pipeline = m_ParentApp->GetOPXPipeline("Trace");
+		pipeline.launch(config.stream, m_Params.gpuHandle.getDevicePtr(), m_ShaderBindingTable, config.width, config.height, config.depth);
+		if (config.isSync)
+		{
+			RTLIB_CU_CHECK(cuStreamSynchronize(config.stream));
+		}
+		m_Params.cpuHandle[0].samplePerALL += m_Params.cpuHandle[0].samplePerLaunch;
+		m_SamplePerAll = pUserData->samplePerAll = m_Params.cpuHandle[0].samplePerALL;
+	}
+	virtual void CleanUp() override
+	{
+		m_ParentApp = nullptr;
+		m_ShaderBindingTable = {};
+		m_RGRecordBuffer.Reset();
+		m_MSRecordBuffers.Reset();
+		m_HGRecordBuffers.Reset();
+		m_Params.Reset();
+		m_AccumBuffer.reset();
+		m_SeedBuffer.reset();
+		m_LightHgRecIndex = 0;
+	}
+	virtual void Update() override
+	{
+		if (m_ParentApp->IsCameraUpdated() || m_ParentApp->IsFrameResized())
+		{
+			auto camera = m_ParentApp->GetCamera();
+			m_RGRecordBuffer.cpuHandle[0].data.eye = camera.getEye();
+			auto [u, v, w] = camera.getUVW();
+			m_RGRecordBuffer.cpuHandle[0].data.u = u;
+			m_RGRecordBuffer.cpuHandle[0].data.v = v;
+			m_RGRecordBuffer.cpuHandle[0].data.w = w;
+			m_RGRecordBuffer.Upload();
+		}
+		if (m_ParentApp->IsCameraUpdated() || m_ParentApp->IsFrameResized() || m_ParentApp->IsFrameFlushed() || m_ParentApp->IsTraceChanged() || m_ParentApp->IsLightUpdated())
+		{
+			m_Params.cpuHandle[0].maxTraceDepth = m_ParentApp->GetMaxTraceDepth();
+			m_AccumBuffer.resize(m_ParentApp->GetFbWidth() * m_ParentApp->GetFbHeight());
+			m_AccumBuffer.upload(std::vector<float3>(m_ParentApp->GetFbWidth() * m_ParentApp->GetFbHeight()));
+			m_Params.cpuHandle[0].samplePerALL = 0;
+		}
+		bool shouldRegen = ((m_SamplePerAll + m_Params.cpuHandle[0].samplePerLaunch) / 1024 != m_SamplePerAll / 1024);
+		if (m_ParentApp->IsFrameResized() || shouldRegen)
+		{
+			std::cout << "Regen!\n";
+			std::vector<unsigned int> seedData(m_ParentApp->GetFbWidth() * m_ParentApp->GetFbHeight());
+			std::random_device rd;
+			std::mt19937 mt(rd());
+			std::generate(seedData.begin(), seedData.end(), mt);
+			m_SeedBuffer.resize(m_ParentApp->GetFbWidth() * m_ParentApp->GetFbHeight());
+			m_SeedBuffer.upload(seedData);
+		}
+		if (m_ParentApp->IsLightUpdated())
+		{
+			auto light = m_ParentApp->GetLight();
+			m_Params.cpuHandle[0].light = light;
+			m_HGRecordBuffers.cpuHandle[m_LightHgRecIndex].data.emission = light.emission;
+			m_HGRecordBuffers.cpuHandle[m_LightHgRecIndex].data.diffuse = light.emission;
+			RTLIB_CUDA_CHECK(cudaMemcpy(m_HGRecordBuffers.gpuHandle.getDevicePtr() + m_LightHgRecIndex, &m_HGRecordBuffers.cpuHandle[m_LightHgRecIndex], sizeof(HitGRecord), cudaMemcpyHostToDevice));
+		}
+	}
+	virtual ~TestPG3SimpleNEETracer() {}
+
+private:
+	void InitFrameResources()
+	{
+		std::vector<unsigned int> seedData(m_ParentApp->GetFbWidth() * m_ParentApp->GetFbHeight());
+		std::random_device rd;
+		std::mt19937 mt(rd());
+		std::generate(seedData.begin(), seedData.end(), mt);
+		m_AccumBuffer = rtlib::CUDABuffer<float3>(std::vector<float3>(m_ParentApp->GetFbWidth() * m_ParentApp->GetFbHeight()));
+		m_SeedBuffer = rtlib::CUDABuffer<uint32_t>(seedData);
+	}
+	void InitShaderBindingTable()
+	{
+		auto SpecifyMaterialType = [](const rtlib::ext::Material& material)
+		{
+			auto emitCol = material.GetFloat3As<float3>("emitCol");
+			auto specCol = material.GetFloat3As<float3>("specCol");
+			auto tranCol = material.GetFloat3As<float3>("tranCol");
+			auto refrIndx = material.GetFloat1("refrIndx");
+			auto shinness = material.GetFloat1("shinness");
+			auto illum = material.GetUInt32("illum");
+			if (illum == 7)
+			{
+				return "Refraction";
+			}
+			else if (emitCol.x + emitCol.y + emitCol.z > 0.0f)
+			{
+				return "Emission";
+			}
+			else if (specCol.x + specCol.y + specCol.z > 0.0f)
+			{
+				return "Phong";
+			}
+			else
+			{
+				return "Diffuse";
+			}
+		};
+		auto tlas = m_ParentApp->GetTLAS();
+		auto camera = m_ParentApp->GetCamera();
+		auto& materials = m_ParentApp->GetMaterials();
+		m_RGRecordBuffer.cpuHandle.resize(1);
+		m_RGRecordBuffer.cpuHandle[0] = m_ParentApp->GetRGProgramGroup("Trace.Default").getSBTRecord<RayGenData>();
+		m_RGRecordBuffer.cpuHandle[0].data.eye = camera.getEye();
+		auto [u, v, w] = camera.getUVW();
+		m_RGRecordBuffer.cpuHandle[0].data.u = u;
+		m_RGRecordBuffer.cpuHandle[0].data.v = v;
+		m_RGRecordBuffer.cpuHandle[0].data.w = w;
+		m_RGRecordBuffer.Upload();
+		m_MSRecordBuffers.cpuHandle.resize(RAY_TYPE_COUNT);
+		m_MSRecordBuffers.cpuHandle[RAY_TYPE_RADIANCE] = m_ParentApp->GetMSProgramGroup("Trace.Radiance").getSBTRecord<MissData>();
+		m_MSRecordBuffers.cpuHandle[RAY_TYPE_RADIANCE].data.bgColor = { 0, 0, 0, 0 };
+		m_MSRecordBuffers.cpuHandle[RAY_TYPE_OCCLUSION] = m_ParentApp->GetMSProgramGroup("Trace.Occluded").getSBTRecord<MissData>();
+		m_MSRecordBuffers.Upload();
+		m_HGRecordBuffers.cpuHandle.resize(tlas->GetSbtCount() * RAY_TYPE_COUNT);
+		{
+			size_t sbtOffset = 0;
+			for (auto& instanceSet : tlas->GetInstanceSets())
+			{
+				for (auto& baseGASHandle : instanceSet->baseGASHandles)
+				{
+					for (auto& mesh : baseGASHandle->GetMeshes())
+					{
+						for (size_t i = 0; i < mesh->GetUniqueResource()->materials.size(); ++i)
+						{
+							auto materialId = mesh->GetUniqueResource()->materials[i];
+							auto& material = materials[materialId];
+							HitgroupData radianceHgData = {};
+							{
+								radianceHgData.vertices = mesh->GetSharedResource()->vertexBuffer.gpuHandle.getDevicePtr();
+								radianceHgData.normals = mesh->GetSharedResource()->normalBuffer.gpuHandle.getDevicePtr();
+								radianceHgData.texCoords = mesh->GetSharedResource()->texCrdBuffer.gpuHandle.getDevicePtr();
+								radianceHgData.indices = mesh->GetUniqueResource()->triIndBuffer.gpuHandle.getDevicePtr();
+								radianceHgData.diffuseTex = m_ParentApp->GetTexture(material.GetString("diffTex")).getHandle();
+								radianceHgData.specularTex = m_ParentApp->GetTexture(material.GetString("specTex")).getHandle();
+								radianceHgData.emissionTex = m_ParentApp->GetTexture(material.GetString("emitTex")).getHandle();
+								radianceHgData.diffuse = material.GetFloat3As<float3>("diffCol");
+								radianceHgData.specular = material.GetFloat3As<float3>("specCol");
+								radianceHgData.emission = material.GetFloat3As<float3>("emitCol");
+								radianceHgData.shinness = material.GetFloat1("shinness");
+								radianceHgData.transmit = material.GetFloat3As<float3>("tranCol");
+								radianceHgData.refrInd = material.GetFloat1("refrIndx");
+							}
+							if (material.GetString("name") == "light")
+							{
+								m_LightHgRecIndex = RAY_TYPE_COUNT * sbtOffset + RAY_TYPE_COUNT * i + RAY_TYPE_RADIANCE;
+							}
+							std::string typeString = SpecifyMaterialType(material);
+							if (typeString == "Phong" || typeString == "Diffuse")
+							{
+								typeString += ".NEE";
+							}
+							m_HGRecordBuffers.cpuHandle[RAY_TYPE_COUNT * sbtOffset + RAY_TYPE_COUNT * i + RAY_TYPE_RADIANCE] = m_ParentApp->GetHGProgramGroup(std::string("Trace.Radiance.") + typeString).getSBTRecord<HitgroupData>(radianceHgData);
+							m_HGRecordBuffers.cpuHandle[RAY_TYPE_COUNT * sbtOffset + RAY_TYPE_COUNT * i + RAY_TYPE_OCCLUSION] = m_ParentApp->GetHGProgramGroup("Trace.Occluded").getSBTRecord<HitgroupData>({});
+						}
+						sbtOffset += mesh->GetUniqueResource()->materials.size();
+					}
+				}
+			}
+		}
+		m_HGRecordBuffers.Upload();
+		m_ShaderBindingTable.raygenRecord = reinterpret_cast<CUdeviceptr>(m_RGRecordBuffer.gpuHandle.getDevicePtr());
+		m_ShaderBindingTable.missRecordBase = reinterpret_cast<CUdeviceptr>(m_MSRecordBuffers.gpuHandle.getDevicePtr());
+		m_ShaderBindingTable.missRecordCount = m_MSRecordBuffers.cpuHandle.size();
+		m_ShaderBindingTable.missRecordStrideInBytes = sizeof(MissRecord);
+		m_ShaderBindingTable.hitgroupRecordBase = reinterpret_cast<CUdeviceptr>(m_HGRecordBuffers.gpuHandle.getDevicePtr());
+		m_ShaderBindingTable.hitgroupRecordCount = m_HGRecordBuffers.cpuHandle.size();
+		m_ShaderBindingTable.hitgroupRecordStrideInBytes = sizeof(HitGRecord);
+	}
+	void InitLaunchParams()
+	{
+		auto tlas = m_ParentApp->GetTLAS();
+		m_Params.cpuHandle.resize(1);
+		m_Params.cpuHandle[0].gasHandle = tlas->GetHandle();
+		m_Params.cpuHandle[0].width = m_ParentApp->GetFbWidth();
+		m_Params.cpuHandle[0].height = m_ParentApp->GetFbHeight();
+		m_Params.cpuHandle[0].light = m_ParentApp->GetLight();
+		m_Params.cpuHandle[0].accumBuffer = m_AccumBuffer.getDevicePtr();
+		m_Params.cpuHandle[0].frameBuffer = nullptr;
+		m_Params.cpuHandle[0].seedBuffer = m_SeedBuffer.getDevicePtr();
+		m_Params.cpuHandle[0].maxTraceDepth = m_ParentApp->GetMaxTraceDepth();
+		m_Params.cpuHandle[0].samplePerLaunch = 1;
+
+		m_Params.Upload();
+	}
+
+private:
+	TestPG3Application* m_ParentApp = nullptr;
+	OptixShaderBindingTable m_ShaderBindingTable = {};
+	rtlib::CUDAUploadBuffer<RayGRecord> m_RGRecordBuffer = {};
+	rtlib::CUDAUploadBuffer<MissRecord> m_MSRecordBuffers = {};
+	rtlib::CUDAUploadBuffer<HitGRecord> m_HGRecordBuffers = {};
+	rtlib::CUDAUploadBuffer<RayTraceParams> m_Params = {};
+	rtlib::CUDABuffer<float3> m_AccumBuffer = {};
+	rtlib::CUDABuffer<unsigned int> m_SeedBuffer = {};
+	unsigned int m_LightHgRecIndex = 0;
+	unsigned int m_SamplePerAll = 0;
+};
 // GuideTracer
 class TestPG3GuideTracer : public test::RTTracer
 {
@@ -309,7 +553,7 @@ public:
 			m_RGRecordBuffer.cpuHandle[0].data.w = w;
 			m_RGRecordBuffer.Upload();
 		}
-		if (m_ParentApp->IsCameraUpdated() || m_ParentApp->IsFrameResized() || m_ParentApp->IsFrameFlushed() || m_Params.cpuHandle[0].maxTraceDepth != m_ParentApp->GetMaxTraceDepth() || m_ParentApp->IsLightUpdated())
+		if (m_ParentApp->IsCameraUpdated() || m_ParentApp->IsFrameResized() || m_ParentApp->IsFrameFlushed() || m_ParentApp->IsTraceChanged() || m_ParentApp->IsLightUpdated())
 		{
 			m_Params.cpuHandle[0].maxTraceDepth = m_ParentApp->GetMaxTraceDepth();
 			m_AccumBuffer.resize(m_ParentApp->GetFbWidth() * m_ParentApp->GetFbHeight());
@@ -379,7 +623,7 @@ private:
 		auto camera = m_ParentApp->GetCamera();
 		auto& materials = m_ParentApp->GetMaterials();
 		m_RGRecordBuffer.cpuHandle.resize(1);
-		m_RGRecordBuffer.cpuHandle[0] = m_ParentApp->GetRGProgramGroup("Trace.Guiding").getSBTRecord<RayGenData>();
+		m_RGRecordBuffer.cpuHandle[0] = m_ParentApp->GetRGProgramGroup("Guide.Guiding").getSBTRecord<RayGenData>();
 		m_RGRecordBuffer.cpuHandle[0].data.eye = camera.getEye();
 		auto [u, v, w] = camera.getUVW();
 		m_RGRecordBuffer.cpuHandle[0].data.u = u;
@@ -387,9 +631,9 @@ private:
 		m_RGRecordBuffer.cpuHandle[0].data.w = w;
 		m_RGRecordBuffer.Upload();
 		m_MSRecordBuffers.cpuHandle.resize(RAY_TYPE_COUNT);
-		m_MSRecordBuffers.cpuHandle[RAY_TYPE_RADIANCE] = m_ParentApp->GetMSProgramGroup("Trace.Radiance").getSBTRecord<MissData>();
+		m_MSRecordBuffers.cpuHandle[RAY_TYPE_RADIANCE]  = m_ParentApp->GetMSProgramGroup("Guide.Radiance").getSBTRecord<MissData>();
 		m_MSRecordBuffers.cpuHandle[RAY_TYPE_RADIANCE].data.bgColor = { 0, 0, 0, 0 };
-		m_MSRecordBuffers.cpuHandle[RAY_TYPE_OCCLUSION] = m_ParentApp->GetMSProgramGroup("Trace.Occluded").getSBTRecord<MissData>();
+		m_MSRecordBuffers.cpuHandle[RAY_TYPE_OCCLUSION] = m_ParentApp->GetMSProgramGroup("Guide.Occluded").getSBTRecord<MissData>();
 		m_MSRecordBuffers.Upload();
 		m_HGRecordBuffers.cpuHandle.resize(tlas->GetSbtCount() * RAY_TYPE_COUNT);
 		{
@@ -427,10 +671,10 @@ private:
 							std::string typeString = SpecifyMaterialType(material);
 							if (typeString == "Phong" || typeString == "Diffuse")
 							{
-								typeString += ".Guiding";
+								typeString += ".Guiding.Default";
 							}
-							m_HGRecordBuffers.cpuHandle[RAY_TYPE_COUNT * sbtOffset + RAY_TYPE_COUNT * i + RAY_TYPE_RADIANCE] = m_ParentApp->GetHGProgramGroup(std::string("Trace.Radiance.") + typeString).getSBTRecord<HitgroupData>(radianceHgData);
-							m_HGRecordBuffers.cpuHandle[RAY_TYPE_COUNT * sbtOffset + RAY_TYPE_COUNT * i + RAY_TYPE_OCCLUSION] = m_ParentApp->GetHGProgramGroup("Trace.Occluded").getSBTRecord<HitgroupData>({});
+							m_HGRecordBuffers.cpuHandle[RAY_TYPE_COUNT * sbtOffset + RAY_TYPE_COUNT * i + RAY_TYPE_RADIANCE]  = m_ParentApp->GetHGProgramGroup(std::string("Guide.Radiance.") + typeString).getSBTRecord<HitgroupData>(radianceHgData);
+							m_HGRecordBuffers.cpuHandle[RAY_TYPE_COUNT * sbtOffset + RAY_TYPE_COUNT * i + RAY_TYPE_OCCLUSION] = m_ParentApp->GetHGProgramGroup("Guide.Occluded").getSBTRecord<HitgroupData>({});
 						}
 						sbtOffset += mesh->GetUniqueResource()->materials.size();
 					}
@@ -527,7 +771,324 @@ private:
 		m_Params.cpuHandle[0].samplePerLaunch = m_SamplePerLaunch;
 		cudaMemcpyAsync(m_Params.gpuHandle.getDevicePtr(), &m_Params.cpuHandle[0], sizeof(RayTraceParams), cudaMemcpyHostToDevice, config.stream);
 		//cudaMemcpy(m_Params.gpuHandle.getDevicePtr(), &m_Params.cpuHandle[0], sizeof(RayTraceParams), cudaMemcpyHostToDevice);
-		auto& pipeline = m_ParentApp->GetOPXPipeline("Trace");
+		auto& pipeline = m_ParentApp->GetOPXPipeline("Guide");
+		pipeline.launch(config.stream, m_Params.gpuHandle.getDevicePtr(), m_ShaderBindingTable, config.width, config.height, config.depth);
+		if (config.isSync)
+		{
+			RTLIB_CU_CHECK(cuStreamSynchronize(config.stream));
+		}
+		m_Params.cpuHandle[0].samplePerALL += m_SamplePerLaunch;
+		m_SamplePerAll = pUserData->samplePerAll = m_Params.cpuHandle[0].samplePerALL;
+		m_SamplePerTmp += m_SamplePerLaunch;
+	}
+	void OnLaunchEnd(const test::RTTraceConfig& config)
+	{
+		if (m_SamplePerTmp >= m_SampleForPass)
+		{
+			m_ParentApp->GetSTree()->Download();
+			m_ParentApp->GetSTree()->Build();
+			m_ParentApp->GetSTree()->Upload();
+			m_SamplePerTmp = 0;
+			m_CurIteration++;
+		}
+	}
+
+private:
+	TestPG3Application* m_ParentApp = nullptr;
+	OptixShaderBindingTable m_ShaderBindingTable = {};
+	rtlib::CUDAUploadBuffer<RayGRecord> m_RGRecordBuffer = {};
+	rtlib::CUDAUploadBuffer<MissRecord> m_MSRecordBuffers = {};
+	rtlib::CUDAUploadBuffer<HitGRecord> m_HGRecordBuffers = {};
+	rtlib::CUDAUploadBuffer<RayTraceParams> m_Params = {};
+	rtlib::CUDABuffer<float3> m_AccumBuffer = {};
+	rtlib::CUDABuffer<unsigned int> m_SeedBuffer = {};
+	unsigned int m_LightHgRecIndex = 0;
+	unsigned int m_SamplePerAll = 0;
+	unsigned int m_SamplePerTmp = 0;
+	unsigned int m_SamplePerLaunch = 0;
+	unsigned int m_SampleForBudget = 0;
+	unsigned int m_SampleForRemain = 0;
+	unsigned int m_SampleForPass = 0;
+	unsigned int m_CurIteration = 0;
+};
+// GuideNEETracer
+class TestPG3GuideNEETracer : public test::RTTracer
+{
+public:
+	struct UserData
+	{
+		uchar4* frameBuffer;
+		unsigned int samplePerAll;
+		unsigned int samplePerLaunch;
+		unsigned int sampleForBudget;
+	};
+
+private:
+	using RayGRecord = rtlib::SBTRecord<RayGenData>;
+	using MissRecord = rtlib::SBTRecord<MissData>;
+	using HitGRecord = rtlib::SBTRecord<HitgroupData>;
+
+public:
+	TestPG3GuideNEETracer(TestPG3Application* app)
+	{
+		m_ParentApp = app;
+	}
+	// RTTracer ����Čp������܂���
+	virtual void Initialize() override
+	{
+		this->InitFrameResources();
+		this->InitShaderBindingTable();
+		this->InitLaunchParams();
+	}
+	virtual void Launch(const test::RTTraceConfig& config) override
+	{
+		OnLaunchBegin(config);
+		OnLaunchExecute(config);
+		OnLaunchEnd(config);
+	}
+	virtual void CleanUp() override
+	{
+		m_ParentApp = nullptr;
+		m_ShaderBindingTable = {};
+		m_RGRecordBuffer.Reset();
+		m_MSRecordBuffers.Reset();
+		m_HGRecordBuffers.Reset();
+		m_Params.Reset();
+		m_AccumBuffer.reset();
+		m_SeedBuffer.reset();
+		m_LightHgRecIndex = 0;
+	}
+	virtual void Update() override
+	{
+		if (m_ParentApp->IsCameraUpdated() || m_ParentApp->IsFrameResized())
+		{
+			auto camera = m_ParentApp->GetCamera();
+			m_RGRecordBuffer.cpuHandle[0].data.eye = camera.getEye();
+			auto [u, v, w] = camera.getUVW();
+			m_RGRecordBuffer.cpuHandle[0].data.u = u;
+			m_RGRecordBuffer.cpuHandle[0].data.v = v;
+			m_RGRecordBuffer.cpuHandle[0].data.w = w;
+			m_RGRecordBuffer.Upload();
+		}
+		if (m_ParentApp->IsCameraUpdated() || m_ParentApp->IsFrameResized() || m_ParentApp->IsFrameFlushed() || m_ParentApp->IsTraceChanged() || m_ParentApp->IsLightUpdated())
+		{
+			m_Params.cpuHandle[0].maxTraceDepth = m_ParentApp->GetMaxTraceDepth();
+			m_AccumBuffer.resize(m_ParentApp->GetFbWidth() * m_ParentApp->GetFbHeight());
+			m_AccumBuffer.upload(std::vector<float3>(m_ParentApp->GetFbWidth() * m_ParentApp->GetFbHeight()));
+			m_Params.cpuHandle[0].samplePerALL = 0;
+		}
+		bool shouldRegen = ((m_SamplePerAll + m_Params.cpuHandle[0].samplePerLaunch) / 1024 != m_SamplePerAll / 1024);
+		if (m_ParentApp->IsFrameResized() || shouldRegen)
+		{
+			std::cout << "Regen!\n";
+			std::vector<unsigned int> seedData(m_ParentApp->GetFbWidth() * m_ParentApp->GetFbHeight());
+			std::random_device rd;
+			std::mt19937 mt(rd());
+			std::generate(seedData.begin(), seedData.end(), mt);
+			m_SeedBuffer.resize(m_ParentApp->GetFbWidth() * m_ParentApp->GetFbHeight());
+			m_SeedBuffer.upload(seedData);
+		}
+		if (m_ParentApp->IsLightUpdated())
+		{
+			auto light = m_ParentApp->GetLight();
+			m_Params.cpuHandle[0].light = light;
+			m_HGRecordBuffers.cpuHandle[m_LightHgRecIndex].data.emission = light.emission;
+			m_HGRecordBuffers.cpuHandle[m_LightHgRecIndex].data.diffuse = light.emission;
+			RTLIB_CUDA_CHECK(cudaMemcpy(m_HGRecordBuffers.gpuHandle.getDevicePtr() + m_LightHgRecIndex, &m_HGRecordBuffers.cpuHandle[m_LightHgRecIndex], sizeof(HitGRecord), cudaMemcpyHostToDevice));
+		}
+	}
+	virtual ~TestPG3GuideNEETracer() {}
+
+private:
+	void InitFrameResources()
+	{
+		std::vector<unsigned int> seedData(m_ParentApp->GetFbWidth() * m_ParentApp->GetFbHeight());
+		std::random_device rd;
+		std::mt19937 mt(rd());
+		std::generate(seedData.begin(), seedData.end(), mt);
+		m_AccumBuffer = rtlib::CUDABuffer<float3>(std::vector<float3>(m_ParentApp->GetFbWidth() * m_ParentApp->GetFbHeight()));
+		m_SeedBuffer = rtlib::CUDABuffer<uint32_t>(seedData);
+	}
+	void InitShaderBindingTable()
+	{
+		auto SpecifyMaterialType = [](const rtlib::ext::Material& material)
+		{
+			auto emitCol = material.GetFloat3As<float3>("emitCol");
+			auto specCol = material.GetFloat3As<float3>("specCol");
+			auto tranCol = material.GetFloat3As<float3>("tranCol");
+			auto refrIndx = material.GetFloat1("refrIndx");
+			auto shinness = material.GetFloat1("shinness");
+			auto illum = material.GetUInt32("illum");
+			if (illum == 7)
+			{
+				return "Refraction";
+			}
+			else if (emitCol.x + emitCol.y + emitCol.z > 0.0f)
+			{
+				return "Emission";
+			}
+			else if (specCol.x + specCol.y + specCol.z > 0.0f)
+			{
+				return "Phong";
+			}
+			else
+			{
+				return "Diffuse";
+			}
+		};
+		auto tlas = m_ParentApp->GetTLAS();
+		auto camera = m_ParentApp->GetCamera();
+		auto& materials = m_ParentApp->GetMaterials();
+		m_RGRecordBuffer.cpuHandle.resize(1);
+		m_RGRecordBuffer.cpuHandle[0] = m_ParentApp->GetRGProgramGroup("Guide.Guiding").getSBTRecord<RayGenData>();
+		m_RGRecordBuffer.cpuHandle[0].data.eye = camera.getEye();
+		auto [u, v, w] = camera.getUVW();
+		m_RGRecordBuffer.cpuHandle[0].data.u = u;
+		m_RGRecordBuffer.cpuHandle[0].data.v = v;
+		m_RGRecordBuffer.cpuHandle[0].data.w = w;
+		m_RGRecordBuffer.Upload();
+		m_MSRecordBuffers.cpuHandle.resize(RAY_TYPE_COUNT);
+		m_MSRecordBuffers.cpuHandle[RAY_TYPE_RADIANCE] = m_ParentApp->GetMSProgramGroup("Guide.Radiance").getSBTRecord<MissData>();
+		m_MSRecordBuffers.cpuHandle[RAY_TYPE_RADIANCE].data.bgColor = { 0, 0, 0, 0 };
+		m_MSRecordBuffers.cpuHandle[RAY_TYPE_OCCLUSION] = m_ParentApp->GetMSProgramGroup("Guide.Occluded").getSBTRecord<MissData>();
+		m_MSRecordBuffers.Upload();
+		m_HGRecordBuffers.cpuHandle.resize(tlas->GetSbtCount() * RAY_TYPE_COUNT);
+		{
+			size_t sbtOffset = 0;
+			for (auto& instanceSet : tlas->GetInstanceSets())
+			{
+				for (auto& baseGASHandle : instanceSet->baseGASHandles)
+				{
+					for (auto& mesh : baseGASHandle->GetMeshes())
+					{
+						for (size_t i = 0; i < mesh->GetUniqueResource()->materials.size(); ++i)
+						{
+							auto materialId = mesh->GetUniqueResource()->materials[i];
+							auto& material = materials[materialId];
+							HitgroupData radianceHgData = {};
+							{
+								radianceHgData.vertices = mesh->GetSharedResource()->vertexBuffer.gpuHandle.getDevicePtr();
+								radianceHgData.normals = mesh->GetSharedResource()->normalBuffer.gpuHandle.getDevicePtr();
+								radianceHgData.texCoords = mesh->GetSharedResource()->texCrdBuffer.gpuHandle.getDevicePtr();
+								radianceHgData.indices = mesh->GetUniqueResource()->triIndBuffer.gpuHandle.getDevicePtr();
+								radianceHgData.diffuseTex = m_ParentApp->GetTexture(material.GetString("diffTex")).getHandle();
+								radianceHgData.specularTex = m_ParentApp->GetTexture(material.GetString("specTex")).getHandle();
+								radianceHgData.emissionTex = m_ParentApp->GetTexture(material.GetString("emitTex")).getHandle();
+								radianceHgData.diffuse = material.GetFloat3As<float3>("diffCol");
+								radianceHgData.specular = material.GetFloat3As<float3>("specCol");
+								radianceHgData.emission = material.GetFloat3As<float3>("emitCol");
+								radianceHgData.shinness = material.GetFloat1("shinness");
+								radianceHgData.transmit = material.GetFloat3As<float3>("tranCol");
+								radianceHgData.refrInd = material.GetFloat1("refrIndx");
+							}
+							if (material.GetString("name") == "light")
+							{
+								m_LightHgRecIndex = RAY_TYPE_COUNT * sbtOffset + RAY_TYPE_COUNT * i + RAY_TYPE_RADIANCE;
+							}
+							std::string typeString = SpecifyMaterialType(material);
+							if (typeString == "Phong" || typeString == "Diffuse")
+							{
+								typeString += ".Guiding.NEE";
+							}
+							m_HGRecordBuffers.cpuHandle[RAY_TYPE_COUNT * sbtOffset + RAY_TYPE_COUNT * i + RAY_TYPE_RADIANCE] = m_ParentApp->GetHGProgramGroup(std::string("Guide.Radiance.") + typeString).getSBTRecord<HitgroupData>(radianceHgData);
+							m_HGRecordBuffers.cpuHandle[RAY_TYPE_COUNT * sbtOffset + RAY_TYPE_COUNT * i + RAY_TYPE_OCCLUSION] = m_ParentApp->GetHGProgramGroup("Guide.Occluded").getSBTRecord<HitgroupData>({});
+						}
+						sbtOffset += mesh->GetUniqueResource()->materials.size();
+					}
+				}
+			}
+		}
+		m_HGRecordBuffers.Upload();
+		m_ShaderBindingTable.raygenRecord = reinterpret_cast<CUdeviceptr>(m_RGRecordBuffer.gpuHandle.getDevicePtr());
+		m_ShaderBindingTable.missRecordBase = reinterpret_cast<CUdeviceptr>(m_MSRecordBuffers.gpuHandle.getDevicePtr());
+		m_ShaderBindingTable.missRecordCount = m_MSRecordBuffers.cpuHandle.size();
+		m_ShaderBindingTable.missRecordStrideInBytes = sizeof(MissRecord);
+		m_ShaderBindingTable.hitgroupRecordBase = reinterpret_cast<CUdeviceptr>(m_HGRecordBuffers.gpuHandle.getDevicePtr());
+		m_ShaderBindingTable.hitgroupRecordCount = m_HGRecordBuffers.cpuHandle.size();
+		m_ShaderBindingTable.hitgroupRecordStrideInBytes = sizeof(HitGRecord);
+	}
+	void InitLaunchParams()
+	{
+		auto tlas = m_ParentApp->GetTLAS();
+		m_Params.cpuHandle.resize(1);
+		m_Params.cpuHandle[0].gasHandle = tlas->GetHandle();
+		m_Params.cpuHandle[0].sdTree = m_ParentApp->GetSTree()->GetGpuHandle();
+		m_Params.cpuHandle[0].width = m_ParentApp->GetFbWidth();
+		m_Params.cpuHandle[0].height = m_ParentApp->GetFbHeight();
+		m_Params.cpuHandle[0].light = m_ParentApp->GetLight();
+		m_Params.cpuHandle[0].accumBuffer = m_AccumBuffer.getDevicePtr();
+		m_Params.cpuHandle[0].frameBuffer = nullptr;
+		m_Params.cpuHandle[0].seedBuffer = m_SeedBuffer.getDevicePtr();
+		m_Params.cpuHandle[0].isBuilt = false;
+		m_Params.cpuHandle[0].maxTraceDepth = m_ParentApp->GetMaxTraceDepth();
+		m_Params.cpuHandle[0].samplePerLaunch = 1;
+
+		m_Params.Upload();
+	}
+	void OnLaunchBegin(const test::RTTraceConfig& config)
+	{
+		UserData* pUserData = (UserData*)config.pUserData;
+		if (!pUserData)
+		{
+			return;
+		}
+		if (pUserData->samplePerAll == 0)
+		{
+			m_SamplePerAll = 0;
+			m_SamplePerTmp = 0;
+			m_SampleForBudget = pUserData->sampleForBudget;
+			m_SamplePerLaunch = pUserData->samplePerLaunch;
+			m_SampleForRemain = ((m_SampleForBudget - 1 + m_SamplePerLaunch) / m_SamplePerLaunch) * m_SamplePerLaunch;
+			m_CurIteration = 0;
+			m_SampleForPass = 0;
+			std::random_device rd;
+			std::mt19937 mt(rd());
+			std::vector<unsigned int> seedData(config.width * config.height);
+			std::generate(std::begin(seedData), std::end(seedData), mt);
+			m_AccumBuffer.upload(std::vector<float3>(config.width * config.height));
+			m_SeedBuffer.upload(seedData);
+			m_ParentApp->GetSTree()->Clear();
+			m_ParentApp->GetSTree()->Upload();
+		}
+		if (m_SamplePerTmp == 0)
+		{
+			//CurIteration > 0 -> Reset
+			m_SampleForRemain = m_SampleForRemain - m_SampleForPass;
+			m_SampleForPass = std::min<uint32_t>(m_SampleForRemain, (1 << m_CurIteration) * m_SamplePerLaunch);
+			if (m_SampleForRemain - m_SampleForPass < 2 * m_SampleForPass)
+			{
+				m_SampleForPass = m_SampleForRemain;
+			}
+			/*Remain>Pass -> Not Final Iteration*/
+			if (m_SampleForRemain > m_SampleForPass)
+			{
+				m_ParentApp->GetSTree()->Download();
+				m_ParentApp->GetSTree()->Reset(m_CurIteration, m_SamplePerLaunch);
+				m_ParentApp->GetSTree()->Upload();
+			}
+		}
+		//std::cout << "CurIteration: " << m_CurIteration << " SamplePerTmp: " << m_SamplePerTmp << std::endl;
+	}
+	void OnLaunchExecute(const test::RTTraceConfig& config)
+	{
+		UserData* pUserData = (UserData*)config.pUserData;
+		if (!pUserData)
+		{
+			return;
+		}
+		m_Params.cpuHandle[0].width = config.width;
+		m_Params.cpuHandle[0].height = config.height;
+		m_Params.cpuHandle[0].sdTree = m_ParentApp->GetSTree()->GetGpuHandle();
+		m_Params.cpuHandle[0].accumBuffer = m_AccumBuffer.getDevicePtr();
+		m_Params.cpuHandle[0].frameBuffer = pUserData->frameBuffer;
+		m_Params.cpuHandle[0].seedBuffer = m_SeedBuffer.getDevicePtr();
+		m_Params.cpuHandle[0].isBuilt = m_CurIteration > 0;
+		m_Params.cpuHandle[0].isFinal = m_SampleForPass >= m_SampleForRemain;
+		m_Params.cpuHandle[0].samplePerALL = m_SamplePerAll;
+		m_Params.cpuHandle[0].samplePerLaunch = m_SamplePerLaunch;
+		cudaMemcpyAsync(m_Params.gpuHandle.getDevicePtr(), &m_Params.cpuHandle[0], sizeof(RayTraceParams), cudaMemcpyHostToDevice, config.stream);
+		//cudaMemcpy(m_Params.gpuHandle.getDevicePtr(), &m_Params.cpuHandle[0], sizeof(RayTraceParams), cudaMemcpyHostToDevice);
+		auto& pipeline = m_ParentApp->GetOPXPipeline("Guide");
 		pipeline.launch(config.stream, m_Params.gpuHandle.getDevicePtr(), m_ShaderBindingTable, config.width, config.height, config.depth);
 		if (config.isSync)
 		{
@@ -909,7 +1470,7 @@ void TestPG3Application::InitPipelines()
 #ifndef NDEBUG
 			guideLinkOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_LINEINFO;
 #else
-			traceLinkOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_NONE;
+			guideLinkOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_NONE;
 #endif
 			guideLinkOptions.maxTraceDepth = 2;
 		}
@@ -919,25 +1480,27 @@ void TestPG3Application::InitPipelines()
 			guideModuleOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_LINEINFO;
 			guideModuleOptions.optLevel = OPTIX_COMPILE_OPTIMIZATION_DEFAULT;
 #else
-			traceModuleOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_NONE;
-			traceModuleOptions.optLevel = OPTIX_COMPILE_OPTIMIZATION_LEVEL_3;
+			guideModuleOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_NONE;
+			guideModuleOptions.optLevel = OPTIX_COMPILE_OPTIMIZATION_LEVEL_3;
 #endif
 		}
 		guideModuleOptions.maxRegisterCount = OPTIX_COMPILE_DEFAULT_MAX_REGISTER_COUNT;
-		m_Pipelines["Guide"]                                = m_Context->createPipeline(guideCompileOptions);
-		m_Modules["RayGuide"]                               = m_Pipelines["Guide"].createModule(rayGuidePtxData, guideModuleOptions);
-		m_RGProgramGroups["Guide.Default"]                  = m_Pipelines["Guide"].createRaygenPG({   m_Modules["RayGuide"], RTLIB_RAYGEN_PROGRAM_STR(def) });
-		m_RGProgramGroups["Guide.Guiding"]                  = m_Pipelines["Guide"].createRaygenPG({   m_Modules["RayGuide"], RTLIB_RAYGEN_PROGRAM_STR(pg) });
-		m_MSProgramGroups["Guide.Radiance"]                 = m_Pipelines["Guide"].createMissPG({     m_Modules["RayGuide"], RTLIB_MISS_PROGRAM_STR(radiance) });
-		m_MSProgramGroups["Guide.Occluded"]                 = m_Pipelines["Guide"].createMissPG({     m_Modules["RayGuide"], RTLIB_MISS_PROGRAM_STR(occluded) });
-		m_HGProgramGroups["Guide.Radiance.Diffuse.Default"] = m_Pipelines["Guide"].createHitgroupPG({ m_Modules["RayGuide"], RTLIB_CLOSESTHIT_PROGRAM_STR(radiance_for_diffuse_def) }, {}, {});
-		m_HGProgramGroups["Guide.Radiance.Diffuse.Guiding"] = m_Pipelines["Guide"].createHitgroupPG({ m_Modules["RayGuide"], RTLIB_CLOSESTHIT_PROGRAM_STR(radiance_for_diffuse_pg) }, {}, {});
-		m_HGProgramGroups["Guide.Radiance.Phong.Default"]   = m_Pipelines["Guide"].createHitgroupPG({ m_Modules["RayGuide"], RTLIB_CLOSESTHIT_PROGRAM_STR(radiance_for_phong_def) }, {}, {});
-		m_HGProgramGroups["Guide.Radiance.Phong.Guiding"]   = m_Pipelines["Guide"].createHitgroupPG({ m_Modules["RayGuide"], RTLIB_CLOSESTHIT_PROGRAM_STR(radiance_for_phong_pg) }, {}, {});
-		m_HGProgramGroups["Guide.Radiance.Emission"]        = m_Pipelines["Guide"].createHitgroupPG({ m_Modules["RayGuide"], RTLIB_CLOSESTHIT_PROGRAM_STR(radiance_for_emission) }, {}, {});
-		m_HGProgramGroups["Guide.Radiance.Specular"]        = m_Pipelines["Guide"].createHitgroupPG({ m_Modules["RayGuide"], RTLIB_CLOSESTHIT_PROGRAM_STR(radiance_for_specular) }, {}, {});
-		m_HGProgramGroups["Guide.Radiance.Refraction"]      = m_Pipelines["Guide"].createHitgroupPG({ m_Modules["RayGuide"], RTLIB_CLOSESTHIT_PROGRAM_STR(radiance_for_refraction) }, {}, {});
-		m_HGProgramGroups["Guide.Occluded"]                 = m_Pipelines["Guide"].createHitgroupPG({ m_Modules["RayGuide"], RTLIB_CLOSESTHIT_PROGRAM_STR(occluded) }, {}, {});
+		m_Pipelines["Guide"]							            = m_Context->createPipeline(guideCompileOptions);
+		m_Modules["RayGuide"]							            = m_Pipelines["Guide"].createModule(rayGuidePtxData, guideModuleOptions);
+		m_RGProgramGroups["Guide.Default"]					        = m_Pipelines["Guide"].createRaygenPG({   m_Modules["RayGuide"], RTLIB_RAYGEN_PROGRAM_STR(def) });
+		m_RGProgramGroups["Guide.Guiding"]					        = m_Pipelines["Guide"].createRaygenPG({   m_Modules["RayGuide"], RTLIB_RAYGEN_PROGRAM_STR(pg) });
+		m_MSProgramGroups["Guide.Radiance"]					        = m_Pipelines["Guide"].createMissPG({     m_Modules["RayGuide"], RTLIB_MISS_PROGRAM_STR(radiance) });
+		m_MSProgramGroups["Guide.Occluded"]                         = m_Pipelines["Guide"].createMissPG({     m_Modules["RayGuide"], RTLIB_MISS_PROGRAM_STR(occluded) });
+		m_HGProgramGroups["Guide.Radiance.Diffuse.Default"]         = m_Pipelines["Guide"].createHitgroupPG({ m_Modules["RayGuide"], RTLIB_CLOSESTHIT_PROGRAM_STR(radiance_for_diffuse_def) }, {}, {});
+		m_HGProgramGroups["Guide.Radiance.Diffuse.Guiding.Default"] = m_Pipelines["Guide"].createHitgroupPG({ m_Modules["RayGuide"], RTLIB_CLOSESTHIT_PROGRAM_STR(radiance_for_diffuse_pg_def) }, {}, {});
+		m_HGProgramGroups["Guide.Radiance.Diffuse.Guiding.NEE"]     = m_Pipelines["Guide"].createHitgroupPG({ m_Modules["RayGuide"], RTLIB_CLOSESTHIT_PROGRAM_STR(radiance_for_diffuse_pg_nee) }, {}, {});
+		m_HGProgramGroups["Guide.Radiance.Phong.Default"]           = m_Pipelines["Guide"].createHitgroupPG({ m_Modules["RayGuide"], RTLIB_CLOSESTHIT_PROGRAM_STR(radiance_for_phong_def) }, {}, {});
+		m_HGProgramGroups["Guide.Radiance.Phong.Guiding.Default"]   = m_Pipelines["Guide"].createHitgroupPG({ m_Modules["RayGuide"], RTLIB_CLOSESTHIT_PROGRAM_STR(radiance_for_phong_pg_def) }, {}, {});
+		m_HGProgramGroups["Guide.Radiance.Phong.Guiding.NEE"]       = m_Pipelines["Guide"].createHitgroupPG({ m_Modules["RayGuide"], RTLIB_CLOSESTHIT_PROGRAM_STR(radiance_for_phong_pg_nee) }, {}, {});
+		m_HGProgramGroups["Guide.Radiance.Emission"]                = m_Pipelines["Guide"].createHitgroupPG({ m_Modules["RayGuide"], RTLIB_CLOSESTHIT_PROGRAM_STR(radiance_for_emission) }, {}, {});
+		m_HGProgramGroups["Guide.Radiance.Specular"]                = m_Pipelines["Guide"].createHitgroupPG({ m_Modules["RayGuide"], RTLIB_CLOSESTHIT_PROGRAM_STR(radiance_for_specular) }, {}, {});
+		m_HGProgramGroups["Guide.Radiance.Refraction"]              = m_Pipelines["Guide"].createHitgroupPG({ m_Modules["RayGuide"], RTLIB_CLOSESTHIT_PROGRAM_STR(radiance_for_refraction) }, {}, {});
+		m_HGProgramGroups["Guide.Occluded"]                         = m_Pipelines["Guide"].createHitgroupPG({ m_Modules["RayGuide"], RTLIB_CLOSESTHIT_PROGRAM_STR(occluded) }, {}, {});
 		m_Pipelines["Guide"].link(guideLinkOptions);
 	}
 
@@ -1195,6 +1758,8 @@ void TestPG3Application::InitLight()
 	}
 	auto lightAABB = rtlib::utils::AABB(lightVertices);
 	auto lightV3 = lightAABB.max - lightAABB.min;
+	std::cout << "AABBMax = (" << lightAABB.max.x << ", " << lightAABB.max.y << ", " << lightAABB.max.z << ")\n";
+	std::cout << "AABBMin = (" << lightAABB.min.x << ", " << lightAABB.min.y << ", " << lightAABB.min.z << ")\n";
 	m_ParallelLight.corner = lightAABB.min;
 	m_ParallelLight.v1 = make_float3(0.0f, 0.0f, lightV3.z);
 	m_ParallelLight.v2 = make_float3(lightV3.x, 0.0f, 0.0f);
@@ -1258,15 +1823,25 @@ void TestPG3Application::InitFrameResources()
 }
 void TestPG3Application::InitTracers()
 {
-	m_DebugActor = std::shared_ptr<test::RTTracer>(
-		new TestPG3DebugTracer(this));
-	m_DebugActor->Initialize();
-	m_TraceActor = std::shared_ptr<test::RTTracer>(
+	m_SimpleActor = std::shared_ptr<test::RTTracer>(
 		new TestPG3SimpleTracer(this));
-	m_TraceActor->Initialize();
+	m_SimpleActor->Initialize();
+
+	m_SimpleNEEActor = std::shared_ptr<test::RTTracer>(
+		new TestPG3SimpleNEETracer(this));
+	m_SimpleNEEActor->Initialize();
+
 	m_GuideActor = std::shared_ptr<test::RTTracer>(
 		new TestPG3GuideTracer(this));
 	m_GuideActor->Initialize();
+
+	m_GuideNEEActor = std::shared_ptr<test::RTTracer>(
+		new TestPG3GuideNEETracer(this));
+	m_GuideNEEActor->Initialize();
+
+	m_DebugActor = std::shared_ptr<test::RTTracer>(
+		new TestPG3DebugTracer(this));
+	m_DebugActor->Initialize();
 }
 //ShouldClose
 void TestPG3Application::PrepareLoop()
@@ -1317,52 +1892,104 @@ void TestPG3Application::Trace()
 	auto beginTraceTime = glfwGetTime();
 	if (!m_TraceGuide)
 	{
-		TestPG3SimpleTracer::UserData userData = {};
-		userData.frameBuffer = m_FrameBuffer->GetCUGLBuffer("Default").map();
-		userData.samplePerLaunch = m_SamplePerLaunch;
-		userData.samplePerAll = m_SamplePerALL;
+		if (!m_TraceNEE) {
+			TestPG3SimpleTracer::UserData userData = {};
+			userData.frameBuffer = m_FrameBuffer->GetCUGLBuffer("Default").map();
+			userData.samplePerLaunch = m_SamplePerLaunch;
+			userData.samplePerAll = m_SamplePerALL;
 
-		test::RTTraceConfig traceConfig = {};
-		traceConfig.width = m_FbWidth;
-		traceConfig.height = m_FbHeight;
-		traceConfig.depth = 1;
-		traceConfig.isSync = true;
-		traceConfig.pUserData = &userData;
+			test::RTTraceConfig traceConfig = {};
+			traceConfig.width = m_FbWidth;
+			traceConfig.height = m_FbHeight;
+			traceConfig.depth = 1;
+			traceConfig.isSync = true;
+			traceConfig.pUserData = &userData;
 
-		m_TraceActor->Launch(traceConfig);
+			m_SimpleActor->Launch(traceConfig);
 
-		m_FrameBuffer->GetCUGLBuffer("Default").unmap();
-		m_SamplePerALL = userData.samplePerAll;
+			m_FrameBuffer->GetCUGLBuffer("Default").unmap();
+			m_SamplePerALL = userData.samplePerAll;
+		}
+		else {
+			TestPG3SimpleNEETracer::UserData userData = {};
+			userData.frameBuffer = m_FrameBuffer->GetCUGLBuffer("Default").map();
+			userData.samplePerLaunch = m_SamplePerLaunch;
+			userData.samplePerAll = m_SamplePerALL;
+
+			test::RTTraceConfig traceConfig = {};
+			traceConfig.width  = m_FbWidth;
+			traceConfig.height = m_FbHeight;
+			traceConfig.depth  = 1;
+			traceConfig.isSync = true;
+			traceConfig.pUserData = &userData;
+
+			m_SimpleNEEActor->Launch(traceConfig);
+
+			m_FrameBuffer->GetCUGLBuffer("Default").unmap();
+			m_SamplePerALL = userData.samplePerAll;
+		}
 	}
 	else
 	{
-		TestPG3GuideTracer::UserData userData = {};
-		userData.frameBuffer = m_FrameBuffer->GetCUGLBuffer("Default").map();
-		userData.samplePerLaunch = m_SamplePerLaunch;
-		userData.samplePerAll = m_SamplePerALL;
-		userData.sampleForBudget = m_SamplePerBudget;
+		if (!m_TraceNEE) {
+			TestPG3GuideTracer::UserData userData = {};
+			userData.frameBuffer = m_FrameBuffer->GetCUGLBuffer("Default").map();
+			userData.samplePerLaunch = m_SamplePerLaunch;
+			userData.samplePerAll = m_SamplePerALL;
+			userData.sampleForBudget = m_SamplePerBudget;
 
-		test::RTTraceConfig traceConfig = {};
-		traceConfig.width = m_FbWidth;
-		traceConfig.height = m_FbHeight;
-		traceConfig.depth = 1;
-		traceConfig.isSync = true;
-		traceConfig.pUserData = &userData;
+			test::RTTraceConfig traceConfig = {};
+			traceConfig.width = m_FbWidth;
+			traceConfig.height = m_FbHeight;
+			traceConfig.depth  = 1;
+			traceConfig.isSync = true;
+			traceConfig.pUserData = &userData;
 
-		m_GuideActor->Launch(traceConfig);
+			m_GuideActor->Launch(traceConfig);
 
-		m_FrameBuffer->GetCUGLBuffer("Default").unmap();
-		m_SamplePerALL = userData.samplePerAll;
+			m_FrameBuffer->GetCUGLBuffer("Default").unmap();
+			m_SamplePerALL = userData.samplePerAll;
 
-		if (m_SamplePerALL >= m_SamplePerBudget)
-		{
-			UnLockUpdate();
-			m_TraceGuide = false;
-			m_FlushFrame = true;
+			if (m_SamplePerALL >= m_SamplePerBudget)
+			{
+				UnLockUpdate();
+				m_TraceGuide = false;
+				m_FlushFrame = true;
+			}
+			else
+			{
+				LockUpdate();
+			}
 		}
-		else
-		{
-			LockUpdate();
+		else {
+			TestPG3GuideNEETracer::UserData userData = {};
+			userData.frameBuffer = m_FrameBuffer->GetCUGLBuffer("Default").map();
+			userData.samplePerLaunch = m_SamplePerLaunch;
+			userData.samplePerAll = m_SamplePerALL;
+			userData.sampleForBudget = m_SamplePerBudget;
+
+			test::RTTraceConfig traceConfig = {};
+			traceConfig.width  = m_FbWidth;
+			traceConfig.height = m_FbHeight;
+			traceConfig.depth  = 1;
+			traceConfig.isSync = true;
+			traceConfig.pUserData = &userData;
+
+			m_GuideNEEActor->Launch(traceConfig);
+
+			m_FrameBuffer->GetCUGLBuffer("Default").unmap();
+			m_SamplePerALL = userData.samplePerAll;
+
+			if (m_SamplePerALL >= m_SamplePerBudget)
+			{
+				UnLockUpdate();
+				m_TraceGuide = false;
+				m_FlushFrame = true;
+			}
+			else
+			{
+				LockUpdate();
+			}
 		}
 	}
 	m_DelTraceTime = glfwGetTime() - beginTraceTime;
@@ -1459,14 +2086,20 @@ void TestPG3Application::DrawGui()
 							configJson["light"]["color"][0].get<float>(),
 							configJson["light"]["color"][1].get<float>(),
 							configJson["light"]["color"][2].get<float>());
+						auto imgRenderPath = configJson["imgRenderPath"].get<std::string>();
+						m_ImgRenderPath    = {};
+						std::memcpy(m_ImgRenderPath.data(), imgRenderPath.c_str(), m_ImgRenderPath.size());
+						auto imgDebugPath  = configJson["imgDebugPath"].get<std::string>();
+						std::memcpy( m_ImgDebugPath.data(),  imgDebugPath.c_str(),  m_ImgDebugPath.size());
 						auto camera = rtlib::Camera(eye, lookAt, vUp, m_CameraFovY, m_FbAspect);
 						glfwSetWindowSize(m_Window, m_FbWidth, m_FbHeight);
 						m_CameraController.SetMouseSensitivity(m_MouseSensitity);
 						m_CameraController.SetMovementSpeed(m_MovementSpeed);
 						m_CameraController.SetCamera(camera);
+						m_ChangeTrace  = true;
 						m_UpdateCamera = true;
-						m_UpdateLight = true;
-						m_FlushFrame = true;
+						m_UpdateLight  = true;
+						m_FlushFrame   = true;
 					}
 					configFile.close();
 				}
@@ -1492,6 +2125,8 @@ void TestPG3Application::DrawGui()
 				configJson["camera"]["fovY"] = camera.getFovY();
 				configJson["camera"]["aspect"] = camera.getAspect();
 				configJson["light"]["color"] = { lightColor[0], lightColor[1], lightColor[2] };
+				configJson["imgRenderPath"]  = std::string(m_ImgRenderPath.data());
+				configJson["imgDebugPath"]   = std::string(m_ImgDebugPath.data());
 				std::ofstream configFile(filePath);
 				if (!configFile.fail())
 				{
@@ -1533,6 +2168,7 @@ void TestPG3Application::DrawGui()
 			if (ImGui::SliderInt("maxTraceDepth", &maxTraceDepth, 1, 10))
 			{
 				m_MaxTraceDepth = maxTraceDepth;
+				m_ChangeTrace = true;
 			}
 			int samplePerLaunch = m_SamplePerLaunch;
 			if (ImGui::SliderInt("samplePerLaunch", &samplePerLaunch, 1, 50))
@@ -1551,11 +2187,18 @@ void TestPG3Application::DrawGui()
 		{
 			m_SamplePerBudget = samplePerBudget;
 		}
-		if (ImGui::InputText("ImgRootDir", m_ImgRenderPath.data(), m_ImgRenderPath.size()))
-		{
-		}
+		ImGui::InputText("ImgRootDir", m_ImgRenderPath.data(), m_ImgRenderPath.size());
 		if (!m_TraceGuide)
 		{
+			{
+				bool traceNEE     = m_TraceNEE;
+				if (ImGui::RadioButton("NEE", traceNEE)) {
+					m_TraceNEE    =!traceNEE;
+					m_ChangeTrace = true;
+				}
+				ImGui::SameLine();
+			}
+
 			if (ImGui::Button("Guide"))
 			{
 				m_TraceGuide = true;
@@ -1581,7 +2224,7 @@ void TestPG3Application::DrawGui()
 						std::memcpy(imageData.data() + (m_FbHeight - 1 - i) * m_FbWidth, imagePixels.get() + i * m_FbWidth, sizeof(uchar4) * m_FbWidth);
 					}
 				}
-				auto savePath = imgRenderPath / (m_TraceGuide ? "Guide_" : "Trace_");
+				auto savePath = imgRenderPath / ((m_TraceGuide ? "Guide_"s : "Trace_"s) + (m_TraceNEE?"NEE_"s:"Def_"s));
 				savePath += std::to_string(m_SamplePerALL);
 				savePath += ".png";
 				stbi_write_png(savePath.string().c_str(), m_FbWidth, m_FbHeight, 4, imageData.data(), m_FbWidth * 4);
@@ -1745,17 +2388,20 @@ void TestPG3Application::Update()
 		m_DebugTexture->setParameteri(GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE, false);
 		m_DebugTexture->setParameteri(GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE, false);
 	}
-	if (m_FlushFrame || m_ResizeFrame || m_UpdateCamera || m_UpdateLight)
+	if (m_FlushFrame || m_ResizeFrame || m_UpdateCamera || m_UpdateLight|| m_ChangeTrace)
 	{
 		m_SamplePerALL = 0;
 	}
-	m_TraceActor->Update();
-	m_DebugActor->Update();
+	m_SimpleActor->Update();
+	m_SimpleNEEActor->Update();
 	m_GuideActor->Update();
+	m_GuideNEEActor->Update();
+	m_DebugActor->Update();
 	m_UpdateCamera = false;
 	m_UpdateLight = false;
 	m_ResizeFrame = false;
 	m_FlushFrame = false;
+	m_ChangeTrace = false;
 }
 void TestPG3Application::LockUpdate()
 {
@@ -1836,9 +2482,11 @@ void TestPG3Application::FreeFrameResources()
 
 void TestPG3Application::FreeTracers()
 {
-	m_DebugActor->CleanUp();
-	m_TraceActor->CleanUp();
+	m_SimpleActor->CleanUp();
+	m_SimpleNEEActor->CleanUp();
 	m_GuideActor->CleanUp();
+	m_GuideNEEActor->CleanUp();
+	m_DebugActor->CleanUp();
 }
 
 auto TestPG3Application::GetOPXContext() const -> std::shared_ptr<rtlib::OPXContext>

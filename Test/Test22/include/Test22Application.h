@@ -204,7 +204,7 @@ private:
 
 	bool                                 m_LaunchDebug      = false;
 	bool                                 m_LockUpdate       = false;
-	bool                                 m_TraceGuide       = false;
+	bool                                 m_TraceNEE       = false;
 	//SaveDir
 	std::array<char, 64>                 m_GlobalSettingPath = { "./Config.json" };
 	std::array<char, 64>                 m_ImgRenderPath    = { "." };
