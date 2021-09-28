@@ -7,6 +7,27 @@
 #include <string>
 #include <random>
 using namespace std::string_literals;
+static auto SpecifyMaterialType(const rtlib::ext::Material& material)->std::string
+{
+	auto emitCol = material.GetFloat3As<float3>("emitCol");
+	auto specCol = material.GetFloat3As<float3>("specCol");
+	auto tranCol = material.GetFloat3As<float3>("tranCol");
+	auto refrIndx = material.GetFloat1("refrIndx");
+	auto shinness = material.GetFloat1("shinness");
+	auto illum = material.GetUInt32("illum");
+	if (illum == 7)
+	{
+		return "Refraction";
+	}
+	else if (emitCol.x + emitCol.y + emitCol.z > 0.0f)
+	{
+		return "Emission";
+	}
+	else
+	{
+		return "Diffuse";
+	}
+};
 //Init
 //SimpleTracer
 class TestPG3SimpleTracer : public test::RTTracer
@@ -126,31 +147,6 @@ private:
 	}
 	void InitShaderBindingTable()
 	{
-		auto SpecifyMaterialType = [](const rtlib::ext::Material& material)
-		{
-			auto emitCol = material.GetFloat3As<float3>("emitCol");
-			auto specCol = material.GetFloat3As<float3>("specCol");
-			auto tranCol = material.GetFloat3As<float3>("tranCol");
-			auto refrIndx = material.GetFloat1("refrIndx");
-			auto shinness = material.GetFloat1("shinness");
-			auto illum = material.GetUInt32("illum");
-			if (illum == 7)
-			{
-				return "Refraction";
-			}
-			else if (emitCol.x + emitCol.y + emitCol.z > 0.0f)
-			{
-				return "Emission";
-			}
-			else if (specCol.x + specCol.y + specCol.z > 0.0f)
-			{
-				return "Phong";
-			}
-			else
-			{
-				return "Diffuse";
-			}
-		};
 		auto tlas = m_ParentApp->GetTLAS();
 		auto camera = m_ParentApp->GetCamera();
 		auto& materials = m_ParentApp->GetMaterials();
@@ -369,31 +365,6 @@ private:
 	}
 	void InitShaderBindingTable()
 	{
-		auto SpecifyMaterialType = [](const rtlib::ext::Material& material)
-		{
-			auto emitCol = material.GetFloat3As<float3>("emitCol");
-			auto specCol = material.GetFloat3As<float3>("specCol");
-			auto tranCol = material.GetFloat3As<float3>("tranCol");
-			auto refrIndx = material.GetFloat1("refrIndx");
-			auto shinness = material.GetFloat1("shinness");
-			auto illum = material.GetUInt32("illum");
-			if (illum == 7)
-			{
-				return "Refraction";
-			}
-			else if (emitCol.x + emitCol.y + emitCol.z > 0.0f)
-			{
-				return "Emission";
-			}
-			else if (specCol.x + specCol.y + specCol.z > 0.0f)
-			{
-				return "Phong";
-			}
-			else
-			{
-				return "Diffuse";
-			}
-		};
 		auto tlas = m_ParentApp->GetTLAS();
 		auto camera = m_ParentApp->GetCamera();
 		auto& materials = m_ParentApp->GetMaterials();
@@ -594,31 +565,6 @@ private:
 	}
 	void InitShaderBindingTable()
 	{
-		auto SpecifyMaterialType = [](const rtlib::ext::Material& material)
-		{
-			auto emitCol = material.GetFloat3As<float3>("emitCol");
-			auto specCol = material.GetFloat3As<float3>("specCol");
-			auto tranCol = material.GetFloat3As<float3>("tranCol");
-			auto refrIndx = material.GetFloat1("refrIndx");
-			auto shinness = material.GetFloat1("shinness");
-			auto illum = material.GetUInt32("illum");
-			if (illum == 7)
-			{
-				return "Refraction";
-			}
-			else if (emitCol.x + emitCol.y + emitCol.z > 0.0f)
-			{
-				return "Emission";
-			}
-			else if (specCol.x + specCol.y + specCol.z > 0.0f)
-			{
-				return "Phong";
-			}
-			else
-			{
-				return "Diffuse";
-			}
-		};
 		auto tlas = m_ParentApp->GetTLAS();
 		auto camera = m_ParentApp->GetCamera();
 		auto& materials = m_ParentApp->GetMaterials();
@@ -911,31 +857,7 @@ private:
 	}
 	void InitShaderBindingTable()
 	{
-		auto SpecifyMaterialType = [](const rtlib::ext::Material& material)
-		{
-			auto emitCol = material.GetFloat3As<float3>("emitCol");
-			auto specCol = material.GetFloat3As<float3>("specCol");
-			auto tranCol = material.GetFloat3As<float3>("tranCol");
-			auto refrIndx = material.GetFloat1("refrIndx");
-			auto shinness = material.GetFloat1("shinness");
-			auto illum = material.GetUInt32("illum");
-			if (illum == 7)
-			{
-				return "Refraction";
-			}
-			else if (emitCol.x + emitCol.y + emitCol.z > 0.0f)
-			{
-				return "Emission";
-			}
-			else if (specCol.x + specCol.y + specCol.z > 0.0f)
-			{
-				return "Phong";
-			}
-			else
-			{
-				return "Diffuse";
-			}
-		};
+
 		auto tlas = m_ParentApp->GetTLAS();
 		auto camera = m_ParentApp->GetCamera();
 		auto& materials = m_ParentApp->GetMaterials();
@@ -1321,7 +1243,7 @@ private:
 	rtlib::CUDAUploadBuffer<RayDebugParams> m_Params = {};
 	unsigned int m_LightHgRecIndex = 0;
 };
-
+// GLFW
 void TestPG3Application::InitGLFW()
 {
 	if (glfwInit() == GLFW_FALSE)
@@ -1329,7 +1251,7 @@ void TestPG3Application::InitGLFW()
 		throw std::runtime_error("Failed To Init GLFW!");
 	}
 }
-
+// Window
 void TestPG3Application::InitWindow()
 {
 	glfwWindowHint(GLFW_VERSION_MAJOR, 3);
@@ -1355,7 +1277,7 @@ void TestPG3Application::InitWindow()
 	glfwGetFramebufferSize(m_Window, &m_FbWidth, &m_FbHeight);
 	m_FbAspect = static_cast<float>(m_FbWidth) / static_cast<float>(m_FbHeight);
 }
-
+// GLAD
 void TestPG3Application::InitGLAD()
 {
 	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
@@ -1363,7 +1285,7 @@ void TestPG3Application::InitGLAD()
 		throw std::runtime_error("Failed To Init GLAD!");
 	}
 }
-
+// CUDA
 void TestPG3Application::InitCUDA()
 {
 	RTLIB_CUDA_CHECK(cudaFree(0));
@@ -1371,7 +1293,7 @@ void TestPG3Application::InitCUDA()
 	m_Context = std::make_shared<rtlib::OPXContext>(
 		rtlib::OPXContext::Desc{ 0, 0, OPTIX_DEVICE_CONTEXT_VALIDATION_MODE_ALL, 4 });
 }
-
+// Gui
 void TestPG3Application::InitGui()
 {
 	//Renderer
@@ -1395,7 +1317,7 @@ void TestPG3Application::InitGui()
 		throw std::runtime_error("Failed To Init ImGui For GLFW3");
 	}
 }
-
+// Pipelines
 void TestPG3Application::InitPipelines()
 {
 	{
@@ -1548,13 +1470,16 @@ void TestPG3Application::InitPipelines()
 		m_Pipelines["Debug"].link(debugLinkOptions);
 	}
 }
-
+// Assets
 void TestPG3Application::InitAssets()
 {
 	auto objModelPathes = std::vector{
 		//std::filesystem::canonical(std::filesystem::path(TEST_TEST_PG_DATA_PATH"/Models/Lumberyard/Exterior/exterior.obj")),
 		//std::filesystem::canonical(std::filesystem::path(TEST_TEST_PG_DATA_PATH"/Models/Lumberyard/Interior/interior.obj"))
-		std::filesystem::canonical(std::filesystem::path(TEST_TEST_PG_DATA_PATH "/Models/CornellBox/CornellBox-Water.obj")) };
+		//std::filesystem::canonical(std::filesystem::path(TEST_TEST_PG_DATA_PATH "/Models/CornellBox/CornellBox-Water.obj")) 
+		//std::filesystem::canonical(std::filesystem::path(TEST_TEST_PG_DATA_PATH "/Models/CornellBox/CornellBox-Original.obj"))
+		std::filesystem::canonical(std::filesystem::path(TEST_TEST_PG_DATA_PATH "/Models/Sponza/Sponza.obj"))
+	};
 	for (auto objModelPath : objModelPathes)
 	{
 		if (!m_ObjModelAssets.LoadAsset(objModelPath.filename().replace_extension().string(), objModelPath.string()))
@@ -1606,7 +1531,7 @@ void TestPG3Application::InitAssets()
 		}
 	}
 }
-
+// Acceleration Structure
 void TestPG3Application::InitAccelerationStructures()
 {
 	{
@@ -1670,6 +1595,11 @@ void TestPG3Application::InitAccelerationStructures()
 					aabb.Update(vertex);
 				}
 			}
+			// For Sponza
+			aabb.max.x = (aabb.max.x + aabb.min.x) / 2.0f + (aabb.max.x - aabb.min.x) / 4.0f;
+			aabb.min.x = (aabb.max.x + aabb.min.x) / 2.0f + (aabb.min.x - aabb.max.x) / 4.0f;
+			aabb.max.z = (aabb.max.z + aabb.min.z) / 2.0f + (aabb.max.z - aabb.min.z) / 4.0f;
+			aabb.min.z = (aabb.max.z + aabb.min.z) / 2.0f + (aabb.min.z - aabb.max.z) / 4.0f;
 			OptixAccelBuildOptions accelOptions = {};
 			accelOptions.buildFlags = OPTIX_BUILD_FLAG_ALLOW_COMPACTION | OPTIX_BUILD_FLAG_PREFER_FAST_TRACE;
 			accelOptions.operation = OPTIX_BUILD_OPERATION_BUILD;
@@ -1744,12 +1674,12 @@ void TestPG3Application::InitAccelerationStructures()
 		m_IASHandles["TopLevel"]->Build(m_Context.get(), accelOptions);
 	}
 }
-
+// Light
 void TestPG3Application::InitLight()
 {
 	auto lightGASHandle = m_GASHandles["Light"];
-	auto lightMesh = lightGASHandle->GetMesh(0);
-	auto lightVertices = std::vector<float3>();
+	auto lightMesh      = lightGASHandle->GetMesh(0);
+	auto lightVertices  = std::vector<float3>();
 	for (auto& index : lightMesh->GetUniqueResource()->triIndBuffer.cpuHandle)
 	{
 		lightVertices.push_back(lightMesh->GetSharedResource()->vertexBuffer.cpuHandle[index.x]);
@@ -1767,7 +1697,7 @@ void TestPG3Application::InitLight()
 	auto lightMaterial = m_Materials[lightMesh->GetUniqueResource()->materials[0]];
 	m_ParallelLight.emission = lightMaterial.GetFloat3As<float3>("emitCol");
 }
-
+// Camera
 void TestPG3Application::InitCamera()
 {
 	m_CameraController = rtlib::CameraController({ 0.0f, 1.0f, 5.0f });
@@ -1776,7 +1706,7 @@ void TestPG3Application::InitCamera()
 	m_CameraController.SetMouseSensitivity(m_MouseSensitity);
 	m_CameraController.SetMovementSpeed(m_MovementSpeed);
 }
-
+// STree
 void TestPG3Application::InitSTree()
 {
 	auto worldAABB = rtlib::utils::AABB();
@@ -1794,7 +1724,7 @@ void TestPG3Application::InitSTree()
 	m_STree = std::make_shared<test::RTSTreeWrapper>(worldAABB.min, worldAABB.max);
 	m_STree->Upload();
 }
-
+// FrameResources
 void TestPG3Application::InitFrameResources()
 {
 	m_RenderTexture = std::make_unique<rtlib::GLTexture2D<uchar4>>();
@@ -1821,6 +1751,7 @@ void TestPG3Application::InitFrameResources()
 		m_FrameBuffer->GetCUGLBuffer(debugFrameName).upload(std::vector<uchar4>(m_FbWidth * m_FbHeight, make_uchar4(0, 0, 0, 255)));
 	}
 }
+// Tracers
 void TestPG3Application::InitTracers()
 {
 	m_SimpleActor = std::shared_ptr<test::RTTracer>(
@@ -1843,19 +1774,19 @@ void TestPG3Application::InitTracers()
 		new TestPG3DebugTracer(this));
 	m_DebugActor->Initialize();
 }
-//ShouldClose
+// Loop: Prepare
 void TestPG3Application::PrepareLoop()
 {
 	m_CurFrameTime = glfwGetTime();
 }
-
+// Loop: Quit
 bool TestPG3Application::QuitLoop()
 {
 	if (!m_Window)
 		return false;
 	return glfwWindowShouldClose(m_Window);
 }
-
+// Trace
 void TestPG3Application::Trace()
 {
 	if (m_LaunchDebug)
@@ -1994,13 +1925,14 @@ void TestPG3Application::Trace()
 	}
 	m_DelTraceTime = glfwGetTime() - beginTraceTime;
 }
-
+// DrawFrame
 void TestPG3Application::DrawFrame()
 {
 	m_DebugTexture->upload(0, m_FrameBuffer->GetCUGLBuffer(m_CurDebugFrame).getHandle(), 0, 0, m_FbWidth, m_FbHeight);
 	m_RenderTexture->upload(0, m_FrameBuffer->GetCUGLBuffer(m_CurRenderFrame).getHandle(), 0, 0, m_FbWidth, m_FbHeight);
 	m_Renderer->draw(m_RenderTexture->getID());
 }
+// DrawGui
 void TestPG3Application::DrawGui()
 {
 	ImGui_ImplOpenGL3_NewFrame();
@@ -2303,6 +2235,7 @@ void TestPG3Application::DrawGui()
 	ImGui::Render();
 	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }
+// DrawEvents
 void TestPG3Application::PollEvents()
 {
 	double prvTime = m_CurFrameTime;
@@ -2370,6 +2303,7 @@ void TestPG3Application::PollEvents()
 	}
 	glfwPollEvents();
 }
+// Update
 void TestPG3Application::Update()
 {
 	if (m_ResizeFrame)
@@ -2403,31 +2337,33 @@ void TestPG3Application::Update()
 	m_FlushFrame = false;
 	m_ChangeTrace = false;
 }
+// Update: Lock
 void TestPG3Application::LockUpdate()
 {
 	m_LockUpdate = true;
 }
+// Update: UnLock
 void TestPG3Application::UnLockUpdate()
 {
 	m_LockUpdate = false;
 }
-//Free
+// Free: GLFW
 void TestPG3Application::FreeGLFW()
 {
 	glfwTerminate();
 }
-
+// Free: Window
 void TestPG3Application::FreeWindow()
 {
 	glfwDestroyWindow(m_Window);
 	m_Window = nullptr;
 }
-
+// Free: CUDA
 void TestPG3Application::FreeCUDA()
 {
 	m_Context.reset();
 }
-
+// Free: Gui
 void TestPG3Application::FreeGui()
 {
 	ImGui_ImplOpenGL3_Shutdown();
@@ -2437,7 +2373,7 @@ void TestPG3Application::FreeGui()
 	m_Renderer->reset();
 	m_Renderer.reset();
 }
-
+// Free: Pipelines
 void TestPG3Application::FreePipelines()
 {
 	m_HGProgramGroups.clear();
@@ -2446,40 +2382,40 @@ void TestPG3Application::FreePipelines()
 	m_Modules.clear();
 	m_Pipelines.clear();
 }
-
+// Free: Assets
 void TestPG3Application::FreeAssets()
 {
 	m_TextureAssets.Reset();
 	m_ObjModelAssets.Reset();
 }
-
+// Free: Acceleration Structures
 void TestPG3Application::FreeAccelerationStructures()
 {
 	m_GASHandles.clear();
 	m_IASHandles.clear();
 }
-
+// Free: Light
 void TestPG3Application::FreeLight()
 {
 	m_ParallelLight = {};
 }
-
+// Free: Camera
 void TestPG3Application::FreeCamera()
 {
 	m_CameraController = {};
 }
-
+// Free: STree
 void TestPG3Application::FreeSTree()
 {
 	m_STree.reset();
 }
-
+// Free: Frame Resources
 void TestPG3Application::FreeFrameResources()
 {
 	m_RenderTexture->reset();
 	m_FrameBuffer->CleanUp();
 }
-
+// Free: Tracers
 void TestPG3Application::FreeTracers()
 {
 	m_SimpleActor->CleanUp();
@@ -2488,58 +2424,58 @@ void TestPG3Application::FreeTracers()
 	m_GuideNEEActor->CleanUp();
 	m_DebugActor->CleanUp();
 }
-
+//  Get: OPXContext
 auto TestPG3Application::GetOPXContext() const -> std::shared_ptr<rtlib::OPXContext>
 {
 	return m_Context;
 }
-
+//  Get: OPXPipeline
 auto TestPG3Application::GetOPXPipeline(const std::string& name) -> rtlib::OPXPipeline&
 {
 	return m_Pipelines.at(name);
 }
-
+//  Get: RGProgramGroup
 auto TestPG3Application::GetRGProgramGroup(const std::string& name) -> rtlib::OPXRaygenPG&
 {
 	return m_RGProgramGroups.at(name);
 }
-
+//  Get: MSProgramGroup
 auto TestPG3Application::GetMSProgramGroup(const std::string& name) -> rtlib::OPXMissPG&
 {
 	return m_MSProgramGroups.at(name);
 }
-
+//  Get: HGProgramGroup
 auto TestPG3Application::GetHGProgramGroup(const std::string& name) -> rtlib::OPXHitgroupPG&
 {
 	return m_HGProgramGroups.at(name);
 }
-
+//  Get: TLAS
 auto TestPG3Application::GetTLAS() const -> rtlib::ext::IASHandlePtr
 {
 	return m_IASHandles.at("TopLevel");
 }
-
+//  Get: Materials
 auto TestPG3Application::GetMaterials() const -> const std::vector<rtlib::ext::Material>&
 {
 	// TODO: return �X�e�[�g�����g�������ɑ}�����܂�
 	return m_Materials;
 }
-
+//  Get: Camera
 auto TestPG3Application::GetCamera() const -> rtlib::Camera
 {
 	return m_CameraController.GetCamera(m_CameraFovY, m_FbAspect);
 }
-
+//  Get: Light
 auto TestPG3Application::GetLight() const -> ParallelLight
 {
 	return m_ParallelLight;
 }
-
+//  Get: STree
 auto TestPG3Application::GetSTree() const -> std::shared_ptr<test::RTSTreeWrapper>
 {
 	return m_STree;
 }
-
+//  Get: Texture
 auto TestPG3Application::GetTexture(const std::string& name) const -> const rtlib::CUDATexture2D<uchar4>&
 {
 	// TODO: return �X�e�[�g�����g�������ɑ}�����܂�

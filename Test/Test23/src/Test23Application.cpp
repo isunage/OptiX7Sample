@@ -1,4 +1,4 @@
-#include "../include/Test22Application.h"
+#include "../include/Test23Application.h"
 #include <RTLib/Optix.h>
 #include <RTLib/Utils.h>
 #define STB_IMAGE_WRITE_IMPLEMENTATION
@@ -7,7 +7,7 @@
 #include <random>
 //Init
 //SimpleTracer
-class Test22SimpleTracer : public test::RTTracer
+class Test23SimpleTracer : public test::RTTracer
 {
 public:
 	struct UserData
@@ -23,7 +23,7 @@ private:
 	using HitGRecord = rtlib::SBTRecord<HitgroupData>;
 
 public:
-	Test22SimpleTracer(Test22Application *app)
+	Test23SimpleTracer(Test23Application *app)
 	{
 		m_ParentApp = app;
 	}
@@ -108,7 +108,7 @@ public:
 			RTLIB_CUDA_CHECK(cudaMemcpy(m_HGRecordBuffers.gpuHandle.getDevicePtr() + m_LightHgRecIndex, &m_HGRecordBuffers.cpuHandle[m_LightHgRecIndex], sizeof(HitGRecord), cudaMemcpyHostToDevice));
 		}
 	}
-	virtual ~Test22SimpleTracer() {}
+	virtual ~Test23SimpleTracer() {}
 
 private:
 	void InitFrameResources()
@@ -236,7 +236,7 @@ private:
 	}
 
 private:
-	Test22Application *m_ParentApp = nullptr;
+	Test23Application *m_ParentApp = nullptr;
 	OptixShaderBindingTable m_ShaderBindingTable = {};
 	rtlib::CUDAUploadBuffer<RayGRecord> m_RGRecordBuffer = {};
 	rtlib::CUDAUploadBuffer<MissRecord> m_MSRecordBuffers = {};
@@ -248,7 +248,7 @@ private:
 	unsigned int m_SamplePerAll = 0;
 };
 //  NEETracer
-class Test22NEETracer : public test::RTTracer
+class Test23NEETracer : public test::RTTracer
 {
 public:
 	struct UserData
@@ -264,7 +264,7 @@ private:
 	using HitGRecord = rtlib::SBTRecord<HitgroupData>;
 
 public:
-	Test22NEETracer(Test22Application* app)
+	Test23NEETracer(Test23Application* app)
 	{
 		m_ParentApp = app;
 	}
@@ -349,7 +349,7 @@ public:
 			RTLIB_CUDA_CHECK(cudaMemcpy(m_HGRecordBuffers.gpuHandle.getDevicePtr() + m_LightHgRecIndex, &m_HGRecordBuffers.cpuHandle[m_LightHgRecIndex], sizeof(HitGRecord), cudaMemcpyHostToDevice));
 		}
 	}
-	virtual ~Test22NEETracer() {}
+	virtual ~Test23NEETracer() {}
 
 private:
 	void InitFrameResources()
@@ -477,7 +477,7 @@ private:
 	}
 
 private:
-	Test22Application* m_ParentApp = nullptr;
+	Test23Application* m_ParentApp = nullptr;
 	OptixShaderBindingTable m_ShaderBindingTable = {};
 	rtlib::CUDAUploadBuffer<RayGRecord> m_RGRecordBuffer = {};
 	rtlib::CUDAUploadBuffer<MissRecord> m_MSRecordBuffers = {};
@@ -489,7 +489,7 @@ private:
 	unsigned int m_SamplePerAll = 0;
 };
 // DebugTracer
-class Test22DebugTracer : public test::RTTracer
+class Test23DebugTracer : public test::RTTracer
 {
 public:
 	struct UserData
@@ -509,7 +509,7 @@ private:
 	using HitGRecord = rtlib::SBTRecord<HitgroupData>;
 
 public:
-	Test22DebugTracer(Test22Application *app)
+	Test23DebugTracer(Test23Application *app)
 	{
 		m_ParentApp = app;
 	}
@@ -578,7 +578,7 @@ public:
 			RTLIB_CUDA_CHECK(cudaMemcpy(m_HGRecordBuffers.gpuHandle.getDevicePtr() + m_LightHgRecIndex, &m_HGRecordBuffers.cpuHandle[m_LightHgRecIndex], sizeof(HitGRecord), cudaMemcpyHostToDevice));
 		}
 	}
-	virtual ~Test22DebugTracer() {}
+	virtual ~Test23DebugTracer() {}
 
 private:
 	void InitShaderBindingTable()
@@ -668,7 +668,7 @@ private:
 	}
 
 private:
-	Test22Application *m_ParentApp = nullptr;
+	Test23Application *m_ParentApp = nullptr;
 	OptixShaderBindingTable m_ShaderBindingTable = {};
 	rtlib::CUDAUploadBuffer<RayGRecord> m_RGRecordBuffer = {};
 	rtlib::CUDAUploadBuffer<MissRecord> m_MSRecordBuffers = {};
@@ -676,8 +676,8 @@ private:
 	rtlib::CUDAUploadBuffer<RayDebugParams> m_Params = {};
 	unsigned int m_LightHgRecIndex = 0;
 };
-
-void Test22Application::InitGLFW()
+// 
+void Test23Application::InitGLFW()
 {
 	if (glfwInit() == GLFW_FALSE)
 	{
@@ -685,7 +685,7 @@ void Test22Application::InitGLFW()
 	}
 }
 
-void Test22Application::InitWindow()
+void Test23Application::InitWindow()
 {
 	glfwWindowHint(GLFW_VERSION_MAJOR, 3);
 	glfwWindowHint(GLFW_VERSION_MINOR, 3);
@@ -711,7 +711,7 @@ void Test22Application::InitWindow()
 	m_FbAspect = static_cast<float>(m_FbWidth) / static_cast<float>(m_FbHeight);
 }
 
-void Test22Application::InitGLAD()
+void Test23Application::InitGLAD()
 {
 	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
 	{
@@ -719,7 +719,7 @@ void Test22Application::InitGLAD()
 	}
 }
 
-void Test22Application::InitCUDA()
+void Test23Application::InitCUDA()
 {
 	RTLIB_CUDA_CHECK(cudaFree(0));
 	RTLIB_OPTIX_CHECK(optixInit());
@@ -727,7 +727,7 @@ void Test22Application::InitCUDA()
 		rtlib::OPXContext::Desc{0, 0, OPTIX_DEVICE_CONTEXT_VALIDATION_MODE_ALL, 4});
 }
 
-void Test22Application::InitGui()
+void Test23Application::InitGui()
 {
 	//Renderer
 	m_Renderer = std::make_unique<rtlib::ext::RectRenderer>();
@@ -751,10 +751,10 @@ void Test22Application::InitGui()
 	}
 }
 
-void Test22Application::InitPipelines()
+void Test23Application::InitPipelines()
 {
 	{
-		auto rayTracePtxFile = std::ifstream(TEST_TEST22_CUDA_PATH "/RayTrace.ptx", std::ios::binary);
+		auto rayTracePtxFile = std::ifstream(TEST_TEST23_CUDA_PATH "/RayTrace.ptx", std::ios::binary);
 		if (!rayTracePtxFile.is_open())
 			throw std::runtime_error("Failed To Load RayTrace.ptx!");
 		auto rayTracePtxData = std::string((std::istreambuf_iterator<char>(rayTracePtxFile)), (std::istreambuf_iterator<char>()));
@@ -806,7 +806,7 @@ void Test22Application::InitPipelines()
 	}
 
 	{
-		auto rayDebugPtxFile = std::ifstream(TEST_TEST22_CUDA_PATH "/RayDebug.ptx", std::ios::binary);
+		auto rayDebugPtxFile = std::ifstream(TEST_TEST23_CUDA_PATH "/RayDebug.ptx", std::ios::binary);
 		if (!rayDebugPtxFile.is_open())
 			throw std::runtime_error("Failed To Load RayDebug.ptx!");
 		auto rayDebugPtxData = std::string((std::istreambuf_iterator<char>(rayDebugPtxFile)), (std::istreambuf_iterator<char>()));
@@ -850,12 +850,14 @@ void Test22Application::InitPipelines()
 	}
 }
 
-void Test22Application::InitAssets()
+void Test23Application::InitAssets()
 {
 	auto objModelPathes = std::vector{
 		//std::filesystem::canonical(std::filesystem::path(TEST_TEST_PG_DATA_PATH"/Models/Lumberyard/Exterior/exterior.obj")),
 		//std::filesystem::canonical(std::filesystem::path(TEST_TEST_PG_DATA_PATH"/Models/Lumberyard/Interior/interior.obj"))
-		std::filesystem::canonical(std::filesystem::path(TEST_TEST22_DATA_PATH "/Models/Sponza/Sponza.obj"))};
+		//std::filesystem::canonical(std::filesystem::path(TEST_TEST23_DATA_PATH "/Models/CornellBox/CornellBox-Water.obj"))
+		std::filesystem::canonical(std::filesystem::path(TEST_TEST23_DATA_PATH "/Models/CornellBox/CornellBox-Original.obj"))
+	};
 	for (auto objModelPath : objModelPathes)
 	{
 		if (!m_ObjModelAssets.LoadAsset(objModelPath.filename().replace_extension().string(), objModelPath.string()))
@@ -863,7 +865,7 @@ void Test22Application::InitAssets()
 			throw std::runtime_error("Failed To Load Obj Model!");
 		}
 	}
-	auto smpTexPath = std::filesystem::canonical(std::filesystem::path(TEST_TEST22_DATA_PATH "/Textures/white.png"));
+	auto smpTexPath = std::filesystem::canonical(std::filesystem::path(TEST_TEST23_DATA_PATH "/Textures/white.png"));
 	if (!m_TextureAssets.LoadAsset("", smpTexPath.string()))
 	{
 		throw std::runtime_error("Failed To Load White Texture!");
@@ -908,7 +910,7 @@ void Test22Application::InitAssets()
 	}
 }
 
-void Test22Application::InitAccelerationStructures()
+void Test23Application::InitAccelerationStructures()
 {
 	{
 		size_t materialSize = 0;
@@ -971,6 +973,11 @@ void Test22Application::InitAccelerationStructures()
 					aabb.Update(vertex);
 				}
 			}
+			aabb.max.x = (aabb.max.x + aabb.min.x) / 2.0f + (aabb.max.x - aabb.min.x) / 4.0f;
+			aabb.min.x = (aabb.max.x + aabb.min.x) / 2.0f + (aabb.min.x - aabb.max.x) / 4.0f;
+			aabb.max.z = (aabb.max.z + aabb.min.z) / 2.0f + (aabb.max.z - aabb.min.z) / 4.0f;
+			aabb.min.z = (aabb.max.z + aabb.min.z) / 2.0f + (aabb.min.z - aabb.max.z) / 4.0f;
+
 			OptixAccelBuildOptions accelOptions = {};
 			accelOptions.buildFlags = OPTIX_BUILD_FLAG_ALLOW_COMPACTION | OPTIX_BUILD_FLAG_PREFER_FAST_TRACE;
 			accelOptions.operation = OPTIX_BUILD_OPERATION_BUILD;
@@ -1046,7 +1053,7 @@ void Test22Application::InitAccelerationStructures()
 	}
 }
 
-void Test22Application::InitLight()
+void Test23Application::InitLight()
 {
 	auto lightGASHandle = m_GASHandles["Light"];
 	auto lightMesh = lightGASHandle->GetMesh(0);
@@ -1069,7 +1076,7 @@ void Test22Application::InitLight()
 	m_ParallelLight.emission = lightMaterial.GetFloat3As<float3>("emitCol");
 }
 
-void Test22Application::InitCamera()
+void Test23Application::InitCamera()
 {
 	m_CameraController = rtlib::CameraController({0.0f, 1.0f, 5.0f});
 	m_MouseSensitity = 0.125f;
@@ -1078,7 +1085,7 @@ void Test22Application::InitCamera()
 	m_CameraController.SetMovementSpeed(m_MovementSpeed);
 }
 
-void Test22Application::InitSTree()
+void Test23Application::InitSTree()
 {
 	auto worldAABB = rtlib::utils::AABB();
 
@@ -1093,7 +1100,7 @@ void Test22Application::InitSTree()
 	}
 }
 
-void Test22Application::InitFrameResources()
+void Test23Application::InitFrameResources()
 {
 	m_RenderTexture = std::make_unique<rtlib::GLTexture2D<uchar4>>();
 	m_RenderTexture->allocate({(size_t)m_FbWidth, (size_t)m_FbHeight, nullptr}, GL_TEXTURE_2D);
@@ -1119,36 +1126,36 @@ void Test22Application::InitFrameResources()
 		m_FrameBuffer->GetCUGLBuffer(debugFrameName).upload(std::vector<uchar4>(m_FbWidth * m_FbHeight, make_uchar4(0, 0, 0, 255)));
 	}
 }
-void Test22Application::InitTracers()
+void Test23Application::InitTracers()
 {
 	m_DebugActor = std::shared_ptr<test::RTTracer>(
-		new Test22DebugTracer(this));
+		new Test23DebugTracer(this));
 	m_DebugActor->Initialize();
 	m_SimpleActor = std::shared_ptr<test::RTTracer>(
-		new Test22SimpleTracer(this));
+		new Test23SimpleTracer(this));
 	m_SimpleActor->Initialize();
 	m_NEEActor = std::shared_ptr<test::RTTracer>(
-		new Test22NEETracer(this));
+		new Test23NEETracer(this));
 	m_NEEActor->Initialize();
 }
 //ShouldClose
-void Test22Application::PrepareLoop()
+void Test23Application::PrepareLoop()
 {
 	m_CurFrameTime = glfwGetTime();
 }
 
-bool Test22Application::QuitLoop()
+bool Test23Application::QuitLoop()
 {
 	if (!m_Window)
 		return false;
 	return glfwWindowShouldClose(m_Window);
 }
 
-void Test22Application::Trace()
+void Test23Application::Trace()
 {
 	if (m_LaunchDebug)
 	{
-		Test22DebugTracer::UserData userData = {};
+		Test23DebugTracer::UserData userData = {};
 		userData.diffuseBuffer = m_FrameBuffer->GetCUGLBuffer("Diffuse").map();
 		userData.specularBuffer = m_FrameBuffer->GetCUGLBuffer("Specular").map();
 		userData.emissionBuffer = m_FrameBuffer->GetCUGLBuffer("Emission").map();
@@ -1178,7 +1185,7 @@ void Test22Application::Trace()
 	auto beginTraceTime = glfwGetTime();
 	if (!m_TraceNEE)
 	{
-		Test22SimpleTracer::UserData userData = {};
+		Test23SimpleTracer::UserData userData = {};
 		userData.frameBuffer = m_FrameBuffer->GetCUGLBuffer("Default").map();
 		userData.samplePerLaunch = m_SamplePerLaunch;
 		userData.samplePerAll = m_SamplePerALL;
@@ -1196,7 +1203,7 @@ void Test22Application::Trace()
 		m_SamplePerALL = userData.samplePerAll;
 	}
 	else {
-		Test22NEETracer::UserData userData = {};
+		Test23NEETracer::UserData userData = {};
 		userData.frameBuffer = m_FrameBuffer->GetCUGLBuffer("Default").map();
 		userData.samplePerLaunch = m_SamplePerLaunch;
 		userData.samplePerAll = m_SamplePerALL;
@@ -1216,13 +1223,13 @@ void Test22Application::Trace()
 	m_DelTraceTime = glfwGetTime() - beginTraceTime;
 }
 
-void Test22Application::DrawFrame()
+void Test23Application::DrawFrame()
 {
 	 m_DebugTexture->upload(0, m_FrameBuffer->GetCUGLBuffer(m_CurDebugFrame).getHandle(), 0, 0, m_FbWidth, m_FbHeight);
 	m_RenderTexture->upload(0, m_FrameBuffer->GetCUGLBuffer(m_CurRenderFrame).getHandle(), 0, 0, m_FbWidth, m_FbHeight);
 	m_Renderer->draw(m_RenderTexture->getID());
 }
-void Test22Application::DrawGui()
+void Test23Application::DrawGui()
 {
 	ImGui_ImplOpenGL3_NewFrame();
 	ImGui_ImplGlfw_NewFrame();
@@ -1517,7 +1524,7 @@ void Test22Application::DrawGui()
 	ImGui::Render();
 	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }
-void Test22Application::PollEvents()
+void Test23Application::PollEvents()
 {
 	double prvTime = m_CurFrameTime;
 	m_CurFrameTime = glfwGetTime();
@@ -1584,7 +1591,7 @@ void Test22Application::PollEvents()
 	}
 	glfwPollEvents();
 }
-void Test22Application::Update()
+void Test23Application::Update()
 {
 	if (m_ResizeFrame)
 	{
@@ -1615,32 +1622,32 @@ void Test22Application::Update()
 	m_ResizeFrame  = false;
 	m_FlushFrame   = false;
 }
-void Test22Application::LockUpdate()
+void Test23Application::LockUpdate()
 {
 	m_LockUpdate = true;
 }
-void Test22Application::UnLockUpdate()
+void Test23Application::UnLockUpdate()
 {
 	m_LockUpdate = false;
 }
 //Free
-void Test22Application::FreeGLFW()
+void Test23Application::FreeGLFW()
 {
 	glfwTerminate();
 }
 
-void Test22Application::FreeWindow()
+void Test23Application::FreeWindow()
 {
 	glfwDestroyWindow(m_Window);
 	m_Window = nullptr;
 }
 
-void Test22Application::FreeCUDA()
+void Test23Application::FreeCUDA()
 {
 	m_Context.reset();
 }
 
-void Test22Application::FreeGui()
+void Test23Application::FreeGui()
 {
 	ImGui_ImplOpenGL3_Shutdown();
 	ImGui_ImplGlfw_Shutdown();
@@ -1650,7 +1657,7 @@ void Test22Application::FreeGui()
 	m_Renderer.reset();
 }
 
-void Test22Application::FreePipelines()
+void Test23Application::FreePipelines()
 {
 	m_HGProgramGroups.clear();
 	m_MSProgramGroups.clear();
@@ -1659,88 +1666,88 @@ void Test22Application::FreePipelines()
 	m_Pipelines.clear();
 }
 
-void Test22Application::FreeAssets()
+void Test23Application::FreeAssets()
 {
 	m_TextureAssets.Reset();
 	m_ObjModelAssets.Reset();
 }
 
-void Test22Application::FreeAccelerationStructures()
+void Test23Application::FreeAccelerationStructures()
 {
 	m_GASHandles.clear();
 	m_IASHandles.clear();
 }
 
-void Test22Application::FreeLight()
+void Test23Application::FreeLight()
 {
 	m_ParallelLight = {};
 }
 
-void Test22Application::FreeCamera()
+void Test23Application::FreeCamera()
 {
 	m_CameraController = {};
 }
 
-void Test22Application::FreeFrameResources()
+void Test23Application::FreeFrameResources()
 {
 	m_RenderTexture->reset();
 	m_FrameBuffer->CleanUp();
 }
 
-void Test22Application::FreeTracers()
+void Test23Application::FreeTracers()
 {
 	m_DebugActor->CleanUp();
 	m_SimpleActor->CleanUp();
 	m_NEEActor->CleanUp();
 }
 
-auto Test22Application::GetOPXContext() const -> std::shared_ptr<rtlib::OPXContext>
+auto Test23Application::GetOPXContext() const -> std::shared_ptr<rtlib::OPXContext>
 {
 	return m_Context;
 }
 
-auto Test22Application::GetOPXPipeline(const std::string &name) -> rtlib::OPXPipeline &
+auto Test23Application::GetOPXPipeline(const std::string &name) -> rtlib::OPXPipeline &
 {
 	return m_Pipelines.at(name);
 }
 
-auto Test22Application::GetRGProgramGroup(const std::string &name) -> rtlib::OPXRaygenPG &
+auto Test23Application::GetRGProgramGroup(const std::string &name) -> rtlib::OPXRaygenPG &
 {
 	return m_RGProgramGroups.at(name);
 }
 
-auto Test22Application::GetMSProgramGroup(const std::string &name) -> rtlib::OPXMissPG &
+auto Test23Application::GetMSProgramGroup(const std::string &name) -> rtlib::OPXMissPG &
 {
 	return m_MSProgramGroups.at(name);
 }
 
-auto Test22Application::GetHGProgramGroup(const std::string &name) -> rtlib::OPXHitgroupPG &
+auto Test23Application::GetHGProgramGroup(const std::string &name) -> rtlib::OPXHitgroupPG &
 {
 	return m_HGProgramGroups.at(name);
 }
 
-auto Test22Application::GetTLAS() const -> rtlib::ext::IASHandlePtr
+auto Test23Application::GetTLAS() const -> rtlib::ext::IASHandlePtr
 {
 	return m_IASHandles.at("TopLevel");
 }
 
-auto Test22Application::GetMaterials() const -> const std::vector<rtlib::ext::Material> &
+auto Test23Application::GetMaterials() const -> const std::vector<rtlib::ext::Material> &
 {
 	// TODO: return �X�e�[�g�����g�������ɑ}�����܂�
 	return m_Materials;
 }
 
-auto Test22Application::GetCamera() const -> rtlib::Camera
+auto Test23Application::GetCamera() const -> rtlib::Camera
 {
 	return m_CameraController.GetCamera(m_CameraFovY, m_FbAspect);
 }
 
-auto Test22Application::GetLight() const -> ParallelLight
+auto Test23Application::GetLight() const -> ParallelLight
 {
 	return m_ParallelLight;
 }
 
-auto Test22Application::GetTexture(const std::string &name) const -> const rtlib::CUDATexture2D<uchar4> &
+auto Test23Application::GetTexture(const std::string &name) const -> const rtlib::CUDATexture2D<uchar4> &
 {
 	// TODO: return �X�e�[�g�����g�������ɑ}�����܂�
 	return m_TextureAssets.GetAsset(name);

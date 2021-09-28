@@ -35,6 +35,8 @@ add_subdirectory(Test20)
 add_subdirectory(Test21)
 ## Ray Trace Framework
 add_subdirectory(Test22)
+## Scene Modifier
+add_subdirectory(Test23)
 ## practical path guiding(Muller2017)
 add_subdirectory(TestPathGuiding)
 add_subdirectory(TestPathGuiding2)
