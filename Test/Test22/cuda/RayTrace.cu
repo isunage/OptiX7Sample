@@ -339,6 +339,7 @@ extern "C" __global__ void __closesthit__radiance_for_emission(){
     if (prd->countEmitted && rtlib::dot(n0,rayDirection)<0.0f) {
         prd->emitted = hgData->getEmissionColor(texCoord) * prd->attenuation;
     }
+    prd->radiance = make_float3(0.0f);
     prd->countEmitted = false;
     prd->done = true;
 }

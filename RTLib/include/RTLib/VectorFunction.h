@@ -4496,8 +4496,18 @@ struct ONB {
     float3 m_Normal;//z�ɑ���
     RTLIB_INLINE RTLIB_HOST_DEVICE ONB(const float3& normal) {
         m_Normal   = normalize(normal);//w
-        float3 a   = (fabs(m_Normal.x) > 0.9) ? make_float3(0.0f, 1.0f, 0.0f) : make_float3(1.0f, 0.0f, 0.0f);
-        m_Binormal = normalize(cross(m_Normal, a));
+        if (fabsf(m_Normal.x) > fabsf(m_Normal.z))
+        {
+            m_Binormal.x =-m_Normal.y;
+            m_Binormal.y = m_Normal.x;
+            m_Binormal.z = 0.0f;
+        }
+        else {
+            m_Binormal.x = 0.0f;
+            m_Binormal.y =-m_Normal.z;
+            m_Binormal.z = m_Normal.y;
+        }
+        m_Binormal = normalize(m_Binormal);
         m_Tangent  = normalize(cross(m_Normal, m_Binormal));
     }
     RTLIB_INLINE RTLIB_HOST_DEVICE float3 local(const float x, const float y, const float z)const {

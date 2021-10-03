@@ -42,5 +42,4 @@ add_subdirectory(TestPathGuiding)
 add_subdirectory(TestPathGuiding2)
 add_subdirectory(TestPathGuiding3)
 ## ReSTIR                (NVIDIA)
-
 ## ReSTIR-GI             (NVIDIA)

@@ -111,7 +111,6 @@ extern "C" __global__ void __raygen__def() {
         float3 rayDirection = rtlib::normalize(d.x * u + d.y * v + w);
         RadiancePRD prd;
         prd.radiance = make_float3(0.0f);
-        prd.radiance = make_float3(0.0f);
         prd.bsdfVal  = make_float3(1.0f);
         prd.throughPut = make_float3(1.0f);
         prd.dTreeVoxelSize = make_float3(1.0f);
@@ -133,7 +132,8 @@ extern "C" __global__ void __raygen__def() {
             bool isValidThroughPut = (!isnan(prd.throughPut.x) && !isnan(prd.throughPut.y) && !isnan(prd.throughPut.z) &&
                 isfinite(prd.throughPut.x) && isfinite(prd.throughPut.y) && isfinite(prd.throughPut.z) &&
                 (prd.throughPut.x >= 0.0f && prd.throughPut.y >= 0.0f && prd.throughPut.z >= 0.0f));
-            if (prd.done || depth >= params.maxTraceDepth || !isValidThroughPut) {
+            bool isValidDirection  = (!isnan(rayDirection.x) && !isnan(rayDirection.y) && !isnan(rayDirection.z));
+            if (prd.done || depth >= params.maxTraceDepth || !isValidThroughPut || !isValidDirection) {
                 break;
             }
             depth++;
@@ -153,7 +153,7 @@ extern "C" __global__ void __raygen__def() {
     }
     params.seedBuffer[params.width * idx.y + idx.x] = seed;
 }
-extern "C" __global__ void __raygen__pg() {
+extern "C" __global__ void __raygen__pg_def() {
 
     const uint3 idx = optixGetLaunchIndex();
     const uint3 dim = optixGetLaunchDimensions();
@@ -211,7 +211,8 @@ extern "C" __global__ void __raygen__pg() {
             bool isValidThroughPut = (!isnan(prd.throughPut.x) && !isnan(prd.throughPut.y) && !isnan(prd.throughPut.z) &&
                                     isfinite(prd.throughPut.x) && isfinite(prd.throughPut.y) && isfinite(prd.throughPut.z) &&
                                             (prd.throughPut.x >= 0.0f && prd.throughPut.y >= 0.0f && prd.throughPut.z >= 0.0f));
-            if (prd.done || depth >= params.maxTraceDepth || !isValidThroughPut) {
+            bool isValidDirection  = (!isnan(rayDirection.x) && !isnan(rayDirection.y) && !isnan(rayDirection.z));
+            if (prd.done || depth >= params.maxTraceDepth || !isValidThroughPut || !isValidDirection) {
                 break;
             }
             depth++;
@@ -228,6 +229,94 @@ extern "C" __global__ void __raygen__pg() {
         const float3 accumColor     = prevAccumColor + result;
         float3 frameColor           = accumColor / (static_cast<float>(params.samplePerALL + params.samplePerLaunch));
         frameColor                  = frameColor / (make_float3(1.0f, 1.0f, 1.0f) + frameColor);
+        params.accumBuffer[params.width * idx.y + idx.x] = accumColor;
+        params.frameBuffer[params.width * idx.y + idx.x] = make_uchar4(
+            static_cast<unsigned char>(255.99 * rtlib::linear_to_gamma(frameColor.x)),
+            static_cast<unsigned char>(255.99 * rtlib::linear_to_gamma(frameColor.y)),
+            static_cast<unsigned char>(255.99 * rtlib::linear_to_gamma(frameColor.z)), 255);
+    }
+    params.seedBuffer[params.width * idx.y + idx.x] = seed;
+}
+extern "C" __global__ void __raygen__pg_nee() {
+    const uint3 idx   = optixGetLaunchIndex();
+    const uint3 dim   = optixGetLaunchDimensions();
+    auto* rgData      = reinterpret_cast<RayGenData*>(optixGetSbtDataPointer());
+    const float3 u    = rgData->u;
+    const float3 v    = rgData->v;
+    const float3 w    = rgData->w;
+    unsigned int seed = params.seedBuffer[params.width * idx.y + idx.x];
+    float3 result = make_float3(0.0f, 0.0f, 0.0f);
+    size_t i = params.samplePerLaunch;
+    TraceVertex vertices[RAY_TRACE_MAX_VERTEX_COUNT] = {};
+    do {
+        rtlib::Xorshift32 xor32(seed);
+        const float2 jitter = rtlib::random_float2(xor32);
+        const float2 d = make_float2(
+            ((2.0f * static_cast<float>(idx.x) + jitter.x) / static_cast<float>(dim.x)) - 1.0,
+            ((2.0f * static_cast<float>(idx.y) + jitter.y) / static_cast<float>(dim.y)) - 1.0);
+        seed = xor32.m_seed;
+        float3 rayOrigin = rgData->eye;
+        float3 rayDirection = rtlib::normalize(d.x * u + d.y * v + w);
+        RadiancePRD prd;
+        prd.radiance = make_float3(0.0f);
+        prd.bsdfVal = make_float3(1.0f);
+        prd.throughPut = make_float3(1.0f);
+        prd.dTreeVoxelSize = make_float3(1.0f);
+        prd.woPdf = prd.bsdfPdf = prd.dTreePdf = 0.0f;
+        prd.distance = 0.0f;
+        prd.done = false;
+        prd.isDelta = false;
+        prd.countEmitted = true;
+        prd.seed = seed;
+        int depth = 0;
+        for (;;) {
+            if (depth >= params.maxTraceDepth) {
+                prd.done = true;
+            }
+            traceRadiance(params.gasHandle, rayOrigin, rayDirection, 0.01f, 1e16f, &prd);
+            if (!params.isFinal) {
+                vertices[depth].rayOrigin    = rayOrigin;
+                vertices[depth].rayDirection = rayDirection;
+                vertices[depth].dTree = prd.dTree;
+                vertices[depth].dTreeVoxelSize = prd.dTreeVoxelSize;
+                vertices[depth].throughPut = prd.throughPut;
+                vertices[depth].bsdfVal = prd.bsdfVal;
+                vertices[depth].radiance = make_float3(0.0f);
+                vertices[depth].woPdf = prd.woPdf;
+                vertices[depth].bsdfPdf = prd.bsdfPdf;
+                vertices[depth].dTreePdf = prd.dTreePdf;
+                vertices[depth].cosine = prd.cosine;
+                vertices[depth].isDelta = prd.isDelta;
+                for (int j = 0; j < depth; ++j) {
+                    vertices[j].Record(prd.radiance);
+                }
+            }
+            //OK
+            //Result�̍X�V
+            result += prd.radiance;
+
+            bool isValidThroughPut = (!isnan(prd.throughPut.x) && !isnan(prd.throughPut.y)   && !isnan(prd.throughPut.z)   &&
+                                    isfinite(prd.throughPut.x) && isfinite(prd.throughPut.y) && isfinite(prd.throughPut.z) &&
+                                     (prd.throughPut.x >= 0.0f &&   prd.throughPut.y >= 0.0f && prd.throughPut.z >= 0.0f));
+            bool isValidDirection  = (!isnan(rayDirection.x)   && !isnan(rayDirection.y)     && !isnan(rayDirection.z));
+
+            if (prd.done || !isValidThroughPut || !isValidDirection) {
+                break;
+            }
+            depth++;
+        }
+        if (!params.isFinal) {
+            for (int j = 0; j < depth; ++j) {
+                vertices[j].Commit<RAY_TRACE_S_FILTER, RAY_TRACE_D_FILTER>(params.sdTree, 1.0f);
+            }
+        }
+        seed = prd.seed;
+    } while (--i);
+    {
+        const float3 prevAccumColor = params.accumBuffer[params.width * idx.y + idx.x];
+        const float3 accumColor = prevAccumColor + result;
+        float3 frameColor = accumColor / (static_cast<float>(params.samplePerALL + params.samplePerLaunch));
+        frameColor = frameColor / (make_float3(1.0f, 1.0f, 1.0f) + frameColor);
         params.accumBuffer[params.width * idx.y + idx.x] = accumColor;
         params.frameBuffer[params.width * idx.y + idx.x] = make_uchar4(
             static_cast<unsigned char>(255.99 * rtlib::linear_to_gamma(frameColor.x)),
@@ -273,15 +362,69 @@ extern "C" __global__ void __closesthit__radiance_for_diffuse_def() {
     const auto diffuse = hgData->getDiffuseColor(texCoord);
     const auto emission = hgData->getEmissionColor(texCoord);
 
-    const auto distance = optixGetRayTmax();
+    const auto distance   = optixGetRayTmax();
     const float3 position = optixGetWorldRayOrigin() + distance * rayDirection;
-    float3 newDirection = make_float3(0.0f);
-    RadiancePRD* prd = getRadiancePRD();
+    float3 newDirection   = make_float3(0.0f);
+    RadiancePRD* prd      = getRadiancePRD();
 
     prd->dTree    = nullptr;
     prd->radiance = emission * prd->throughPut;
     prd->distance = distance;
 
+    rtlib::Xorshift32 xor32(prd->seed);
+    rtlib::ONB onb(normal);
+    newDirection = onb.local(rtlib::random_cosine_direction(xor32));
+
+    const auto cosine = rtlib::dot(newDirection, normal);
+
+    prd->bsdfPdf  = fabsf(cosine) / RTLIB_M_PI;
+    prd->dTreePdf = 0.0f;
+    prd->woPdf    = prd->bsdfPdf;
+
+    setRayOrigin(position);
+    setRayDirection(newDirection);
+
+    prd->cosine      = cosine;
+    prd->bsdfVal     = diffuse / RTLIB_M_PI;
+    prd->throughPut *= diffuse;
+    prd->seed        = xor32.m_seed;
+
+    prd->countEmitted= true;
+    prd->isDelta     = false;
+}
+extern "C" __global__ void __closesthit__radiance_for_diffuse_nee() {
+    auto* hgData = reinterpret_cast<HitgroupData*>(optixGetSbtDataPointer());
+    const float3 rayDirection = optixGetWorldRayDirection();
+    const int    primitiveID = optixGetPrimitiveIndex();
+
+    const float3 v0 = optixTransformPointFromObjectToWorldSpace(hgData->vertices[hgData->indices[primitiveID].x]);
+    const float3 v1 = optixTransformPointFromObjectToWorldSpace(hgData->vertices[hgData->indices[primitiveID].y]);
+    const float3 v2 = optixTransformPointFromObjectToWorldSpace(hgData->vertices[hgData->indices[primitiveID].z]);
+
+    const float3 n0 = optixTransformNormalFromObjectToWorldSpace(rtlib::normalize(rtlib::cross(v1 - v0, v2 - v0)));
+    const float3 normal = faceForward(n0, make_float3(-rayDirection.x, -rayDirection.y, -rayDirection.z), n0);
+
+    const float2 barycentric = optixGetTriangleBarycentrics();
+    const auto t0 = hgData->texCoords[hgData->indices[primitiveID].x];
+    const auto t1 = hgData->texCoords[hgData->indices[primitiveID].y];
+    const auto t2 = hgData->texCoords[hgData->indices[primitiveID].z];
+    const auto texCoord = (1.0f - barycentric.x - barycentric.y) * t0 + barycentric.x * t1 + barycentric.y * t2;
+
+    const auto diffuse = hgData->getDiffuseColor(texCoord);
+    const auto emission = hgData->getEmissionColor(texCoord);
+
+    const auto distance = optixGetRayTmax();
+    const auto position = optixGetWorldRayOrigin() + distance * rayDirection;
+    float3 newDirection = make_float3(0.0f);
+    RadiancePRD* prd = getRadiancePRD();
+
+    const auto prvThroughPut = prd->throughPut;
+    prd->dTree = nullptr;
+    prd->radiance = emission * prvThroughPut * static_cast<float>(prd->countEmitted);
+    prd->distance = distance;
+    if (prd->done) {
+        return;
+    }
     rtlib::Xorshift32 xor32(prd->seed);
     rtlib::ONB onb(normal);
     newDirection = onb.local(rtlib::random_cosine_direction(xor32));
@@ -295,13 +438,34 @@ extern "C" __global__ void __closesthit__radiance_for_diffuse_def() {
     setRayOrigin(position);
     setRayDirection(newDirection);
 
-    prd->cosine      = cosine;
-    prd->bsdfVal     = diffuse / RTLIB_M_PI;
+    prd->cosine = cosine;
+    prd->bsdfVal = diffuse / RTLIB_M_PI;
     prd->throughPut *= diffuse;
-    prd->seed        = xor32.m_seed;
 
-    prd->countEmitted= true;
-    prd->isDelta     = false;
+    prd->countEmitted = false;
+    prd->isDelta = false;
+
+    {
+        const float2 z = rtlib::random_float2(xor32);
+        const auto   light = params.light;
+        const float3 lightPos = light.corner + light.v1 * z.x + light.v2 * z.y;
+        const float  Ldist = rtlib::distance(lightPos, position);
+        const float3 lightDir = rtlib::normalize(lightPos - position);
+        const float  ndl = rtlib::dot(normal, lightDir);
+        const float  lndl = -rtlib::dot(light.normal, lightDir);
+        float weight = 0.0f;
+        if (ndl > 0.0f && lndl > 0.0f) {
+            const bool occluded = traceOccluded(params.gasHandle, position, lightDir, 0.01f, Ldist - 0.01f);
+            if (!occluded) {
+                //printf("not Occluded!\n");
+                const float A = rtlib::length(rtlib::cross(light.v1, light.v2));
+                weight = ndl * lndl * A / (Ldist * Ldist);
+            }
+        }
+        prd->radiance += light.emission * prvThroughPut * weight * diffuse / RTLIB_M_PI;
+    }
+
+    prd->seed = xor32.m_seed;
 }
 extern "C" __global__ void __closesthit__radiance_for_diffuse_pg_def() {
 
@@ -422,16 +586,19 @@ extern "C" __global__ void __closesthit__radiance_for_diffuse_pg_nee() {
     float  cosine1 = 0.0f;
     float  cosine2 = 0.0f;
 
-    RadiancePRD* prd   = getRadiancePRD();
-    auto prvThroughPut = prd->throughPut;
-    prd->dTree    = dTree;
+    RadiancePRD* prd    = getRadiancePRD();
+    auto prvThroughPut  = prd->throughPut;
+    prd->dTree          = dTree;
     prd->dTreeVoxelSize = dTreeVoxelSize;
-    prd->radiance = emission * prvThroughPut*static_cast<float>(prd->countEmitted);
-    prd->distance = distance;
-    prd->bsdfPdf  = 0.0f;
-    prd->bsdfVal  = diffuse / RTLIB_M_PI;
-    prd->isDelta  = false;
-
+    prd->radiance       = emission * prvThroughPut*static_cast<float>(prd->countEmitted);
+    prd->distance       = distance;
+    prd->bsdfPdf        = 0.0f;
+    prd->bsdfVal        = diffuse / RTLIB_M_PI;
+    prd->isDelta        = false;
+    //new
+    if (prd->done) {
+        return;
+    }
     rtlib::Xorshift32 xor32(prd->seed);
     setRayOrigin(position);
     if (params.isBuilt) {
@@ -459,7 +626,7 @@ extern "C" __global__ void __closesthit__radiance_for_diffuse_pg_nee() {
     //両方とも正なら
     if (params.isBuilt) {
         const auto  dTreePdf = rtlib::max(dTree->Pdf(newDirection), 0.0f);
-        const auto  woPdf = 0.5f * bsdfPdf + 0.5f * dTreePdf;
+        const auto  woPdf    = 0.5f * bsdfPdf + 0.5f * dTreePdf;
         prd->bsdfPdf = bsdfPdf;
         prd->dTreePdf = dTreePdf;
         prd->woPdf = woPdf;
@@ -476,20 +643,22 @@ extern "C" __global__ void __closesthit__radiance_for_diffuse_pg_nee() {
         prd->cosine = cosine2;
     }
     {
-        const float2 z = rtlib::random_float2(xor32);
-        const auto   light = params.light;
+        const float2 z        = rtlib::random_float2(xor32);
+        const auto   light    = params.light;
         const float3 lightPos = light.corner + light.v1 * z.x + light.v2 * z.y;
-        const float  Ldist = rtlib::distance(lightPos, position);
+        const float  Ldist    = rtlib::distance(lightPos, position);
         const float3 lightDir = rtlib::normalize(lightPos - position);
-        const float  ndl = rtlib::dot(normal, lightDir);
-        const float  lndl = -rtlib::dot(light.normal, lightDir);
-        float weight = 0.0f;
-        if (ndl > 0.0f && lndl > 0.0f) {
+        const float ndl       = rtlib::dot(normal, lightDir);
+        const float lndl      =-rtlib::dot(light.normal, lightDir);
+        const float A         = rtlib::length(rtlib::cross(light.v1, light.v2));
+        float lightPdf        = 0.0f;
+        float weight          = 0.0f;
+        if (ndl > 0.0f && lndl > 0.0f && A>0.0f) {
             const bool occluded = traceOccluded(params.gasHandle, position, lightDir, 0.01f, Ldist - 0.01f);
             if (!occluded) {
                 //printf("not Occluded!\n");
-                const float A = rtlib::length(rtlib::cross(light.v1, light.v2));
-                weight = ndl * lndl * A / (Ldist * Ldist);
+                lightPdf      = (Ldist * Ldist) / (lndl * A);
+                weight        = ndl * lndl * A / (Ldist * Ldist);
             }
         }
         prd->radiance += light.emission * prvThroughPut * weight * diffuse/RTLIB_M_PI;
@@ -907,6 +1076,9 @@ extern "C" __global__ void __closesthit__radiance_for_phong_pg_nee() {
     prd->radiance       = emission * prvThroughPut * static_cast<float>(prd->countEmitted);
     prd->distance       = distance;
     prd->isDelta        = false;
+    if (prd->done) {
+        return;
+    }
     rtlib::Xorshift32 xor32(prd->seed);
     //const auto isValid = false;
     setRayOrigin(position);

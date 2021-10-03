@@ -210,6 +210,7 @@ private:
 	bool                                 m_LockUpdate       = false;
 	bool                                 m_TraceGuide       = false;
 	bool                                 m_TraceNEE         = false;
+	bool                                 m_StoreResult      = false;
 	//SaveDir
 	std::array<char, 64>                 m_GlobalSettingPath = { "./Config.json" };
 	std::array<char, 64>                 m_ImgRenderPath    = { "." };
@@ -222,6 +223,7 @@ private:
 	//Sample
 	unsigned int                         m_SamplePerALL     = 0;
 	unsigned int                         m_SamplePerLaunch  = 1;
+	unsigned int                         m_SamplePerStore   = 1000;
 	unsigned int                         m_SamplePerBudget  = 1;
 	unsigned int                         m_SampleForPrvDbg  = 0;
 	//Renderer
