@@ -172,8 +172,7 @@ private:
 	}
 	void InitCamera() {
 		m_CameraController = rtlib::CameraController({ 0.0f,1.0f, 5.0f });
-		m_CameraController.SetMouseSensitivity(
-			f);
+		m_CameraController.SetMouseSensitivity(0.001f);
 		m_CameraController.SetMovementSpeed(10.0f);
 	}
 	void LoadScene(){

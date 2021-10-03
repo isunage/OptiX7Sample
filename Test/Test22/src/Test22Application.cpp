@@ -853,9 +853,10 @@ void Test22Application::InitPipelines()
 void Test22Application::InitAssets()
 {
 	auto objModelPathes = std::vector{
-		//std::filesystem::canonical(std::filesystem::path(TEST_TEST_PG_DATA_PATH"/Models/Lumberyard/Exterior/exterior.obj")),
-		//std::filesystem::canonical(std::filesystem::path(TEST_TEST_PG_DATA_PATH"/Models/Lumberyard/Interior/interior.obj"))
-		std::filesystem::canonical(std::filesystem::path(TEST_TEST22_DATA_PATH "/Models/Sponza/Sponza.obj"))};
+		std::filesystem::canonical(std::filesystem::path(TEST_TEST22_DATA_PATH"/Models/Lumberyard/Exterior/exterior.obj")),
+		std::filesystem::canonical(std::filesystem::path(TEST_TEST22_DATA_PATH"/Models/Lumberyard/Interior/interior.obj"))
+		//std::filesystem::canonical(std::filesystem::path(TEST_TEST22_DATA_PATH "/Models/Sponza/Sponza.obj"))
+	};
 	for (auto objModelPath : objModelPathes)
 	{
 		if (!m_ObjModelAssets.LoadAsset(objModelPath.filename().replace_extension().string(), objModelPath.string()))
@@ -943,7 +944,7 @@ void Test22Application::InitAccelerationStructures()
 					auto mesh = rtlib::ext::Mesh::New();
 					mesh->SetUniqueResource(meshUniqueResource);
 					mesh->SetSharedResource(objModel.meshGroup->GetSharedResource());
-					for (auto &matIdx : mesh->GetUniqueResource()->matIndBuffer.cpuHandle)
+					for (auto &matIdx : mesh->GetUniqueResource()->materials)
 					{
 						matIdx += materialOffset;
 					}

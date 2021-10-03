@@ -5,6 +5,32 @@
 #include <stb_image_write.h>
 #include <nlohmann/json.hpp>
 #include <random>
+
+static std::string SpecifyMaterialType(const rtlib::ext::Material& material)
+{
+	auto emitCol = material.GetFloat3As<float3>("emitCol");
+	auto specCol = material.GetFloat3As<float3>("specCol");
+	auto tranCol = material.GetFloat3As<float3>("tranCol");
+	auto refrIndx = material.GetFloat1("refrIndx");
+	auto shinness = material.GetFloat1("shinness");
+	auto illum = material.GetUInt32("illum");
+	if (illum == 7)
+	{
+		return "Refraction";
+	}
+	else if (emitCol.x + emitCol.y + emitCol.z > 0.0f)
+	{
+		return "Emission";
+	}
+	else if (specCol.x + specCol.y + specCol.z > 0.0f)
+	{
+		return "Phong";
+	}
+	else
+	{
+		return "Diffuse";
+	}
+};
 //Init
 //SimpleTracer
 class Test23SimpleTracer : public test::RTTracer
@@ -21,7 +47,6 @@ private:
 	using RayGRecord = rtlib::SBTRecord<RayGenData>;
 	using MissRecord = rtlib::SBTRecord<MissData>;
 	using HitGRecord = rtlib::SBTRecord<HitgroupData>;
-
 public:
 	Test23SimpleTracer(Test23Application *app)
 	{
@@ -102,7 +127,7 @@ public:
 		if (m_ParentApp->IsLightUpdated())
 		{
 			auto light = m_ParentApp->GetLight();
-			m_Params.cpuHandle[0].light = light;
+			m_Params.cpuHandle[0].parallelLight = light;
 			m_HGRecordBuffers.cpuHandle[m_LightHgRecIndex].data.emission = light.emission;
 			m_HGRecordBuffers.cpuHandle[m_LightHgRecIndex].data.diffuse = light.emission;
 			RTLIB_CUDA_CHECK(cudaMemcpy(m_HGRecordBuffers.gpuHandle.getDevicePtr() + m_LightHgRecIndex, &m_HGRecordBuffers.cpuHandle[m_LightHgRecIndex], sizeof(HitGRecord), cudaMemcpyHostToDevice));
@@ -122,31 +147,6 @@ private:
 	}
 	void InitShaderBindingTable()
 	{
-		auto SpecifyMaterialType = [](const rtlib::ext::Material &material)
-		{
-			auto emitCol = material.GetFloat3As<float3>("emitCol");
-			auto specCol = material.GetFloat3As<float3>("specCol");
-			auto tranCol = material.GetFloat3As<float3>("tranCol");
-			auto refrIndx = material.GetFloat1("refrIndx");
-			auto shinness = material.GetFloat1("shinness");
-			auto illum = material.GetUInt32("illum");
-			if (illum == 7)
-			{
-				return "Refraction";
-			}
-			else if (emitCol.x + emitCol.y + emitCol.z > 0.0f)
-			{
-				return "Emission";
-			}
-			else if (specCol.x + specCol.y + specCol.z > 0.0f)
-			{
-				return "Phong";
-			}
-			else
-			{
-				return "Diffuse";
-			}
-		};
 		auto tlas = m_ParentApp->GetTLAS();
 		auto camera = m_ParentApp->GetCamera();
 		auto &materials = m_ParentApp->GetMaterials();
@@ -225,7 +225,7 @@ private:
 		m_Params.cpuHandle[0].gasHandle = tlas->GetHandle();
 		m_Params.cpuHandle[0].width = m_ParentApp->GetFbWidth();
 		m_Params.cpuHandle[0].height = m_ParentApp->GetFbHeight();
-		m_Params.cpuHandle[0].light = m_ParentApp->GetLight();
+		m_Params.cpuHandle[0].parallelLight = m_ParentApp->GetLight();
 		m_Params.cpuHandle[0].accumBuffer = m_AccumBuffer.getDevicePtr();
 		m_Params.cpuHandle[0].frameBuffer = nullptr;
 		m_Params.cpuHandle[0].seedBuffer = m_SeedBuffer.getDevicePtr();
@@ -248,7 +248,7 @@ private:
 	unsigned int m_SamplePerAll = 0;
 };
 //  NEETracer
-class Test23NEETracer : public test::RTTracer
+class Test23NEETracer    : public test::RTTracer
 {
 public:
 	struct UserData
@@ -314,39 +314,20 @@ public:
 	{
 		if (m_ParentApp->IsCameraUpdated() || m_ParentApp->IsFrameResized())
 		{
-			auto camera = m_ParentApp->GetCamera();
-			m_RGRecordBuffer.cpuHandle[0].data.eye = camera.getEye();
-			auto [u, v, w] = camera.getUVW();
-			m_RGRecordBuffer.cpuHandle[0].data.u = u;
-			m_RGRecordBuffer.cpuHandle[0].data.v = v;
-			m_RGRecordBuffer.cpuHandle[0].data.w = w;
-			m_RGRecordBuffer.Upload();
+			this->UpdateCamera();
 		}
 		if (m_ParentApp->IsCameraUpdated() || m_ParentApp->IsFrameResized() || m_ParentApp->IsFrameFlushed() || m_ParentApp->IsTraceChanged() || m_ParentApp->IsLightUpdated())
 		{
-			m_Params.cpuHandle[0].maxTraceDepth = m_ParentApp->GetMaxTraceDepth();
-			m_AccumBuffer.resize(m_ParentApp->GetFbWidth() * m_ParentApp->GetFbHeight());
-			m_AccumBuffer.upload(std::vector<float3>(m_ParentApp->GetFbWidth() * m_ParentApp->GetFbHeight()));
-			m_Params.cpuHandle[0].samplePerALL = 0;
+			this->UpdateFrame();
 		}
 		bool shouldRegen = ((m_SamplePerAll + m_Params.cpuHandle[0].samplePerLaunch) / 1024 != m_SamplePerAll / 1024);
 		if (m_ParentApp->IsFrameResized() || shouldRegen)
 		{
-			std::cout << "Regen!\n";
-			std::vector<unsigned int> seedData(m_ParentApp->GetFbWidth() * m_ParentApp->GetFbHeight());
-			std::random_device rd;
-			std::mt19937 mt(rd());
-			std::generate(seedData.begin(), seedData.end(), mt);
-			m_SeedBuffer.resize(m_ParentApp->GetFbWidth() * m_ParentApp->GetFbHeight());
-			m_SeedBuffer.upload(seedData);
+			this->UpdateSeeds();
 		}
 		if (m_ParentApp->IsLightUpdated())
 		{
-			auto light = m_ParentApp->GetLight();
-			m_Params.cpuHandle[0].light = light;
-			m_HGRecordBuffers.cpuHandle[m_LightHgRecIndex].data.emission = light.emission;
-			m_HGRecordBuffers.cpuHandle[m_LightHgRecIndex].data.diffuse = light.emission;
-			RTLIB_CUDA_CHECK(cudaMemcpy(m_HGRecordBuffers.gpuHandle.getDevicePtr() + m_LightHgRecIndex, &m_HGRecordBuffers.cpuHandle[m_LightHgRecIndex], sizeof(HitGRecord), cudaMemcpyHostToDevice));
+			this->UpdateLight();
 		}
 	}
 	virtual ~Test23NEETracer() {}
@@ -363,31 +344,6 @@ private:
 	}
 	void InitShaderBindingTable()
 	{
-		auto SpecifyMaterialType = [](const rtlib::ext::Material& material)
-		{
-			auto emitCol = material.GetFloat3As<float3>("emitCol");
-			auto specCol = material.GetFloat3As<float3>("specCol");
-			auto tranCol = material.GetFloat3As<float3>("tranCol");
-			auto refrIndx = material.GetFloat1("refrIndx");
-			auto shinness = material.GetFloat1("shinness");
-			auto illum = material.GetUInt32("illum");
-			if (illum == 7)
-			{
-				return "Refraction";
-			}
-			else if (emitCol.x + emitCol.y + emitCol.z > 0.0f)
-			{
-				return "Emission";
-			}
-			else if (specCol.x + specCol.y + specCol.z > 0.0f)
-			{
-				return "Phong";
-			}
-			else
-			{
-				return "Diffuse";
-			}
-		};
 		auto tlas = m_ParentApp->GetTLAS();
 		auto camera = m_ParentApp->GetCamera();
 		auto& materials = m_ParentApp->GetMaterials();
@@ -466,7 +422,7 @@ private:
 		m_Params.cpuHandle[0].gasHandle = tlas->GetHandle();
 		m_Params.cpuHandle[0].width = m_ParentApp->GetFbWidth();
 		m_Params.cpuHandle[0].height = m_ParentApp->GetFbHeight();
-		m_Params.cpuHandle[0].light = m_ParentApp->GetLight();
+		m_Params.cpuHandle[0].parallelLight = m_ParentApp->GetLight();
 		m_Params.cpuHandle[0].accumBuffer = m_AccumBuffer.getDevicePtr();
 		m_Params.cpuHandle[0].frameBuffer = nullptr;
 		m_Params.cpuHandle[0].seedBuffer = m_SeedBuffer.getDevicePtr();
@@ -475,21 +431,55 @@ private:
 
 		m_Params.Upload();
 	}
-
+	void UpdateCamera()
+	{
+		auto camera = m_ParentApp->GetCamera();
+		m_RGRecordBuffer.cpuHandle[0].data.eye = camera.getEye();
+		auto [u, v, w] = camera.getUVW();
+		m_RGRecordBuffer.cpuHandle[0].data.u = u;
+		m_RGRecordBuffer.cpuHandle[0].data.v = v;
+		m_RGRecordBuffer.cpuHandle[0].data.w = w;
+		m_RGRecordBuffer.Upload();
+	}
+	void UpdateFrame()
+	{
+		m_Params.cpuHandle[0].maxTraceDepth = m_ParentApp->GetMaxTraceDepth();
+		m_Params.cpuHandle[0].samplePerALL = 0;
+		m_AccumBuffer.resize(m_ParentApp->GetFbWidth() * m_ParentApp->GetFbHeight());
+		m_AccumBuffer.upload(std::vector<float3>(m_ParentApp->GetFbWidth() * m_ParentApp->GetFbHeight()));
+	}
+	void UpdateSeeds()
+	{		
+		std::cout << "Regen!\n";
+		std::vector<unsigned int> seedData(m_ParentApp->GetFbWidth() * m_ParentApp->GetFbHeight());
+		std::random_device rd;
+		std::mt19937 mt(rd());
+		std::generate(seedData.begin(), seedData.end(), mt);
+		m_SeedBuffer.resize(m_ParentApp->GetFbWidth() * m_ParentApp->GetFbHeight());
+		m_SeedBuffer.upload(seedData);
+	}
+	void UpdateLight()
+	{	
+		auto light = m_ParentApp->GetLight();
+		m_Params.cpuHandle[0].parallelLight = light;
+		m_HGRecordBuffers.cpuHandle[m_LightHgRecIndex].data.emission = light.emission;
+		m_HGRecordBuffers.cpuHandle[m_LightHgRecIndex].data.diffuse = light.emission;
+		RTLIB_CUDA_CHECK(cudaMemcpy(m_HGRecordBuffers.gpuHandle.getDevicePtr() + m_LightHgRecIndex, &m_HGRecordBuffers.cpuHandle[m_LightHgRecIndex], sizeof(HitGRecord), cudaMemcpyHostToDevice));
+	}
 private:
-	Test23Application* m_ParentApp = nullptr;
-	OptixShaderBindingTable m_ShaderBindingTable = {};
-	rtlib::CUDAUploadBuffer<RayGRecord> m_RGRecordBuffer = {};
-	rtlib::CUDAUploadBuffer<MissRecord> m_MSRecordBuffers = {};
-	rtlib::CUDAUploadBuffer<HitGRecord> m_HGRecordBuffers = {};
-	rtlib::CUDAUploadBuffer<RayTraceParams> m_Params = {};
-	rtlib::CUDABuffer<float3> m_AccumBuffer = {};
-	rtlib::CUDABuffer<unsigned int> m_SeedBuffer = {};
-	unsigned int m_LightHgRecIndex = 0;
-	unsigned int m_SamplePerAll = 0;
+	Test23Application*                  	m_ParentApp          = nullptr;
+	OptixShaderBindingTable            	 	m_ShaderBindingTable = {};
+	rtlib::CUDAUploadBuffer<RayGRecord> 	m_RGRecordBuffer     = {};
+	rtlib::CUDAUploadBuffer<MissRecord> 	m_MSRecordBuffers    = {};
+	rtlib::CUDAUploadBuffer<HitGRecord> 	m_HGRecordBuffers    = {};
+	rtlib::CUDAUploadBuffer<RayTraceParams> m_Params 			 = {};
+	rtlib::CUDABuffer<float3> 				m_AccumBuffer		 = {};
+	rtlib::CUDABuffer<unsigned int> 		m_SeedBuffer		 = {};
+	unsigned int 							m_LightHgRecIndex	 = 0;
+	unsigned int						    m_SamplePerAll		 = 0;
 };
 // DebugTracer
-class Test23DebugTracer : public test::RTTracer
+class Test23DebugTracer  : public test::RTTracer
 {
 public:
 	struct UserData
@@ -572,7 +562,7 @@ public:
 		if (m_ParentApp->IsLightUpdated())
 		{
 			auto light = m_ParentApp->GetLight();
-			m_Params.cpuHandle[0].light = light;
+			m_Params.cpuHandle[0].parallelLight = light;
 			m_HGRecordBuffers.cpuHandle[m_LightHgRecIndex].data.emission = light.emission;
 			m_HGRecordBuffers.cpuHandle[m_LightHgRecIndex].data.diffuse = light.emission;
 			RTLIB_CUDA_CHECK(cudaMemcpy(m_HGRecordBuffers.gpuHandle.getDevicePtr() + m_LightHgRecIndex, &m_HGRecordBuffers.cpuHandle[m_LightHgRecIndex], sizeof(HitGRecord), cudaMemcpyHostToDevice));
@@ -656,7 +646,7 @@ private:
 		m_Params.cpuHandle[0].gasHandle = tlas->GetHandle();
 		m_Params.cpuHandle[0].width = m_ParentApp->GetFbWidth();
 		m_Params.cpuHandle[0].height = m_ParentApp->GetFbHeight();
-		m_Params.cpuHandle[0].light = m_ParentApp->GetLight();
+		m_Params.cpuHandle[0].parallelLight = m_ParentApp->GetLight();
 		m_Params.cpuHandle[0].diffuseBuffer = nullptr;
 		m_Params.cpuHandle[0].specularBuffer = nullptr;
 		m_Params.cpuHandle[0].emissionBuffer = nullptr;
@@ -853,10 +843,10 @@ void Test23Application::InitPipelines()
 void Test23Application::InitAssets()
 {
 	auto objModelPathes = std::vector{
-		//std::filesystem::canonical(std::filesystem::path(TEST_TEST_PG_DATA_PATH"/Models/Lumberyard/Exterior/exterior.obj")),
-		//std::filesystem::canonical(std::filesystem::path(TEST_TEST_PG_DATA_PATH"/Models/Lumberyard/Interior/interior.obj"))
+		std::filesystem::canonical(std::filesystem::path(TEST_TEST23_DATA_PATH"/Models/Lumberyard/Exterior/exterior.obj")),
+		std::filesystem::canonical(std::filesystem::path(TEST_TEST23_DATA_PATH"/Models/Lumberyard/Interior/interior.obj"))
 		//std::filesystem::canonical(std::filesystem::path(TEST_TEST23_DATA_PATH "/Models/CornellBox/CornellBox-Water.obj"))
-		std::filesystem::canonical(std::filesystem::path(TEST_TEST23_DATA_PATH "/Models/CornellBox/CornellBox-Original.obj"))
+		//std::filesystem::canonical(std::filesystem::path(TEST_TEST23_DATA_PATH "/Models/CornellBox/CornellBox-Original.obj"))
 	};
 	for (auto objModelPath : objModelPathes)
 	{
@@ -945,7 +935,7 @@ void Test23Application::InitAccelerationStructures()
 					auto mesh = rtlib::ext::Mesh::New();
 					mesh->SetUniqueResource(meshUniqueResource);
 					mesh->SetSharedResource(objModel.meshGroup->GetSharedResource());
-					for (auto &matIdx : mesh->GetUniqueResource()->matIndBuffer.cpuHandle)
+					for (auto &matIdx : mesh->GetUniqueResource()->materials)
 					{
 						matIdx += materialOffset;
 					}
@@ -1686,6 +1676,10 @@ void Test23Application::FreeLight()
 void Test23Application::FreeCamera()
 {
 	m_CameraController = {};
+}
+
+void Test23Application::FreeSTree()
+{
 }
 
 void Test23Application::FreeFrameResources()

@@ -193,7 +193,7 @@ extern "C" __global__ void __closesthit__radiance_for_diffuse_nee() {
     {
         const float2 z = rtlib::random_float2(xor32);
 
-        const auto   light = params.light;
+        const auto   light = params.parallelLight;
         const float3 lightPos = light.corner + light.v1 * z.x + light.v2 * z.y;
 
         const float  Ldist = rtlib::distance(lightPos, position);
@@ -402,7 +402,7 @@ extern "C" __global__ void __closesthit__radiance_for_phong_nee() {
 
             {
                 const float2 z = rtlib::random_float2(xor32);
-                const auto   light = params.light;
+                const auto   light = params.parallelLight;
                 const float3 lightPos = light.corner + light.v1 * z.x + light.v2 * z.y;
                 const float  Ldist = rtlib::distance(lightPos, position);
                 const float3 lightDir = rtlib::normalize(lightPos - position);

@@ -31,6 +31,10 @@ struct ParallelLight {
     float3   normal;
     float3   emission;
 };
+struct PointLight {
+    float3   position;
+    float3   emission;
+};
 struct RayTraceParams {
     uchar4*                frameBuffer;
     float3*                accumBuffer;
@@ -41,7 +45,7 @@ struct RayTraceParams {
     unsigned int           samplePerALL;
     unsigned int           maxTraceDepth;
     OptixTraversableHandle gasHandle;
-    ParallelLight          light;
+    ParallelLight          parallelLight;
 };
 struct RayDebugParams {
     uchar4*                diffuseBuffer; //8
@@ -54,7 +58,7 @@ struct RayDebugParams {
     unsigned int           width;
     unsigned int           height;
     OptixTraversableHandle gasHandle;
-    ParallelLight          light;
+    ParallelLight          parallelLight;
 };
 struct RayGenData{
     float3 u,v,w;
