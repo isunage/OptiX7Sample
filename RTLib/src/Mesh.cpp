@@ -44,6 +44,15 @@ auto rtlib::ext::MeshGroup::LoadMesh(const std::string& name) const -> MeshPtr
 	return mesh;
 }
 
+bool rtlib::ext::MeshGroup::RemoveMesh(const std::string& name)
+{
+	if (m_UniqueResources.count(name)>0) {
+		m_UniqueResources.erase(name);
+		return true;
+	}
+	return false;
+}
+
 void rtlib::ext::Mesh::SetSharedResource(const MeshSharedResourcePtr& res) noexcept
 {
     m_SharedResource = res;

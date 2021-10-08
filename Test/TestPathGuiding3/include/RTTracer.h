@@ -17,6 +17,7 @@ namespace test{
         virtual void Launch(const RTTraceConfig& config) = 0;
         virtual void CleanUp()                           = 0;
         virtual void Update()                            = 0;
+        virtual bool ShouldLock()const noexcept { return false; }
         virtual ~RTTracer(){}
     };
 }

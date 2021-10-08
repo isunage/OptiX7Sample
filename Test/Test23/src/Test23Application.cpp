@@ -843,9 +843,9 @@ void Test23Application::InitPipelines()
 void Test23Application::InitAssets()
 {
 	auto objModelPathes = std::vector{
-		std::filesystem::canonical(std::filesystem::path(TEST_TEST23_DATA_PATH"/Models/Lumberyard/Exterior/exterior.obj")),
-		std::filesystem::canonical(std::filesystem::path(TEST_TEST23_DATA_PATH"/Models/Lumberyard/Interior/interior.obj"))
-		//std::filesystem::canonical(std::filesystem::path(TEST_TEST23_DATA_PATH "/Models/CornellBox/CornellBox-Water.obj"))
+		//std::filesystem::canonical(std::filesystem::path(TEST_TEST23_DATA_PATH"/Models/Lumberyard/Exterior/exterior.obj")),
+		//std::filesystem::canonical(std::filesystem::path(TEST_TEST23_DATA_PATH"/Models/Lumberyard/Interior/interior.obj"))
+		std::filesystem::canonical(std::filesystem::path(TEST_TEST23_DATA_PATH "/Models/CornellBox/CornellBox-Water.obj"))
 		//std::filesystem::canonical(std::filesystem::path(TEST_TEST23_DATA_PATH "/Models/CornellBox/CornellBox-Original.obj"))
 	};
 	for (auto objModelPath : objModelPathes)

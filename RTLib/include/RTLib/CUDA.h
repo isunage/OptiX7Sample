@@ -204,7 +204,19 @@ namespace rtlib{
         std::vector<T>       cpuHandle   = {};
         rtlib::CUDABuffer<T> gpuHandle   = {};
     public:
+        void Alloc() {
+            if (!cpuHandle.empty()) {
+                return;
+            }
+            if (gpuHandle.getDevicePtr()) {
+                gpuHandle.reset();
+            }
+            gpuHandle.allocate(cpuHandle.size());
+        }
         void Alloc(size_t count){
+            if (gpuHandle.getDevicePtr()) {
+                gpuHandle.reset();
+            }
             cpuHandle.resize(count);
             gpuHandle.allocate(count);
         }

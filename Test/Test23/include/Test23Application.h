@@ -206,7 +206,7 @@ private:
 	bool                                 m_LockUpdate       = false;
 	bool                                 m_TraceNEE         = false;
 	//SaveDir
-	std::array<char, 64>                 m_GlobalSettingPath= { "./Config.json" };
+	std::array<char, 64>                 m_GlobalSettingPath = { "./Config.json" };
 	std::array<char, 64>                 m_ImgRenderPath    = { "." };
 	std::array<char, 64>                 m_ImgDebugPath     = { "." };
 	//FrameName
@@ -245,6 +245,7 @@ private:
 	rtlib::CameraController              m_CameraController = {};
 	//Light
 	ParallelLight                        m_ParallelLight    = {};
+	unsigned int                         m_NumPointLights   = 100;
 	//Tracer
 	std::shared_ptr<test::RTTracer>      m_SimpleActor      = {};
 	std::shared_ptr<test::RTTracer>      m_NEEActor         = {};

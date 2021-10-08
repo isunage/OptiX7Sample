@@ -25,6 +25,10 @@ enum MaterialType {
     MATERIAL_TYPE_OCCLUSION,
     MATERIAL_TYPE_COUNT
 };
+struct   PointLight {
+    float3   position;
+    float3   emission;
+};
 struct ParallelLight {
     float3   corner;
     float3   v1, v2;

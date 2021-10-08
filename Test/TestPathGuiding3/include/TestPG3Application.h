@@ -33,11 +33,6 @@ private:
 private:
 	using Renderer          = std::unique_ptr<rtlib::ext::RectRenderer>;
 	using RenderTexture     = std::unique_ptr<rtlib::GLTexture2D<uchar4>>;
-	using PipelineMap       = std::unordered_map<std::string, rtlib::OPXPipeline>;
-	using ModuleMap         = std::unordered_map<std::string, rtlib::OPXModule>;
-	using RGProgramGroupMap = std::unordered_map<std::string, rtlib::OPXRaygenPG>;
-	using MSProgramGroupMap = std::unordered_map<std::string, rtlib::OPXMissPG>;
-	using HGProgramGroupMap = std::unordered_map<std::string, rtlib::OPXHitgroupPG>;
 	using GeometryASMap     = std::unordered_map<std::string, rtlib::ext::GASHandlePtr>;
 	using InstanceASMap     = std::unordered_map<std::string, rtlib::ext::IASHandlePtr>;
 public:
@@ -50,7 +45,8 @@ public:
 		this->InitGLAD();
 		this->InitGui();
 		this->InitCUDA();
-		this->InitPipelines();
+		//ここまでは共通して必要
+		//this->InitPipelines();
 		this->InitAssets();
 		this->InitAccelerationStructures();
 		this->InitLight();
@@ -61,7 +57,7 @@ public:
 	}
 	virtual void MainLoop() override
 	{
-		this->PrepareLoop();
+		this->InitTimer();
 		while (!this->QuitLoop()) {
 			this->Trace();
 			glFlush();
@@ -83,7 +79,6 @@ public:
 		this->FreeLight();
 		this->FreeAccelerationStructures();
 		this->FreeAssets();
-		this->FreePipelines();
 		this->FreeCUDA();
 		this->FreeGui();
 		this->FreeWindow();
@@ -100,10 +95,6 @@ public:
 	bool IsLightUpdated()const { return m_UpdateLight;  }
 	bool IsTraceChanged()const { return m_ChangeTrace; }
 	auto GetOPXContext() const->std::shared_ptr<rtlib::OPXContext>;
-	auto GetOPXPipeline(const std::string& name)->rtlib::OPXPipeline&;
-	auto GetRGProgramGroup(const std::string& name)->rtlib::OPXRaygenPG &;
-	auto GetMSProgramGroup(const std::string& name)->rtlib::OPXMissPG&;
-	auto GetHGProgramGroup(const std::string& name)->rtlib::OPXHitgroupPG&;
 	auto GetTLAS()const     -> rtlib::ext::IASHandlePtr;
 	auto GetMaterials()const-> const std::vector<rtlib::ext::Material>&;
 	auto GetCamera()const -> rtlib::Camera;
@@ -117,7 +108,6 @@ private:
 	void InitGLAD();
 	void InitCUDA();
 	void InitGui();
-	void InitPipelines();
 	void InitAssets();
 	void InitAccelerationStructures();
 	void InitLight();
@@ -126,7 +116,7 @@ private:
 	void InitFrameResources();
 	void InitTracers();
 	//ShouldClose
-	void PrepareLoop();
+	void InitTimer();
 	bool QuitLoop();
 	void Trace();
 	void DrawFrame();
@@ -141,7 +131,6 @@ private:
 	void FreeWindow();
 	void FreeCUDA();
 	void FreeGui();
-	void FreePipelines();
 	void FreeAssets();
 	void FreeAccelerationStructures();
 	void FreeLight();
@@ -233,11 +222,6 @@ private:
 	RenderTexture                        m_DebugTexture     = {};
 	//OPTIX
 	std::shared_ptr<rtlib::OPXContext>   m_Context          = nullptr;
-	PipelineMap	                         m_Pipelines        = {};
-	ModuleMap                            m_Modules          = {};
-	RGProgramGroupMap                    m_RGProgramGroups  = {};
-	MSProgramGroupMap                    m_MSProgramGroups  = {};
-	HGProgramGroupMap                    m_HGProgramGroups  = {};
 	//FrameBuffer
 	std::unique_ptr<test::RTFrameBuffer> m_FrameBuffer      = nullptr;
 	//Assets

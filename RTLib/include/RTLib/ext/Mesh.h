@@ -28,6 +28,7 @@ namespace rtlib{
             std::vector<uint32_t>  materials    = {};
             UploadBuffer<uint3>    triIndBuffer = {};
             UploadBuffer<uint32_t> matIndBuffer = {};
+            bool                   hasLight     = false;
             static auto New() ->std::shared_ptr<MeshUniqueResource> {
                 return std::shared_ptr<MeshUniqueResource>(new MeshUniqueResource());
             }
@@ -62,6 +63,7 @@ namespace rtlib{
             auto GetUniqueResources()const noexcept -> const std::unordered_map<std::string, MeshUniqueResourcePtr>&;
             auto GetUniqueNames()const noexcept -> std::vector<std::string>;
             auto LoadMesh(const std::string& name)const->MeshPtr;
+            bool RemoveMesh(const std::string& name);
             static auto New()->std::shared_ptr<MeshGroup> {
                 return std::shared_ptr<MeshGroup>(new MeshGroup());
             }

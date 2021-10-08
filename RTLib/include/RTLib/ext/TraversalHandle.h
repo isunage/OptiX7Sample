@@ -5,7 +5,11 @@
 namespace rtlib{
     namespace ext {
         struct Instance;
-        class GASHandle {
+        enum class InstanceType {
+            GAS = 0,
+            IAS
+        };
+        class  GASHandle {
             OptixTraversableHandle   handle = {};
             rtlib::CUDABuffer<void>  buffer = {};
             std::vector<MeshPtr>     meshes = {};
@@ -34,11 +38,6 @@ namespace rtlib{
             auto GetSbtCount()const noexcept -> size_t;
         };
         using  GASHandlePtr = std::shared_ptr<GASHandle>;
-        enum class InstanceType 
-        {
-            GAS = 0,
-            IAS
-        };
         struct IASHandle;
         using  IASHandlePtr = std::shared_ptr<IASHandle>;
         struct Instance {
@@ -69,7 +68,7 @@ namespace rtlib{
             auto GetInstance(size_t i)const noexcept -> Instance;
         };
         using  InstanceSetPtr = std::shared_ptr<InstanceSet>;
-        class IASHandle{
+        class  IASHandle{
             OptixTraversableHandle      handle       = {};
             rtlib::CUDABuffer<void>     buffer       = {};
             std::vector<InstanceSetPtr> instanceSets = {};
