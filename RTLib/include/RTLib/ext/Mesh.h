@@ -2,6 +2,7 @@
 #define RTLIB_EXT_MESH_MESH_H
 #include "../CUDA.h"
 #include "../VectorFunction.h"
+#include "Resources.h"
 #include <string>
 #include <vector>
 #include <array>
@@ -9,25 +10,22 @@
 #include <memory>
 namespace rtlib{
     namespace ext {
+        
         struct MeshSharedResource {
-			template<typename T>
-            using UploadBuffer = CUDAUploadBuffer<T>;
             std::string          name         = {};
-            UploadBuffer<float3> vertexBuffer = {};
-            UploadBuffer<float3> normalBuffer = {};
-            UploadBuffer<float2> texCrdBuffer = {};
+            CustomBuffer<float3> vertexBuffer = {};
+            CustomBuffer<float3> normalBuffer = {};
+            CustomBuffer<float2> texCrdBuffer = {};
             static auto New() ->std::shared_ptr<MeshSharedResource> {
                 return std::shared_ptr<MeshSharedResource>(new MeshSharedResource());
             }
         };
         using  MeshSharedResourcePtr = std::shared_ptr<MeshSharedResource>;
         struct MeshUniqueResource {
-            template<typename T>
-            using UploadBuffer = CUDAUploadBuffer<T>;
             std::string            name         = {};
             std::vector<uint32_t>  materials    = {};
-            UploadBuffer<uint3>    triIndBuffer = {};
-            UploadBuffer<uint32_t> matIndBuffer = {};
+            CustomBuffer<uint3>    triIndBuffer = {};
+            CustomBuffer<uint32_t> matIndBuffer = {};
             bool                   hasLight     = false;
             static auto New() ->std::shared_ptr<MeshUniqueResource> {
                 return std::shared_ptr<MeshUniqueResource>(new MeshUniqueResource());

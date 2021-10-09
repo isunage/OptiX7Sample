@@ -24,8 +24,20 @@ set(RTLIB_NVCC_OPTIONS -arch compute_${RTLIB_CUDA_SM_VERSION} -use_fast_math -li
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/include/RTLib/Config.h.in ${CMAKE_CURRENT_BINARY_DIR}/RTLib/Config.h @ONLY)
 ##add library
 add_library(RTLib STATIC 
-
+${CMAKE_CURRENT_SOURCE_DIR}/include/RTLib/Optix.h
+${CMAKE_CURRENT_SOURCE_DIR}/include/RTLib/GL.h
+${CMAKE_CURRENT_SOURCE_DIR}/include/RTLib/CUDA.h
+${CMAKE_CURRENT_SOURCE_DIR}/include/RTLib/CUDA_GL.h
+${CMAKE_CURRENT_SOURCE_DIR}/include/RTLib/Exceptions.h
+${CMAKE_CURRENT_SOURCE_DIR}/include/RTLib/Random.h
+${CMAKE_CURRENT_SOURCE_DIR}/include/RTLib/Math.h
+${CMAKE_CURRENT_SOURCE_DIR}/include/RTLib/VectorFunction.h
+${CMAKE_CURRENT_SOURCE_DIR}/include/RTLib/PixelFormat.h
+${CMAKE_CURRENT_SOURCE_DIR}/include/RTLib/TypeTraits.h
+${CMAKE_CURRENT_SOURCE_DIR}/include/RTLib/Utils.h
+${CMAKE_CURRENT_SOURCE_DIR}/include/RTLib/ext/Camera.h
 ${CMAKE_CURRENT_SOURCE_DIR}/include/RTLib/ext/Mesh.h
+${CMAKE_CURRENT_SOURCE_DIR}/include/RTLib/ext/Resources.h
 ${CMAKE_CURRENT_SOURCE_DIR}/include/RTLib/ext/TraversalHandle.h
 
 ${CMAKE_CURRENT_SOURCE_DIR}/src/Optix.cpp 

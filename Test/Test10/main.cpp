@@ -6,7 +6,7 @@
 #include <stb_image_write.h>
 #include <cuda.h>
 #include <cuda_runtime.h>
-#include <RTLib/Camera.h>
+#include <RTLib/ext/Camera.h>
 #include <RTLib/Optix.h>
 #include <RTLib/Config.h>
 #include <RTLib/VectorFunction.h>
@@ -145,7 +145,7 @@ int main() {
     try{
         int width                                    = 1024;
         int height                                   = 1024;
-        auto camera                                  = rtlib::Camera({ -1293.07f, 154.681f, -0.7304f }, (aabbMin+aabbMax)/2.0f-make_float3(0.0f,400.f,0.0f), { 0.0f,1.0f,0.0f },45.0f,1.0f);
+        auto camera                                  = rtlib::ext::Camera({ -1293.07f, 154.681f, -0.7304f }, (aabbMin+aabbMax)/2.0f-make_float3(0.0f,400.f,0.0f), { 0.0f,1.0f,0.0f },45.0f,1.0f);
         //一番最初に呼び出す
         RTLIB_CUDA_CHECK( cudaFree(0));
         RTLIB_OPTIX_CHECK(optixInit());

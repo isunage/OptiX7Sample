@@ -9,7 +9,7 @@
 #include <RTLib/CUDA.h>
 #include <RTLib/CUDA_GL.h>
 #include <RTLib/Optix.h>
-#include <RTLib/Camera.h>
+#include <RTLib/ext/Camera.h>
 #include <RTLib/ext/RectRenderer.h>
 #include <RTLib/ext/TraversalHandle.h>
 #include <cuda/RayTrace.h>
@@ -103,7 +103,7 @@ public:
 	auto GetHGProgramGroup(const std::string& name)->rtlib::OPXHitgroupPG&;
 	auto GetTLAS()const     -> rtlib::ext::IASHandlePtr;
 	auto GetMaterials()const-> const std::vector<rtlib::ext::Material>&;
-	auto GetCamera()const -> rtlib::Camera;
+	auto GetCamera()const -> rtlib::ext::Camera;
 	auto GetLight()const  -> ParallelLight;
 	auto GetTexture(const std::string& name)const->const rtlib::CUDATexture2D<uchar4>&;
 private:
@@ -242,7 +242,7 @@ private:
 	//Materials
 	std::vector<rtlib::ext::Material>    m_Materials        = {};
 	//Camera
-	rtlib::CameraController              m_CameraController = {};
+	rtlib::ext::CameraController              m_CameraController = {};
 	//Light
 	ParallelLight                        m_ParallelLight    = {};
 	unsigned int                         m_NumPointLights   = 100;

@@ -88,32 +88,32 @@ namespace test {
                 std::cout << "VertexBuffer: " << attrib.vertices.size() / 3  << "->" << indices.size() << std::endl;
                 std::cout << "NormalBuffer: " << attrib.normals.size() / 3   << "->" << indices.size() << std::endl;
                 std::cout << "TexCrdBuffer: " << attrib.texcoords.size() / 2 << "->" << indices.size() << std::endl;
-                vertexBuffer.cpuHandle.resize(indices.size());
-                texCrdBuffer.cpuHandle.resize(indices.size());
-                normalBuffer.cpuHandle.resize(indices.size());
+                vertexBuffer.Resize(indices.size());
+                texCrdBuffer.Resize(indices.size());
+                normalBuffer.Resize(indices.size());
 
                 for (size_t i = 0; i < indices.size(); ++i) {
                     tinyobj::index_t idx = indices[i];
-                    vertexBuffer.cpuHandle[i] = make_float3(
+                    vertexBuffer[i] = make_float3(
                         attrib.vertices[3 * idx.vertex_index + 0],
                         attrib.vertices[3 * idx.vertex_index + 1],
                         attrib.vertices[3 * idx.vertex_index + 2]);
                     if (idx.normal_index >= 0) {
-                        normalBuffer.cpuHandle[i] = make_float3(
+                        normalBuffer[i] = make_float3(
                             attrib.normals[3 * idx.normal_index + 0],
                             attrib.normals[3 * idx.normal_index + 1],
                             attrib.normals[3 * idx.normal_index + 2]);
                     }
                     else {
-                        normalBuffer.cpuHandle[i] = make_float3(0.0f, 1.0f, 0.0f);
+                        normalBuffer[i] = make_float3(0.0f, 1.0f, 0.0f);
                     }
                     if (idx.texcoord_index >= 0) {
-                        texCrdBuffer.cpuHandle[i] = make_float2(
+                        texCrdBuffer[i] = make_float2(
                             attrib.texcoords[2 * idx.texcoord_index + 0],
                             attrib.texcoords[2 * idx.texcoord_index + 1]);
                     }
                     else {
-                        texCrdBuffer.cpuHandle[i] = make_float2(0.5f, 0.5f);
+                        texCrdBuffer[i] = make_float2(0.5f, 0.5f);
                     }
                 }
 
@@ -122,22 +122,22 @@ namespace test {
                     std::unordered_map<uint32_t, uint32_t> tmpMaterials = {};
                     auto uniqueResource = std::make_shared<rtlib::ext::MeshUniqueResource>();
                     uniqueResource->name = shapes[i].name;
-                    uniqueResource->triIndBuffer.cpuHandle.resize(shapes[i].mesh.num_face_vertices.size());
+                    uniqueResource->triIndBuffer.Resize(shapes[i].mesh.num_face_vertices.size());
                     for (size_t j = 0; j < shapes[i].mesh.num_face_vertices.size(); ++j) {
                         uint32_t idx0 = indicesMap.at(shapes[i].mesh.indices[3 * j + 0]);
                         uint32_t idx1 = indicesMap.at(shapes[i].mesh.indices[3 * j + 1]);
                         uint32_t idx2 = indicesMap.at(shapes[i].mesh.indices[3 * j + 2]);
-                        uniqueResource->triIndBuffer.cpuHandle[j] = make_uint3(idx0, idx1, idx2);
+                        uniqueResource->triIndBuffer[j] = make_uint3(idx0, idx1, idx2);
                     }
-                    uniqueResource->matIndBuffer.cpuHandle.resize(shapes[i].mesh.material_ids.size());
+                    uniqueResource->matIndBuffer.Resize(shapes[i].mesh.material_ids.size());
                     for (size_t j = 0; j < shapes[i].mesh.material_ids.size(); ++j) {
                         if (tmpMaterials.count(shapes[i].mesh.material_ids[j]) != 0) {
-                            uniqueResource->matIndBuffer.cpuHandle[j] = tmpMaterials.at(shapes[i].mesh.material_ids[j]);
+                            uniqueResource->matIndBuffer[j] = tmpMaterials.at(shapes[i].mesh.material_ids[j]);
                         }
                         else {
                             int newValue = tmpMaterials.size();
                             tmpMaterials[shapes[i].mesh.material_ids[j]] = newValue;
-                            uniqueResource->matIndBuffer.cpuHandle[j] = newValue;
+                            uniqueResource->matIndBuffer[j] = newValue;
                         }
                     }
                     uniqueResource->materials.resize(tmpMaterials.size());
@@ -270,32 +270,32 @@ namespace test {
                 std::cout << "VertexBuffer: " << attrib.vertices.size() / 3 << "->" << indices.size() << std::endl;
                 std::cout << "NormalBuffer: " << attrib.normals.size() / 3 << "->" << indices.size() << std::endl;
                 std::cout << "TexCrdBuffer: " << attrib.texcoords.size() / 2 << "->" << indices.size() << std::endl;
-                vertexBuffer.cpuHandle.resize(indices.size());
-                texCrdBuffer.cpuHandle.resize(indices.size());
-                normalBuffer.cpuHandle.resize(indices.size());
+                vertexBuffer.Resize(indices.size());
+                texCrdBuffer.Resize(indices.size());
+                normalBuffer.Resize(indices.size());
 
                 for (size_t i = 0; i < indices.size(); ++i) {
                     tinyobj::index_t idx = indices[i];
-                    vertexBuffer.cpuHandle[i] = make_float3(
+                    vertexBuffer[i] = make_float3(
                         attrib.vertices[3 * idx.vertex_index + 0],
                         attrib.vertices[3 * idx.vertex_index + 1],
                         attrib.vertices[3 * idx.vertex_index + 2]);
                     if (idx.normal_index >= 0) {
-                        normalBuffer.cpuHandle[i] = make_float3(
+                        normalBuffer[i] = make_float3(
                             attrib.normals[3 * idx.normal_index + 0],
                             attrib.normals[3 * idx.normal_index + 1],
                             attrib.normals[3 * idx.normal_index + 2]);
                     }
                     else {
-                        normalBuffer.cpuHandle[i] = make_float3(0.0f, 1.0f, 0.0f);
+                        normalBuffer[i] = make_float3(0.0f, 1.0f, 0.0f);
                     }
                     if (idx.texcoord_index >= 0) {
-                        texCrdBuffer.cpuHandle[i] = make_float2(
+                        texCrdBuffer[i] = make_float2(
                             attrib.texcoords[2 * idx.texcoord_index + 0],
                             attrib.texcoords[2 * idx.texcoord_index + 1]);
                     }
                     else {
-                        texCrdBuffer.cpuHandle[i] = make_float2(0.5f, 0.5f);
+                        texCrdBuffer[i] = make_float2(0.5f, 0.5f);
                     }
                 }
                 size_t offset = 0;
@@ -304,23 +304,23 @@ namespace test {
                     std::unordered_map<uint32_t, uint32_t> tmpMaterials = {};
                     auto uniqueResource = std::make_shared<rtlib::ext::MeshUniqueResource>();
                     uniqueResource->name = shapes[i].name;
-                    uniqueResource->triIndBuffer.cpuHandle.resize(shapes[i].mesh.num_face_vertices.size());
+                    uniqueResource->triIndBuffer.Resize(shapes[i].mesh.num_face_vertices.size());
                     for (size_t j = 0; j < shapes[i].mesh.num_face_vertices.size(); ++j) {
                         uint32_t idx0 = offset + 3 * j + 0;
                         uint32_t idx1 = offset + 3 * j + 1;
                         uint32_t idx2 = offset + 3 * j + 2;
-                        uniqueResource->triIndBuffer.cpuHandle[j] = make_uint3(idx0, idx1, idx2);
+                        uniqueResource->triIndBuffer[j] = make_uint3(idx0, idx1, idx2);
                     }
                     offset += 3 * shapes[i].mesh.num_face_vertices.size();
-                    uniqueResource->matIndBuffer.cpuHandle.resize(shapes[i].mesh.material_ids.size());
+                    uniqueResource->matIndBuffer.Resize(shapes[i].mesh.material_ids.size());
                     for (size_t j = 0; j < shapes[i].mesh.material_ids.size(); ++j) {
                         if (tmpMaterials.count(shapes[i].mesh.material_ids[j]) != 0) {
-                            uniqueResource->matIndBuffer.cpuHandle[j] = tmpMaterials.at(shapes[i].mesh.material_ids[j]);
+                            uniqueResource->matIndBuffer[j] = tmpMaterials.at(shapes[i].mesh.material_ids[j]);
                         }
                         else {
                             int newValue = tmpMaterials.size();
                             tmpMaterials[shapes[i].mesh.material_ids[j]] = newValue;
-                            uniqueResource->matIndBuffer.cpuHandle[j]    = newValue;
+                            uniqueResource->matIndBuffer[j]    = newValue;
                         }
                     }
                     uniqueResource->materials.resize(tmpMaterials.size());

@@ -2,7 +2,7 @@
 #include <RTLib/GL.h>
 #include <RTLib/CUDA.h>
 #include <RTLib/CUDA_GL.h>
-#include <RTLib/Camera.h>
+#include <RTLib/ext/Camera.h>
 #include <RTLib/Utils.h>
 #include <RTLib/ext/RectRenderer.h>
 #include <cuda/RayTrace.h>
@@ -83,7 +83,7 @@ public:
     	m_Tracer.InitOPX();
 	}
 	void InitCamera(){
-		m_CameraController = rtlib::CameraController({ 0.0f,1.0f, 5.0f });
+		m_CameraController = rtlib::ext::CameraController({ 0.0f,1.0f, 5.0f });
 		m_CameraController.SetMouseSensitivity(0.125f);
 		m_CameraController.SetMovementSpeed(50.0f);
 	}
@@ -653,13 +653,13 @@ public:
 					this->OnResize();
 					m_Resized      = false;
 					m_UpdateCamera = true;
-					//ResizeÇÕFlushÇ∑ÇÈïKóvÇ™Ç†ÇÈ
+					//ResizeÔøΩÔøΩFlushÔøΩÔøΩÔøΩÔøΩKÔøΩvÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ
 					m_FlushFrame   = true;
 				}
 				if (m_UpdateCamera) {
 					this->OnUpdateCamera();
 					m_UpdateCamera = false;
-					//CameraÇÃà⁄ìÆÇÕFlushÇ∑ÇÈïKóvÇ™Ç†ÇÈ
+					//CameraÔøΩÃà⁄ìÔøΩÔøΩÔøΩFlushÔøΩÔøΩÔøΩÔøΩKÔøΩvÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ
 					m_FlushFrame   = true;
 				}
 				if (m_UpdateLight ) {
@@ -670,7 +670,7 @@ public:
 				if (m_FlushFrame  ) {
 					this->OnFlushFrame();
 					m_FlushFrame   = false;
-					//FlushÇµÇΩèÍçáÅAParamÇÃçƒê›íËÇ™ïKóv
+					//FlushÔøΩÔøΩÔøΩÔøΩÔøΩÍçáÔøΩAParamÔøΩÃçƒê›íËÇ™ÔøΩKÔøΩv
 					m_UpdateParams = true;
 				}
 				if (m_UpdateParams) {
@@ -783,7 +783,7 @@ private:
 		m_Tracer.GetDebugPipeline()->updateHG = true;
 	}
 	void OnFlushFrame() {
-		//FrameÇÃçƒéÊìæ
+		//FrameÔøΩÃçƒéÊìæ
 		m_FrameBufferGL.upload(std::vector<uchar4>(m_FbWidth * m_FbHeight));
 		m_AccumBuffer.upload(std::vector<float3>(m_FbWidth * m_FbHeight));
 		for (auto& [name, debugBufferGL] : m_DebugBufferGLs)
@@ -794,7 +794,7 @@ private:
 	}
 	void OnUpdateParams()
 	{
-		//paramsÇÃçƒê›íË
+		//paramsÔøΩÃçƒê›íÔøΩ
 		if(m_CurPipelineName=="Trace") {
 			m_Tracer.GetTracePipeline()->width  = m_FbWidth;
 			m_Tracer.GetTracePipeline()->height = m_FbHeight;
@@ -999,35 +999,35 @@ private:
 	}
 	void OnReactInputs() {
 		if (glfwGetKey(m_Window, GLFW_KEY_W) == GLFW_PRESS) {
-			m_CameraController.ProcessKeyboard(rtlib::CameraMovement::eForward, m_DelTime);
+			m_CameraController.ProcessKeyboard(rtlib::ext::CameraMovement::eForward, m_DelTime);
 			m_UpdateCamera = true;
 		}
 		if (glfwGetKey(m_Window, GLFW_KEY_S) == GLFW_PRESS) {
-			m_CameraController.ProcessKeyboard(rtlib::CameraMovement::eBackward, m_DelTime);
+			m_CameraController.ProcessKeyboard(rtlib::ext::CameraMovement::eBackward, m_DelTime);
 			m_UpdateCamera = true;
 		}
 		if (glfwGetKey(m_Window, GLFW_KEY_A) == GLFW_PRESS) {
-			m_CameraController.ProcessKeyboard(rtlib::CameraMovement::eLeft, m_DelTime);
+			m_CameraController.ProcessKeyboard(rtlib::ext::CameraMovement::eLeft, m_DelTime);
 			m_UpdateCamera = true;
 		}
 		if (glfwGetKey(m_Window, GLFW_KEY_D) == GLFW_PRESS) {
-			m_CameraController.ProcessKeyboard(rtlib::CameraMovement::eRight, m_DelTime);
+			m_CameraController.ProcessKeyboard(rtlib::ext::CameraMovement::eRight, m_DelTime);
 			m_UpdateCamera = true;
 		}
 		if (glfwGetKey(m_Window, GLFW_KEY_LEFT) == GLFW_PRESS) {
-			m_CameraController.ProcessKeyboard(rtlib::CameraMovement::eLeft, m_DelTime);
+			m_CameraController.ProcessKeyboard(rtlib::ext::CameraMovement::eLeft, m_DelTime);
 			m_UpdateCamera = true;
 		}
 		if (glfwGetKey(m_Window, GLFW_KEY_RIGHT) == GLFW_PRESS) {
-			m_CameraController.ProcessKeyboard(rtlib::CameraMovement::eRight, m_DelTime);
+			m_CameraController.ProcessKeyboard(rtlib::ext::CameraMovement::eRight, m_DelTime);
 			m_UpdateCamera = true;
 		}
 		if (glfwGetKey(m_Window, GLFW_KEY_UP) == GLFW_PRESS) {
-			m_CameraController.ProcessKeyboard(rtlib::CameraMovement::eUp, m_DelTime);
+			m_CameraController.ProcessKeyboard(rtlib::ext::CameraMovement::eUp, m_DelTime);
 			m_UpdateCamera = true;
 		}
 		if (glfwGetKey(m_Window, GLFW_KEY_DOWN) == GLFW_PRESS) {
-			m_CameraController.ProcessKeyboard(rtlib::CameraMovement::eDown, m_DelTime);
+			m_CameraController.ProcessKeyboard(rtlib::ext::CameraMovement::eDown, m_DelTime);
 			m_UpdateCamera = true;
 		}
 		if (glfwGetMouseButton(m_Window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS) {
@@ -1083,7 +1083,7 @@ private:
 	rtlib::GLTexture2D<uchar4>      m_GLTexture          = {};
 	std::shared_ptr<rtlib::ext::RectRenderer>        
 		                            m_RectRenderer       = {};
-	rtlib::CameraController         m_CameraController   = {};
+	rtlib::ext::CameraController         m_CameraController   = {};
 	test::PathTracer                m_Tracer             = {};
 	test::MaterialSetPtr            m_MaterialSet        = nullptr;
 	CUstream                        m_Stream             = nullptr;

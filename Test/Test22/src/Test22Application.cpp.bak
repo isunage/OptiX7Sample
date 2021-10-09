@@ -1,39 +1,13 @@
-#include "../include/Test23Application.h"
+#include "../include/Test22Application.h"
 #include <RTLib/Optix.h>
 #include <RTLib/Utils.h>
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <stb_image_write.h>
 #include <nlohmann/json.hpp>
 #include <random>
-
-static std::string SpecifyMaterialType(const rtlib::ext::Material& material)
-{
-	auto emitCol = material.GetFloat3As<float3>("emitCol");
-	auto specCol = material.GetFloat3As<float3>("specCol");
-	auto tranCol = material.GetFloat3As<float3>("tranCol");
-	auto refrIndx = material.GetFloat1("refrIndx");
-	auto shinness = material.GetFloat1("shinness");
-	auto illum = material.GetUInt32("illum");
-	if (illum == 7)
-	{
-		return "Refraction";
-	}
-	else if (emitCol.x + emitCol.y + emitCol.z > 0.0f)
-	{
-		return "Emission";
-	}
-	else if (specCol.x + specCol.y + specCol.z > 0.0f)
-	{
-		return "Phong";
-	}
-	else
-	{
-		return "Diffuse";
-	}
-};
 //Init
 //SimpleTracer
-class Test23SimpleTracer : public test::RTTracer
+class Test22SimpleTracer : public test::RTTracer
 {
 public:
 	struct UserData
@@ -47,8 +21,9 @@ private:
 	using RayGRecord = rtlib::SBTRecord<RayGenData>;
 	using MissRecord = rtlib::SBTRecord<MissData>;
 	using HitGRecord = rtlib::SBTRecord<HitgroupData>;
+
 public:
-	Test23SimpleTracer(Test23Application *app)
+	Test22SimpleTracer(Test22Application *app)
 	{
 		m_ParentApp = app;
 	}
@@ -127,13 +102,13 @@ public:
 		if (m_ParentApp->IsLightUpdated())
 		{
 			auto light = m_ParentApp->GetLight();
-			m_Params.cpuHandle[0].parallelLight = light;
+			m_Params.cpuHandle[0].light = light;
 			m_HGRecordBuffers.cpuHandle[m_LightHgRecIndex].data.emission = light.emission;
 			m_HGRecordBuffers.cpuHandle[m_LightHgRecIndex].data.diffuse = light.emission;
 			RTLIB_CUDA_CHECK(cudaMemcpy(m_HGRecordBuffers.gpuHandle.getDevicePtr() + m_LightHgRecIndex, &m_HGRecordBuffers.cpuHandle[m_LightHgRecIndex], sizeof(HitGRecord), cudaMemcpyHostToDevice));
 		}
 	}
-	virtual ~Test23SimpleTracer() {}
+	virtual ~Test22SimpleTracer() {}
 
 private:
 	void InitFrameResources()
@@ -147,6 +122,31 @@ private:
 	}
 	void InitShaderBindingTable()
 	{
+		auto SpecifyMaterialType = [](const rtlib::ext::Material &material)
+		{
+			auto emitCol = material.GetFloat3As<float3>("emitCol");
+			auto specCol = material.GetFloat3As<float3>("specCol");
+			auto tranCol = material.GetFloat3As<float3>("tranCol");
+			auto refrIndx = material.GetFloat1("refrIndx");
+			auto shinness = material.GetFloat1("shinness");
+			auto illum = material.GetUInt32("illum");
+			if (illum == 7)
+			{
+				return "Refraction";
+			}
+			else if (emitCol.x + emitCol.y + emitCol.z > 0.0f)
+			{
+				return "Emission";
+			}
+			else if (specCol.x + specCol.y + specCol.z > 0.0f)
+			{
+				return "Phong";
+			}
+			else
+			{
+				return "Diffuse";
+			}
+		};
 		auto tlas = m_ParentApp->GetTLAS();
 		auto camera = m_ParentApp->GetCamera();
 		auto &materials = m_ParentApp->GetMaterials();
@@ -191,7 +191,7 @@ private:
 						for (size_t i = 0; i < mesh->GetUniqueResource()->materials.size(); ++i)
 						{
 							auto materialId = mesh->GetUniqueResource()->materials[i];
-							auto& material = materials[materialId];
+							auto &material = materials[materialId];
 							HitgroupData radianceHgData = {};
 							{
 								radianceHgData.vertices = cudaVertexBuffer->GetHandle().getDevicePtr();
@@ -241,7 +241,7 @@ private:
 		m_Params.cpuHandle[0].gasHandle = tlas->GetHandle();
 		m_Params.cpuHandle[0].width = m_ParentApp->GetFbWidth();
 		m_Params.cpuHandle[0].height = m_ParentApp->GetFbHeight();
-		m_Params.cpuHandle[0].parallelLight = m_ParentApp->GetLight();
+		m_Params.cpuHandle[0].light = m_ParentApp->GetLight();
 		m_Params.cpuHandle[0].accumBuffer = m_AccumBuffer.getDevicePtr();
 		m_Params.cpuHandle[0].frameBuffer = nullptr;
 		m_Params.cpuHandle[0].seedBuffer = m_SeedBuffer.getDevicePtr();
@@ -252,7 +252,7 @@ private:
 	}
 
 private:
-	Test23Application *m_ParentApp = nullptr;
+	Test22Application *m_ParentApp = nullptr;
 	OptixShaderBindingTable m_ShaderBindingTable = {};
 	rtlib::CUDAUploadBuffer<RayGRecord> m_RGRecordBuffer = {};
 	rtlib::CUDAUploadBuffer<MissRecord> m_MSRecordBuffers = {};
@@ -264,7 +264,7 @@ private:
 	unsigned int m_SamplePerAll = 0;
 };
 //  NEETracer
-class Test23NEETracer    : public test::RTTracer
+class Test22NEETracer : public test::RTTracer
 {
 public:
 	struct UserData
@@ -280,7 +280,7 @@ private:
 	using HitGRecord = rtlib::SBTRecord<HitgroupData>;
 
 public:
-	Test23NEETracer(Test23Application* app)
+	Test22NEETracer(Test22Application* app)
 	{
 		m_ParentApp = app;
 	}
@@ -330,23 +330,42 @@ public:
 	{
 		if (m_ParentApp->IsCameraUpdated() || m_ParentApp->IsFrameResized())
 		{
-			this->UpdateCamera();
+			auto camera = m_ParentApp->GetCamera();
+			m_RGRecordBuffer.cpuHandle[0].data.eye = camera.getEye();
+			auto [u, v, w] = camera.getUVW();
+			m_RGRecordBuffer.cpuHandle[0].data.u = u;
+			m_RGRecordBuffer.cpuHandle[0].data.v = v;
+			m_RGRecordBuffer.cpuHandle[0].data.w = w;
+			m_RGRecordBuffer.Upload();
 		}
 		if (m_ParentApp->IsCameraUpdated() || m_ParentApp->IsFrameResized() || m_ParentApp->IsFrameFlushed() || m_ParentApp->IsTraceChanged() || m_ParentApp->IsLightUpdated())
 		{
-			this->UpdateFrame();
+			m_Params.cpuHandle[0].maxTraceDepth = m_ParentApp->GetMaxTraceDepth();
+			m_AccumBuffer.resize(m_ParentApp->GetFbWidth() * m_ParentApp->GetFbHeight());
+			m_AccumBuffer.upload(std::vector<float3>(m_ParentApp->GetFbWidth() * m_ParentApp->GetFbHeight()));
+			m_Params.cpuHandle[0].samplePerALL = 0;
 		}
 		bool shouldRegen = ((m_SamplePerAll + m_Params.cpuHandle[0].samplePerLaunch) / 1024 != m_SamplePerAll / 1024);
 		if (m_ParentApp->IsFrameResized() || shouldRegen)
 		{
-			this->UpdateSeeds();
+			std::cout << "Regen!\n";
+			std::vector<unsigned int> seedData(m_ParentApp->GetFbWidth() * m_ParentApp->GetFbHeight());
+			std::random_device rd;
+			std::mt19937 mt(rd());
+			std::generate(seedData.begin(), seedData.end(), mt);
+			m_SeedBuffer.resize(m_ParentApp->GetFbWidth() * m_ParentApp->GetFbHeight());
+			m_SeedBuffer.upload(seedData);
 		}
 		if (m_ParentApp->IsLightUpdated())
 		{
-			this->UpdateLight();
+			auto light = m_ParentApp->GetLight();
+			m_Params.cpuHandle[0].light = light;
+			m_HGRecordBuffers.cpuHandle[m_LightHgRecIndex].data.emission = light.emission;
+			m_HGRecordBuffers.cpuHandle[m_LightHgRecIndex].data.diffuse = light.emission;
+			RTLIB_CUDA_CHECK(cudaMemcpy(m_HGRecordBuffers.gpuHandle.getDevicePtr() + m_LightHgRecIndex, &m_HGRecordBuffers.cpuHandle[m_LightHgRecIndex], sizeof(HitGRecord), cudaMemcpyHostToDevice));
 		}
 	}
-	virtual ~Test23NEETracer() {}
+	virtual ~Test22NEETracer() {}
 
 private:
 	void InitFrameResources()
@@ -360,6 +379,31 @@ private:
 	}
 	void InitShaderBindingTable()
 	{
+		auto SpecifyMaterialType = [](const rtlib::ext::Material& material)
+		{
+			auto emitCol = material.GetFloat3As<float3>("emitCol");
+			auto specCol = material.GetFloat3As<float3>("specCol");
+			auto tranCol = material.GetFloat3As<float3>("tranCol");
+			auto refrIndx = material.GetFloat1("refrIndx");
+			auto shinness = material.GetFloat1("shinness");
+			auto illum = material.GetUInt32("illum");
+			if (illum == 7)
+			{
+				return "Refraction";
+			}
+			else if (emitCol.x + emitCol.y + emitCol.z > 0.0f)
+			{
+				return "Emission";
+			}
+			else if (specCol.x + specCol.y + specCol.z > 0.0f)
+			{
+				return "Phong";
+			}
+			else
+			{
+				return "Diffuse";
+			}
+		};
 		auto tlas = m_ParentApp->GetTLAS();
 		auto camera = m_ParentApp->GetCamera();
 		auto& materials = m_ParentApp->GetMaterials();
@@ -454,7 +498,7 @@ private:
 		m_Params.cpuHandle[0].gasHandle = tlas->GetHandle();
 		m_Params.cpuHandle[0].width = m_ParentApp->GetFbWidth();
 		m_Params.cpuHandle[0].height = m_ParentApp->GetFbHeight();
-		m_Params.cpuHandle[0].parallelLight = m_ParentApp->GetLight();
+		m_Params.cpuHandle[0].light = m_ParentApp->GetLight();
 		m_Params.cpuHandle[0].accumBuffer = m_AccumBuffer.getDevicePtr();
 		m_Params.cpuHandle[0].frameBuffer = nullptr;
 		m_Params.cpuHandle[0].seedBuffer = m_SeedBuffer.getDevicePtr();
@@ -463,55 +507,21 @@ private:
 
 		m_Params.Upload();
 	}
-	void UpdateCamera()
-	{
-		auto camera = m_ParentApp->GetCamera();
-		m_RGRecordBuffer.cpuHandle[0].data.eye = camera.getEye();
-		auto [u, v, w] = camera.getUVW();
-		m_RGRecordBuffer.cpuHandle[0].data.u = u;
-		m_RGRecordBuffer.cpuHandle[0].data.v = v;
-		m_RGRecordBuffer.cpuHandle[0].data.w = w;
-		m_RGRecordBuffer.Upload();
-	}
-	void UpdateFrame()
-	{
-		m_Params.cpuHandle[0].maxTraceDepth = m_ParentApp->GetMaxTraceDepth();
-		m_Params.cpuHandle[0].samplePerALL = 0;
-		m_AccumBuffer.resize(m_ParentApp->GetFbWidth() * m_ParentApp->GetFbHeight());
-		m_AccumBuffer.upload(std::vector<float3>(m_ParentApp->GetFbWidth() * m_ParentApp->GetFbHeight()));
-	}
-	void UpdateSeeds()
-	{		
-		std::cout << "Regen!\n";
-		std::vector<unsigned int> seedData(m_ParentApp->GetFbWidth() * m_ParentApp->GetFbHeight());
-		std::random_device rd;
-		std::mt19937 mt(rd());
-		std::generate(seedData.begin(), seedData.end(), mt);
-		m_SeedBuffer.resize(m_ParentApp->GetFbWidth() * m_ParentApp->GetFbHeight());
-		m_SeedBuffer.upload(seedData);
-	}
-	void UpdateLight()
-	{	
-		auto light = m_ParentApp->GetLight();
-		m_Params.cpuHandle[0].parallelLight = light;
-		m_HGRecordBuffers.cpuHandle[m_LightHgRecIndex].data.emission = light.emission;
-		m_HGRecordBuffers.cpuHandle[m_LightHgRecIndex].data.diffuse = light.emission;
-		RTLIB_CUDA_CHECK(cudaMemcpy(m_HGRecordBuffers.gpuHandle.getDevicePtr() + m_LightHgRecIndex, &m_HGRecordBuffers.cpuHandle[m_LightHgRecIndex], sizeof(HitGRecord), cudaMemcpyHostToDevice));
-	}
+
 private:
-	Test23Application*                  	m_ParentApp          = nullptr;
-	OptixShaderBindingTable            	 	m_ShaderBindingTable = {};
-	rtlib::CUDAUploadBuffer<RayGRecord> 	m_RGRecordBuffer     = {};
-	rtlib::CUDAUploadBuffer<MissRecord> 	m_MSRecordBuffers    = {};
-	rtlib::CUDAUploadBuffer<HitGRecord> 	m_HGRecordBuffers    = {};
-	rtlib::CUDAUploadBuffer<RayTraceParams> m_Params 			 = {};
-	rtlib::CUDABuffer<float3> 				m_AccumBuffer		 = {};
-	rtlib::CUDABuffer<unsigned int> 		m_SeedBuffer		 = {};
-	unsigned int 							m_LightHgRecIndex	 = 0;
-	unsigned int						    m_SamplePerAll		 = 0;
+	Test22Application* m_ParentApp = nullptr;
+	OptixShaderBindingTable m_ShaderBindingTable = {};
+	rtlib::CUDAUploadBuffer<RayGRecord> m_RGRecordBuffer = {};
+	rtlib::CUDAUploadBuffer<MissRecord> m_MSRecordBuffers = {};
+	rtlib::CUDAUploadBuffer<HitGRecord> m_HGRecordBuffers = {};
+	rtlib::CUDAUploadBuffer<RayTraceParams> m_Params = {};
+	rtlib::CUDABuffer<float3> m_AccumBuffer = {};
+	rtlib::CUDABuffer<unsigned int> m_SeedBuffer = {};
+	unsigned int m_LightHgRecIndex = 0;
+	unsigned int m_SamplePerAll = 0;
 };
 // DebugTracer
-class Test23DebugTracer  : public test::RTTracer
+class Test22DebugTracer : public test::RTTracer
 {
 public:
 	struct UserData
@@ -531,7 +541,7 @@ private:
 	using HitGRecord = rtlib::SBTRecord<HitgroupData>;
 
 public:
-	Test23DebugTracer(Test23Application *app)
+	Test22DebugTracer(Test22Application *app)
 	{
 		m_ParentApp = app;
 	}
@@ -594,13 +604,13 @@ public:
 		if (m_ParentApp->IsLightUpdated())
 		{
 			auto light = m_ParentApp->GetLight();
-			m_Params.cpuHandle[0].parallelLight = light;
+			m_Params.cpuHandle[0].light = light;
 			m_HGRecordBuffers.cpuHandle[m_LightHgRecIndex].data.emission = light.emission;
 			m_HGRecordBuffers.cpuHandle[m_LightHgRecIndex].data.diffuse = light.emission;
 			RTLIB_CUDA_CHECK(cudaMemcpy(m_HGRecordBuffers.gpuHandle.getDevicePtr() + m_LightHgRecIndex, &m_HGRecordBuffers.cpuHandle[m_LightHgRecIndex], sizeof(HitGRecord), cudaMemcpyHostToDevice));
 		}
 	}
-	virtual ~Test23DebugTracer() {}
+	virtual ~Test22DebugTracer() {}
 
 private:
 	void InitShaderBindingTable()
@@ -649,7 +659,7 @@ private:
 						for (size_t i = 0; i < mesh->GetUniqueResource()->materials.size(); ++i)
 						{
 							auto materialId = mesh->GetUniqueResource()->materials[i];
-							auto& material = materials[materialId];
+							auto &material = materials[materialId];
 							HitgroupData radianceHgData = {};
 							{
 								radianceHgData.vertices = cudaVertexBuffer->GetHandle().getDevicePtr();
@@ -694,7 +704,7 @@ private:
 		m_Params.cpuHandle[0].gasHandle = tlas->GetHandle();
 		m_Params.cpuHandle[0].width = m_ParentApp->GetFbWidth();
 		m_Params.cpuHandle[0].height = m_ParentApp->GetFbHeight();
-		m_Params.cpuHandle[0].parallelLight = m_ParentApp->GetLight();
+		m_Params.cpuHandle[0].light = m_ParentApp->GetLight();
 		m_Params.cpuHandle[0].diffuseBuffer = nullptr;
 		m_Params.cpuHandle[0].specularBuffer = nullptr;
 		m_Params.cpuHandle[0].emissionBuffer = nullptr;
@@ -706,7 +716,7 @@ private:
 	}
 
 private:
-	Test23Application *m_ParentApp = nullptr;
+	Test22Application *m_ParentApp = nullptr;
 	OptixShaderBindingTable m_ShaderBindingTable = {};
 	rtlib::CUDAUploadBuffer<RayGRecord> m_RGRecordBuffer = {};
 	rtlib::CUDAUploadBuffer<MissRecord> m_MSRecordBuffers = {};
@@ -714,8 +724,8 @@ private:
 	rtlib::CUDAUploadBuffer<RayDebugParams> m_Params = {};
 	unsigned int m_LightHgRecIndex = 0;
 };
-// 
-void Test23Application::InitGLFW()
+
+void Test22Application::InitGLFW()
 {
 	if (glfwInit() == GLFW_FALSE)
 	{
@@ -723,7 +733,7 @@ void Test23Application::InitGLFW()
 	}
 }
 
-void Test23Application::InitWindow()
+void Test22Application::InitWindow()
 {
 	glfwWindowHint(GLFW_VERSION_MAJOR, 3);
 	glfwWindowHint(GLFW_VERSION_MINOR, 3);
@@ -749,7 +759,7 @@ void Test23Application::InitWindow()
 	m_FbAspect = static_cast<float>(m_FbWidth) / static_cast<float>(m_FbHeight);
 }
 
-void Test23Application::InitGLAD()
+void Test22Application::InitGLAD()
 {
 	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
 	{
@@ -757,7 +767,7 @@ void Test23Application::InitGLAD()
 	}
 }
 
-void Test23Application::InitCUDA()
+void Test22Application::InitCUDA()
 {
 	RTLIB_CUDA_CHECK(cudaFree(0));
 	RTLIB_OPTIX_CHECK(optixInit());
@@ -765,7 +775,7 @@ void Test23Application::InitCUDA()
 		rtlib::OPXContext::Desc{0, 0, OPTIX_DEVICE_CONTEXT_VALIDATION_MODE_ALL, 4});
 }
 
-void Test23Application::InitGui()
+void Test22Application::InitGui()
 {
 	//Renderer
 	m_Renderer = std::make_unique<rtlib::ext::RectRenderer>();
@@ -789,10 +799,10 @@ void Test23Application::InitGui()
 	}
 }
 
-void Test23Application::InitPipelines()
+void Test22Application::InitPipelines()
 {
 	{
-		auto rayTracePtxFile = std::ifstream(TEST_TEST23_CUDA_PATH "/RayTrace.ptx", std::ios::binary);
+		auto rayTracePtxFile = std::ifstream(TEST_TEST22_CUDA_PATH "/RayTrace.ptx", std::ios::binary);
 		if (!rayTracePtxFile.is_open())
 			throw std::runtime_error("Failed To Load RayTrace.ptx!");
 		auto rayTracePtxData = std::string((std::istreambuf_iterator<char>(rayTracePtxFile)), (std::istreambuf_iterator<char>()));
@@ -844,7 +854,7 @@ void Test23Application::InitPipelines()
 	}
 
 	{
-		auto rayDebugPtxFile = std::ifstream(TEST_TEST23_CUDA_PATH "/RayDebug.ptx", std::ios::binary);
+		auto rayDebugPtxFile = std::ifstream(TEST_TEST22_CUDA_PATH "/RayDebug.ptx", std::ios::binary);
 		if (!rayDebugPtxFile.is_open())
 			throw std::runtime_error("Failed To Load RayDebug.ptx!");
 		auto rayDebugPtxData = std::string((std::istreambuf_iterator<char>(rayDebugPtxFile)), (std::istreambuf_iterator<char>()));
@@ -888,13 +898,12 @@ void Test23Application::InitPipelines()
 	}
 }
 
-void Test23Application::InitAssets()
+void Test22Application::InitAssets()
 {
 	auto objModelPathes = std::vector{
-		//std::filesystem::canonical(std::filesystem::path(TEST_TEST23_DATA_PATH"/Models/Lumberyard/Exterior/exterior.obj")),
-		//std::filesystem::canonical(std::filesystem::path(TEST_TEST23_DATA_PATH"/Models/Lumberyard/Interior/interior.obj"))
-		std::filesystem::canonical(std::filesystem::path(TEST_TEST23_DATA_PATH "/Models/CornellBox/CornellBox-Water.obj"))
-		//std::filesystem::canonical(std::filesystem::path(TEST_TEST23_DATA_PATH "/Models/CornellBox/CornellBox-Original.obj"))
+		std::filesystem::canonical(std::filesystem::path(TEST_TEST22_DATA_PATH"/Models/Lumberyard/Exterior/exterior.obj")),
+		std::filesystem::canonical(std::filesystem::path(TEST_TEST22_DATA_PATH"/Models/Lumberyard/Interior/interior.obj"))
+		//std::filesystem::canonical(std::filesystem::path(TEST_TEST22_DATA_PATH "/Models/Sponza/Sponza.obj"))
 	};
 	for (auto objModelPath : objModelPathes)
 	{
@@ -903,7 +912,7 @@ void Test23Application::InitAssets()
 			throw std::runtime_error("Failed To Load Obj Model!");
 		}
 	}
-	auto smpTexPath = std::filesystem::canonical(std::filesystem::path(TEST_TEST23_DATA_PATH "/Textures/white.png"));
+	auto smpTexPath = std::filesystem::canonical(std::filesystem::path(TEST_TEST22_DATA_PATH "/Textures/white.png"));
 	if (!m_TextureAssets.LoadAsset("", smpTexPath.string()))
 	{
 		throw std::runtime_error("Failed To Load White Texture!");
@@ -948,7 +957,7 @@ void Test23Application::InitAssets()
 	}
 }
 
-void Test23Application::InitAccelerationStructures()
+void Test22Application::InitAccelerationStructures()
 {
 	{
 		size_t materialSize = 0;
@@ -990,7 +999,7 @@ void Test23Application::InitAccelerationStructures()
 				{
 					objModel.meshGroup->GetSharedResource()->texCrdBuffer.AddGpuComponent<rtlib::ext::CUDABufferComponent<float2>>("CUDA");
 				}
-				for (auto& [name, meshUniqueResource] : objModel.meshGroup->GetUniqueResources())
+				for (auto &[name, meshUniqueResource] : objModel.meshGroup->GetUniqueResources())
 				{
 					if (!meshUniqueResource->matIndBuffer.HasGpuComponent("CUDA"))
 					{
@@ -1032,29 +1041,24 @@ void Test23Application::InitAccelerationStructures()
 					aabb.Update(vertex);
 				}
 			}
-			aabb.max.x = (aabb.max.x + aabb.min.x) / 2.0f + (aabb.max.x - aabb.min.x) / 4.0f;
-			aabb.min.x = (aabb.max.x + aabb.min.x) / 2.0f + (aabb.min.x - aabb.max.x) / 4.0f;
-			aabb.max.z = (aabb.max.z + aabb.min.z) / 2.0f + (aabb.max.z - aabb.min.z) / 4.0f;
-			aabb.min.z = (aabb.max.z + aabb.min.z) / 2.0f + (aabb.min.z - aabb.max.z) / 4.0f;
-
 			OptixAccelBuildOptions accelOptions = {};
 			accelOptions.buildFlags = OPTIX_BUILD_FLAG_ALLOW_COMPACTION | OPTIX_BUILD_FLAG_PREFER_FAST_TRACE;
 			accelOptions.operation = OPTIX_BUILD_OPERATION_BUILD;
 			auto lightMesh = rtlib::ext::Mesh::New();
 			lightMesh->SetSharedResource(rtlib::ext::MeshSharedResource::New());
 			lightMesh->GetSharedResource()->name = "light";
-			lightMesh->GetSharedResource()->vertexBuffer = {
+			lightMesh->GetSharedResource()->vertexBuffer.cpuHandle = {
 				{aabb.min.x, aabb.max.y - 1e-3f, aabb.min.z},
 				{aabb.max.x, aabb.max.y - 1e-3f, aabb.min.z},
 				{aabb.max.x, aabb.max.y - 1e-3f, aabb.max.z},
 				{aabb.min.x, aabb.max.y - 1e-3f, aabb.max.z}};
-			lightMesh->GetSharedResource()->texCrdBuffer = {
+			lightMesh->GetSharedResource()->texCrdBuffer.cpuHandle = {
 				{0.0f, 0.0f},
 				{1.0f, 0.0f},
 				{1.0f, 1.0f},
 				{0.0f, 1.0f},
 			};
-			lightMesh->GetSharedResource()->normalBuffer = {{0.0f, -1.0f, 0.0f}, {0.0f, -1.0f, 0.0f}, {0.0f, -1.0f, 0.0f}, {0.0f, -1.0f, 0.0f}};
+			lightMesh->GetSharedResource()->normalBuffer.cpuHandle = {{0.0f, -1.0f, 0.0f}, {0.0f, -1.0f, 0.0f}, {0.0f, -1.0f, 0.0f}, {0.0f, -1.0f, 0.0f}};
 
 			auto &lightMaterial = m_Materials.back();
 			{
@@ -1076,7 +1080,7 @@ void Test23Application::InitAccelerationStructures()
 			lightMesh->GetSharedResource()->texCrdBuffer.AddGpuComponent<rtlib::ext::CUDABufferComponent<float2>>("CUDA");
 			lightMesh->SetUniqueResource(rtlib::ext::MeshUniqueResource::New());
 			lightMesh->GetUniqueResource()->name = "light";
-			lightMesh->GetUniqueResource()->materials = { (unsigned int)m_Materials.size() - 1 };
+			lightMesh->GetUniqueResource()->materials = {(unsigned int)m_Materials.size() - 1};
 			lightMesh->GetUniqueResource()->matIndBuffer = { 0, 0 };
 			lightMesh->GetUniqueResource()->triIndBuffer = { {0, 1, 2}, {2, 3, 0} };
 			lightMesh->GetUniqueResource()->matIndBuffer.AddGpuComponent<rtlib::ext::CUDABufferComponent<uint32_t>>("CUDA");
@@ -1112,7 +1116,7 @@ void Test23Application::InitAccelerationStructures()
 	}
 }
 
-void Test23Application::InitLight()
+void Test22Application::InitLight()
 {
 	auto lightGASHandle = m_GASHandles["Light"];
 	auto lightMesh = lightGASHandle->GetMesh(0);
@@ -1135,7 +1139,7 @@ void Test23Application::InitLight()
 	m_ParallelLight.emission = lightMaterial.GetFloat3As<float3>("emitCol");
 }
 
-void Test23Application::InitCamera()
+void Test22Application::InitCamera()
 {
 	m_CameraController = rtlib::ext::CameraController({0.0f, 1.0f, 5.0f});
 	m_MouseSensitity = 0.125f;
@@ -1144,7 +1148,7 @@ void Test23Application::InitCamera()
 	m_CameraController.SetMovementSpeed(m_MovementSpeed);
 }
 
-void Test23Application::InitSTree()
+void Test22Application::InitSTree()
 {
 	auto worldAABB = rtlib::utils::AABB();
 
@@ -1159,7 +1163,7 @@ void Test23Application::InitSTree()
 	}
 }
 
-void Test23Application::InitFrameResources()
+void Test22Application::InitFrameResources()
 {
 	m_RenderTexture = std::make_unique<rtlib::GLTexture2D<uchar4>>();
 	m_RenderTexture->allocate({(size_t)m_FbWidth, (size_t)m_FbHeight, nullptr}, GL_TEXTURE_2D);
@@ -1185,36 +1189,36 @@ void Test23Application::InitFrameResources()
 		m_FrameBuffer->GetCUGLBuffer(debugFrameName).upload(std::vector<uchar4>(m_FbWidth * m_FbHeight, make_uchar4(0, 0, 0, 255)));
 	}
 }
-void Test23Application::InitTracers()
+void Test22Application::InitTracers()
 {
 	m_DebugActor = std::shared_ptr<test::RTTracer>(
-		new Test23DebugTracer(this));
+		new Test22DebugTracer(this));
 	m_DebugActor->Initialize();
 	m_SimpleActor = std::shared_ptr<test::RTTracer>(
-		new Test23SimpleTracer(this));
+		new Test22SimpleTracer(this));
 	m_SimpleActor->Initialize();
 	m_NEEActor = std::shared_ptr<test::RTTracer>(
-		new Test23NEETracer(this));
+		new Test22NEETracer(this));
 	m_NEEActor->Initialize();
 }
 //ShouldClose
-void Test23Application::PrepareLoop()
+void Test22Application::PrepareLoop()
 {
 	m_CurFrameTime = glfwGetTime();
 }
 
-bool Test23Application::QuitLoop()
+bool Test22Application::QuitLoop()
 {
 	if (!m_Window)
 		return false;
 	return glfwWindowShouldClose(m_Window);
 }
 
-void Test23Application::Trace()
+void Test22Application::Trace()
 {
 	if (m_LaunchDebug)
 	{
-		Test23DebugTracer::UserData userData = {};
+		Test22DebugTracer::UserData userData = {};
 		userData.diffuseBuffer = m_FrameBuffer->GetCUGLBuffer("Diffuse").map();
 		userData.specularBuffer = m_FrameBuffer->GetCUGLBuffer("Specular").map();
 		userData.emissionBuffer = m_FrameBuffer->GetCUGLBuffer("Emission").map();
@@ -1244,7 +1248,7 @@ void Test23Application::Trace()
 	auto beginTraceTime = glfwGetTime();
 	if (!m_TraceNEE)
 	{
-		Test23SimpleTracer::UserData userData = {};
+		Test22SimpleTracer::UserData userData = {};
 		userData.frameBuffer = m_FrameBuffer->GetCUGLBuffer("Default").map();
 		userData.samplePerLaunch = m_SamplePerLaunch;
 		userData.samplePerAll = m_SamplePerALL;
@@ -1262,7 +1266,7 @@ void Test23Application::Trace()
 		m_SamplePerALL = userData.samplePerAll;
 	}
 	else {
-		Test23NEETracer::UserData userData = {};
+		Test22NEETracer::UserData userData = {};
 		userData.frameBuffer = m_FrameBuffer->GetCUGLBuffer("Default").map();
 		userData.samplePerLaunch = m_SamplePerLaunch;
 		userData.samplePerAll = m_SamplePerALL;
@@ -1282,13 +1286,13 @@ void Test23Application::Trace()
 	m_DelTraceTime = glfwGetTime() - beginTraceTime;
 }
 
-void Test23Application::DrawFrame()
+void Test22Application::DrawFrame()
 {
 	 m_DebugTexture->upload(0, m_FrameBuffer->GetCUGLBuffer(m_CurDebugFrame).getHandle(), 0, 0, m_FbWidth, m_FbHeight);
 	m_RenderTexture->upload(0, m_FrameBuffer->GetCUGLBuffer(m_CurRenderFrame).getHandle(), 0, 0, m_FbWidth, m_FbHeight);
 	m_Renderer->draw(m_RenderTexture->getID());
 }
-void Test23Application::DrawGui()
+void Test22Application::DrawGui()
 {
 	ImGui_ImplOpenGL3_NewFrame();
 	ImGui_ImplGlfw_NewFrame();
@@ -1583,7 +1587,7 @@ void Test23Application::DrawGui()
 	ImGui::Render();
 	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }
-void Test23Application::PollEvents()
+void Test22Application::PollEvents()
 {
 	double prvTime = m_CurFrameTime;
 	m_CurFrameTime = glfwGetTime();
@@ -1650,7 +1654,7 @@ void Test23Application::PollEvents()
 	}
 	glfwPollEvents();
 }
-void Test23Application::Update()
+void Test22Application::Update()
 {
 	if (m_ResizeFrame)
 	{
@@ -1681,32 +1685,32 @@ void Test23Application::Update()
 	m_ResizeFrame  = false;
 	m_FlushFrame   = false;
 }
-void Test23Application::LockUpdate()
+void Test22Application::LockUpdate()
 {
 	m_LockUpdate = true;
 }
-void Test23Application::UnLockUpdate()
+void Test22Application::UnLockUpdate()
 {
 	m_LockUpdate = false;
 }
 //Free
-void Test23Application::FreeGLFW()
+void Test22Application::FreeGLFW()
 {
 	glfwTerminate();
 }
 
-void Test23Application::FreeWindow()
+void Test22Application::FreeWindow()
 {
 	glfwDestroyWindow(m_Window);
 	m_Window = nullptr;
 }
 
-void Test23Application::FreeCUDA()
+void Test22Application::FreeCUDA()
 {
 	m_Context.reset();
 }
 
-void Test23Application::FreeGui()
+void Test22Application::FreeGui()
 {
 	ImGui_ImplOpenGL3_Shutdown();
 	ImGui_ImplGlfw_Shutdown();
@@ -1716,7 +1720,7 @@ void Test23Application::FreeGui()
 	m_Renderer.reset();
 }
 
-void Test23Application::FreePipelines()
+void Test22Application::FreePipelines()
 {
 	m_HGProgramGroups.clear();
 	m_MSProgramGroups.clear();
@@ -1725,92 +1729,88 @@ void Test23Application::FreePipelines()
 	m_Pipelines.clear();
 }
 
-void Test23Application::FreeAssets()
+void Test22Application::FreeAssets()
 {
 	m_TextureAssets.Reset();
 	m_ObjModelAssets.Reset();
 }
 
-void Test23Application::FreeAccelerationStructures()
+void Test22Application::FreeAccelerationStructures()
 {
 	m_GASHandles.clear();
 	m_IASHandles.clear();
 }
 
-void Test23Application::FreeLight()
+void Test22Application::FreeLight()
 {
 	m_ParallelLight = {};
 }
 
-void Test23Application::FreeCamera()
+void Test22Application::FreeCamera()
 {
 	m_CameraController = {};
 }
 
-void Test23Application::FreeSTree()
-{
-}
-
-void Test23Application::FreeFrameResources()
+void Test22Application::FreeFrameResources()
 {
 	m_RenderTexture->reset();
 	m_FrameBuffer->CleanUp();
 }
 
-void Test23Application::FreeTracers()
+void Test22Application::FreeTracers()
 {
 	m_DebugActor->CleanUp();
 	m_SimpleActor->CleanUp();
 	m_NEEActor->CleanUp();
 }
 
-auto Test23Application::GetOPXContext() const -> std::shared_ptr<rtlib::OPXContext>
+auto Test22Application::GetOPXContext() const -> std::shared_ptr<rtlib::OPXContext>
 {
 	return m_Context;
 }
 
-auto Test23Application::GetOPXPipeline(const std::string &name) -> rtlib::OPXPipeline &
+auto Test22Application::GetOPXPipeline(const std::string &name) -> rtlib::OPXPipeline &
 {
 	return m_Pipelines.at(name);
 }
 
-auto Test23Application::GetRGProgramGroup(const std::string &name) -> rtlib::OPXRaygenPG &
+auto Test22Application::GetRGProgramGroup(const std::string &name) -> rtlib::OPXRaygenPG &
 {
 	return m_RGProgramGroups.at(name);
 }
 
-auto Test23Application::GetMSProgramGroup(const std::string &name) -> rtlib::OPXMissPG &
+auto Test22Application::GetMSProgramGroup(const std::string &name) -> rtlib::OPXMissPG &
 {
 	return m_MSProgramGroups.at(name);
 }
 
-auto Test23Application::GetHGProgramGroup(const std::string &name) -> rtlib::OPXHitgroupPG &
+auto Test22Application::GetHGProgramGroup(const std::string &name) -> rtlib::OPXHitgroupPG &
 {
 	return m_HGProgramGroups.at(name);
 }
 
-auto Test23Application::GetTLAS() const -> rtlib::ext::IASHandlePtr
+auto Test22Application::GetTLAS() const -> rtlib::ext::IASHandlePtr
 {
 	return m_IASHandles.at("TopLevel");
 }
 
-auto Test23Application::GetMaterials() const -> const std::vector<rtlib::ext::Material> &
+auto Test22Application::GetMaterials() const -> const std::vector<rtlib::ext::Material> &
 {
 	// TODO: return �X�e�[�g�����g�������ɑ}�����܂�
 	return m_Materials;
 }
 
-auto Test23Application::GetCamera() const -> rtlib::ext::Camera
+auto Test22Application::GetCamera() const -> rtlib::ext::Camera
 {
 	return m_CameraController.GetCamera(m_CameraFovY, m_FbAspect);
 }
 
-auto Test23Application::GetLight() const -> ParallelLight
+auto Test22Application::GetLight() const -> ParallelLight
 {
 	return m_ParallelLight;
 }
 
-auto Test23Application::GetTexture(const std::string &name) const -> const rtlib::CUDATexture2D<uchar4> &
+auto Test22Application::GetTexture(const std::string &name) const -> const rtlib::CUDATexture2D<uchar4> &
 {
 	// TODO: return �X�e�[�g�����g�������ɑ}�����܂�
 	return m_TextureAssets.GetAsset(name);

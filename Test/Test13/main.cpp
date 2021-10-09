@@ -6,7 +6,7 @@
 #include <stb_image_write.h>
 #include <cuda.h>
 #include <cuda_runtime.h>
-#include <RTLib/Camera.h>
+#include <RTLib/ext/Camera.h>
 #include <RTLib/Optix.h>
 #include <RTLib/Config.h>
 #include <RTLib/VectorFunction.h>
@@ -220,7 +220,7 @@ int main() {
     {
         int width   = 768;
         int height  = 768;
-        auto cameraController = rtlib::CameraController({ 0.0f,1.0f, 5.0f });
+        auto cameraController = rtlib::ext::CameraController({ 0.0f,1.0f, 5.0f });
         //��ԍŏ��ɌĂяo��
         RTLIB_CUDA_CHECK(cudaFree(0));
         RTLIB_OPTIX_CHECK(optixInit());
@@ -616,35 +616,35 @@ int main() {
                         windowState.delTime = windowState.curTime - prevTime;
                         windowState.curTime = prevTime;
                         if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
-                            cameraController.ProcessKeyboard(rtlib::CameraMovement::eForward, windowState.delTime);
+                            cameraController.ProcessKeyboard(rtlib::ext::CameraMovement::eForward, windowState.delTime);
                             isMovedCamera = true;
                         }
                         if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
-                            cameraController.ProcessKeyboard(rtlib::CameraMovement::eBackward, windowState.delTime);
+                            cameraController.ProcessKeyboard(rtlib::ext::CameraMovement::eBackward, windowState.delTime);
                             isMovedCamera = true;
                         }
                         if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
-                            cameraController.ProcessKeyboard(rtlib::CameraMovement::eLeft, windowState.delTime);
+                            cameraController.ProcessKeyboard(rtlib::ext::CameraMovement::eLeft, windowState.delTime);
                             isMovedCamera = true;
                         }
                         if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
-                            cameraController.ProcessKeyboard(rtlib::CameraMovement::eRight, windowState.delTime);
+                            cameraController.ProcessKeyboard(rtlib::ext::CameraMovement::eRight, windowState.delTime);
                             isMovedCamera = true;
                         }
                         if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS) {
-                            cameraController.ProcessKeyboard(rtlib::CameraMovement::eLeft, windowState.delTime);
+                            cameraController.ProcessKeyboard(rtlib::ext::CameraMovement::eLeft, windowState.delTime);
                             isMovedCamera = true;
                         }
                         if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS) {
-                            cameraController.ProcessKeyboard(rtlib::CameraMovement::eRight, windowState.delTime);
+                            cameraController.ProcessKeyboard(rtlib::ext::CameraMovement::eRight, windowState.delTime);
                             isMovedCamera = true;
                         }
                         if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) {
-                            cameraController.ProcessKeyboard(rtlib::CameraMovement::eUp, windowState.delTime);
+                            cameraController.ProcessKeyboard(rtlib::ext::CameraMovement::eUp, windowState.delTime);
                             isMovedCamera = true;
                         }
                         if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) {
-                            cameraController.ProcessKeyboard(rtlib::CameraMovement::eDown, windowState.delTime);
+                            cameraController.ProcessKeyboard(rtlib::ext::CameraMovement::eDown, windowState.delTime);
                             isMovedCamera = true;
                         }
                         if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) {

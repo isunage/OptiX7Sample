@@ -1,5 +1,5 @@
-#include "../include/RTLib/Camera.h"
-void rtlib::Camera::getUVW(float3& u,float3& v,float3& w)const noexcept{
+#include "../include/RTLib/ext/Camera.h"
+void rtlib::ext::Camera::getUVW(float3& u,float3& v,float3& w)const noexcept{
     w = m_LookAt - m_Eye;
     //front
     //u = rtlib::normalize(rtlib::cross(w,m_Vup));
@@ -10,7 +10,7 @@ void rtlib::Camera::getUVW(float3& u,float3& v,float3& w)const noexcept{
     u*=ulen;
     v*=vlen;
 }
-std::tuple<float3,float3,float3> rtlib::Camera::getUVW()const noexcept{
+std::tuple<float3,float3,float3> rtlib::ext::Camera::getUVW()const noexcept{
     std::tuple<float3,float3,float3> uvw;
     this->getUVW(std::get<0>(uvw),std::get<1>(uvw),std::get<2>(uvw));
     return uvw;

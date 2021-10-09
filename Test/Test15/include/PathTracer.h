@@ -1,7 +1,7 @@
 #ifndef PATH_TRACER_H
 #define PATH_TRACER_H
 #include <RTLib/Optix.h>
-#include <RTLib/Camera.h>
+#include <RTLib/ext/Camera.h>
 #include <cuda/RayTrace.h>
 #include <memory>
 #include <string>

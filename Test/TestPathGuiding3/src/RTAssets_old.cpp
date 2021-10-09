@@ -149,59 +149,59 @@ bool test::RTObjModelAssetManager::LoadAsset(const std::string& keyName, const s
                 }
             }
         }
-        std::cout << "VertexBuffer: " << attrib.vertices.size() / 3  << "->" << indices.size() << std::endl;
-        std::cout << "NormalBuffer: " << attrib.normals.size() / 3   << "->" << indices.size() << std::endl;
+        std::cout << "VertexBuffer: " << attrib.vertices.size() / 3 << "->" << indices.size() << std::endl;
+        std::cout << "NormalBuffer: " << attrib.normals.size() / 3 << "->" << indices.size() << std::endl;
         std::cout << "TexCrdBuffer: " << attrib.texcoords.size() / 2 << "->" << indices.size() << std::endl;
-        vertexBuffer.Resize(indices.size());
-        texCrdBuffer.Resize(indices.size());
-        normalBuffer.Resize(indices.size());
+        vertexBuffer.cpuHandle.resize(indices.size());
+        texCrdBuffer.cpuHandle.resize(indices.size());
+        normalBuffer.cpuHandle.resize(indices.size());
 
         for (size_t i = 0; i < indices.size(); ++i) {
             tinyobj::index_t idx = indices[i];
-            vertexBuffer[i] = make_float3(
+            vertexBuffer.cpuHandle[i] = make_float3(
                 attrib.vertices[3 * idx.vertex_index + 0],
                 attrib.vertices[3 * idx.vertex_index + 1],
                 attrib.vertices[3 * idx.vertex_index + 2]);
             if (idx.normal_index >= 0) {
-                normalBuffer[i] = make_float3(
+                normalBuffer.cpuHandle[i] = make_float3(
                     attrib.normals[3 * idx.normal_index + 0],
                     attrib.normals[3 * idx.normal_index + 1],
                     attrib.normals[3 * idx.normal_index + 2]);
             }
             else {
-                normalBuffer[i] = make_float3(0.0f, 1.0f, 0.0f);
+                normalBuffer.cpuHandle[i] = make_float3(0.0f, 1.0f, 0.0f);
             }
             if (idx.texcoord_index >= 0) {
-                texCrdBuffer[i] = make_float2(
+                texCrdBuffer.cpuHandle[i] = make_float2(
                     attrib.texcoords[2 * idx.texcoord_index + 0],
                     attrib.texcoords[2 * idx.texcoord_index + 1]);
             }
             else {
-                texCrdBuffer[i] = make_float2(0.5f, 0.5f);
+                texCrdBuffer.cpuHandle[i] = make_float2(0.5f, 0.5f);
             }
         }
 
         std::unordered_map<std::size_t, std::size_t> texCrdMap = {};
         for (size_t i = 0; i < shapes.size(); ++i) {
             std::unordered_map<uint32_t, uint32_t> tmpMaterials = {};
-            auto uniqueResource  = std::make_shared<rtlib::ext::MeshUniqueResource>();
+            auto uniqueResource = std::make_shared<rtlib::ext::MeshUniqueResource>();
             uniqueResource->name = shapes[i].name;
-            uniqueResource->triIndBuffer.Resize(shapes[i].mesh.num_face_vertices.size());
+            uniqueResource->triIndBuffer.cpuHandle.resize(shapes[i].mesh.num_face_vertices.size());
             for (size_t j = 0; j < shapes[i].mesh.num_face_vertices.size(); ++j) {
                 uint32_t idx0 = indicesMap.at(shapes[i].mesh.indices[3 * j + 0]);
                 uint32_t idx1 = indicesMap.at(shapes[i].mesh.indices[3 * j + 1]);
                 uint32_t idx2 = indicesMap.at(shapes[i].mesh.indices[3 * j + 2]);
-                uniqueResource->triIndBuffer[j] = make_uint3(idx0, idx1, idx2);
+                uniqueResource->triIndBuffer.cpuHandle[j] = make_uint3(idx0, idx1, idx2);
             }
-            uniqueResource->matIndBuffer.Resize(shapes[i].mesh.material_ids.size());
+            uniqueResource->matIndBuffer.cpuHandle.resize(shapes[i].mesh.material_ids.size());
             for (size_t j = 0; j < shapes[i].mesh.material_ids.size(); ++j) {
                 if (tmpMaterials.count(shapes[i].mesh.material_ids[j]) != 0) {
-                    uniqueResource->matIndBuffer[j] = tmpMaterials.at(shapes[i].mesh.material_ids[j]);
+                    uniqueResource->matIndBuffer.cpuHandle[j] = tmpMaterials.at(shapes[i].mesh.material_ids[j]);
                 }
                 else {
                     int newValue = tmpMaterials.size();
                     tmpMaterials[shapes[i].mesh.material_ids[j]] = newValue;
-                    uniqueResource->matIndBuffer[j] = newValue;
+                    uniqueResource->matIndBuffer.cpuHandle[j] = newValue;
                 }
             }
             uniqueResource->materials.resize(tmpMaterials.size());
@@ -263,70 +263,6 @@ bool test::RTObjModelAssetManager::LoadAsset(const std::string& keyName, const s
             }
             phongMaterials[i].SetFloat1("shinness", materials[i].shininess);
             phongMaterials[i].SetFloat1("refrIndx", materials[i].ior);
-        }
-    }
-    {
-        auto splitMeshGroup = rtlib::ext::MeshGroup::New();
-        splitMeshGroup->SetSharedResource(meshGroup->GetSharedResource());
-        for (auto& [name, uniqueResource] : meshGroup->GetUniqueResources())
-        {
-            std::unordered_set<bool> materialEmitSet = {};
-            for (auto& matIdx : uniqueResource->materials) {
-                auto material = phongMaterials[matIdx];
-                auto emitCol  = material.GetFloat3As<float3>("emitCol");
-                if (emitCol.x + emitCol.y + emitCol.z > 0.0f) {
-                    materialEmitSet.insert(true);
-                }
-                else {
-                    materialEmitSet.insert(false);
-                }
-            }
-            if (materialEmitSet.size() == 2) {
-                splitMeshGroup->SetUniqueResource(name, uniqueResource);
-            }
-            else if (materialEmitSet.count(true) > 0) {
-                uniqueResource->hasLight = true;
-            }
-        }
-        //split mesh
-        for (auto& [name, uniqueResource] : splitMeshGroup->GetUniqueResources())
-        {
-            meshGroup->RemoveMesh(name);
-            auto newSurfMatIndMap       = std::unordered_map<uint32_t, uint32_t>();
-            auto newEmitMatIndMap       = std::unordered_map<uint32_t, uint32_t>();
-            auto newSurfUniqueResource  = rtlib::ext::MeshUniqueResource::New();
-            auto newEmitUniqueResource  = rtlib::ext::MeshUniqueResource::New();
-            newSurfUniqueResource->name = uniqueResource->name + ".Surface";
-            newSurfUniqueResource->hasLight = false;
-            newEmitUniqueResource->name = uniqueResource->name + ".Emission";
-            newEmitUniqueResource->hasLight = true;
-            for (auto i = 0; i < uniqueResource->matIndBuffer.Size();++i) {
-                auto  matIndex = uniqueResource->matIndBuffer[i];
-                auto& material = phongMaterials[uniqueResource->materials[matIndex]];
-                auto emitCol   = material.GetFloat3As<float3>("emitCol");
-                if (emitCol.x + emitCol.y + emitCol.z > 0.0f) {
-                    if (newEmitMatIndMap.count(matIndex) == 0)
-                    {
-                        uint32_t newMatIndex = newEmitUniqueResource->materials.size();
-                        newEmitUniqueResource->materials.push_back(uniqueResource->materials[matIndex]);
-                        newEmitMatIndMap[matIndex] = newMatIndex;
-                    }
-                    newEmitUniqueResource->matIndBuffer.PushBack(newEmitMatIndMap[matIndex]);
-                    newEmitUniqueResource->triIndBuffer.PushBack(uniqueResource->triIndBuffer[i]);
-                }
-                else {
-                    if (newSurfMatIndMap.count(matIndex) == 0)
-                    {
-                        uint32_t newMatIndex = newSurfUniqueResource->materials.size();
-                        newSurfUniqueResource->materials.push_back(uniqueResource->materials[matIndex]);
-                        newSurfMatIndMap[matIndex] = newMatIndex;
-                    }
-                    newSurfUniqueResource->matIndBuffer.PushBack(newSurfMatIndMap[matIndex]);
-                    newSurfUniqueResource->triIndBuffer.PushBack(uniqueResource->triIndBuffer[i]);
-                }
-            }
-            meshGroup->SetUniqueResource(newSurfUniqueResource->name, newSurfUniqueResource);
-            meshGroup->SetUniqueResource(newEmitUniqueResource->name, newEmitUniqueResource);
         }
     }
     m_ObjModels[keyName] = { meshGroup,std::move(phongMaterials) };

@@ -2,7 +2,7 @@
 #define TEST_RT_PIPELINE_H
 #include <RTLib/Optix.h>
 #include <RTLib/CUDA.h>
-#include <RTLib/Camera.h>
+#include <RTLib/ext/Camera.h>
 #include <RTLib/ext/TraversalHandle.h>
 #include "RTRecordBuffer.h"
 #include "RTSubPass.h"

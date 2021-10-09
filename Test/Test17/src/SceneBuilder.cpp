@@ -25,9 +25,9 @@ bool test::ObjMeshGroup::Load(const std::string& objFilePath, const std::string&
         auto& vertexBuffer = meshGroup->GetSharedResource()->vertexBuffer;
         auto& texCrdBuffer = meshGroup->GetSharedResource()->texCrdBuffer;
         auto& normalBuffer = meshGroup->GetSharedResource()->normalBuffer;
-        vertexBuffer.cpuHandle.resize(attrib.vertices.size() / 3);
-        texCrdBuffer.cpuHandle.resize(vertexBuffer.cpuHandle.size());
-        normalBuffer.cpuHandle.resize(vertexBuffer.cpuHandle.size());
+        vertexBuffer.Resize(attrib.vertices.size() / 3);
+        texCrdBuffer.Resize(vertexBuffer.cpuHandle.size());
+        normalBuffer.Resize(vertexBuffer.cpuHandle.size());
         for (size_t i = 0; i < vertexBuffer.cpuHandle.size(); ++i) {
             vertexBuffer.cpuHandle[i] = make_float3(attrib.vertices[3 * i + 0], attrib.vertices[3 * i + 1], attrib.vertices[3 * i + 2]);
         }
@@ -35,7 +35,7 @@ bool test::ObjMeshGroup::Load(const std::string& objFilePath, const std::string&
             std::unordered_map<uint32_t, uint32_t> tmpMaterials = {};
             auto uniqueResource  = std::make_shared<rtlib::ext::MeshUniqueResource>();
             uniqueResource->name = shapes[i].name;
-            uniqueResource->triIndBuffer.cpuHandle.resize(shapes[i].mesh.num_face_vertices.size());
+            uniqueResource->triIndBuffer.Resize(shapes[i].mesh.num_face_vertices.size());
             for (size_t j = 0; j < shapes[i].mesh.num_face_vertices.size(); ++j) {
                 tinyobj::index_t idxs[3] = {
                     shapes[i].mesh.indices[3 * j + 0],
@@ -65,7 +65,7 @@ bool test::ObjMeshGroup::Load(const std::string& objFilePath, const std::string&
                     }
                 }
             }
-            uniqueResource->matIndBuffer.cpuHandle.resize(shapes[i].mesh.material_ids.size());
+            uniqueResource->matIndBuffer.Resize(shapes[i].mesh.material_ids.size());
             for (size_t j = 0; j < shapes[i].mesh.material_ids.size();++j){
                 if (tmpMaterials.count(shapes[i].mesh.material_ids[j])!= 0) {
                     uniqueResource->matIndBuffer.cpuHandle[j] = tmpMaterials.at(shapes[i].mesh.material_ids[j]);

@@ -28,6 +28,7 @@ namespace test {
 		//MeshGroup
 		void AddMeshGroup(const std::string& mgName, const rtlib::ext::MeshGroupPtr& meshGroup)noexcept;
 		auto GetMeshGroup(const std::string& mgName) const->rtlib::ext::MeshGroupPtr;
+		auto GetMeshGroups()const -> const MeshGroupMap&;
 		//MaterialList
 		void AddMaterialList(const std::string& mlName, const rtlib::ext::MaterialListPtr& materialList)noexcept;
 		auto GetMaterialList(const std::string& mlName) const->rtlib::ext::MaterialListPtr;

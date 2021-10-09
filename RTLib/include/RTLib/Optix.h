@@ -32,12 +32,16 @@ namespace rtlib{
     //       ->  RaygenProgramGroup(RG)
     //       ->    MissProgramGroup(MS)
     //       ->HitgroupProgramGroup(CH,AH,IS)
+    //       ->DirectCallable,ContinueCallable
     class  OPXContext;
     class  OPXPipeline;
     class  OPXModule;
     class  OPXRaygenPG;
     class  OPXMissPG;
     class  OPXHitgroupPG;
+    class  OPXCCallablePG;
+    class  OPXDCallablePG;
+    class  OPXExceptionPG;
     struct OPXProgramDesc;
     //Copy Move 禁止
     class OPXContext{
@@ -47,6 +51,9 @@ namespace rtlib{
         friend class OPXRaygenPG;
         friend class OPXMissPG;
         friend class OPXHitgroupPG;
+        friend class OPXCCallablePG;
+        friend class OPXDCallablePG;
+        friend class OPXExceptionPG;
         struct Desc{
             using ValidationMode = OptixDeviceContextValidationMode;
             int            deviceIdx;
@@ -105,9 +112,12 @@ namespace rtlib{
         explicit operator bool()const noexcept;
         OPXModule createModule(const std::string& ptx, const OptixModuleCompileOptions& compileOptions);
         //ProgramGroup
-        OPXRaygenPG   createRaygenPG(  const OPXProgramDesc& raygenDesc);
-        OPXMissPG     createMissPG(    const OPXProgramDesc& missDesc);
-        OPXHitgroupPG createHitgroupPG(const OPXProgramDesc& chDesc,const OPXProgramDesc& ahDesc,const OPXProgramDesc& isDesc);
+        OPXRaygenPG    createRaygenPG(  const OPXProgramDesc& raygenDesc);
+        OPXMissPG      createMissPG(    const OPXProgramDesc& missDesc);
+        OPXHitgroupPG  createHitgroupPG(const OPXProgramDesc& chDesc,const OPXProgramDesc& ahDesc,const OPXProgramDesc& isDesc);
+        OPXCCallablePG createCCallablePG(const OPXProgramDesc& ccDesc);
+        OPXDCallablePG createDCallablePG(const OPXProgramDesc& dcDesc);
+        OPXExceptionPG createExceptionPG(const OPXProgramDesc& exDesc);
         //link
         void link(const LinkOptions& linkOptions);
         template<typename Params>
@@ -129,6 +139,9 @@ namespace rtlib{
         friend class OPXRaygenPG;
         friend class OPXMissPG;
         friend class OPXHitgroupPG;
+        friend class OPXCCallablePG;
+        friend class OPXDCallablePG;
+        friend class OPXExceptionPG;
         using CompileOptions = OptixModuleCompileOptions;
     public:
         OPXModule()noexcept;
@@ -223,6 +236,85 @@ namespace rtlib{
         class Impl;
         std::shared_ptr<Impl> m_Impl;
     };
+    class  OPXCCallablePG{
+        friend class OPXPipeline;
+        friend class OPXContext;
+    public:
+        OPXCCallablePG()noexcept;
+        explicit operator bool()const noexcept;
+        template<typename T>
+        auto getSBTRecord()const -> SBTRecord<T>{
+            SBTRecord<T> record;
+            RTLIB_OPTIX_CHECK(optixSbtRecordPackHeader(this->getHandle(),record.header));
+            return record;
+        }
+        template<typename T>
+        auto getSBTRecord(const T& value)const -> SBTRecord<T> {
+            SBTRecord<T> record;
+            record.data = value;
+            RTLIB_OPTIX_CHECK(optixSbtRecordPackHeader(this->getHandle(), record.header));
+            return record;
+        }
+        ~OPXCCallablePG()noexcept{}
+    private:
+        auto getHandle()const -> OptixProgramGroup;
+    private:
+        class Impl;
+        std::shared_ptr<Impl> m_Impl;
+    };
+    class  OPXDCallablePG{
+        friend class OPXPipeline;
+        friend class OPXContext;
+    public:
+        OPXDCallablePG()noexcept;
+        explicit operator bool()const noexcept;
+        template<typename T>
+        auto getSBTRecord()const -> SBTRecord<T>{
+            SBTRecord<T> record;
+            RTLIB_OPTIX_CHECK(optixSbtRecordPackHeader(this->getHandle(),record.header));
+            return record;
+        }
+        template<typename T>
+        auto getSBTRecord(const T& value)const -> SBTRecord<T> {
+            SBTRecord<T> record;
+            record.data = value;
+            RTLIB_OPTIX_CHECK(optixSbtRecordPackHeader(this->getHandle(), record.header));
+            return record;
+        }
+        ~OPXDCallablePG()noexcept{}
+    private:
+        auto getHandle()const -> OptixProgramGroup;
+    private:
+        class Impl;
+        std::shared_ptr<Impl> m_Impl;
+    };
+    class  OPXExceptionPG{
+        friend class OPXPipeline;
+        friend class OPXContext;
+    public:
+        OPXExceptionPG()noexcept;
+        explicit operator bool()const noexcept;
+        template<typename T>
+        auto getSBTRecord()const -> SBTRecord<T>{
+            SBTRecord<T> record;
+            RTLIB_OPTIX_CHECK(optixSbtRecordPackHeader(this->getHandle(),record.header));
+            return record;
+        }
+        template<typename T>
+        auto getSBTRecord(const T& value)const -> SBTRecord<T> {
+            SBTRecord<T> record;
+            record.data = value;
+            RTLIB_OPTIX_CHECK(optixSbtRecordPackHeader(this->getHandle(), record.header));
+            return record;
+        }
+        ~OPXExceptionPG()noexcept{}
+    private:
+        auto getHandle()const -> OptixProgramGroup;
+    private:
+        class Impl;
+        std::shared_ptr<Impl> m_Impl;
+    };
+    
 }
 //DEVICE CLASS AND FUNCTION
 #endif

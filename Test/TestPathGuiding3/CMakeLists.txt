@@ -30,6 +30,7 @@ configure_file(
 
 add_executable(TestPathGuiding3
     ${CMAKE_CURRENT_SOURCE_DIR}/include/RTPathGuidingUtils.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/RTUtils.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/RTApplication.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/RTPipeline.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/RTFrameBuffer.h
@@ -41,8 +42,9 @@ add_executable(TestPathGuiding3
     ${CMAKE_CURRENT_BINARY_DIR}/TestPGConfig.h
 
     ${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/TestPG3Application.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/RTUtils.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/RTAssets.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/TestPG3Application.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/cuda/RayTrace.cu
     ${CMAKE_CURRENT_SOURCE_DIR}/cuda/RayGuide.cu
     ${CMAKE_CURRENT_SOURCE_DIR}/cuda/RayDebug.cu

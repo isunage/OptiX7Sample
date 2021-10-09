@@ -135,11 +135,14 @@ namespace rtlib{
     //Pipeline
     class OPXPipeline::Impl{
     public:
-        using ContextRef    = std::shared_ptr<   OPXContext::Impl>;
-        using RaygenPGRef   = std::shared_ptr<  OPXRaygenPG::Impl>;
-        using MissPGRef     = std::shared_ptr<    OPXMissPG::Impl>;
-        using HitgroupPGRef = std::shared_ptr<OPXHitgroupPG::Impl>;
-        using HandleType    = std::unique_ptr<OptixPipeline_t,internal::OptixDestroy<OptixPipeline_t>>;
+        using ContextRef     = std::shared_ptr<    OPXContext::Impl>;
+        using RaygenPGRef    = std::shared_ptr<   OPXRaygenPG::Impl>;
+        using MissPGRef      = std::shared_ptr<     OPXMissPG::Impl>;
+        using HitgroupPGRef  = std::shared_ptr< OPXHitgroupPG::Impl>;
+        using CCallablePGRef = std::shared_ptr<OPXCCallablePG::Impl>;
+        using DCallablePGRef = std::shared_ptr<OPXDCallablePG::Impl>;
+        using ExceptionPGRef = std::shared_ptr<OPXExceptionPG::Impl>;
+        using HandleType     = std::unique_ptr<OptixPipeline_t,internal::OptixDestroy<OptixPipeline_t>>;
     public:
         Impl(){}
         Impl(const Impl& )            = delete;
@@ -157,14 +160,23 @@ namespace rtlib{
         void setCompileOptions(const OPXPipeline::CompileOptions& compileOptions)noexcept{
             m_CompileOptions = compileOptions;
         }
-        void setProgramGroup(const RaygenPGRef& raygenPG)noexcept{
+        void setProgramGroup(const    RaygenPGRef&    raygenPG)noexcept{
             m_RaygenPGs.insert(raygenPG);
         }
-        void setProgramGroup(const MissPGRef& missPG)noexcept{
+        void setProgramGroup(const      MissPGRef&      missPG)noexcept{
             m_MissPGs.insert(missPG);
         }
-        void setProgramGroup(const HitgroupPGRef& hitgroupPG)noexcept{
+        void setProgramGroup(const  HitgroupPGRef&  hitgroupPG)noexcept{
             m_HitgroupPGs.insert(hitgroupPG);
+        }
+        void setProgramGroup(const CCallablePGRef& ccallablePG)noexcept{
+            m_CCallablePGs.insert(ccallablePG);
+        }
+        void setProgramGroup(const DCallablePGRef& dcallablePG)noexcept{
+            m_DCallablePGs.insert(dcallablePG);
+        }
+        void setProgramGroup(const ExceptionPGRef& exceptionPG)noexcept{
+            m_ExceptionPGs.insert(exceptionPG);
         }
         void link(const OPXPipeline::LinkOptions& linkOptions);
         ~Impl()noexcept{
@@ -181,13 +193,16 @@ namespace rtlib{
             }
         }
     private:
-        HandleType                         m_Handle         = nullptr;
-        ContextRef                         m_Context        = {};
-        std::unordered_set<  RaygenPGRef>  m_RaygenPGs      = {};
-        std::unordered_set<    MissPGRef>  m_MissPGs        = {};
-        std::unordered_set<HitgroupPGRef>  m_HitgroupPGs    = {};
-        OPXPipeline::CompileOptions        m_CompileOptions = {};
-        OPXPipeline::LinkOptions           m_LinkOptions    = {};
+        HandleType                          m_Handle         = nullptr;
+        ContextRef                          m_Context        = {};
+        std::unordered_set<   RaygenPGRef>  m_RaygenPGs      = {};
+        std::unordered_set<     MissPGRef>  m_MissPGs        = {};
+        std::unordered_set< HitgroupPGRef>  m_HitgroupPGs    = {};
+        std::unordered_set<CCallablePGRef>  m_CCallablePGs   = {};
+        std::unordered_set<DCallablePGRef>  m_DCallablePGs   = {};
+        std::unordered_set<ExceptionPGRef>  m_ExceptionPGs   = {};
+        OPXPipeline::CompileOptions         m_CompileOptions = {};
+        OPXPipeline::LinkOptions            m_LinkOptions    = {};
     };
     OPXPipeline::OPXPipeline()noexcept :m_Impl{ std::make_shared<OPXPipeline::Impl>() } {}
     OPXPipeline OPXContext::createPipeline(const OptixPipelineCompileOptions& compileOptions){
@@ -359,6 +374,7 @@ namespace rtlib{
     OPXModule::operator bool()const noexcept{
         return (bool)m_Impl;
     }
+    //RayGen
     class OPXRaygenPG::Impl{
     public:
         using ModuleRef      = std::shared_ptr< OPXModule::Impl>;
@@ -410,6 +426,7 @@ namespace rtlib{
     auto OPXRaygenPG::getHandle()const -> OptixProgramGroup{
         return this->m_Impl->getHandle();
     }
+    //Miss
     class OPXMissPG::Impl{
     public:
         using ModuleRef      = std::shared_ptr< OPXModule::Impl>;
@@ -463,6 +480,7 @@ namespace rtlib{
     auto OPXMissPG::getHandle()const -> OptixProgramGroup{
         return this->m_Impl->getHandle();
     }
+    //HitGroup
     class OPXHitgroupPG::Impl{
     public:
         using ModuleRef       = std::shared_ptr< OPXModule::Impl>;
@@ -536,7 +554,174 @@ namespace rtlib{
     auto OPXHitgroupPG::getHandle()const -> OptixProgramGroup{
         return this->m_Impl->getHandle();
     }
-    OPXRaygenPG   OPXPipeline::createRaygenPG(  const OPXProgramDesc& raygenDesc){
+    //CCallable
+    class OPXCCallablePG::Impl{
+        public:
+        using ModuleRef   = std::shared_ptr< OPXModule::Impl>;
+        using ContextRef  = std::shared_ptr<OPXContext::Impl>;
+        using HandleType  = std::unique_ptr<OptixProgramGroup_t,internal::OptixDestroy<OptixProgramGroup_t>>;
+    public:
+        Impl(){}
+        Impl(const Impl& )            = delete;
+        Impl(Impl&& )                 = delete;
+        Impl& operator=(const Impl& ) = delete;
+        Impl& operator=(Impl&& )      = delete;
+        RTLIB_DECLARE_GET_BY_VALUE(Impl,OptixProgramGroup,Handle,m_Handle.get());
+        RTLIB_DECLARE_GET_AND_SET_BY_REFERENCE(Impl,ContextRef,Context,m_Context);
+        RTLIB_DECLARE_GET_AND_SET_BY_REFERENCE(Impl,ModuleRef,Module,m_Module);
+        RTLIB_DECLARE_GET_AND_SET_BY_REFERENCE(Impl,std::string,EntryName,m_EntryName);
+        void build(){
+            OptixProgramGroupDesc    desc    = {};
+            OptixProgramGroupOptions options = {};
+            desc.kind = OPTIX_PROGRAM_GROUP_KIND_CALLABLES;
+            if (this->getModule()) {
+                desc.callables.moduleCC            = this->getModule()->getHandle();
+                desc.callables.entryFunctionNameCC = this->getEntryName().c_str();
+                desc.callables.moduleDC            = nullptr;
+                desc.callables.entryFunctionNameDC = nullptr;
+            }
+            char log[1024];
+            size_t sizeoflog = sizeof(log);
+            OptixProgramGroup ptr = nullptr;
+            RTLIB_OPTIX_CHECK2(optixProgramGroupCreate(m_Context->getHandle(),&desc,1,&options,log,&sizeoflog,&ptr),log);
+            m_Handle.reset(ptr);
+        }
+        ~Impl()noexcept{
+            try{
+                m_Handle      = nullptr;
+                m_Module      = nullptr;
+                m_EntryName   = {};
+                m_Context     = nullptr;
+            }catch(std::runtime_error& error){
+                std::cerr << "OPXCCallablePG::~Impl Catch Error!\n";
+                std::cerr << error.what() << std::endl;
+            }
+        }
+    private:
+        HandleType  m_Handle    = nullptr;
+        ContextRef  m_Context   = nullptr;    
+        ModuleRef   m_Module    = nullptr;
+        std::string m_EntryName = {};
+    };
+    OPXCCallablePG::OPXCCallablePG()noexcept:m_Impl{std::make_shared<OPXCCallablePG::Impl>()}{}
+    OPXCCallablePG::operator bool()const noexcept{
+        return (bool)m_Impl;
+    }
+    auto OPXCCallablePG::getHandle()const -> OptixProgramGroup{
+        return this->m_Impl->getHandle();
+    }
+    //DCallable
+    class OPXDCallablePG::Impl{
+        public:
+        using ModuleRef   = std::shared_ptr< OPXModule::Impl>;
+        using ContextRef  = std::shared_ptr<OPXContext::Impl>;
+        using HandleType  = std::unique_ptr<OptixProgramGroup_t,internal::OptixDestroy<OptixProgramGroup_t>>;
+    public:
+        Impl(){}
+        Impl(const Impl& )            = delete;
+        Impl(Impl&& )                 = delete;
+        Impl& operator=(const Impl& ) = delete;
+        Impl& operator=(Impl&& )      = delete;
+        RTLIB_DECLARE_GET_BY_VALUE(Impl,OptixProgramGroup,Handle,m_Handle.get());
+        RTLIB_DECLARE_GET_AND_SET_BY_REFERENCE(Impl,ContextRef,Context,m_Context);
+        RTLIB_DECLARE_GET_AND_SET_BY_REFERENCE(Impl,ModuleRef,Module,m_Module);
+        RTLIB_DECLARE_GET_AND_SET_BY_REFERENCE(Impl,std::string,EntryName,m_EntryName);
+        void build(){
+            OptixProgramGroupDesc    desc    = {};
+            OptixProgramGroupOptions options = {};
+            desc.kind = OPTIX_PROGRAM_GROUP_KIND_CALLABLES;
+            if (this->getModule()) {
+                desc.callables.moduleCC            = this->getModule()->getHandle();
+                desc.callables.entryFunctionNameCC = this->getEntryName().c_str();
+                desc.callables.moduleDC            = nullptr;
+                desc.callables.entryFunctionNameDC = nullptr;
+            }
+            char log[1024];
+            size_t sizeoflog = sizeof(log);
+            OptixProgramGroup ptr = nullptr;
+            RTLIB_OPTIX_CHECK2(optixProgramGroupCreate(m_Context->getHandle(),&desc,1,&options,log,&sizeoflog,&ptr),log);
+            m_Handle.reset(ptr);
+        }
+        ~Impl()noexcept{
+            try{
+                m_Handle      = nullptr;
+                m_Module      = nullptr;
+                m_EntryName   = {};
+                m_Context     = nullptr;
+            }catch(std::runtime_error& error){
+                std::cerr << "OPXDCallablePG::~Impl Catch Error!\n";
+                std::cerr << error.what() << std::endl;
+            }
+        }
+    private:
+        HandleType  m_Handle    = nullptr;
+        ContextRef  m_Context   = nullptr;    
+        ModuleRef   m_Module    = nullptr;
+        std::string m_EntryName = {};
+    };
+    OPXDCallablePG::OPXDCallablePG()noexcept:m_Impl{std::make_shared<OPXDCallablePG::Impl>()}{}
+    OPXDCallablePG::operator bool()const noexcept{
+        return (bool)m_Impl;
+    }
+    auto OPXDCallablePG::getHandle()const -> OptixProgramGroup{
+        return this->m_Impl->getHandle();
+    }
+    //Exception
+    class OPXExceptionPG::Impl{
+        public:
+        using ModuleRef   = std::shared_ptr< OPXModule::Impl>;
+        using ContextRef  = std::shared_ptr<OPXContext::Impl>;
+        using HandleType  = std::unique_ptr<OptixProgramGroup_t,internal::OptixDestroy<OptixProgramGroup_t>>;
+    public:
+        Impl(){}
+        Impl(const Impl& )            = delete;
+        Impl(Impl&& )                 = delete;
+        Impl& operator=(const Impl& ) = delete;
+        Impl& operator=(Impl&& )      = delete;
+        RTLIB_DECLARE_GET_BY_VALUE(Impl,OptixProgramGroup,Handle,m_Handle.get());
+        RTLIB_DECLARE_GET_AND_SET_BY_REFERENCE(Impl,ContextRef,Context,m_Context);
+        RTLIB_DECLARE_GET_AND_SET_BY_REFERENCE(Impl,ModuleRef,Module,m_Module);
+        RTLIB_DECLARE_GET_AND_SET_BY_REFERENCE(Impl,std::string,EntryName,m_EntryName);
+        void build(){
+            OptixProgramGroupDesc    desc    = {};
+            OptixProgramGroupOptions options = {};
+            desc.kind = OPTIX_PROGRAM_GROUP_KIND_EXCEPTION;
+            if (this->getModule()) {
+                desc.exception.module              = this->getModule()->getHandle();
+                desc.exception.entryFunctionName   = this->getEntryName().c_str();
+            }
+            char log[1024];
+            size_t sizeoflog = sizeof(log);
+            OptixProgramGroup ptr = nullptr;
+            RTLIB_OPTIX_CHECK2(optixProgramGroupCreate(m_Context->getHandle(),&desc,1,&options,log,&sizeoflog,&ptr),log);
+            m_Handle.reset(ptr);
+        }
+        ~Impl()noexcept{
+            try{
+                m_Handle      = nullptr;
+                m_Module      = nullptr;
+                m_EntryName   = {};
+                m_Context     = nullptr;
+            }catch(std::runtime_error& error){
+                std::cerr << "OPXDCallablePG::~Impl Catch Error!\n";
+                std::cerr << error.what() << std::endl;
+            }
+        }
+    private:
+        HandleType  m_Handle    = nullptr;
+        ContextRef  m_Context   = nullptr;    
+        ModuleRef   m_Module    = nullptr;
+        std::string m_EntryName = {};
+    };
+    OPXExceptionPG::OPXExceptionPG()noexcept:m_Impl{std::make_shared<OPXExceptionPG::Impl>()}{}
+    OPXExceptionPG::operator bool()const noexcept{
+        return (bool)m_Impl;
+    }
+    auto OPXExceptionPG::getHandle()const -> OptixProgramGroup{
+        return this->m_Impl->getHandle();
+    }
+    //CreateProgramGroup
+    OPXRaygenPG    OPXPipeline::createRaygenPG(  const OPXProgramDesc& raygenDesc){
         OPXRaygenPG raygenPG;
         //TODO���`�`�F�b�N������
         raygenPG.m_Impl->setContext(m_Impl->getContext());
@@ -546,7 +731,7 @@ namespace rtlib{
         m_Impl->setProgramGroup(raygenPG.m_Impl);
         return raygenPG;
     }
-    OPXMissPG     OPXPipeline::createMissPG(    const OPXProgramDesc& missDesc){
+    OPXMissPG      OPXPipeline::createMissPG(    const OPXProgramDesc& missDesc){
         OPXMissPG missPG;
         //TODO���`�`�F�b�N������
         missPG.m_Impl->setContext(m_Impl->getContext());
@@ -560,7 +745,7 @@ namespace rtlib{
         m_Impl->setProgramGroup(missPG.m_Impl);
         return missPG;
     }
-    OPXHitgroupPG OPXPipeline::createHitgroupPG(const OPXProgramDesc& chDesc,const OPXProgramDesc& ahDesc,const OPXProgramDesc& isDesc){
+    OPXHitgroupPG  OPXPipeline::createHitgroupPG( const OPXProgramDesc& chDesc,const OPXProgramDesc& ahDesc,const OPXProgramDesc& isDesc){
         OPXHitgroupPG hitgroupPG;
         //TODO���`�`�F�b�N������
         hitgroupPG.m_Impl->setContext(m_Impl->getContext());
@@ -580,6 +765,48 @@ namespace rtlib{
         m_Impl->setProgramGroup(hitgroupPG.m_Impl);
         return hitgroupPG;
     }
+    OPXCCallablePG OPXPipeline::createCCallablePG(const OPXProgramDesc& ccDesc){
+        OPXCCallablePG ccPG;
+        //TODO���`�`�F�b�N������
+        ccPG.m_Impl->setContext(m_Impl->getContext());
+        if (ccDesc.module.m_Impl) {
+            ccPG.m_Impl->setModule(ccDesc.module.m_Impl);
+            if (ccDesc.entryName) {
+                ccPG.m_Impl->setEntryName(ccDesc.entryName);
+            }
+        }
+        ccPG.m_Impl->build();
+        m_Impl->setProgramGroup(ccPG.m_Impl);
+        return ccPG;
+    }
+    OPXDCallablePG OPXPipeline::createDCallablePG(const OPXProgramDesc& dcDesc){
+        OPXDCallablePG dcPG;
+        //TODO���`�`�F�b�N������
+        dcPG.m_Impl->setContext(m_Impl->getContext());
+        if (dcDesc.module.m_Impl) {
+            dcPG.m_Impl->setModule(dcDesc.module.m_Impl);
+            if (dcDesc.entryName) {
+                dcPG.m_Impl->setEntryName(dcDesc.entryName);
+            }
+        }
+        dcPG.m_Impl->build();
+        m_Impl->setProgramGroup(dcPG.m_Impl);
+        return dcPG;
+    }
+    OPXExceptionPG OPXPipeline::createExceptionPG(const OPXProgramDesc& exDesc){
+        OPXExceptionPG exPG;
+        //TODO���`�`�F�b�N������
+        exPG.m_Impl->setContext(m_Impl->getContext());
+        if (exDesc.module.m_Impl) {
+            exPG.m_Impl->setModule(exDesc.module.m_Impl);
+            if (exDesc.entryName) {
+                exPG.m_Impl->setEntryName(exDesc.entryName);
+            }
+        }
+        exPG.m_Impl->build();
+        m_Impl->setProgramGroup(exPG.m_Impl);
+        return exPG;
+    }
     void OPXPipeline::Impl::link(const OPXPipeline::LinkOptions& linkOptions) {
         std::vector<OptixProgramGroup> programGroups = {};
         for (auto rg : m_RaygenPGs) {
@@ -597,6 +824,24 @@ namespace rtlib{
         for (auto hg : m_HitgroupPGs) {
             auto pg = hg->getHandle();
             if (pg) {
+                programGroups.push_back(pg);
+            }
+        }
+        for (auto cc : m_CCallablePGs){
+            auto pg = cc->getHandle();
+            if(pg){
+                programGroups.push_back(pg);
+            }
+        }
+        for (auto dc : m_DCallablePGs){
+            auto pg = dc->getHandle();
+            if(pg){
+                programGroups.push_back(pg);
+            }
+        }
+        for (auto ex : m_ExceptionPGs){
+            auto pg = ex->getHandle();
+            if(pg){
                 programGroups.push_back(pg);
             }
         }
