@@ -234,6 +234,22 @@ namespace rtlib{
         return low + (high - low) * random_float4(rng);
     }
     template<typename RNG>
+    RTLIB_INLINE RTLIB_HOST_DEVICE float3 random_in_unit_triangle(const float3& v0, const float3& v1, const float3& v2, RNG& rng)
+    {
+        const float2 rnd2 = rtlib::random_float2(rng);
+        const float  a    = rtlib::min(rnd2.x, rnd2.y);
+        const float  b    = rtlib::max(rnd2.x, rnd2.y);
+        return v0 * a + (1.0f - b) * v1 + (b - a) * v2;
+    }
+    template<typename RNG>
+    RTLIB_INLINE RTLIB_HOST_DEVICE float2 random_in_unit_triangle(const float2& v0, const float2& v1, const float2& v2, RNG& rng)
+    {
+        const float2 rnd2 = rtlib::random_float2(rng);
+        const float  a = rtlib::min(rnd2.x, rnd2.y);
+        const float  b = rtlib::max(rnd2.x, rnd2.y);
+        return v0 * a + (1.0f - b) * v1 + (b - a) * v2;
+    }
+    template<typename RNG>
     RTLIB_INLINE RTLIB_HOST_DEVICE float3 random_in_unit_sphere(RNG& rng) {
         //r=(1.0f,-1.0f)
         //t=(0.0f, 2.0fPI)

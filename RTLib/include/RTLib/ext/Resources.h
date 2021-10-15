@@ -1,7 +1,5 @@
 #ifndef RTLIB_EXT_RESOURCES_H
 #define RTLIB_EXT_RESOURCES_H
-#include "../CUDA.h"
-#include "../GL.h"
 #include <memory>
 #include <unordered_map>
 #include <vector>
@@ -22,100 +20,6 @@ namespace rtlib
         };
         using BufferComponentPtr = std::shared_ptr<BufferComponent>;
         template<typename T>
-        class CUDABufferComponent:public BufferComponent
-        {
-        public:
-            static auto New()->BufferComponentPtr { return BufferComponentPtr(new CUDABufferComponent()); }
-            // BufferComponent ‚ğ‰î‚µ‚ÄŒp³‚³‚ê‚Ü‚µ‚½
-            virtual void Init(const void* cpuData, size_t sizeInBytes) override
-            {
-                if (m_GpuData) {
-                    m_GpuData.reset();
-                }
-                m_GpuData.allocate(sizeInBytes/sizeof(T));
-                m_GpuData.upload((const T*)cpuData, sizeInBytes / sizeof(T));
-            }
-            virtual void Allocate(size_t sizeInBytes) override
-            {
-                if (m_GpuData) {
-                    m_GpuData.reset();
-                }
-                m_GpuData.allocate(sizeInBytes / sizeof(T));
-            }
-            virtual bool Resize(size_t sizeInBytes) override
-            {
-                if (!m_GpuData) {
-                    return false;
-                }
-                return m_GpuData.resize(sizeInBytes / sizeof(T));
-            }
-            virtual void Upload(const void* cpuData, size_t sizeInBytes) override
-            {
-                if (!m_GpuData) {
-                    return;
-                }
-                m_GpuData.upload((const T*)cpuData, sizeInBytes / sizeof(T));
-            }
-            virtual void Reset() override
-            {
-                if (!m_GpuData) {
-                    return;
-                }
-                m_GpuData.reset();
-            }
-            auto GetHandle()const -> const CUDABuffer<T>& { return m_GpuData; }
-            auto GetHandle()  ->   CUDABuffer<T>& { return m_GpuData; }
-        private:
-            CUDABuffer<T> m_GpuData = {};
-        };
-        template<typename T>
-        class GLBufferComponent :public BufferComponent
-        {
-        public:
-            static auto New()->BufferComponentPtr { return BufferComponentPtr(new GLBufferComponent()); }
-            // BufferComponent ‚ğ‰î‚µ‚ÄŒp³‚³‚ê‚Ü‚µ‚½
-            virtual void Init(const void* cpuData, size_t sizeInBytes) override
-            {
-                if (m_GpuData) {
-                    m_GpuData.reset();
-                }
-                m_GpuData.allocate(sizeInBytes / sizeof(T));
-                m_GpuData.upload((const T*)cpuData, sizeInBytes / sizeof(T));
-            }
-            virtual void Allocate(size_t sizeInBytes) override
-            {
-                if (m_GpuData) {
-                    m_GpuData.reset();
-                }
-                m_GpuData.allocate(sizeInBytes / sizeof(T));
-            }
-            virtual bool Resize(size_t sizeInBytes) override
-            {
-                if (!m_GpuData) {
-                    return false;
-                }
-                return m_GpuData.resize(sizeInBytes / sizeof(T));
-            }
-            virtual void Upload(const void* cpuData, size_t sizeInBytes) override
-            {
-                if (!m_GpuData) {
-                    return;
-                }
-                m_GpuData.upload((const T*)cpuData, sizeInBytes / sizeof(T));
-            }
-            virtual void Reset() override
-            {
-                if (!m_GpuData) {
-                    return;
-                }
-                m_GpuData.reset();
-            }
-            auto GetHandle()const -> const GLBuffer<T>& { return m_GpuData; }
-            auto GetHandle()  ->   GLBuffer<T>& { return m_GpuData; }
-        private:
-            GLBuffer<T> m_GpuData = {};
-        };
-        template<typename T>
         class CustomBuffer
         {
         public:
@@ -128,7 +32,7 @@ namespace rtlib
             CustomBuffer(const CustomBuffer&) = delete;
             CustomBuffer& operator=(CustomBuffer&& vb)noexcept
             {
-                // TODO: return ƒXƒe[ƒgƒƒ“ƒg‚ğ‚±‚±‚É‘}“ü‚µ‚Ü‚·
+                // TODO: return ï¿½Xï¿½eï¿½[ï¿½gï¿½ï¿½ï¿½ï¿½ï¿½gï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½É‘}ï¿½ï¿½ï¿½ï¿½ï¿½Ü‚ï¿½
                 if (this != &vb) {
                     Reset();
                     m_CpuData = std::move(vb.m_CpuData);
@@ -143,7 +47,7 @@ namespace rtlib
             }
             CustomBuffer& operator=(std::vector<T>&& vb)noexcept
             {
-                // TODO: return ƒXƒe[ƒgƒƒ“ƒg‚ğ‚±‚±‚É‘}“ü‚µ‚Ü‚·
+                // TODO: return ï¿½Xï¿½eï¿½[ï¿½gï¿½ï¿½ï¿½ï¿½ï¿½gï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½É‘}ï¿½ï¿½ï¿½ï¿½ï¿½Ü‚ï¿½
                 Reset();
                 m_CpuData = std::move(vb);
                 return *this;
@@ -196,17 +100,17 @@ namespace rtlib
                     component->Reset();
                 }
             }
-            template<typename S, bool sharedRes = std::is_base_of_v<BufferComponentPtr, S>>
+            template<typename S, bool sharedRes = std::is_base_of_v<BufferComponent, S>>
             void AddGpuComponent(const std::string& key)
             {
                 m_GpuComponents[key] = std::shared_ptr<S>(new S());
                 m_GpuComponents[key]->Init(m_CpuData.data(),m_CpuData.size()*sizeof(T));
             }
-            template<typename S, bool sharedRes = std::is_base_of_v<BufferComponentPtr, S>>
+            template<typename S, bool sharedRes = std::is_base_of_v<BufferComponent, S>>
             auto GetGpuComponent(const std::string& key)const -> std::shared_ptr<S> {
                 return std::static_pointer_cast<S>(m_GpuComponents.at(key));
             }
-            template<typename S, bool sharedRes = std::is_base_of_v<BufferComponentPtr, S>>
+            template<typename S, bool sharedRes = std::is_base_of_v<BufferComponent, S>>
             auto PopGpuComponent(const std::string& key) -> std::shared_ptr<S> {
                 if (m_GpuComponents.count(key) == 0) {
                     return nullptr;

@@ -6,7 +6,7 @@
 #include <RTLib/VectorFunction.h>
 #include <RTLib/ext/Mesh.h>
 #include <RTLib/ext/TraversalHandle.h>
-#include <RTLib/ext/Material.h>
+#include <RTLib/ext/VariableMap.h>
 #include <string>
 #include <vector>
 #include <array>
@@ -16,8 +16,8 @@ namespace test {
 	class  ObjMeshGroup {
     public:
         using MeshGroupPtr = rtlib::ext::MeshGroupPtr;
-        using MaterialList = rtlib::ext::MaterialList;
-        using MaterialListPtr = rtlib::ext::MaterialListPtr;
+        using MaterialList = rtlib::ext::VariableMapList;
+        using MaterialListPtr = rtlib::ext::VariableMapListPtr;
         bool Load( const std::string& objFilePath, const std::string& mtlFileDir)noexcept {
             std::string inputFile = objFilePath;
             tinyobj::ObjReaderConfig readerConfig = {};

@@ -1,5 +1,5 @@
-#ifndef RTLIB_EXT_MATERIAL_H
-#define RTLIB_EXT_MATERIAL_H
+#ifndef RTLIB_EXT_VARIABLE_MAP_H
+#define RTLIB_EXT_VARIABLE_MAP_H
 #include <memory>
 #include <string>
 #include <array>
@@ -8,16 +8,18 @@
 namespace rtlib{
     namespace ext 
     {
-        class Material
+        class VariableMap
         {
         public:
             void SetUInt32(const std::string& keyName, const uint32_t value)noexcept{ m_UInt32Data[keyName] = value;}
+            void SetBool  (const std::string& keyName, const bool  value)noexcept { m_BoolData[keyName] = value; }
             void SetFloat1(const std::string& keyName, const float value)noexcept { m_Float1Data[keyName] = value; }
             void SetFloat2(const std::string& keyName, const std::array<float,2>& value)noexcept { m_Float2Data[keyName] = value; }
             void SetFloat3(const std::string& keyName, const std::array<float,3>& value)noexcept { m_Float3Data[keyName] = value; }
             void SetFloat4(const std::string& keyName, const std::array<float,4>& value)noexcept { m_Float4Data[keyName] = value; }
             void SetString(const std::string& keyName, const std::string& value)noexcept { m_StringData[keyName] = value; }
             auto GetUInt32(const std::string& keyName)const -> uint32_t { return m_UInt32Data.at(keyName); }
+            auto GetBool(const std::string& keyName)const -> bool { return m_BoolData.at(keyName); }
             auto GetFloat1(const std::string& keyName)const -> float { return m_Float1Data.at(keyName); }
             auto GetFloat2(const std::string& keyName)const -> std::array<float,2> { return m_Float2Data.at(keyName);}
             auto GetFloat3(const std::string& keyName)const -> std::array<float,3> { return m_Float3Data.at(keyName);}
@@ -53,14 +55,15 @@ namespace rtlib{
             auto GetString(const std::string& keyName)const -> std::string { return m_StringData.at(keyName);}
         private:
             std::unordered_map<std::string, uint32_t>             m_UInt32Data;
+            std::unordered_map<std::string, bool>                 m_BoolData;
             std::unordered_map<std::string, float>                m_Float1Data;
             std::unordered_map<std::string, std::array<float,2>>  m_Float2Data;
             std::unordered_map<std::string, std::array<float,3>>  m_Float3Data;
             std::unordered_map<std::string, std::array<float,4>>  m_Float4Data;
             std::unordered_map<std::string, std::string>          m_StringData;
         };
-        using MaterialList    = std::vector<Material>;
-        using MaterialListPtr = std::shared_ptr<MaterialList>;
+        using VariableMapList    = std::vector<VariableMap>;
+        using VariableMapListPtr = std::shared_ptr<VariableMapList>;
     }
 }
 #endif

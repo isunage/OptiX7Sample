@@ -26,10 +26,10 @@ bool test::ObjMeshGroup::Load(const std::string& objFilePath, const std::string&
         auto& texCrdBuffer = meshGroup->GetSharedResource()->texCrdBuffer;
         auto& normalBuffer = meshGroup->GetSharedResource()->normalBuffer;
         vertexBuffer.Resize(attrib.vertices.size() / 3);
-        texCrdBuffer.Resize(vertexBuffer.cpuHandle.size());
-        normalBuffer.Resize(vertexBuffer.cpuHandle.size());
-        for (size_t i = 0; i < vertexBuffer.cpuHandle.size(); ++i) {
-            vertexBuffer.cpuHandle[i] = make_float3(attrib.vertices[3 * i + 0], attrib.vertices[3 * i + 1], attrib.vertices[3 * i + 2]);
+        texCrdBuffer.Resize(vertexBuffer.Size());
+        normalBuffer.Resize(vertexBuffer.Size());
+        for (size_t i = 0; i < vertexBuffer.Size(); ++i) {
+            vertexBuffer[i] = make_float3(attrib.vertices[3 * i + 0], attrib.vertices[3 * i + 1], attrib.vertices[3 * i + 2]);
         }
         for (size_t i = 0; i < shapes.size(); ++i) {
             std::unordered_map<uint32_t, uint32_t> tmpMaterials = {};
@@ -42,15 +42,15 @@ bool test::ObjMeshGroup::Load(const std::string& objFilePath, const std::string&
                     shapes[i].mesh.indices[3 * j + 1],
                     shapes[i].mesh.indices[3 * j + 2]
                 };
-                uniqueResource->triIndBuffer.cpuHandle[j] = make_uint3(idxs[0].vertex_index, idxs[1].vertex_index, idxs[2].vertex_index);
+                uniqueResource->triIndBuffer[j] = make_uint3(idxs[0].vertex_index, idxs[1].vertex_index, idxs[2].vertex_index);
                 for (size_t k = 0; k < 3; ++k) {
                     if (idxs[k].texcoord_index >= 0) {
                         auto tx = attrib.texcoords[2 * size_t(idxs[k].texcoord_index) + 0];
                         auto ty = attrib.texcoords[2 * size_t(idxs[k].texcoord_index) + 1];
-                        texCrdBuffer.cpuHandle[idxs[k].vertex_index] = make_float2(tx, -ty);
+                        texCrdBuffer[idxs[k].vertex_index] = make_float2(tx, -ty);
                     }
                     else {
-                        texCrdBuffer.cpuHandle[idxs[k].vertex_index] = make_float2(0.5, 0.5);
+                        texCrdBuffer[idxs[k].vertex_index] = make_float2(0.5, 0.5);
                     }
                 }
                 for (size_t k = 0; k < 3; ++k) {
@@ -58,22 +58,22 @@ bool test::ObjMeshGroup::Load(const std::string& objFilePath, const std::string&
                         auto nx = attrib.normals[3 * size_t(idxs[k].normal_index) + 0];
                         auto ny = attrib.normals[3 * size_t(idxs[k].normal_index) + 1];
                         auto nz = attrib.normals[3 * size_t(idxs[k].normal_index) + 2];
-                        normalBuffer.cpuHandle[idxs[k].vertex_index] = make_float3(nx, ny, nz);
+                        normalBuffer[idxs[k].vertex_index] = make_float3(nx, ny, nz);
                     }
                     else {
-                        normalBuffer.cpuHandle[idxs[k].vertex_index] = make_float3(0.0, 1.0, 0.0);
+                        normalBuffer[idxs[k].vertex_index] = make_float3(0.0, 1.0, 0.0);
                     }
                 }
             }
             uniqueResource->matIndBuffer.Resize(shapes[i].mesh.material_ids.size());
             for (size_t j = 0; j < shapes[i].mesh.material_ids.size();++j){
                 if (tmpMaterials.count(shapes[i].mesh.material_ids[j])!= 0) {
-                    uniqueResource->matIndBuffer.cpuHandle[j] = tmpMaterials.at(shapes[i].mesh.material_ids[j]);
+                    uniqueResource->matIndBuffer[j] = tmpMaterials.at(shapes[i].mesh.material_ids[j]);
                 }
                 else {
                     int newValue                                 = tmpMaterials.size();
                     tmpMaterials[shapes[i].mesh.material_ids[j]] = newValue;
-                    uniqueResource->matIndBuffer.cpuHandle[j]    = newValue;
+                    uniqueResource->matIndBuffer[j]    = newValue;
                 }
             }
             uniqueResource->materials.resize(tmpMaterials.size());

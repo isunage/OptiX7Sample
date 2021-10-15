@@ -96,7 +96,7 @@ public:
 	bool IsTraceChanged()const { return m_ChangeTrace; }
 	auto GetOPXContext() const->std::shared_ptr<rtlib::OPXContext>;
 	auto GetTLAS()const     -> rtlib::ext::IASHandlePtr;
-	auto GetMaterials()const-> const std::vector<rtlib::ext::Material>&;
+	auto GetMaterials()const-> const std::vector<rtlib::ext::VariableMap>&;
 	auto GetCamera()const -> rtlib::ext::Camera;
 	auto GetLight()const  -> ParallelLight;
 	auto GetSTree()const  -> std::shared_ptr<test::RTSTreeWrapper>;
@@ -231,7 +231,7 @@ private:
 	GeometryASMap                        m_GASHandles       = {};
 	InstanceASMap                        m_IASHandles       = {};
 	//Materials
-	std::vector<rtlib::ext::Material>    m_Materials        = {};
+	std::vector<rtlib::ext::VariableMap>    m_Materials        = {};
 	//Camera
 	rtlib::ext::CameraController              m_CameraController = {};
 	//Light

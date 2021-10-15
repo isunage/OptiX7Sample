@@ -2,7 +2,7 @@
 #define RT_ASSETS_H
 #include <RTLib/CUDA.h>
 #include <RTLib/VectorFunction.h>
-#include <RTLib/ext/Material.h>
+#include <RTLib/ext/VariableMap.h>
 #include <RTLib/ext/Mesh.h>
 #include <memory>
 #include <vector>
@@ -26,7 +26,7 @@ namespace test {
 	};
 	struct RTObjModel {
 		rtlib::ext::MeshGroupPtr          meshGroup;
-		std::vector<rtlib::ext::Material> materials;
+		std::vector<rtlib::ext::VariableMap> materials;
 	};
 	class RTObjModelAssetManager
 	{

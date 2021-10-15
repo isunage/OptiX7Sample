@@ -1,12 +1,13 @@
 #include "../include/Test23Application.h"
 #include <RTLib/Optix.h>
 #include <RTLib/Utils.h>
+#include <RTLib/ext/Resources/CUDA.h>
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <stb_image_write.h>
 #include <nlohmann/json.hpp>
 #include <random>
 
-static std::string SpecifyMaterialType(const rtlib::ext::Material& material)
+static std::string SpecifyMaterialType(const rtlib::ext::VariableMap& material)
 {
 	auto emitCol = material.GetFloat3As<float3>("emitCol");
 	auto specCol = material.GetFloat3As<float3>("specCol");
@@ -184,10 +185,10 @@ private:
 						if (!mesh->GetUniqueResource()->triIndBuffer.HasGpuComponent("CUDA")) {
 							throw std::runtime_error("TriIndBuffer of Mesh '" + mesh->GetUniqueResource()->name + "' Has No CUDA Component!");
 						}
-						auto cudaVertexBuffer = mesh->GetSharedResource()->vertexBuffer.GetGpuComponent<rtlib::ext::CUDABufferComponent<float3>>("CUDA");
-						auto cudaNormalBuffer = mesh->GetSharedResource()->normalBuffer.GetGpuComponent<rtlib::ext::CUDABufferComponent<float3>>("CUDA");
-						auto cudaTexCrdBuffer = mesh->GetSharedResource()->texCrdBuffer.GetGpuComponent<rtlib::ext::CUDABufferComponent<float2>>("CUDA");
-						auto cudaTriIndBuffer = mesh->GetUniqueResource()->triIndBuffer.GetGpuComponent<rtlib::ext::CUDABufferComponent<uint3>>("CUDA");
+						auto cudaVertexBuffer = mesh->GetSharedResource()->vertexBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float3>>("CUDA");
+						auto cudaNormalBuffer = mesh->GetSharedResource()->normalBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float3>>("CUDA");
+						auto cudaTexCrdBuffer = mesh->GetSharedResource()->texCrdBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float2>>("CUDA");
+						auto cudaTriIndBuffer = mesh->GetUniqueResource()->triIndBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<uint3>>("CUDA");
 						for (size_t i = 0; i < mesh->GetUniqueResource()->materials.size(); ++i)
 						{
 							auto materialId = mesh->GetUniqueResource()->materials[i];
@@ -397,10 +398,10 @@ private:
 						if (!mesh->GetUniqueResource()->triIndBuffer.HasGpuComponent("CUDA")) {
 							throw std::runtime_error("TriIndBuffer of Mesh '" + mesh->GetUniqueResource()->name + "' Has No CUDA Component!");
 						}
-						auto cudaVertexBuffer = mesh->GetSharedResource()->vertexBuffer.GetGpuComponent<rtlib::ext::CUDABufferComponent<float3>>("CUDA");
-						auto cudaNormalBuffer = mesh->GetSharedResource()->normalBuffer.GetGpuComponent<rtlib::ext::CUDABufferComponent<float3>>("CUDA");
-						auto cudaTexCrdBuffer = mesh->GetSharedResource()->texCrdBuffer.GetGpuComponent<rtlib::ext::CUDABufferComponent<float2>>("CUDA");
-						auto cudaTriIndBuffer = mesh->GetUniqueResource()->triIndBuffer.GetGpuComponent<rtlib::ext::CUDABufferComponent<uint3>>("CUDA");
+						auto cudaVertexBuffer = mesh->GetSharedResource()->vertexBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float3>>("CUDA");
+						auto cudaNormalBuffer = mesh->GetSharedResource()->normalBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float3>>("CUDA");
+						auto cudaTexCrdBuffer = mesh->GetSharedResource()->texCrdBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float2>>("CUDA");
+						auto cudaTriIndBuffer = mesh->GetUniqueResource()->triIndBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<uint3>>("CUDA");
 						for (size_t i = 0; i < mesh->GetUniqueResource()->materials.size(); ++i)
 						{
 							auto materialId = mesh->GetUniqueResource()->materials[i];
@@ -642,10 +643,10 @@ private:
 						if (!mesh->GetUniqueResource()->triIndBuffer.HasGpuComponent("CUDA")) {
 							throw std::runtime_error("TriIndBuffer of Mesh '" + mesh->GetUniqueResource()->name + "' Has No CUDA Component!");
 						}
-						auto cudaVertexBuffer = mesh->GetSharedResource()->vertexBuffer.GetGpuComponent<rtlib::ext::CUDABufferComponent<float3>>("CUDA");
-						auto cudaNormalBuffer = mesh->GetSharedResource()->normalBuffer.GetGpuComponent<rtlib::ext::CUDABufferComponent<float3>>("CUDA");
-						auto cudaTexCrdBuffer = mesh->GetSharedResource()->texCrdBuffer.GetGpuComponent<rtlib::ext::CUDABufferComponent<float2>>("CUDA");
-						auto cudaTriIndBuffer = mesh->GetUniqueResource()->triIndBuffer.GetGpuComponent<rtlib::ext::CUDABufferComponent<uint3>>("CUDA");
+						auto cudaVertexBuffer = mesh->GetSharedResource()->vertexBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float3>>("CUDA");
+						auto cudaNormalBuffer = mesh->GetSharedResource()->normalBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float3>>("CUDA");
+						auto cudaTexCrdBuffer = mesh->GetSharedResource()->texCrdBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float2>>("CUDA");
+						auto cudaTriIndBuffer = mesh->GetUniqueResource()->triIndBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<uint3>>("CUDA");
 						for (size_t i = 0; i < mesh->GetUniqueResource()->materials.size(); ++i)
 						{
 							auto materialId = mesh->GetUniqueResource()->materials[i];
@@ -980,25 +981,25 @@ void Test23Application::InitAccelerationStructures()
 			{
 				if (!objModel.meshGroup->GetSharedResource()->vertexBuffer.HasGpuComponent("CUDA"))
 				{
-					objModel.meshGroup->GetSharedResource()->vertexBuffer.AddGpuComponent<rtlib::ext::CUDABufferComponent<float3>>("CUDA");
+					objModel.meshGroup->GetSharedResource()->vertexBuffer.AddGpuComponent<rtlib::ext::resources::CUDABufferComponent<float3>>("CUDA");
 				}
 				if (!objModel.meshGroup->GetSharedResource()->normalBuffer.HasGpuComponent("CUDA"))
 				{
-					objModel.meshGroup->GetSharedResource()->normalBuffer.AddGpuComponent<rtlib::ext::CUDABufferComponent<float3>>("CUDA");
+					objModel.meshGroup->GetSharedResource()->normalBuffer.AddGpuComponent<rtlib::ext::resources::CUDABufferComponent<float3>>("CUDA");
 				}
 				if (!objModel.meshGroup->GetSharedResource()->texCrdBuffer.HasGpuComponent("CUDA"))
 				{
-					objModel.meshGroup->GetSharedResource()->texCrdBuffer.AddGpuComponent<rtlib::ext::CUDABufferComponent<float2>>("CUDA");
+					objModel.meshGroup->GetSharedResource()->texCrdBuffer.AddGpuComponent<rtlib::ext::resources::CUDABufferComponent<float2>>("CUDA");
 				}
 				for (auto& [name, meshUniqueResource] : objModel.meshGroup->GetUniqueResources())
 				{
 					if (!meshUniqueResource->matIndBuffer.HasGpuComponent("CUDA"))
 					{
-						meshUniqueResource->matIndBuffer.AddGpuComponent<rtlib::ext::CUDABufferComponent<uint32_t>>("CUDA");
+						meshUniqueResource->matIndBuffer.AddGpuComponent<rtlib::ext::resources::CUDABufferComponent<uint32_t>>("CUDA");
 					}
 					if (!meshUniqueResource->triIndBuffer.HasGpuComponent("CUDA"))
 					{
-						meshUniqueResource->triIndBuffer.AddGpuComponent<rtlib::ext::CUDABufferComponent<uint3>>("CUDA");
+						meshUniqueResource->triIndBuffer.AddGpuComponent<rtlib::ext::resources::CUDABufferComponent<uint3>>("CUDA");
 					}
 
 					auto mesh = rtlib::ext::Mesh::New();
@@ -1071,16 +1072,16 @@ void Test23Application::InitAccelerationStructures()
 				lightMaterial.SetFloat1("refrIndx", 0.0f);
 				lightMaterial.SetUInt32("illum", 2);
 			}
-			lightMesh->GetSharedResource()->vertexBuffer.AddGpuComponent<rtlib::ext::CUDABufferComponent<float3>>("CUDA");
-			lightMesh->GetSharedResource()->normalBuffer.AddGpuComponent<rtlib::ext::CUDABufferComponent<float3>>("CUDA");
-			lightMesh->GetSharedResource()->texCrdBuffer.AddGpuComponent<rtlib::ext::CUDABufferComponent<float2>>("CUDA");
+			lightMesh->GetSharedResource()->vertexBuffer.AddGpuComponent<rtlib::ext::resources::CUDABufferComponent<float3>>("CUDA");
+			lightMesh->GetSharedResource()->normalBuffer.AddGpuComponent<rtlib::ext::resources::CUDABufferComponent<float3>>("CUDA");
+			lightMesh->GetSharedResource()->texCrdBuffer.AddGpuComponent<rtlib::ext::resources::CUDABufferComponent<float2>>("CUDA");
 			lightMesh->SetUniqueResource(rtlib::ext::MeshUniqueResource::New());
 			lightMesh->GetUniqueResource()->name = "light";
 			lightMesh->GetUniqueResource()->materials = { (unsigned int)m_Materials.size() - 1 };
 			lightMesh->GetUniqueResource()->matIndBuffer = { 0, 0 };
 			lightMesh->GetUniqueResource()->triIndBuffer = { {0, 1, 2}, {2, 3, 0} };
-			lightMesh->GetUniqueResource()->matIndBuffer.AddGpuComponent<rtlib::ext::CUDABufferComponent<uint32_t>>("CUDA");
-			lightMesh->GetUniqueResource()->triIndBuffer.AddGpuComponent<rtlib::ext::CUDABufferComponent<uint3>>("CUDA");
+			lightMesh->GetUniqueResource()->matIndBuffer.AddGpuComponent<rtlib::ext::resources::CUDABufferComponent<uint32_t>>("CUDA");
+			lightMesh->GetUniqueResource()->triIndBuffer.AddGpuComponent<rtlib::ext::resources::CUDABufferComponent<uint3>>("CUDA");
 			//AddMesh
 			m_GASHandles["Light"]->AddMesh(lightMesh);
 		}
@@ -1794,7 +1795,7 @@ auto Test23Application::GetTLAS() const -> rtlib::ext::IASHandlePtr
 	return m_IASHandles.at("TopLevel");
 }
 
-auto Test23Application::GetMaterials() const -> const std::vector<rtlib::ext::Material> &
+auto Test23Application::GetMaterials() const -> const std::vector<rtlib::ext::VariableMap> &
 {
 	// TODO: return �X�e�[�g�����g�������ɑ}�����܂�
 	return m_Materials;

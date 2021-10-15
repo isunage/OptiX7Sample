@@ -1,5 +1,5 @@
 #include "../include/RTLib/ext/TraversalHandle.h"
-
+#include "../include/RTLib/ext/Resources/CUDA.h"
 
 void rtlib::ext::GASHandle::Build(const rtlib::OPXContext* context, const OptixAccelBuildOptions& accelOptions) {
     auto buildInputs = std::vector<OptixBuildInput>(this->meshes.size());
@@ -23,11 +23,11 @@ void rtlib::ext::GASHandle::Build(const rtlib::OPXContext* context, const OptixA
         if (!mesh->GetUniqueResource()->matIndBuffer.HasGpuComponent("CUDA")) {
             throw std::runtime_error("MatIndBuffer of Mesh '" + mesh->GetUniqueResource()->name + "' Has No CUDA Component!");
         }
-        auto cudaVertexBuffer = mesh->GetSharedResource()->vertexBuffer.GetGpuComponent<rtlib::ext::CUDABufferComponent<float3>>("CUDA");
-        auto cudaNormalBuffer = mesh->GetSharedResource()->normalBuffer.GetGpuComponent<rtlib::ext::CUDABufferComponent<float3>>("CUDA");
-        auto cudaTexCrdBuffer = mesh->GetSharedResource()->texCrdBuffer.GetGpuComponent<rtlib::ext::CUDABufferComponent<float2>>("CUDA");
-        auto cudaTriIndBuffer = mesh->GetUniqueResource()->triIndBuffer.GetGpuComponent<rtlib::ext::CUDABufferComponent<uint3>>("CUDA");
-        auto cudaMatIndBuffer = mesh->GetUniqueResource()->matIndBuffer.GetGpuComponent<rtlib::ext::CUDABufferComponent<uint32_t>>("CUDA");
+        auto cudaVertexBuffer = mesh->GetSharedResource()->vertexBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float3>>("CUDA");
+        auto cudaNormalBuffer = mesh->GetSharedResource()->normalBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float3>>("CUDA");
+        auto cudaTexCrdBuffer = mesh->GetSharedResource()->texCrdBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float2>>("CUDA");
+        auto cudaTriIndBuffer = mesh->GetUniqueResource()->triIndBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<uint3>>("CUDA");
+        auto cudaMatIndBuffer = mesh->GetUniqueResource()->matIndBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<uint32_t>>("CUDA");
 
         vertexBuffers[i] = reinterpret_cast<CUdeviceptr>(cudaVertexBuffer->GetHandle().getDevicePtr());
         buildFlags[i].resize(mesh->GetUniqueResource()->materials.size());

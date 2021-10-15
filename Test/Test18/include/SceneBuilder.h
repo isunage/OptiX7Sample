@@ -6,7 +6,7 @@
 #include <RTLib/VectorFunction.h>
 #include <RTLib/ext/Mesh.h>
 #include <RTLib/ext/TraversalHandle.h>
-#include <RTLib/ext/Material.h>
+#include <RTLib/ext/VariableMap.h>
 #include <string>
 #include <vector>
 #include <array>

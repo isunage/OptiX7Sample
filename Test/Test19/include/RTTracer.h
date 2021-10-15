@@ -5,7 +5,7 @@
 #include <RTLib/Optix.h>
 #include <RTLib/CUDA.h>
 #include <RTLib/ext/TraversalHandle.h>
-#include <RTLib/ext/Material.h>
+#include <RTLib/ext/VariableMap.h>
 namespace test {
 	class RTTracer
 	{
@@ -19,7 +19,7 @@ namespace test {
 		using MeshGroupMap       = std::unordered_map<std::string, rtlib::ext::MeshGroupPtr>;
 		using GASHandleMap       = std::unordered_map<std::string, rtlib::ext::GASHandlePtr>;
 		using IASHandleMap       = std::unordered_map<std::string, rtlib::ext::IASHandlePtr>;
-		using MaterialListMap    = std::unordered_map<std::string, rtlib::ext::MaterialListPtr>;
+		using MaterialListMap    = std::unordered_map<std::string, rtlib::ext::VariableMapListPtr>;
 		using TextureMap         = std::unordered_map<std::string, rtlib::CUDATexture2D<uchar4>>;
 	public:
         //Context
@@ -30,8 +30,8 @@ namespace test {
 		auto GetMeshGroup(const std::string& mgName) const->rtlib::ext::MeshGroupPtr;
 		auto GetMeshGroups()const -> const MeshGroupMap&;
 		//MaterialList
-		void AddMaterialList(const std::string& mlName, const rtlib::ext::MaterialListPtr& materialList)noexcept;
-		auto GetMaterialList(const std::string& mlName) const->rtlib::ext::MaterialListPtr;
+		void AddMaterialList(const std::string& mlName, const rtlib::ext::VariableMapListPtr& materialList)noexcept;
+		auto GetMaterialList(const std::string& mlName) const->rtlib::ext::VariableMapListPtr;
 		//Texture
 		void LoadTexture(const std::string& keyName, const std::string& texPath);
 		auto GetTexture(const std::string& keyName) const ->const rtlib::CUDATexture2D<uchar4>&;

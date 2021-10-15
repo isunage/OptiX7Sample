@@ -1,3 +1,4 @@
+add_subdirectory(TestLib)
 add_subdirectory(Test1)
 ##cuda driver api test(simple add)
 add_subdirectory(Test2)
@@ -24,7 +25,7 @@ add_subdirectory(Test13)
 ## optix test9(first free Camera)
 add_subdirectory(Test14)
 add_subdirectory(Test15)
-## add imgui 
+## add imgui (first use common traversal handle class)
 add_subdirectory(Test16)
 ## fix light
 add_subdirectory(Test17)
@@ -37,9 +38,12 @@ add_subdirectory(Test21)
 add_subdirectory(Test22)
 ## Scene Modifier
 add_subdirectory(Test23)
+add_subdirectory(Test24)
 ## practical path guiding(Muller2017)
 add_subdirectory(TestPathGuiding)
 add_subdirectory(TestPathGuiding2)
 add_subdirectory(TestPathGuiding3)
+## Update: Mesh Light
+add_subdirectory(TestPathGuiding4)
 ## ReSTIR                (NVIDIA)
 ## ReSTIR-GI             (NVIDIA)

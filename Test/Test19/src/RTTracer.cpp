@@ -28,11 +28,11 @@ auto test::RTTracer::GetMeshGroups()const -> const MeshGroupMap& {
 }
 //MaterialList
 
-void test::RTTracer::AddMaterialList(const std::string& mlName, const rtlib::ext::MaterialListPtr& materialList) noexcept {
+void test::RTTracer::AddMaterialList(const std::string& mlName, const rtlib::ext::VariableMapListPtr& materialList) noexcept {
 	m_MaterialLists[mlName] = materialList;
 }
 
-auto test::RTTracer::GetMaterialList(const std::string& mlName) const -> rtlib::ext::MaterialListPtr {
+auto test::RTTracer::GetMaterialList(const std::string& mlName) const -> rtlib::ext::VariableMapListPtr {
 	return m_MaterialLists.at(mlName);
 }
 

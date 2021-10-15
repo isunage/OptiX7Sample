@@ -429,8 +429,31 @@ extern "C" __global__ void __closesthit__radiance_for_phong_nee(){
             rtlib::ONB onb(reflectDir);
             newDirection = onb.local(make_float3(sinTht * cosf(phi), sinTht * sinf(phi), cosTht));
             weight = specular * rtlib::max(rtlib::dot(newDirection, normal), 0.0f) / a_specular;
-
             prd->countEmitted = true;
+#if RAY_TRACE_NEE_SPECULAR
+            {
+                const float2 z        = rtlib::random_float2(xor32);
+                const auto   light    = params.light;
+                const float3 lightPos = light.corner + light.v1 * z.x + light.v2 * z.y;
+                const float  Ldist    = rtlib::distance(lightPos, position);
+                const float3 lightDir = rtlib::normalize(lightPos - position);
+                const float  ndl      = rtlib::dot(normal, lightDir);
+                const float  lndl     = -rtlib::dot(light.normal, lightDir);
+                float weight2         = 0.0f;
+                const auto specularLobe = specular*(shinness+2.0f)*powf(rtlib::max(rtlib::dot(lightDir,reflectDir),0.0f),shinness) /(a_specular* RTLIB_M_2PI);
+                if (ndl > 0.0f && lndl > 0.0f) {
+                    const bool occluded = traceOccluded(params.gasHandle, position, lightDir, 0.001f, Ldist - 0.001f);
+                    if (!occluded) {
+                        //printf("not Occluded!\n");
+                        const float A = rtlib::length(rtlib::cross(light.v1, light.v2));
+                        weight2 = ndl * lndl * A / (Ldist * Ldist);
+                    }
+                }
+                prd->attenuation2 = prvAttenuation * specularLobe;
+                prd->radiance     = light.emission * weight2;
+                prd->countEmitted = false;
+            }
+#endif
         }
         else {
             prd->attenuation  = make_float3(0.0f);

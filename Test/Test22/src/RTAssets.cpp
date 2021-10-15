@@ -94,7 +94,7 @@ bool test::RTObjModelAssetManager::LoadAsset(const std::string& keyName, const s
         return false;
     }
     auto meshGroup = std::make_shared<rtlib::ext::MeshGroup>();
-    auto phongMaterials = std::vector<rtlib::ext::Material>();
+    auto phongMaterials = std::vector<rtlib::ext::VariableMap>();
     if (!reader.Warning().empty()) {
         std::cout << "TinyObjReader: " << reader.Warning();
     }

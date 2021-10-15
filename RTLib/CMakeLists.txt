@@ -38,12 +38,19 @@ ${CMAKE_CURRENT_SOURCE_DIR}/include/RTLib/Utils.h
 ${CMAKE_CURRENT_SOURCE_DIR}/include/RTLib/ext/Camera.h
 ${CMAKE_CURRENT_SOURCE_DIR}/include/RTLib/ext/Mesh.h
 ${CMAKE_CURRENT_SOURCE_DIR}/include/RTLib/ext/Resources.h
+${CMAKE_CURRENT_SOURCE_DIR}/include/RTLib/ext/Resources/CUDA.h
+${CMAKE_CURRENT_SOURCE_DIR}/include/RTLib/ext/Resources/GL.h
+${CMAKE_CURRENT_SOURCE_DIR}/include/RTLib/ext/SBTLayout.h
+${CMAKE_CURRENT_SOURCE_DIR}/include/RTLib/ext/SBTHandle.h
+${CMAKE_CURRENT_SOURCE_DIR}/include/RTLib/ext/VariableMap.h
 ${CMAKE_CURRENT_SOURCE_DIR}/include/RTLib/ext/TraversalHandle.h
 
 ${CMAKE_CURRENT_SOURCE_DIR}/src/Optix.cpp 
 ${CMAKE_CURRENT_SOURCE_DIR}/src/Exceptions.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/src/Camera.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/src/Mesh.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/src/SBTLayout.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/src/SBTHandle.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/src/TraversalHandle.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/src/RectRenderer.cpp
 )

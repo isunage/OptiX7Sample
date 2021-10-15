@@ -4,11 +4,12 @@
 #include "Mesh.h"
 namespace rtlib{
     namespace ext {
-        struct Instance;
-        enum class InstanceType {
-            GAS = 0,
+        enum class InstanceType
+        {
+            GAS,
             IAS
         };
+        struct Instance;
         class  GASHandle {
             OptixTraversableHandle   handle = {};
             rtlib::CUDABuffer<void>  buffer = {};

@@ -45,7 +45,7 @@ int main() {
     if (!objMeshGroup->Load(TEST_TEST15_DATA_PATH"/Models/CornellBox/CornellBox-Water.obj", TEST_TEST15_DATA_PATH"/Models/CornellBox/")) {
         return -1;
     }
-    auto& materialSet   = objMeshGroup->GetMaterialSet();
+    auto materialSet   = objMeshGroup->GetMaterialSet();
 
     {
         for (auto& material : materialSet->materials) {

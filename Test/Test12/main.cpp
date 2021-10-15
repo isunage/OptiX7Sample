@@ -6,7 +6,7 @@
 #include <stb_image_write.h>
 #include <cuda.h>
 #include <cuda_runtime.h>
-#include <RTLib/Camera.h>
+#include <RTLib/ext/Camera.h>
 #include <RTLib/Optix.h>
 #include <RTLib/Config.h>
 #include <RTLib/VectorFunction.h>

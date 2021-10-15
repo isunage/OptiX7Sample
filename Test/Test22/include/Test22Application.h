@@ -102,7 +102,7 @@ public:
 	auto GetMSProgramGroup(const std::string& name)->rtlib::OPXMissPG&;
 	auto GetHGProgramGroup(const std::string& name)->rtlib::OPXHitgroupPG&;
 	auto GetTLAS()const     -> rtlib::ext::IASHandlePtr;
-	auto GetMaterials()const-> const std::vector<rtlib::ext::Material>&;
+	auto GetMaterials()const-> const std::vector<rtlib::ext::VariableMap>&;
 	auto GetCamera()const -> rtlib::ext::Camera;
 	auto GetLight()const  -> ParallelLight;
 	auto GetTexture(const std::string& name)const->const rtlib::CUDATexture2D<uchar4>&;
@@ -240,7 +240,7 @@ private:
 	GeometryASMap                        m_GASHandles       = {};
 	InstanceASMap                        m_IASHandles       = {};
 	//Materials
-	std::vector<rtlib::ext::Material>    m_Materials        = {};
+	std::vector<rtlib::ext::VariableMap>    m_Materials        = {};
 	//Camera
 	rtlib::ext::CameraController              m_CameraController = {};
 	//Light

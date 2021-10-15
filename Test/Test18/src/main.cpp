@@ -5,6 +5,8 @@
 #include <RTLib/ext/Camera.h>
 #include <RTLib/Utils.h>
 #include <RTLib/ext/RectRenderer.h>
+#include <RTLib/ext/Resources/CUDA.h>
+#include <RTLib/ext/TraversalHandle.h>
 #include <cuda/RayTrace.h>
 #include <GLFW/glfw3.h>
 #include <imgui.h>
@@ -93,7 +95,13 @@ public:
 			throw std::runtime_error("Failed To Load Model!");
 		}
 		m_MaterialSet = objMeshGroup->GetMaterialSet();
-
+		objMeshGroup->GetMeshGroup()->GetSharedResource()->vertexBuffer.AddGpuComponent < rtlib::ext::resources::CUDABufferComponent <float3>> ("CUDA");
+		objMeshGroup->GetMeshGroup()->GetSharedResource()->normalBuffer.AddGpuComponent < rtlib::ext::resources::CUDABufferComponent <float3>> ("CUDA");
+		objMeshGroup->GetMeshGroup()->GetSharedResource()->texCrdBuffer.AddGpuComponent < rtlib::ext::resources::CUDABufferComponent <float2>> ("CUDA");
+		for (auto& [name, uniqueResource] : objMeshGroup->GetMeshGroup()->GetUniqueResources()) {
+			uniqueResource->triIndBuffer.AddGpuComponent< rtlib::ext::resources::CUDABufferComponent<uint3>>("CUDA");
+			uniqueResource->matIndBuffer.AddGpuComponent< rtlib::ext::resources::CUDABufferComponent<uint32_t>>("CUDA");
+		}
 		{
 			for (auto& material : m_MaterialSet->materials) {
 				auto diffTex = material.diffTex != "" ? material.diffTex : std::string(TEST_TEST18_DATA_PATH"/Textures/white.png");
@@ -120,7 +128,7 @@ public:
 			accelOptions.operation              = OPTIX_BUILD_OPERATION_BUILD;
 			for (auto& name : objMeshGroup->GetMeshGroup()->GetUniqueNames()) {
 				if(name!="light"){
-					worldGASHandle->meshes.push_back(objMeshGroup->GetMeshGroup()->LoadMesh(name));
+					worldGASHandle->AddMesh(objMeshGroup->GetMeshGroup()->LoadMesh(name));
 				}
 				else {
 					isLightFound = true;
@@ -135,12 +143,12 @@ public:
 			OptixAccelBuildOptions accelOptions = {};
 			accelOptions.buildFlags             = OPTIX_BUILD_FLAG_ALLOW_COMPACTION | OPTIX_BUILD_FLAG_PREFER_FAST_TRACE;
 			accelOptions.operation              = OPTIX_BUILD_OPERATION_BUILD;
-			lightGASHandle->meshes.push_back(objMeshGroup->GetMeshGroup()->LoadMesh("light"));
+			lightGASHandle->AddMesh(objMeshGroup->GetMeshGroup()->LoadMesh("light"));
 			lightGASHandle->Build(m_Tracer.GetOPXContext().get(), accelOptions);
 		}
 		else {
 			rtlib::utils::AABB aabb = {};
-			for (auto& vertex : objMeshGroup->GetMeshGroup()->GetSharedResource()->vertexBuffer.cpuHandle) {
+			for (auto& vertex : objMeshGroup->GetMeshGroup()->GetSharedResource()->vertexBuffer) {
 				aabb.Update(vertex);
 			}
 			OptixAccelBuildOptions accelOptions = {};
@@ -149,19 +157,19 @@ public:
 			auto lightMesh = rtlib::ext::Mesh::New();
 			lightMesh->SetSharedResource(rtlib::ext::MeshSharedResource::New());
 			lightMesh->GetSharedResource()->name = "light";
-			lightMesh->GetSharedResource()->vertexBuffer.cpuHandle = {
+			lightMesh->GetSharedResource()->vertexBuffer = {
 				{aabb.min.x,aabb.max.y+1e-3f,aabb.min.z},
 				{aabb.max.x,aabb.max.y+1e-3f,aabb.min.z},
 				{aabb.max.x,aabb.max.y+1e-3f,aabb.max.z},
 				{aabb.min.x,aabb.max.y+1e-3f,aabb.max.z}
 			};
-			lightMesh->GetSharedResource()->texCrdBuffer.cpuHandle = {
+			lightMesh->GetSharedResource()->texCrdBuffer = {
 				{0.0f,0.0f},
 				{1.0f,0.0f},
 				{1.0f,1.0f},
 				{0.0f,1.0f},
 			};
-			lightMesh->GetSharedResource()->normalBuffer.cpuHandle = {
+			lightMesh->GetSharedResource()->normalBuffer = {
 				{0.0f,-1.0f,0.0f},
 				{0.0f,-1.0f,0.0f},
 				{0.0f,-1.0f,0.0f},
@@ -186,25 +194,25 @@ public:
 			m_MaterialSet->materials.push_back(
 				lightMaterial
 			);
-			lightMesh->GetSharedResource()->vertexBuffer.Upload();
-			lightMesh->GetSharedResource()->texCrdBuffer.Upload();
-			lightMesh->GetSharedResource()->normalBuffer.Upload();
+			lightMesh->GetSharedResource()->vertexBuffer.AddGpuComponent<rtlib::ext::resources::CUDABufferComponent<float3>>("CUDA");
+			lightMesh->GetSharedResource()->texCrdBuffer.AddGpuComponent< rtlib::ext::resources::CUDABufferComponent<float2>>("CUDA");
+			lightMesh->GetSharedResource()->normalBuffer.AddGpuComponent< rtlib::ext::resources::CUDABufferComponent<float3>>("CUDA");
 			lightMesh->SetUniqueResource(rtlib::ext::MeshUniqueResource::New());
 			lightMesh->GetUniqueResource()->name      = "light";
 			lightMesh->GetUniqueResource()->materials = {
 				curMaterialSetCount
 			};
-			lightMesh->GetUniqueResource()->matIndBuffer.cpuHandle = {
+			lightMesh->GetUniqueResource()->matIndBuffer = {
 				0,0,
 			};
-			lightMesh->GetUniqueResource()->triIndBuffer.cpuHandle = {
+			lightMesh->GetUniqueResource()->triIndBuffer = {
 				{0,1,2},
 				{2,3,0}
 			};
 
-			lightMesh->GetUniqueResource()->matIndBuffer.Upload();
-			lightMesh->GetUniqueResource()->triIndBuffer.Upload();
-			lightGASHandle->meshes.push_back(lightMesh);
+			lightMesh->GetUniqueResource()->matIndBuffer.AddGpuComponent< rtlib::ext::resources::CUDABufferComponent<uint32_t>>("CUDA");
+			lightMesh->GetUniqueResource()->triIndBuffer.AddGpuComponent< rtlib::ext::resources::CUDABufferComponent<uint3>>("CUDA");
+			lightGASHandle->AddMesh(lightMesh);
 			lightGASHandle->Build(m_Tracer.GetOPXContext().get(), accelOptions);
 		}
 		m_Tracer.SetGASHandle("Sponza-World", worldGASHandle);
@@ -217,12 +225,12 @@ public:
 			accelOptions.operation              = OPTIX_BUILD_OPERATION_BUILD;
 			auto worldInstance                  = m_Tracer.GetInstance("Sponza-World");
 			auto lightInstance                  = m_Tracer.GetInstance("Light");
-			lightInstance.instance.sbtOffset    = worldInstance.baseGASHandle->sbtCount * RAY_TYPE_COUNT;
-			firstIASHandle->instanceSets.resize(1);
-			firstIASHandle->instanceSets[0]     = std::make_shared<rtlib::ext::InstanceSet>();
-			firstIASHandle->instanceSets[0]->SetInstance(worldInstance);
-			firstIASHandle->instanceSets[0]->SetInstance(lightInstance);
-			firstIASHandle->instanceSets[0]->instanceBuffer.Upload();
+			lightInstance.instance.sbtOffset    = worldInstance.baseGASHandle->GetSbtCount() * RAY_TYPE_COUNT;
+			firstIASHandle->GetInstanceSets().resize(1);
+			firstIASHandle->GetInstanceSets()[0]     = std::make_shared<rtlib::ext::InstanceSet>();
+			firstIASHandle->GetInstanceSets()[0]->SetInstance(worldInstance);
+			firstIASHandle->GetInstanceSets()[0]->SetInstance(lightInstance);
+			firstIASHandle->GetInstanceSets()[0]->instanceBuffer.Upload();
 			firstIASHandle->Build(m_Tracer.GetOPXContext().get(), accelOptions);
 
 		}
@@ -232,12 +240,12 @@ public:
 		m_Light = ParallelLight();
 		{
 			auto& lightGASHandle = m_Tracer.m_GASHandles["Light"];
-			auto  lightMesh      = lightGASHandle->meshes[0];
+			auto  lightMesh      = lightGASHandle->GetMesh(0);
 			auto  lightVertices  = std::vector<float3>();
-			for (auto& index : lightMesh->GetUniqueResource()->triIndBuffer.cpuHandle) {
-				lightVertices.push_back(lightMesh->GetSharedResource()->vertexBuffer.cpuHandle[index.x]);
-				lightVertices.push_back(lightMesh->GetSharedResource()->vertexBuffer.cpuHandle[index.y]);
-				lightVertices.push_back(lightMesh->GetSharedResource()->vertexBuffer.cpuHandle[index.z]);
+			for (auto& index : lightMesh->GetUniqueResource()->triIndBuffer) {
+				lightVertices.push_back(lightMesh->GetSharedResource()->vertexBuffer[index.x]);
+				lightVertices.push_back(lightMesh->GetSharedResource()->vertexBuffer[index.y]);
+				lightVertices.push_back(lightMesh->GetSharedResource()->vertexBuffer[index.z]);
 			}
 			auto lightAABB = rtlib::utils::AABB(lightVertices);
 			auto lightV3 = lightAABB.max - lightAABB.min;
@@ -373,22 +381,22 @@ public:
 			}
 			{
 				auto& defHitGBuffer = tracePipeline->hitGBuffers["Default"];
-				defHitGBuffer.cpuHandle.resize(RAY_TYPE_COUNT * m_Tracer.m_IASHandles["Top"]->sbtCount);
+				defHitGBuffer.cpuHandle.resize(RAY_TYPE_COUNT * m_Tracer.m_IASHandles["Top"]->GetSbtCount());
 				auto& cpuHgRecords = defHitGBuffer.cpuHandle;
 				{
 					auto& iasHandle = m_Tracer.m_IASHandles["Top"];
 					size_t sbtOffset = 0;
-					for (auto& instanceSet : iasHandle->instanceSets) {
+					for (auto& instanceSet : iasHandle->GetInstanceSets()) {
 						for (auto& baseGASHandle : instanceSet->baseGASHandles) {
-							for (auto& mesh : baseGASHandle->meshes) {
+							for (auto& mesh : baseGASHandle->GetMeshes()) {
 								for (size_t i = 0; i < mesh->GetUniqueResource()->materials.size(); ++i) {
 									auto materialId = mesh->GetUniqueResource()->materials[i];
 									auto& material = m_MaterialSet->materials[materialId];
 									HitgroupData radianceHgData = {};
 									{
-										radianceHgData.vertices = mesh->GetSharedResource()->vertexBuffer.gpuHandle.getDevicePtr();
-										radianceHgData.indices = mesh->GetUniqueResource()->triIndBuffer.gpuHandle.getDevicePtr();
-										radianceHgData.texCoords = mesh->GetSharedResource()->texCrdBuffer.gpuHandle.getDevicePtr();
+										radianceHgData.vertices = mesh->GetSharedResource()->vertexBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float3>>("CUDA")->GetHandle().getDevicePtr();
+										radianceHgData.indices = mesh->GetUniqueResource()->triIndBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<uint3>>("CUDA")->GetHandle().getDevicePtr();
+										radianceHgData.texCoords = mesh->GetSharedResource()->texCrdBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float2>>("CUDA")->GetHandle().getDevicePtr();
 										radianceHgData.diffuseTex = m_Tracer.GetTexture(material.diffTex).getHandle();
 										radianceHgData.specularTex = m_Tracer.GetTexture(material.specTex).getHandle();
 										radianceHgData.emissionTex = m_Tracer.GetTexture(material.emitTex).getHandle();
@@ -426,22 +434,22 @@ public:
 			}
 			{
 				auto& neeHitGBuffer = tracePipeline->hitGBuffers["NEE"];
-				neeHitGBuffer.cpuHandle.resize(RAY_TYPE_COUNT * m_Tracer.m_IASHandles["Top"]->sbtCount);
+				neeHitGBuffer.cpuHandle.resize(RAY_TYPE_COUNT * m_Tracer.m_IASHandles["Top"]->GetSbtCount());
 				auto& cpuHgRecords = neeHitGBuffer.cpuHandle;
 				{
 					auto& iasHandle = m_Tracer.m_IASHandles["Top"];
 					size_t sbtOffset = 0;
-					for (auto& instanceSet : iasHandle->instanceSets) {
+					for (auto& instanceSet : iasHandle->GetInstanceSets()) {
 						for (auto& baseGASHandle : instanceSet->baseGASHandles) {
-							for (auto& mesh : baseGASHandle->meshes) {
+							for (auto& mesh : baseGASHandle->GetMeshes()) {
 								for (size_t i = 0; i < mesh->GetUniqueResource()->materials.size(); ++i) {
 									auto materialId = mesh->GetUniqueResource()->materials[i];
 									auto& material = m_MaterialSet->materials[materialId];
 									HitgroupData radianceHgData = {};
 									{
-										radianceHgData.vertices = mesh->GetSharedResource()->vertexBuffer.gpuHandle.getDevicePtr();
-										radianceHgData.indices = mesh->GetUniqueResource()->triIndBuffer.gpuHandle.getDevicePtr();
-										radianceHgData.texCoords = mesh->GetSharedResource()->texCrdBuffer.gpuHandle.getDevicePtr();
+										radianceHgData.vertices  = mesh->GetSharedResource()->vertexBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float3>>("CUDA")->GetHandle().getDevicePtr();
+										radianceHgData.indices   = mesh->GetUniqueResource()->triIndBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<uint3>>("CUDA")->GetHandle().getDevicePtr();
+										radianceHgData.texCoords = mesh->GetSharedResource()->texCrdBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float2>>("CUDA")->GetHandle().getDevicePtr();
 										radianceHgData.diffuseTex = m_Tracer.GetTexture(material.diffTex).getHandle();
 										radianceHgData.specularTex = m_Tracer.GetTexture(material.specTex).getHandle();
 										radianceHgData.emissionTex = m_Tracer.GetTexture(material.emitTex).getHandle();
@@ -492,7 +500,7 @@ public:
 						params.width = m_FbWidth;
 						params.height = m_FbHeight;
 						params.maxTraceDepth = kDefaultMaxTraceDepth;
-						params.gasHandle = m_Tracer.m_IASHandles["Top"]->handle;
+						params.gasHandle = m_Tracer.m_IASHandles["Top"]->GetHandle();
 						params.light = m_Light;
 						params.samplePerALL = 0;
 						params.samplePerLaunch = kDefaultSamplePerLaunch;
@@ -508,7 +516,7 @@ public:
 						params.width           = m_FbWidth;
 						params.height          = m_FbHeight;
 						params.maxTraceDepth   = kDefaultMaxTraceDepth;
-						params.gasHandle       = m_Tracer.m_IASHandles["Top"]->handle;
+						params.gasHandle       = m_Tracer.m_IASHandles["Top"]->GetHandle();
 						params.light           = m_Light;
 						params.samplePerALL    = 0;
 						params.samplePerLaunch = kDefaultSamplePerLaunch;
@@ -593,22 +601,22 @@ public:
 			missBuffer.cpuHandle[RAY_TYPE_OCCLUSION].data.bgColor = make_float4(0.0f, 0.0f, 0.0f, 0.0f);
 			missBuffer.Upload();
 			auto& hitGBuffer = debugPipeline->hitGBuffers["Default"];
-			hitGBuffer.cpuHandle.resize(RAY_TYPE_COUNT * m_Tracer.m_IASHandles["Top"]->sbtCount);
+			hitGBuffer.cpuHandle.resize(RAY_TYPE_COUNT * m_Tracer.m_IASHandles["Top"]->GetSbtCount());
 			auto& cpuHgRecords = hitGBuffer.cpuHandle;
 			{
 				auto& iasHandle  = m_Tracer.m_IASHandles["Top"];
 				size_t sbtOffset = 0;
-				for (auto& instanceSet : iasHandle->instanceSets) {
+				for (auto& instanceSet : iasHandle->GetInstanceSets()) {
 					for (auto& baseGASHandle : instanceSet->baseGASHandles) {
-						for (auto& mesh : baseGASHandle->meshes) {
+						for (auto& mesh : baseGASHandle->GetMeshes()) {
 							for (size_t i = 0; i < mesh->GetUniqueResource()->materials.size(); ++i) {
 								auto materialId = mesh->GetUniqueResource()->materials[i];
 								auto& material  = m_MaterialSet->materials[materialId];
 								HitgroupData radianceHgData = {};
 								{
-									radianceHgData.vertices    = mesh->GetSharedResource()->vertexBuffer.gpuHandle.getDevicePtr();
-									radianceHgData.indices     = mesh->GetUniqueResource()->triIndBuffer.gpuHandle.getDevicePtr();
-									radianceHgData.texCoords   = mesh->GetSharedResource()->texCrdBuffer.gpuHandle.getDevicePtr();
+									radianceHgData.vertices    = mesh->GetSharedResource()->vertexBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float3>>("CUDA")->GetHandle().getDevicePtr();
+									radianceHgData.indices     = mesh->GetUniqueResource()->triIndBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<uint3>>("CUDA")->GetHandle().getDevicePtr();
+									radianceHgData.texCoords   = mesh->GetSharedResource()->texCrdBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float2>>("CUDA")->GetHandle().getDevicePtr();
 									radianceHgData.diffuseTex  = m_Tracer.GetTexture(material.diffTex).getHandle();
 									radianceHgData.specularTex = m_Tracer.GetTexture(material.specTex).getHandle();
 									radianceHgData.emissionTex = m_Tracer.GetTexture(material.emitTex).getHandle();
@@ -638,7 +646,7 @@ public:
 				{
 					params.width           = m_FbWidth;
 					params.height          = m_FbHeight;
-					params.gasHandle       = m_Tracer.m_IASHandles["Top"]->handle;
+					params.gasHandle       = m_Tracer.m_IASHandles["Top"]->GetHandle();
 					params.light           = m_Light;
 				}
 			}
@@ -805,7 +813,7 @@ private:
 			params.width           = m_FbWidth;
 			params.height          = m_FbHeight;
 			//params.maxTraceDepth   = m_MaxTraceDepth;
-			params.gasHandle       = m_Tracer.m_IASHandles["Top"]->handle;
+			params.gasHandle       = m_Tracer.m_IASHandles["Top"]->GetHandle();
 			params.light           = m_Light;
 			params.samplePerALL    = m_SamplePerAll;
 		}else{
@@ -821,7 +829,7 @@ private:
 			params.depthBuffer     = m_DebugBuffers["Depth"].getDevicePtr();
 			params.width           = m_FbWidth;
 			params.height          = m_FbHeight;
-			params.gasHandle       = m_Tracer.m_IASHandles["Top"]->handle;
+			params.gasHandle       = m_Tracer.m_IASHandles["Top"]->GetHandle();
 			params.light           = m_Light;
 		}
 	}
@@ -832,7 +840,7 @@ private:
 	}
 	void OnLaunch() {
 		if (m_CurPipelineName == "Trace") {
-			auto& curPipeline   = m_Tracer.GetTracePipeline();
+			auto  curPipeline   = m_Tracer.GetTracePipeline();
 			auto& params        = curPipeline->subPasses[m_CurSubPassName].paramsBuffer.cpuHandle[0];
 			params.frameBuffer  = m_FrameBufferGL.map();
 			params.samplePerALL = m_SamplePerAll;
@@ -845,7 +853,7 @@ private:
 		}
 		else {
 			
-			auto& curPipeline     = m_Tracer.GetDebugPipeline();
+			auto  curPipeline     = m_Tracer.GetDebugPipeline();
 			auto& params          = curPipeline->subPasses["Default"].paramsBuffer.cpuHandle[0];
 			params.diffuseBuffer  = m_DebugBufferGLs["Diffuse"].map();
 			params.specularBuffer = m_DebugBufferGLs["Specular"].map();
@@ -897,7 +905,7 @@ private:
 				ImGui::Text("Fps: %.2f", 1.0f / m_DelTime);
 				if (m_CurPipelineName == "Trace")
 				{
-					auto& curPipeline = m_Tracer.GetTracePipeline();
+					auto  curPipeline = m_Tracer.GetTracePipeline();
 					auto& curSubpass  = curPipeline->subPasses[m_CurSubPassName];
 					auto& curParams   = curSubpass.paramsBuffer.cpuHandle[0];
 					ImGui::Text("Smp  : %3d" , curParams.samplePerALL);

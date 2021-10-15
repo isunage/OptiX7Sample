@@ -1,6 +1,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "../include/PathTracer.h"
+#include <RTLib/ext/TraversalHandle.h>
 #include <memory>
 void test::PathTracer::InitCUDA()
 {
@@ -81,7 +82,7 @@ auto test::PathTracer::GetInstance(const std::string& gasKeyName) const -> rtlib
 {
     auto baseGASHandle = this->m_GASHandles.at(gasKeyName);
 	rtlib::ext::Instance instance  = {};
-    instance.instance.traversableHandle = baseGASHandle->handle;
+    instance.instance.traversableHandle = baseGASHandle->GetHandle();
     instance.instance.instanceId        = 0;
     instance.instance.sbtOffset         = 0;
     instance.instance.visibilityMask    = 255;

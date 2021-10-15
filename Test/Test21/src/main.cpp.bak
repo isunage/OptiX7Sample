@@ -20,7 +20,7 @@
 #include <string>
 #define TEST21_USE_NEE
 namespace test {
-	std::string SpecifyMaterialType(const rtlib::ext::Material& material) {
+	std::string SpecifyMaterialType(const rtlib::ext::VariableMap& material) {
 		auto emitCol  = material.GetFloat3As<float3>("emitCol");
 		auto tranCol  = material.GetFloat3As<float3>("tranCol");
 		auto refrIndx = material.GetFloat1("refrIndx");
@@ -193,7 +193,7 @@ public:
 				{0.0f,-1.0f,0.0f},
 			};
 			unsigned int curMaterialSetCount = m_MaterialSet->size();
-			auto lightMaterial = rtlib::ext::Material{};
+			auto lightMaterial = rtlib::ext::VariableMap{};
 			{
 				lightMaterial.SetString("name", "light");
 				lightMaterial.SetFloat3("diffCol", { 10.0f, 10.0f, 10.0f });
@@ -1125,7 +1125,7 @@ private:
 	RectRendererPtr                 m_RectRenderer     = {};
 	rtlib::ext::CameraController         m_CameraController = {};
 	test::RTTracer                  m_Tracer           = {};
-	rtlib::ext::MaterialListPtr     m_MaterialSet      = nullptr;
+	rtlib::ext::VariableMapListPtr     m_MaterialSet      = nullptr;
 	CUstream                        m_Stream           = nullptr;
 	//Trace
 	rtlib::CUDABuffer<uchar4>       m_FrameBuffer      = {};
