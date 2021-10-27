@@ -28,3 +28,6 @@
 [submodule "RTLib/thirdparty/tinyxml2"]
 	path = RTLib/thirdparty/tinyxml2
 	url = https://github.com/leethomason/tinyxml2.git
+[submodule "RTLib/thirdparty/TinyParser-Mitsuba"]
+	path = RTLib/thirdparty/TinyParser-Mitsuba
+	url = https://github.com/PearCoding/TinyParser-Mitsuba
