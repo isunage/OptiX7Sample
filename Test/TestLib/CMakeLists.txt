@@ -17,8 +17,11 @@ configure_file(
 add_library(TestLib STATIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include/TestLib/RTPathGuidingUtils.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/TestLib/RTUtils.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/TestLib/RTExceptions.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/TestLib/RTApplication.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/TestLib/RTFrameBuffer.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/TestLib/RTRenderer.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/TestLib/RTGui.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/TestLib/RTTracer.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/TestLib/RTAssets.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/TestLib/Assets/ImgAssets.h
@@ -29,6 +32,8 @@ add_library(TestLib STATIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src/RTPathGuidingUtils.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/RTUtils.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/RTAssets.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/ImgAssets.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/ObjAssets.cpp
 )
 
 target_include_directories(TestLib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_BINARY_DIR}/cuda)

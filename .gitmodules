@@ -22,3 +22,9 @@
 [submodule "RTLib/thirdparty/json"]
 	path = RTLib/thirdparty/json
 	url = https://github.com/nlohmann/json
+[submodule "RTLib/thirdparty/ImGuiFileDialog"]
+	path = RTLib/thirdparty/ImGuiFileDialog
+	url = https://github.com/aiekick/ImGuiFileDialog
+[submodule "RTLib/thirdparty/tinyxml2"]
+	path = RTLib/thirdparty/tinyxml2
+	url = https://github.com/leethomason/tinyxml2.git

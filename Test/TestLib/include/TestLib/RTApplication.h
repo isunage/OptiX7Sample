@@ -1,5 +1,6 @@
 #ifndef RT_APPLICATION_H
 #define RT_APPLICATION_H
+#include <memory>
 namespace test
 {
     class RTApplication
@@ -10,6 +11,6 @@ namespace test
         virtual void CleanUp()    = 0;
         virtual ~RTApplication(){}
     };
-    
+    using RTApplicationPtr = std::shared_ptr<RTApplication>;
 }
 #endif

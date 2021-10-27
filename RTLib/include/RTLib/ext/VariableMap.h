@@ -5,25 +5,50 @@
 #include <array>
 #include <vector>
 #include <unordered_map>
+#define RTLIB_EXT_VARIABLE_MAP_METHOD_DECLARE_SET(Name) void Set##Name(const std::string& keyName, const Internal##Name& value)noexcept { m_##Name##Data[keyName] = value; }
+#define RTLIB_EXT_VARIABLE_MAP_METHOD_DECLARE_GET(Name) auto Get##Name(const std::string& keyName)const -> Internal##Name { return m_##Name##Data.at(keyName); }
+#define RTLIB_EXT_VARIABLE_MAP_METHOD_DECLARE_HAS(Name) bool Has##Name(const std::string& keyName)const noexcept{ return m_##Name##Data.count(keyName) > 0; }
+
 namespace rtlib{
     namespace ext 
     {
         class VariableMap
         {
+        private:
+            using InternalUInt32 = uint32_t;
+            using InternalBool   = bool;
+            using InternalFloat1 = float;
+            using InternalFloat2 = std::array<float, 2>;
+            using InternalFloat3 = std::array<float, 3>;
+            using InternalFloat4 = std::array<float, 4>;
+            //For String
+            using InternalString = std::string;
         public:
-            void SetUInt32(const std::string& keyName, const uint32_t value)noexcept{ m_UInt32Data[keyName] = value;}
-            void SetBool  (const std::string& keyName, const bool  value)noexcept { m_BoolData[keyName] = value; }
-            void SetFloat1(const std::string& keyName, const float value)noexcept { m_Float1Data[keyName] = value; }
-            void SetFloat2(const std::string& keyName, const std::array<float,2>& value)noexcept { m_Float2Data[keyName] = value; }
-            void SetFloat3(const std::string& keyName, const std::array<float,3>& value)noexcept { m_Float3Data[keyName] = value; }
-            void SetFloat4(const std::string& keyName, const std::array<float,4>& value)noexcept { m_Float4Data[keyName] = value; }
-            void SetString(const std::string& keyName, const std::string& value)noexcept { m_StringData[keyName] = value; }
-            auto GetUInt32(const std::string& keyName)const -> uint32_t { return m_UInt32Data.at(keyName); }
-            auto GetBool(const std::string& keyName)const -> bool { return m_BoolData.at(keyName); }
-            auto GetFloat1(const std::string& keyName)const -> float { return m_Float1Data.at(keyName); }
-            auto GetFloat2(const std::string& keyName)const -> std::array<float,2> { return m_Float2Data.at(keyName);}
-            auto GetFloat3(const std::string& keyName)const -> std::array<float,3> { return m_Float3Data.at(keyName);}
-            auto GetFloat4(const std::string& keyName)const -> std::array<float,4> { return m_Float4Data.at(keyName);}
+            
+            //Set
+            RTLIB_EXT_VARIABLE_MAP_METHOD_DECLARE_SET(UInt32);
+            RTLIB_EXT_VARIABLE_MAP_METHOD_DECLARE_SET(Bool);
+            RTLIB_EXT_VARIABLE_MAP_METHOD_DECLARE_SET(Float1);
+            RTLIB_EXT_VARIABLE_MAP_METHOD_DECLARE_SET(Float2);
+            RTLIB_EXT_VARIABLE_MAP_METHOD_DECLARE_SET(Float3);
+            RTLIB_EXT_VARIABLE_MAP_METHOD_DECLARE_SET(Float4);
+            RTLIB_EXT_VARIABLE_MAP_METHOD_DECLARE_SET(String);
+            //Get
+            RTLIB_EXT_VARIABLE_MAP_METHOD_DECLARE_GET(UInt32);
+            RTLIB_EXT_VARIABLE_MAP_METHOD_DECLARE_GET(Bool);
+            RTLIB_EXT_VARIABLE_MAP_METHOD_DECLARE_GET(Float1);
+            RTLIB_EXT_VARIABLE_MAP_METHOD_DECLARE_GET(Float2);
+            RTLIB_EXT_VARIABLE_MAP_METHOD_DECLARE_GET(Float3);
+            RTLIB_EXT_VARIABLE_MAP_METHOD_DECLARE_GET(Float4);
+            RTLIB_EXT_VARIABLE_MAP_METHOD_DECLARE_GET(String);
+            //Has
+            RTLIB_EXT_VARIABLE_MAP_METHOD_DECLARE_HAS(UInt32);
+            RTLIB_EXT_VARIABLE_MAP_METHOD_DECLARE_HAS(Bool);
+            RTLIB_EXT_VARIABLE_MAP_METHOD_DECLARE_HAS(Float1);
+            RTLIB_EXT_VARIABLE_MAP_METHOD_DECLARE_HAS(Float2);
+            RTLIB_EXT_VARIABLE_MAP_METHOD_DECLARE_HAS(Float3);
+            RTLIB_EXT_VARIABLE_MAP_METHOD_DECLARE_HAS(Float4);
+            RTLIB_EXT_VARIABLE_MAP_METHOD_DECLARE_HAS(String);
             template<typename T>
             auto GetFloat1As(const std::string& keyName)const -> T { 
                 static_assert(sizeof(T) == sizeof(float));
@@ -52,7 +77,6 @@ namespace rtlib{
                 std::memcpy(&ans, m_Float4Data.at(keyName).data(), sizeof(float) * 4);
                 return ans;
             }
-            auto GetString(const std::string& keyName)const -> std::string { return m_StringData.at(keyName);}
         private:
             std::unordered_map<std::string, uint32_t>             m_UInt32Data;
             std::unordered_map<std::string, bool>                 m_BoolData;

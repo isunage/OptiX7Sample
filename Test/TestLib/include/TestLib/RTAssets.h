@@ -14,7 +14,11 @@ namespace test {
     class RTAsset
     {
     public:
-        virtual bool Load()         = 0;
+		template<typename T, bool cond = std::is_base_of_v< RTAsset, T>>
+		static auto As(std::shared_ptr<RTAsset> ptr)-> std::shared_ptr<T> {
+			return std::static_pointer_cast<T,RTAsset>(ptr);
+		}
+        virtual bool Load(const rtlib::ext::VariableMap& params)         = 0;
         virtual void Free()         = 0;
         virtual bool IsValid()const = 0;
         virtual ~RTAsset()noexcept{}
@@ -23,7 +27,7 @@ namespace test {
     class RTAssetManager
     {
     public:
-		virtual bool LoadAsset(const std::string& key, const std::string& path) = 0;
+		virtual bool LoadAsset(const std::string& key, const rtlib::ext::VariableMap& params) = 0;
 		virtual void FreeAsset(const std::string& key) = 0;
 		auto  GetAsset(const std::string& keyName)const-> RTAssetPtr;
 		template<typename T, bool cond = std::is_base_of_v< RTAsset,T>>

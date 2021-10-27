@@ -37,3 +37,14 @@ if(NOT imgui-glfw)
     target_include_directories(imgui-glfw PUBLIC ${Imgui_INCLUDE_DIR} ${Imgui_INCLUDE_DIR}/backends)
     target_link_libraries(imgui-glfw imgui glfw glad)
 endif()
+if(NOT imgui-filedialog)
+    set(Imgui_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/imgui)
+    set(Imgui_filedialog_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ImGuiFileDialog)
+    add_library(imgui-filedialog STATIC
+        ${Imgui_filedialog_INCLUDE_DIR}/ImGuiFileDialog.h
+        ${Imgui_filedialog_INCLUDE_DIR}/ImGuiFileDialogConfig.h
+        ${Imgui_filedialog_INCLUDE_DIR}/ImGuiFileDialog.cpp
+    )
+    target_include_directories(imgui-filedialog PUBLIC ${Imgui_filedialog_INCLUDE_DIR})
+    target_link_libraries( imgui-filedialog imgui-glfw stb)
+endif()

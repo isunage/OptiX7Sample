@@ -415,7 +415,7 @@ namespace rtlib{
             return *this;
         }
         explicit operator bool()const noexcept{
-            return m_Handle!=nullptr;
+            return m_Handle!=0;
         }
         RTLIB_DECLARE_GET_BY_VALUE(CUDATexture2D, cudaTextureObject_t,Handle,m_Handle);
         RTLIB_DECLARE_GET_BY_REFERENCE(CUDATexture2D,CUDAArray2D<PixelType>,Array,m_Array);

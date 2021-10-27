@@ -55,7 +55,16 @@ namespace test {
         auto GetCUGLBuffer(const std::string& key)const -> const rtlib::GLInteropBuffer<uchar4>& {
             return m_CUGLBuffers.at(key);
         }
-        ~RTFrameBuffer()noexcept {}
+        ~RTFrameBuffer()noexcept {
+            try
+            {
+                this->CleanUp();
+            }
+            catch (...)
+            {
+
+            }
+        }
     private:
         std::unordered_map<std::string, rtlib::CUDABuffer<uchar4>>      m_CUDABuffers  = {};
         std::unordered_map<std::string, rtlib::GLInteropBuffer<uchar4>> m_CUGLBuffers  = {};
