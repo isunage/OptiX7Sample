@@ -3,6 +3,7 @@
 #include "../include/Test24Gui.h"
 #include "../include/Tracers/Test24DebugTracer.h"
 #include <RTLib/ext/Resources/CUDA.h>
+#include <TestLib/RTUtils.h>
 #include <GLFW/glfw3.h>
 void test::Test24Application::Initialize()
 {
@@ -335,13 +336,12 @@ void test::Test24Application::Trace()
 	m_FrameBuffer->GetCUGLBuffer("Normal"  ).unmap();
 	m_FrameBuffer->GetCUGLBuffer("Depth"   ).unmap();
 	m_FrameBuffer->GetCUGLBuffer("STreeCol").unmap();
-
-
 }
 
 void test::Test24Application::DrawFrame()
 {
 	m_Renderer->Render();
+	test::SavePNGFromGL(TEST_TEST24_CUDA_PATH"/diffuse.png", m_FrameBuffer->GetCUGLBuffer("Default").getHandle(), m_FbWidth, m_FbHeight);
 }
 
 void test::Test24Application::PollEvents()

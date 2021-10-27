@@ -1,0 +1,13 @@
+#include <TestXMLConfig.h>
+#include <tinyxml2.h>
+#include <stdexcept>
+#include <iostream>
+#include <unordered_map>
+#include <optional>
+#include <sstream>
+#include <string>
+#include <memory>
+#include <utility>
+#include <vector>
+#include <array>
+#include <variant>

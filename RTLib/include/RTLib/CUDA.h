@@ -18,13 +18,13 @@ namespace rtlib{
         T*     m_DevicePtr = nullptr;
         size_t m_Count     = 0;
     private:
-        void upload_unsafe(const T* hostPtr, size_t count){
+        void upload_unsafe(const T* hostPtr, size_t count)const {
             RTLIB_CUDA_CHECK(cudaMemcpy(
                 reinterpret_cast<void*>(m_DevicePtr),
                 reinterpret_cast<const void*>(hostPtr),
                 sizeof(T)*count,cudaMemcpyHostToDevice));
         }
-        void download_unsafe(T* hostPtr, size_t count){
+        void download_unsafe(T* hostPtr, size_t count)const {
             RTLIB_CUDA_CHECK(cudaMemcpy(
                 reinterpret_cast<void*>(hostPtr),
                 reinterpret_cast<const void*>(m_DevicePtr),
@@ -82,16 +82,16 @@ namespace rtlib{
             }
             return false;
         }
-        void upload(const T* hostPtr, size_t count){
+        void upload(const T* hostPtr, size_t count)const {
             this->upload_unsafe(hostPtr, std::min(count,m_Count));
         }
-        void upload(const std::vector<T>& hostData) {
+        void upload(const std::vector<T>& hostData)const {
             this->upload_unsafe(hostData.data(), std::min(hostData.size(), m_Count));
         }
-        void download(T* hostPtr,size_t count){
+        void download(T* hostPtr,size_t count) const{
             this->download_unsafe(hostPtr, std::min(count,m_Count));
         }
-        void download(std::vector<T>& hostData){
+        void download(std::vector<T>& hostData)const {
             hostData.resize(m_Count);
             this->download_unsafe(hostData.data(),hostData.size());
         }
@@ -117,12 +117,12 @@ namespace rtlib{
         void*  m_DevicePtr = nullptr;
         size_t m_Count     = 0;
     private:
-        void upload_unsafe(const void* hostPtr, size_t count){
+        void upload_unsafe(const void* hostPtr, size_t count)const {
             RTLIB_CUDA_CHECK(cudaMemcpy(
                 reinterpret_cast<void*>(m_DevicePtr),hostPtr,
                 count,cudaMemcpyHostToDevice));
         }
-        void download_unsafe(void* hostPtr, size_t count){
+        void download_unsafe(void* hostPtr, size_t count)const {
             RTLIB_CUDA_CHECK(cudaMemcpy(
                 reinterpret_cast<void*>(hostPtr),m_DevicePtr,
                 count,cudaMemcpyDeviceToHost));
@@ -176,10 +176,10 @@ namespace rtlib{
             }
             return false;
         }
-        void upload(const void* hostPtr, size_t count){
+        void upload(const void* hostPtr, size_t count)const {
             this->upload_unsafe(hostPtr, std::min(count,m_Count));
         }
-        void download(void* hostPtr,size_t count){
+        void download(void* hostPtr,size_t count)const {
             this->download_unsafe(hostPtr, std::min(count,m_Count));
         }
         void reset(){

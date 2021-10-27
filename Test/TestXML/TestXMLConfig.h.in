@@ -1,0 +1,4 @@
+#ifndef TEST_XML_CONFIG_H
+#define TEST_XML_CONFIG_H
+#cmakedefine TEST_TEST_XML_DATA_PATH "@TEST_TEST_XML_DATA_PATH@"
+#endif

@@ -989,30 +989,30 @@ extern "C" __global__ void __closesthit__radiance_for_phong_pg_def() {
     {
         const auto  newDirection = rnd2 < 0.5f ? newDirection1 : newDirection3;
         const auto  cosine       = rnd2 < 0.5f ? cosine1       : cosine3;
-        const auto  bsdfPdf  = (shinness + 2.0f) * powf(rtlib::max(rtlib::dot(reflectDir, newDirection), 0.0f), shinness) / RTLIB_M_2PI;
-        const auto  bsdfVal  = specular * bsdfPdf / a_specular;
+        const auto  bsdfPdf      = (shinness + 2.0f) * powf(rtlib::max(rtlib::dot(reflectDir, newDirection), 0.0f), shinness) / RTLIB_M_2PI;
+        const auto  bsdfVal      = specular * bsdfPdf / a_specular;
         //両方とも正なら
         if (params.isBuilt)
         {
             const auto  dTreePdf = rtlib::max(dTree->Pdf(newDirection), 0.0f);
-            const auto  woPdf = 0.5f * dTreePdf + 0.5f * bsdfPdf;
+            const auto  woPdf    = 0.5f * dTreePdf + 0.5f * bsdfPdf;
             //printf("Hit1! %f %f\n", woPdf,dTreePdf);
-            prd->dTreePdf    = dTreePdf;
-            prd->bsdfPdf     = bsdfPdf;
-            prd->woPdf       = woPdf;
-            prd->bsdfVal     = bsdfVal;
-            prd->throughPut *= (bsdfVal * rtlib::max(cosine, 0.0f) / woPdf);
-            prd->cosine      = cosine;
+            prd->dTreePdf        = dTreePdf;
+            prd->bsdfPdf         = bsdfPdf;
+            prd->woPdf           = woPdf;
+            prd->bsdfVal         = bsdfVal;
+            prd->throughPut     *= (bsdfVal * rtlib::max(cosine, 0.0f) / woPdf);
+            prd->cosine          = cosine;
             setRayDirection(newDirection);
         }
         else {
-            const auto reflCos = rtlib::max(rtlib::dot(reflectDir, newDirection3), 0.0f);
-            prd->bsdfPdf       = (shinness + 2.0f) * powf(reflCos, shinness) / RTLIB_M_2PI;
-            prd->dTreePdf      = 0.0f;
-            prd->woPdf         = prd->bsdfPdf;
-            prd->bsdfVal       = (specular * prd->bsdfPdf / a_specular);
-            prd->throughPut   *= (specular * rtlib::max(cosine3, 0.0f) / a_specular);
-            prd->cosine        = cosine3;
+            const auto reflCos   = rtlib::max(rtlib::dot(reflectDir, newDirection3), 0.0f);
+            prd->bsdfPdf         = (shinness + 2.0f) * powf(reflCos, shinness) / RTLIB_M_2PI;
+            prd->dTreePdf        = 0.0f;
+            prd->woPdf           = prd->bsdfPdf;
+            prd->bsdfVal         = (specular * prd->bsdfPdf / a_specular);
+            prd->throughPut     *= (specular * rtlib::max(cosine3, 0.0f) / a_specular);
+            prd->cosine          = cosine3;
             setRayDirection(newDirection3);
         }
     }

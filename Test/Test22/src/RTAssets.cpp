@@ -285,7 +285,10 @@ bool test::RTObjModelAssetManager::LoadAsset(const std::string& keyName, const s
                 splitMeshGroup->SetUniqueResource(name, uniqueResource);
             }
             else if (materialEmitSet.count(true) > 0) {
-                uniqueResource->hasLight = true;
+                uniqueResource->variables.SetBool("hasLight",true);
+            }
+            else {
+                uniqueResource->variables.SetBool("hasLight", false);
             }
         }
         //split mesh
@@ -297,9 +300,9 @@ bool test::RTObjModelAssetManager::LoadAsset(const std::string& keyName, const s
             auto newSurfUniqueResource = rtlib::ext::MeshUniqueResource::New();
             auto newEmitUniqueResource = rtlib::ext::MeshUniqueResource::New();
             newSurfUniqueResource->name = uniqueResource->name + ".Surface";
-            newSurfUniqueResource->hasLight = false;
+            newSurfUniqueResource->variables.SetBool("hasLight", false);
             newEmitUniqueResource->name = uniqueResource->name + ".Emission";
-            newEmitUniqueResource->hasLight = true;
+            newEmitUniqueResource->variables.SetBool("hasLight", true);
             for (auto i = 0; i < uniqueResource->matIndBuffer.Size(); ++i) {
                 auto  matIndex = uniqueResource->matIndBuffer[i];
                 auto& material = phongMaterials[uniqueResource->materials[matIndex]];

@@ -63,4 +63,4 @@ rtlib_compile_ptx(TestPathGuiding3 ${TEST_TEST_PG_CUDA_PATH}/RayGuide.cu   ${TES
 rtlib_compile_ptx(TestPathGuiding3 ${TEST_TEST_PG_CUDA_PATH}/RayDebug.cu   ${TEST_TEST_PG_CUDA_PATH} )
 
 target_include_directories(TestPathGuiding3 PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_BINARY_DIR}/cuda)
-target_link_libraries(TestPathGuiding3 RTLib)
+target_link_libraries(TestPathGuiding3 PUBLIC RTLib)

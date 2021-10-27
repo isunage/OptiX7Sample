@@ -103,6 +103,8 @@ public:
 	auto GetMeshLightList()const  -> MeshLightList;
 	auto GetBackGroundLight()const-> float3;
 	auto GetSTree()const  -> std::shared_ptr<test::RTSTreeWrapper>;
+	auto GetAccumBuffer()->rtlib::CUDABuffer<float3>&;
+	auto GetAccumBuffer()const ->const rtlib::CUDABuffer<float3>&;
 	auto GetTexture(const std::string& name)const->const rtlib::CUDATexture2D<uchar4>&;
 private:
 	//Init
@@ -225,6 +227,8 @@ private:
 	RenderTexture                        m_DebugTexture     = {};
 	//OPTIX
 	std::shared_ptr<rtlib::OPXContext>   m_Context          = nullptr;
+	//AccumBuffer
+	rtlib::CUDABuffer<float3>            m_AccumBuffer      = {};
 	//FrameBuffer
 	std::unique_ptr<test::RTFrameBuffer> m_FrameBuffer      = nullptr;
 	//Assets
@@ -234,7 +238,7 @@ private:
 	GeometryASMap                        m_GASHandles       = {};
 	InstanceASMap                        m_IASHandles       = {};
 	//Materials
-	std::vector<rtlib::ext::VariableMap>    m_Materials        = {};
+	std::vector<rtlib::ext::VariableMap> m_Materials        = {};
 	//Camera
 	rtlib::ext::CameraController         m_CameraController = {};
 	//Light

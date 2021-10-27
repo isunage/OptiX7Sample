@@ -43,7 +43,7 @@ void test::Test24Renderer::Render()
 	if (m_Gui->GetBool("Update.RenderFrame"))
 	{
 		auto  rtFrameName = m_Gui->GetString("RenderFrame");
-		auto& rtFrameData = m_Framebuffer->GetCUGLBuffer(rtFrameName);
+		auto& rtFrameData = m_Framebuffer->GetCUGLBuffer("Diffuse");
 		m_Framebuffer->GetGLTexture("Render").upload(0, rtFrameData.getHandle(), 0, 0, fbWidth, fbHeight);
 		m_Gui->SetBool("Update.RenderFrame", false);
 	}

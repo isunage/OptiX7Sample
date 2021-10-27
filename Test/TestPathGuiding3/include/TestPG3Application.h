@@ -101,6 +101,8 @@ public:
 	auto GetLight()const  -> ParallelLight;
 	auto GetSTree()const  -> std::shared_ptr<test::RTSTreeWrapper>;
 	auto GetTexture(const std::string& name)const->const rtlib::CUDATexture2D<uchar4>&;
+	auto GetAccumBuffer() -> rtlib::CUDABuffer<float3>&;
+	auto GetAccumBuffer()const -> const rtlib::CUDABuffer<float3>&;
 private:
 	//Init
 	void InitGLFW();
@@ -183,6 +185,7 @@ private:
 	//Time
 	double                               m_CurFrameTime     = 0.0;
 	double                               m_DelFrameTime     = 0.0;
+	double                               m_CurTraceTime     = 0.0;
 	double                               m_DelTraceTime     = 0.0;
 	//Camera
 	float                                m_CameraFovY       = 30.0f;
@@ -224,6 +227,7 @@ private:
 	std::shared_ptr<rtlib::OPXContext>   m_Context          = nullptr;
 	//FrameBuffer
 	std::unique_ptr<test::RTFrameBuffer> m_FrameBuffer      = nullptr;
+	rtlib::CUDABuffer<float3>            m_AccumBuffer      = {};
 	//Assets
 	test::RTTextureAssetManager          m_TextureAssets    = {};
 	test::RTObjModelAssetManager         m_ObjModelAssets   = {};
@@ -231,9 +235,9 @@ private:
 	GeometryASMap                        m_GASHandles       = {};
 	InstanceASMap                        m_IASHandles       = {};
 	//Materials
-	std::vector<rtlib::ext::VariableMap>    m_Materials        = {};
+	std::vector<rtlib::ext::VariableMap> m_Materials        = {};
 	//Camera
-	rtlib::ext::CameraController              m_CameraController = {};
+	rtlib::ext::CameraController         m_CameraController = {};
 	//Light
 	ParallelLight                        m_ParallelLight    = {};
 	//STree

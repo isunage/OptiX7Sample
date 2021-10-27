@@ -1,4 +1,5 @@
 add_subdirectory(TestLib)
+add_subdirectory(TestXML)
 add_subdirectory(Test1)
 ##cuda driver api test(simple add)
 add_subdirectory(Test2)
