@@ -188,6 +188,7 @@ private:
 	//Time
 	double                               m_CurFrameTime     = 0.0;
 	double                               m_DelFrameTime     = 0.0;
+	double                               m_CurTraceTime     = 0.0;
 	double                               m_DelTraceTime     = 0.0;
 	//Camera
 	float                                m_CameraFovY       = 30.0f;

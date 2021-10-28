@@ -111,8 +111,6 @@ public:
 		if (m_ParentApp->IsCameraUpdated() || m_ParentApp->IsFrameResized() || m_ParentApp->IsFrameFlushed() || m_ParentApp->IsTraceChanged() || m_ParentApp->IsLightUpdated())
 		{
 			m_Params.cpuHandle[0].maxTraceDepth = m_ParentApp->GetMaxTraceDepth();
-			m_AccumBuffer.resize(m_ParentApp->GetFbWidth() * m_ParentApp->GetFbHeight());
-			m_AccumBuffer.upload(std::vector<float3>(m_ParentApp->GetFbWidth() * m_ParentApp->GetFbHeight()));
 			m_Params.cpuHandle[0].samplePerALL = 0;
 		}
 		bool shouldRegen = ((m_SamplePerAll + m_Params.cpuHandle[0].samplePerLaunch) / 1024 != m_SamplePerAll / 1024);
@@ -191,7 +189,6 @@ private:
 		std::random_device rd;
 		std::mt19937 mt(rd());
 		std::generate(seedData.begin(), seedData.end(), mt);
-		m_AccumBuffer = rtlib::CUDABuffer<float3>(std::vector<float3>(m_ParentApp->GetFbWidth() * m_ParentApp->GetFbHeight()));
 		m_SeedBuffer = rtlib::CUDABuffer<uint32_t>(seedData);
 	}
 	void InitShaderBindingTable()
@@ -292,7 +289,7 @@ private:
 		m_Params.cpuHandle[0].width     = m_ParentApp->GetFbWidth();
 		m_Params.cpuHandle[0].height    = m_ParentApp->GetFbHeight();
 		m_Params.cpuHandle[0].light     = m_ParentApp->GetMeshLightList();
-		m_Params.cpuHandle[0].accumBuffer = m_AccumBuffer.getDevicePtr();
+		m_Params.cpuHandle[0].accumBuffer =  m_ParentApp->GetAccumBuffer().getDevicePtr();
 		m_Params.cpuHandle[0].frameBuffer = nullptr;
 		m_Params.cpuHandle[0].seedBuffer = m_SeedBuffer.getDevicePtr();
 		m_Params.cpuHandle[0].isBuilt = false;
@@ -321,7 +318,6 @@ private:
 	}
 	void FreeFrameResources()
 	{
-		m_AccumBuffer.reset();
 		m_SeedBuffer.reset();
 	}
 
@@ -337,7 +333,6 @@ private:
 	rtlib::CUDAUploadBuffer<MissRecord> m_MSRecordBuffers = {};
 	rtlib::CUDAUploadBuffer<HitGRecord> m_HGRecordBuffers = {};
 	rtlib::CUDAUploadBuffer<RayTraceParams> m_Params = {};
-	rtlib::CUDABuffer<float3> m_AccumBuffer = {};
 	rtlib::CUDABuffer<unsigned int> m_SeedBuffer = {};
 	unsigned int m_LightHgRecIndex = 0;
 	unsigned int m_SamplePerAll = 0;
@@ -385,7 +380,7 @@ public:
 		}
 		m_Params.cpuHandle[0].width = config.width;
 		m_Params.cpuHandle[0].height = config.height;
-		m_Params.cpuHandle[0].accumBuffer = m_AccumBuffer.getDevicePtr();
+		m_Params.cpuHandle[0].accumBuffer = m_ParentApp->GetAccumBuffer().getDevicePtr();
 		m_Params.cpuHandle[0].frameBuffer = pUserData->frameBuffer;
 		m_Params.cpuHandle[0].seedBuffer = m_SeedBuffer.getDevicePtr();
 		m_Params.cpuHandle[0].samplePerLaunch = pUserData->samplePerLaunch;
@@ -422,8 +417,6 @@ public:
 		if (m_ParentApp->IsCameraUpdated() || m_ParentApp->IsFrameResized() || m_ParentApp->IsFrameFlushed() || m_ParentApp->IsTraceChanged() || m_ParentApp->IsLightUpdated())
 		{
 			m_Params.cpuHandle[0].maxTraceDepth = m_ParentApp->GetMaxTraceDepth();
-			m_AccumBuffer.resize(m_ParentApp->GetFbWidth() * m_ParentApp->GetFbHeight());
-			m_AccumBuffer.upload(std::vector<float3>(m_ParentApp->GetFbWidth() * m_ParentApp->GetFbHeight()));
 			m_Params.cpuHandle[0].samplePerALL = 0;
 		}
 		bool shouldRegen = ((m_SamplePerAll + m_Params.cpuHandle[0].samplePerLaunch) / 1024 != m_SamplePerAll / 1024);
@@ -507,7 +500,6 @@ private:
 		std::random_device rd;
 		std::mt19937 mt(rd());
 		std::generate(seedData.begin(), seedData.end(), mt);
-		m_AccumBuffer = rtlib::CUDABuffer<float3>(std::vector<float3>(m_ParentApp->GetFbWidth() * m_ParentApp->GetFbHeight()));
 		m_SeedBuffer = rtlib::CUDABuffer<uint32_t>(seedData);
 	}
 	void InitShaderBindingTable()
@@ -740,8 +732,6 @@ public:
 		if (m_ParentApp->IsCameraUpdated() || m_ParentApp->IsFrameResized() || m_ParentApp->IsFrameFlushed() || m_ParentApp->IsTraceChanged() || m_ParentApp->IsLightUpdated())
 		{
 			m_Params.cpuHandle[0].maxTraceDepth = m_ParentApp->GetMaxTraceDepth();
-			m_AccumBuffer.resize(m_ParentApp->GetFbWidth() * m_ParentApp->GetFbHeight());
-			m_AccumBuffer.upload(std::vector<float3>(m_ParentApp->GetFbWidth() * m_ParentApp->GetFbHeight()));
 			m_Params.cpuHandle[0].samplePerALL = 0;
 		}
 		bool shouldRegen = ((m_SamplePerAll + m_Params.cpuHandle[0].samplePerLaunch) / 1024 != m_SamplePerAll / 1024);
@@ -772,7 +762,6 @@ private:
 		std::random_device rd;
 		std::mt19937 mt(rd());
 		std::generate(seedData.begin(), seedData.end(), mt);
-		m_AccumBuffer = rtlib::CUDABuffer<float3>(std::vector<float3>(m_ParentApp->GetFbWidth() * m_ParentApp->GetFbHeight()));
 		m_SeedBuffer = rtlib::CUDABuffer<uint32_t>(seedData);
 	}
 	void InitPipeline()
@@ -924,7 +913,7 @@ private:
 		m_Params.cpuHandle[0].width = m_ParentApp->GetFbWidth();
 		m_Params.cpuHandle[0].height = m_ParentApp->GetFbHeight();
 		m_Params.cpuHandle[0].light = m_ParentApp->GetMeshLightList();
-		m_Params.cpuHandle[0].accumBuffer = m_AccumBuffer.getDevicePtr();
+		m_Params.cpuHandle[0].accumBuffer = m_ParentApp->GetAccumBuffer().getDevicePtr();
 		m_Params.cpuHandle[0].frameBuffer = nullptr;
 		m_Params.cpuHandle[0].seedBuffer = m_SeedBuffer.getDevicePtr();
 		m_Params.cpuHandle[0].isBuilt = false;
@@ -952,7 +941,6 @@ private:
 			std::mt19937 mt(rd());
 			std::vector<unsigned int> seedData(config.width * config.height);
 			std::generate(std::begin(seedData), std::end(seedData), mt);
-			m_AccumBuffer.upload(std::vector<float3>(config.width * config.height));
 			m_SeedBuffer.upload(seedData);
 			m_ParentApp->GetSTree()->Clear();
 			m_ParentApp->GetSTree()->Upload();
@@ -986,7 +974,7 @@ private:
 		m_Params.cpuHandle[0].width = config.width;
 		m_Params.cpuHandle[0].height = config.height;
 		m_Params.cpuHandle[0].sdTree = m_ParentApp->GetSTree()->GetGpuHandle();
-		m_Params.cpuHandle[0].accumBuffer = m_AccumBuffer.getDevicePtr();
+		m_Params.cpuHandle[0].accumBuffer = m_ParentApp->GetAccumBuffer().getDevicePtr();
 		m_Params.cpuHandle[0].frameBuffer = pUserData->frameBuffer;
 		m_Params.cpuHandle[0].seedBuffer = m_SeedBuffer.getDevicePtr();
 		m_Params.cpuHandle[0].isBuilt = m_CurIteration  > pUserData->iterationForBuilt;
@@ -1035,7 +1023,6 @@ private:
 	}
 	void FreeFrameResources()
 	{
-		m_AccumBuffer.reset();
 		m_SeedBuffer.reset();
 	}
 private:
@@ -1050,7 +1037,6 @@ private:
 	rtlib::CUDAUploadBuffer<MissRecord> m_MSRecordBuffers = {};
 	rtlib::CUDAUploadBuffer<HitGRecord> m_HGRecordBuffers = {};
 	rtlib::CUDAUploadBuffer<RayTraceParams> m_Params = {};
-	rtlib::CUDABuffer<float3> m_AccumBuffer = {};
 	rtlib::CUDABuffer<unsigned int> m_SeedBuffer = {};
 	unsigned int m_LightHgRecIndex = 0;
 	unsigned int m_SamplePerAll = 0;
@@ -1127,8 +1113,6 @@ public:
 		if (m_ParentApp->IsCameraUpdated() || m_ParentApp->IsFrameResized() || m_ParentApp->IsFrameFlushed() || m_ParentApp->IsTraceChanged() || m_ParentApp->IsLightUpdated())
 		{
 			m_Params.cpuHandle[0].maxTraceDepth = m_ParentApp->GetMaxTraceDepth();
-			m_AccumBuffer.resize(m_ParentApp->GetFbWidth() * m_ParentApp->GetFbHeight());
-			m_AccumBuffer.upload(std::vector<float3>(m_ParentApp->GetFbWidth() * m_ParentApp->GetFbHeight()));
 			m_Params.cpuHandle[0].samplePerALL = 0;
 		}
 		bool shouldRegen = ((m_SamplePerAll + m_Params.cpuHandle[0].samplePerLaunch) / 1024 != m_SamplePerAll / 1024);
@@ -1214,7 +1198,6 @@ private:
 		std::random_device rd;
 		std::mt19937 mt(rd());
 		std::generate(seedData.begin(), seedData.end(), mt);
-		m_AccumBuffer = rtlib::CUDABuffer<float3>(std::vector<float3>(m_ParentApp->GetFbWidth() * m_ParentApp->GetFbHeight()));
 		m_SeedBuffer = rtlib::CUDABuffer<uint32_t>(seedData);
 	}
 	void InitShaderBindingTable()
@@ -1335,7 +1318,7 @@ private:
 		m_Params.cpuHandle[0].width = m_ParentApp->GetFbWidth();
 		m_Params.cpuHandle[0].height = m_ParentApp->GetFbHeight();
 		m_Params.cpuHandle[0].light = m_ParentApp->GetMeshLightList();
-		m_Params.cpuHandle[0].accumBuffer = m_AccumBuffer.getDevicePtr();
+		m_Params.cpuHandle[0].accumBuffer = m_ParentApp->GetAccumBuffer().getDevicePtr();
 		m_Params.cpuHandle[0].frameBuffer = nullptr;
 		m_Params.cpuHandle[0].seedBuffer = m_SeedBuffer.getDevicePtr();
 		m_Params.cpuHandle[0].isBuilt = false;
@@ -1364,7 +1347,6 @@ private:
 			std::mt19937 mt(rd());
 			std::vector<unsigned int> seedData(config.width * config.height);
 			std::generate(std::begin(seedData), std::end(seedData), mt);
-			m_AccumBuffer.upload(std::vector<float3>(config.width * config.height));
 			m_SeedBuffer.upload(seedData);
 			m_ParentApp->GetSTree()->Clear();
 			m_ParentApp->GetSTree()->Upload();
@@ -1398,7 +1380,7 @@ private:
 		m_Params.cpuHandle[0].width = config.width;
 		m_Params.cpuHandle[0].height = config.height;
 		m_Params.cpuHandle[0].sdTree = m_ParentApp->GetSTree()->GetGpuHandle();
-		m_Params.cpuHandle[0].accumBuffer = m_AccumBuffer.getDevicePtr();
+		m_Params.cpuHandle[0].accumBuffer = m_ParentApp->GetAccumBuffer().getDevicePtr();
 		m_Params.cpuHandle[0].frameBuffer = pUserData->frameBuffer;
 		m_Params.cpuHandle[0].seedBuffer = m_SeedBuffer.getDevicePtr();
 		m_Params.cpuHandle[0].isBuilt = m_CurIteration > pUserData->iterationForBuilt;
@@ -1447,7 +1429,6 @@ private:
 	}
 	void FreeFrameResources()
 	{
-		m_AccumBuffer.reset();
 		m_SeedBuffer.reset();
 	}
 private:
@@ -1462,7 +1443,6 @@ private:
 	rtlib::CUDAUploadBuffer<MissRecord> m_MSRecordBuffers = {};
 	rtlib::CUDAUploadBuffer<HitGRecord> m_HGRecordBuffers = {};
 	rtlib::CUDAUploadBuffer<RayTraceParams> m_Params = {};
-	rtlib::CUDABuffer<float3> m_AccumBuffer = {};
 	rtlib::CUDABuffer<unsigned int> m_SeedBuffer = {};
 	unsigned int m_LightHgRecIndex = 0;
 	unsigned int m_SamplePerAll = 0;
@@ -1854,6 +1834,7 @@ void TestPG4Application::InitAssets()
 			{
 				if (!m_TextureAssets.LoadAsset(diffTexPath, diffTexPath))
 				{
+					std::cout << "DiffTex \"" << diffTexPath << "\" Not Found!\n";
 					material.SetString("diffTex", "");
 				}
 			}
@@ -1861,6 +1842,7 @@ void TestPG4Application::InitAssets()
 			{
 				if (!m_TextureAssets.LoadAsset(specTexPath, specTexPath))
 				{
+					std::cout << "SpecTex \"" << specTexPath << "\" Not Found!\n";
 					material.SetString("specTex", "");
 				}
 			}
@@ -1868,13 +1850,23 @@ void TestPG4Application::InitAssets()
 			{
 				if (!m_TextureAssets.LoadAsset(emitTexPath, emitTexPath))
 				{
+					std::cout << "EmitTex \"" << emitTexPath << "\" Not Found!\n";
 					material.SetString("emitTex", "");
 				}
+				else {
+					if (material.GetFloat3("emitCol")[0] == 0.0f &&
+						material.GetFloat3("emitCol")[1] == 0.0f &&
+						material.GetFloat3("emitCol")[2] == 0.0f) {
+						material.SetFloat3("emitCol",{ 1.0f,1.0f,1.0f });
+					}
+				}
+				
 			}
 			if (shinTexPath != "")
 			{
 				if (!m_TextureAssets.LoadAsset(shinTexPath, shinTexPath))
 				{
+					std::cout << "ShinTex \"" << shinTexPath << "\" Not Found!\n";
 					material.SetString("shinTex", "");
 				}
 			}
@@ -2052,6 +2044,7 @@ void TestPG4Application::InitFrameResources()
 	m_DebugTexture->setParameteri(GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE, false);
 	m_DebugTexture->setParameteri(GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE, false);
 	//Frame
+	m_AccumBuffer = rtlib::CUDABuffer<float3>(std::vector<float3>(m_FbWidth*m_FbHeight));
 	m_FrameBuffer = std::make_unique<test::RTFrameBuffer>(m_FbWidth, m_FbHeight);
 	m_FrameBuffer->AddCUGLBuffer("Default");
 	m_FrameBuffer->GetCUGLBuffer("Default").upload(
@@ -2466,8 +2459,12 @@ void TestPG4Application::DrawGui()
 
 					auto savePath = imgRenderPath / ((m_TraceGuide ? "Guide_"s : "Trace_"s) + (m_TraceNEE ? "NEE_"s : "Def_"s));
 					savePath += std::to_string(m_SamplePerALL);
-					savePath += ".png";
-					test::SavePNGFromGL(savePath.string().c_str(), *m_RenderTexture.get());
+					auto saveExrPath = savePath;
+					auto savePngPath = savePath;
+					saveExrPath += ".exr";
+					savePngPath += ".png";
+					test::SaveEXRFromCUDA(saveExrPath.string().c_str(), m_AccumBuffer, m_FbWidth, m_FbHeight, m_SamplePerALL);
+					test::SavePNGFromGL(savePngPath.string().c_str(), *m_RenderTexture.get());
 				}
 			}
 		}
@@ -2620,6 +2617,8 @@ void TestPG4Application::Update()
 	}
 	if (m_FlushFrame || m_ResizeFrame || m_UpdateCamera || m_UpdateLight || m_ChangeTrace)
 	{
+		m_AccumBuffer.resize(m_FbWidth * m_FbHeight);
+		m_AccumBuffer.upload(std::vector<float3>(m_FbWidth * m_FbHeight, float3{ 0.0f,0.0f,0.0f }));
 		m_SamplePerALL = 0;
 	}
 	m_SimpleActor->Update();
@@ -2753,4 +2752,16 @@ auto TestPG4Application::GetTexture(const std::string &name) const -> const rtli
 {
 	// TODO: return �X�e�[�g�����g�������ɑ}�����܂�
 	return m_TextureAssets.GetAsset(name);
+}
+
+auto TestPG4Application::GetAccumBuffer() -> rtlib::CUDABuffer<float3>&
+{
+	// TODO: return ステートメントをここに挿入します
+	return m_AccumBuffer;
+}
+
+auto TestPG4Application::GetAccumBuffer() const -> const rtlib::CUDABuffer<float3>&
+{
+	// TODO: return ステートメントをここに挿入します
+	return m_AccumBuffer;
 }

@@ -1834,6 +1834,7 @@ void TestPG4Application::InitAssets()
 			{
 				if (!m_TextureAssets.LoadAsset(diffTexPath, diffTexPath))
 				{
+					std::cout << "DiffTex \"" << diffTexPath << "\" Not Found!\n";
 					material.SetString("diffTex", "");
 				}
 			}
@@ -1841,6 +1842,7 @@ void TestPG4Application::InitAssets()
 			{
 				if (!m_TextureAssets.LoadAsset(specTexPath, specTexPath))
 				{
+					std::cout << "SpecTex \"" << specTexPath << "\" Not Found!\n";
 					material.SetString("specTex", "");
 				}
 			}
@@ -1848,13 +1850,23 @@ void TestPG4Application::InitAssets()
 			{
 				if (!m_TextureAssets.LoadAsset(emitTexPath, emitTexPath))
 				{
+					std::cout << "EmitTex \"" << emitTexPath << "\" Not Found!\n";
 					material.SetString("emitTex", "");
 				}
+				else {
+					if (material.GetFloat3("emitCol")[0] == 0.0f &&
+						material.GetFloat3("emitCol")[1] == 0.0f &&
+						material.GetFloat3("emitCol")[2] == 0.0f) {
+						material.SetFloat3("emitCol",{ 1.0f,1.0f,1.0f });
+					}
+				}
+				
 			}
 			if (shinTexPath != "")
 			{
 				if (!m_TextureAssets.LoadAsset(shinTexPath, shinTexPath))
 				{
+					std::cout << "ShinTex \"" << shinTexPath << "\" Not Found!\n";
 					material.SetString("shinTex", "");
 				}
 			}
@@ -2195,6 +2207,7 @@ void TestPG4Application::Trace()
 		m_FrameBuffer->GetCUGLBuffer("Default").unmap();
 	}
 	m_DelTraceTime = glfwGetTime() - beginTraceTime;
+	m_CurTraceTime+= m_DelTraceTime;
 }
 // DrawFrame
 void TestPG4Application::DrawFrame()
@@ -2447,6 +2460,7 @@ void TestPG4Application::DrawGui()
 
 					auto savePath = imgRenderPath / ((m_TraceGuide ? "Guide_"s : "Trace_"s) + (m_TraceNEE ? "NEE_"s : "Def_"s));
 					savePath += std::to_string(m_SamplePerALL);
+					savePath += "_" + std::to_string(m_CurTraceTime);
 					auto saveExrPath = savePath;
 					auto savePngPath = savePath;
 					saveExrPath += ".exr";
@@ -2608,6 +2622,7 @@ void TestPG4Application::Update()
 		m_AccumBuffer.resize(m_FbWidth * m_FbHeight);
 		m_AccumBuffer.upload(std::vector<float3>(m_FbWidth * m_FbHeight, float3{ 0.0f,0.0f,0.0f }));
 		m_SamplePerALL = 0;
+		m_CurTraceTime = 0.0;
 	}
 	m_SimpleActor->Update();
 	m_SimpleNEEActor->Update();
