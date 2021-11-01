@@ -10,12 +10,12 @@
 using namespace std::string_literals;
 static auto SpecifyMaterialType(const rtlib::ext::VariableMap &material) -> std::string
 {
-	auto emitCol = material.GetFloat3As<float3>("emitCol");
-	auto specCol = material.GetFloat3As<float3>("specCol");
-	auto tranCol = material.GetFloat3As<float3>("tranCol");
+	auto emitCol  = material.GetFloat3As<float3>("emitCol");
+	auto specCol  = material.GetFloat3As<float3>("specCol");
+	auto tranCol  = material.GetFloat3As<float3>("tranCol");
 	auto refrIndx = material.GetFloat1("refrIndx");
 	auto shinness = material.GetFloat1("shinness");
-	auto illum = material.GetUInt32("illum");
+	auto illum    = material.GetUInt32("illum");
 	if (illum == 7)
 	{
 		return "Refraction";
@@ -1803,19 +1803,97 @@ void TestPG4Application::InitGui()
 // Assets
 void TestPG4Application::InitAssets()
 {
-	auto objModelPathes = std::vector{
-		std::filesystem::canonical(std::filesystem::path(TEST_TEST_PG_DATA_PATH "/Models/Lumberyard/Exterior/exterior.obj")),
-		std::filesystem::canonical(std::filesystem::path(TEST_TEST_PG_DATA_PATH "/Models/Lumberyard/Interior/interior.obj"))
+	auto objModelPathes = std::vector< std::filesystem::path>{
+		//std::filesystem::canonical(std::filesystem::path(TEST_TEST_PG_DATA_PATH "/Models/Lumberyard/Exterior/exterior.obj")),
+		//std::filesystem::canonical(std::filesystem::path(TEST_TEST_PG_DATA_PATH "/Models/Lumberyard/Interior/interior.obj"))
 		//std::filesystem::canonical(std::filesystem::path(TEST_TEST_PG_DATA_PATH "/Models/CornellBox/CornellBox-Water.obj"))
 		//std::filesystem::canonical(std::filesystem::path(TEST_TEST_PG_DATA_PATH "/Models/CornellBox/CornellBox-Original.obj"))
 		//std::filesystem::canonical(std::filesystem::path(TEST_TEST_PG_DATA_PATH "/Models/Sponza/Sponza.obj"))
 	};
+	for (const std::filesystem::directory_entry entry : std::filesystem::directory_iterator(std::filesystem::path(TEST_TEST_PG_DATA_PATH "/Models/Pool/")))
+	{
+		if (std::filesystem::is_directory(entry.path())) {
+			for (const std::filesystem::directory_entry& entry1 : std::filesystem::directory_iterator(entry.path()))
+			{
+				if (entry1.path().extension() == ".obj")
+				{
+					objModelPathes.push_back(std::filesystem::canonical(entry1.path()));
+				}
+			}
+		}
+	}
 	for (auto objModelPath : objModelPathes)
 	{
 		if (!m_ObjModelAssets.LoadAsset(objModelPath.filename().replace_extension().string(), objModelPath.string()))
 		{
 			throw std::runtime_error("Failed To Load Obj Model!");
 		}
+	}
+	{
+		auto aabb = rtlib::utils::AABB();
+		for (auto& [name, objModelAsset] : m_ObjModelAssets.GetAssets())
+		{
+			for (auto& position : objModelAsset.meshGroup->GetSharedResource()->vertexBuffer) {
+				aabb.Update(position);
+			}
+		}
+		/*8点*/
+		auto lightBox = rtlib::utils::Box();
+		lightBox.x0   = aabb.min.x - 100.0f;
+		lightBox.x1   = aabb.max.x + 100.0f;
+		lightBox.y0   = aabb.min.y - 100.0f;
+		lightBox.y1   = aabb.max.y + 100.0f;
+		lightBox.z0   = aabb.min.z - 100.0f;
+		lightBox.z1   = aabb.max.z + 100.0f;
+		auto vertices = lightBox.getVertices();
+		auto indices  = lightBox.getIndices();
+		auto lightMeshGroup = rtlib::ext::MeshGroup::New();
+		auto lightSharedRes = rtlib::ext::MeshSharedResource::New();
+		lightSharedRes->vertexBuffer.Resize(vertices.size());
+		std::memcpy(lightSharedRes->vertexBuffer.GetCpuData(), vertices.data(), sizeof(float3) * vertices.size());
+		lightSharedRes->texCrdBuffer.Resize(vertices.size());
+		for (auto& texCrd : lightSharedRes->texCrdBuffer) { texCrd = { 0.5f,0.5f }; }
+		lightSharedRes->normalBuffer.Resize(vertices.size());
+		for (auto& normal : lightSharedRes->normalBuffer) { normal = { 0.0f,0.0f,0.0f }; }
+		auto lightUniqueRes = rtlib::ext::MeshUniqueResource::New();
+		lightUniqueRes->triIndBuffer.Resize(indices.size());
+		std::memcpy(lightUniqueRes->triIndBuffer.GetCpuData(), indices.data(),   sizeof(uint3) * indices.size());
+		lightUniqueRes->matIndBuffer.Resize(indices.size());
+		for (auto& matInd : lightUniqueRes->matIndBuffer) { matInd = 0; }
+		lightUniqueRes->materials = std::vector<uint32_t>({ 0 });
+		lightUniqueRes->variables.SetBool("hasLight", true);
+		auto materials = std::vector<rtlib::ext::VariableMap>();
+		materials.resize(1);
+		materials[0].SetString("name", "light");
+		materials[0].SetUInt32("illum", 2);
+		materials[0].SetFloat3("diffCol",
+		{
+				0.0f,0.0f,0.0f
+		});
+		materials[0].SetFloat3("specCol",
+			{
+					0.0f,0.0f,0.0f
+			});
+		materials[0].SetFloat3("tranCol",
+			{
+					0.0f,0.0f,0.0f
+			});
+		materials[0].SetFloat3("emitCol",
+			{
+					1.0f,1.0f,1.0f
+			});
+		materials[0].SetString("diffTex", "");
+		materials[0].SetString("specTex", "");
+		materials[0].SetString("emitTex", "");
+		materials[0].SetString("shinTex", "");
+		materials[0].SetFloat1("shinness", 10.0f);
+		materials[0].SetFloat1("refrIndx", 1.0f);
+		lightMeshGroup->SetSharedResource(lightSharedRes);
+		lightMeshGroup->SetUniqueResource("light", lightUniqueRes);
+		auto objModel = test::RTObjModel();
+		objModel.materials = std::move(materials);
+		objModel.meshGroup = lightMeshGroup;
+		m_ObjModelAssets.GetAssets()["light"] = objModel;
 	}
 	auto smpTexPath = std::filesystem::canonical(std::filesystem::path(TEST_TEST_PG_DATA_PATH "/Textures/white.png"));
 	if (!m_TextureAssets.LoadAsset("", smpTexPath.string()))
@@ -1872,6 +1950,7 @@ void TestPG4Application::InitAssets()
 			}
 		}
 	}
+
 }
 // Acceleration Structure
 void TestPG4Application::InitAccelerationStructures()
@@ -1976,11 +2055,14 @@ void TestPG4Application::InitAccelerationStructures()
 // Light
 void TestPG4Application::InitLight()
 {
+	auto ChooseNEE = [](const rtlib::ext::MeshPtr& mesh)->bool {
+		return !(mesh->GetUniqueResource()->triIndBuffer.Size() < 200 || mesh->GetUniqueResource()->triIndBuffer.Size() > 230);
+	};
 	auto lightGASHandle = m_GASHandles["Light"];
 	for (auto& mesh : lightGASHandle->GetMeshes())
 	{
 		//Select NEE Light
-		if (mesh->GetUniqueResource()->triIndBuffer.Size() < 200|| mesh->GetUniqueResource()->triIndBuffer.Size()>230) {
+		if (ChooseNEE(mesh)) {
 			mesh->GetUniqueResource()->variables.SetBool("useNEE", false);
 		}
 		else {
@@ -2005,7 +2087,7 @@ void TestPG4Application::InitCamera()
 {
 	m_CameraController = rtlib::ext::CameraController({0.0f, 1.0f, 5.0f});
 	m_MouseSensitity = 0.125f;
-	m_MovementSpeed = 10.0f;
+	m_MovementSpeed  = 10.0f;
 	m_CameraController.SetMouseSensitivity(m_MouseSensitity);
 	m_CameraController.SetMovementSpeed(m_MovementSpeed);
 }
@@ -2382,7 +2464,7 @@ void TestPG4Application::DrawGui()
 		if (!m_TraceGuide && !m_LockUpdate)
 		{
 			int maxTraceDepth = m_MaxTraceDepth;
-			if (ImGui::SliderInt("maxTraceDepth", &maxTraceDepth, 1, 10))
+			if (ImGui::SliderInt("maxTraceDepth", &maxTraceDepth, 1, 100))
 			{
 				m_MaxTraceDepth = maxTraceDepth;
 				m_ChangeTrace = true;

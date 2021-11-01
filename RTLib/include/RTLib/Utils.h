@@ -118,9 +118,9 @@ namespace rtlib{
                     for (uint32_t j = 0; j < 2; ++j) {
                         uint32_t index[3] = {};
                         //x...y...z
-                        uint32_t iX = (i + 1) % 3;
-                        uint32_t iY = (i + 2) % 3;
-                        uint32_t iZ = (i + 3) % 3;
+                        uint32_t iX = (i + 1) % 3;//x‚É‘Î‰ž
+                        uint32_t iY = (i + 2) % 3;//y‚É‘Î‰ž
+                        uint32_t iZ = (i + 3) % 3;//z‚É‘Î‰ž
                         index[iX] = 0;
                         index[iY] = 0;
                         index[iZ] = j;
@@ -137,12 +137,23 @@ namespace rtlib{
                         index[iY] = 1;
                         index[iZ] = j;
                         auto i01 = toIndex(index[0], index[1], index[2]);
-                        indices[2 * (2 * i + j) + 0].x = i00;
-                        indices[2 * (2 * i + j) + 0].y = i10;
-                        indices[2 * (2 * i + j) + 0].z = i11;
-                        indices[2 * (2 * i + j) + 1].x = i11;
-                        indices[2 * (2 * i + j) + 1].y = i01;
-                        indices[2 * (2 * i + j) + 1].z = i00;
+                        if (j == 0) {
+                            indices[2 * (2 * i + j) + 0].x = i00;
+                            indices[2 * (2 * i + j) + 0].y = i10;
+                            indices[2 * (2 * i + j) + 0].z = i11;
+                            indices[2 * (2 * i + j) + 1].x = i11;
+                            indices[2 * (2 * i + j) + 1].y = i01;
+                            indices[2 * (2 * i + j) + 1].z = i00;
+                        }
+                        else {
+                            indices[2 * (2 * i + j) + 0].x = i00;
+                            indices[2 * (2 * i + j) + 0].y = i01;
+                            indices[2 * (2 * i + j) + 0].z = i11;
+                            indices[2 * (2 * i + j) + 1].x = i11;
+                            indices[2 * (2 * i + j) + 1].y = i10;
+                            indices[2 * (2 * i + j) + 1].z = i00;
+                        }
+                        
                     }
                 }
                 return indices;

@@ -149,9 +149,9 @@ bool test::RTObjModelAssetManager::LoadAsset(const std::string& keyName, const s
                 }
             }
         }
-        std::cout << "VertexBuffer: " << attrib.vertices.size() / 3  << "->" << indices.size() << std::endl;
-        std::cout << "NormalBuffer: " << attrib.normals.size() / 3   << "->" << indices.size() << std::endl;
-        std::cout << "TexCrdBuffer: " << attrib.texcoords.size() / 2 << "->" << indices.size() << std::endl;
+        std::cout << "VertexBuffer: " << attrib.vertices.size()  / 3  << "->" << indices.size() << std::endl;
+        std::cout << "NormalBuffer: " << attrib.normals.size()   / 3  << "->" << indices.size() << std::endl;
+        std::cout << "TexCrdBuffer: " << attrib.texcoords.size() / 2  << "->" << indices.size() << std::endl;
         vertexBuffer.Resize(indices.size());
         texCrdBuffer.Resize(indices.size());
         normalBuffer.Resize(indices.size());
@@ -169,7 +169,7 @@ bool test::RTObjModelAssetManager::LoadAsset(const std::string& keyName, const s
                     attrib.normals[3 * idx.normal_index + 2]);
             }
             else {
-                normalBuffer[i] = make_float3(0.0f, 1.0f, 0.0f);
+                normalBuffer[i] = make_float3(0.0f, 0.0f, 0.0f);
             }
             if (idx.texcoord_index >= 0) {
                 texCrdBuffer[i] = make_float2(

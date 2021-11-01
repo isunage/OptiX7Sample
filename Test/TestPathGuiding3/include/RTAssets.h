@@ -25,7 +25,7 @@ namespace test {
 		std::unordered_map<std::string, rtlib::CUDATexture2D<uchar4>> m_Textures = {};
 	};
 	struct RTObjModel {
-		rtlib::ext::MeshGroupPtr          meshGroup;
+		rtlib::ext::MeshGroupPtr             meshGroup;
 		std::vector<rtlib::ext::VariableMap> materials;
 	};
 	class RTObjModelAssetManager
