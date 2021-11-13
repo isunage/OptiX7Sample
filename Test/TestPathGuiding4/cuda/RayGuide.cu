@@ -1138,13 +1138,14 @@ extern "C" __global__ void __closesthit__radiance_for_phong_pg_def() {
     if (rnd1 < a_diffuse) {
         //両方とも正なら
         if (params.isBuilt) {
+            const auto  fraction = dTree->GetBsdfSampleFraction();
             const float rnd2     = rtlib::random_float1(xor32);
-            const auto  newDirection = rnd2 < params.sdTree.fraction ? newDirection1 : newDirection2;
-            const auto  cosine   = rnd2 < params.sdTree.fraction ? cosine1 : cosine2;
+            const auto  newDirection = rnd2 < (1.0f - fraction) ? newDirection1 : newDirection2;
+            const auto  cosine   = rnd2 < (1.0f - fraction) ? cosine1 : cosine2;
             const auto  bsdfPdf  = rtlib::max(cosine / RTLIB_M_PI, 0.0f);
             const auto  bsdfVal  = diffuse / (RTLIB_M_PI * a_diffuse);
             const auto  dTreePdf = rtlib::max(dTree->Pdf(newDirection), 0.0f);
-            const auto  woPdf    = params.sdTree.fraction * dTreePdf + (1.0f - params.sdTree.fraction) * bsdfPdf;
+            const auto  woPdf    = fraction * bsdfPdf + (1.0f - fraction) * dTreePdf;
             prd->bsdfVal         = bsdfVal;
             prd->dTreePdf        = dTreePdf;
             prd->bsdfPdf         = bsdfPdf;
@@ -1168,13 +1169,14 @@ extern "C" __global__ void __closesthit__radiance_for_phong_pg_def() {
         //両方とも正なら
         if (params.isBuilt)
         {
+            const auto  fraction = dTree->GetBsdfSampleFraction();
             const float rnd2         = rtlib::random_float1(xor32);
-            const auto  newDirection = rnd2 < params.sdTree.fraction ? newDirection1 : newDirection3;
-            const auto  cosine       = rnd2 < params.sdTree.fraction ? cosine1 : cosine3;
+            const auto  newDirection = rnd2 < (1.0f - fraction) ? newDirection1 : newDirection3;
+            const auto  cosine       = rnd2 < (1.0f - fraction) ? cosine1 : cosine3;
             const auto  bsdfPdf      = getValPhongPDF(newDirection, reflectDir, shinness);
             const auto  bsdfVal      = specular * bsdfPdf / a_specular;
             const auto  dTreePdf     = rtlib::max(dTree->Pdf(newDirection), 0.0f);
-            const auto  woPdf        = params.sdTree.fraction * dTreePdf + (1.0f- params.sdTree.fraction) * bsdfPdf;
+            const auto  woPdf        = fraction * bsdfPdf + (1.0f - fraction) * dTreePdf;
             //printf("Hit1! %f %f\n", woPdf,dTreePdf);
             prd->dTreePdf    = dTreePdf;
             prd->bsdfPdf     = bsdfPdf;
