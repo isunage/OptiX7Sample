@@ -5639,7 +5639,23 @@ namespace rtlib
   {
     return direction - 2.0f * rtlib::dot(direction, normal) * normal;
   }
-
+  RTLIB_INLINE RTLIB_HOST_DEVICE float  schlick (float    f0, float cosine_i) {
+      return f0 + (1.0f - f0) * rtlib::pow5(1.0f - cosine_i);
+  }
+  RTLIB_INLINE RTLIB_HOST_DEVICE float  fresnell(float cos_i, float ior)
+  {
+      const float cos_i_2 = cos_i * cos_i;
+      const float sin_i_2 = rtlib::min(1.0f - cos_i_2,1.0f);
+      const float sin_o_2 = ior * ior * sin_i_2;
+      const float cos_o_2 = 1.0f - sin_o_2;
+      if (cos_o_2 < 0.0f) {
+          return 1.0f;
+      }
+      const float cos_i_cos_o = sqrtf(cos_i_2 * cos_o_2);
+      const float ref_p_2  = (cos_i_2 + ior * ior * cos_o_2 - 2.0f * ior * cos_i_cos_o) / (cos_i_2 + ior * ior * cos_o_2 + 2.0f * ior * cos_i_cos_o);
+      const float ref_s_2  = (ior * ior * cos_i_2 + cos_o_2 - 2.0f * ior * cos_i_cos_o) / (ior * ior * cos_i_2 + cos_o_2 + 2.0f * ior * cos_i_cos_o);
+      return (ref_p_2 + ref_s_2) / 2.0f;
+  }
   struct ONB
   {
     float3 m_Tangent;  //x�ɑ���

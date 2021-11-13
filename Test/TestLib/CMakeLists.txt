@@ -1,40 +1,41 @@
-set(PATH_GUIDING_MAX_DEPTH       1024)
-set(RAY_TRACE_S_FILTER           SpatialFilterNearest)
-set(RAY_TRACE_D_FILTER           DirectionalFilterNearest)
-# Specular面に対してNEEを行うか、Defaultでは行わない（よほどshinnessが高くなければむしろ分散は増加する傾向）
-set(RAY_TRACE_NEE_SPECULAR 0)
-# floatの指数部23->2^-23,2^-23,2^-23
-set(PATH_GUIDING_STREE_MAX_DEPTH 69)
-# floatの指数部23
-set(PATH_GUIDING_DTREE_MAX_DEPTH 24)
-set(PATH_GUIDING_LI_COSINE       1)
+add_library(TestLib 
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/TestLib/RTApplication.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/TestLib/RTFramebuffer.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/TestLib/RTTracer.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/TestLib/RTGui.h
+
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/RTApplication.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/RTFramebuffer.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/RTTracer.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/RTGui.cpp
+)
+
+target_include_directories(
+    TestLib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include 
+)
+
+target_link_libraries(
+    TestLib PUBLIC RTLib imgui-filedialog
+)
+
+set(TEST_TESTLIB_DATA_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../../Data")
+string(REPLACE "/" "\\\\" TEST_TESTLIB_DATA_PATH ${TEST_TESTLIB_DATA_PATH})
 
 configure_file(
-    ${CMAKE_CURRENT_SOURCE_DIR}/cuda/PathGuidingConfig.h.in 
-    ${CMAKE_CURRENT_BINARY_DIR}/cuda/PathGuidingConfig.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/TestLibConfig.h.in 
+    ${CMAKE_CURRENT_BINARY_DIR}/TestLibConfig.h
 )
 
-add_library(TestLib STATIC
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/TestLib/RTPathGuidingUtils.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/TestLib/RTUtils.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/TestLib/RTExceptions.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/TestLib/RTApplication.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/TestLib/RTFrameBuffer.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/TestLib/RTRenderer.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/TestLib/RTGui.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/TestLib/RTTracer.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/TestLib/RTAssets.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/TestLib/Assets/ImgAssets.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/TestLib/Assets/ObjAssets.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/cuda/PathGuiding.h
-    ${CMAKE_CURRENT_BINARY_DIR}/cuda/PathGuidingConfig.h
-
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/RTPathGuidingUtils.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/RTUtils.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/RTAssets.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/ImgAssets.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/ObjAssets.cpp
+add_executable(TestLib_Test 
+    ${CMAKE_CURRENT_BINARY_DIR}/TestLibConfig.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp
 )
 
-target_include_directories(TestLib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_BINARY_DIR}/cuda)
-target_link_libraries(TestLib PUBLIC RTLib)
+target_include_directories(
+    TestLib_Test PUBLIC ${CMAKE_CURRENT_BINARY_DIR}
+)
+
+target_link_libraries(
+    TestLib_Test PUBLIC TestLib
+)
+

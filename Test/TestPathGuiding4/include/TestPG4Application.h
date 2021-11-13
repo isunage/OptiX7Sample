@@ -32,10 +32,11 @@ private:
 	};
 	static inline constexpr std::array<float,3> kDefaultLightColor = { 10.0f,10.0f,10.0f };
 private:
-	using Renderer          = std::unique_ptr<rtlib::ext::RectRenderer>;
-	using RenderTexture     = std::unique_ptr<rtlib::GLTexture2D<uchar4>>;
-	using GeometryASMap     = std::unordered_map<std::string, rtlib::ext::GASHandlePtr>;
-	using InstanceASMap     = std::unordered_map<std::string, rtlib::ext::IASHandlePtr>;
+	using Renderer       = std::unique_ptr<rtlib::ext::RectRenderer>;
+	using RenderTexture  = std::unique_ptr<rtlib::GLTexture2D<uchar4>>;
+	using GeometryASMap  = std::unordered_map<std::string, rtlib::ext::GASHandlePtr>;
+	using InstanceASMap  = std::unordered_map<std::string, rtlib::ext::IASHandlePtr>;
+	using RTSTreeWrapper = test::RTSTreeWrapper2;
 public:
 	static auto  New() -> std::shared_ptr<test::RTApplication> { return std::make_shared<TestPG4Application>(); }
 	// RTApplication ����Čp������܂���
@@ -102,7 +103,7 @@ public:
 	auto GetCamera()const -> rtlib::ext::Camera;
 	auto GetMeshLightList()const  -> MeshLightList;
 	auto GetBackGroundLight()const-> float3;
-	auto GetSTree()const  -> std::shared_ptr<test::RTSTreeWrapper>;
+	auto GetSTree()const  -> std::shared_ptr<RTSTreeWrapper>;
 	auto GetAccumBuffer()->rtlib::CUDABuffer<float3>&;
 	auto GetAccumBuffer()const ->const rtlib::CUDABuffer<float3>&;
 	auto GetTexture(const std::string& name)const->const rtlib::CUDATexture2D<uchar4>&;
@@ -246,7 +247,7 @@ private:
 	float3                               m_BgLightColor       = {};
 	rtlib::CUDAUploadBuffer<MeshLight>   m_MeshLights       = {};
 	//STree
-	std::shared_ptr<test::RTSTreeWrapper>m_STree            = {};
+	std::shared_ptr<RTSTreeWrapper>      m_STree            = {};
 	//Tracer
 	std::shared_ptr<test::RTTracer>      m_SimpleActor      = {};
 	std::shared_ptr<test::RTTracer>      m_SimpleNEEActor   = {};

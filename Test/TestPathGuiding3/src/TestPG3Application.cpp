@@ -1778,13 +1778,27 @@ void TestPG3Application::InitGui()
 // Assets
 void TestPG3Application::InitAssets()
 {
-	auto objModelPathes = std::vector{
+	auto objModelPathes = std::vector<std::filesystem::path>{
 		//std::filesystem::canonical(std::filesystem::path(TEST_TEST_PG_DATA_PATH "/Models/Lumberyard/Exterior/exterior.obj")),
 		//std::filesystem::canonical(std::filesystem::path(TEST_TEST_PG_DATA_PATH "/Models/Lumberyard/Interior/interior.obj"))
 		std::filesystem::canonical(std::filesystem::path(TEST_TEST_PG_DATA_PATH "/Models/CornellBox/CornellBox-Water.obj"))
 		//std::filesystem::canonical(std::filesystem::path(TEST_TEST_PG_DATA_PATH "/Models/CornellBox/CornellBox-Original.obj"))
 	    //std::filesystem::canonical(std::filesystem::path(TEST_TEST_PG_DATA_PATH "/Models/Sponza/Sponza.obj"))
 	};
+#if 0
+	for (const std::filesystem::directory_entry entry : std::filesystem::directory_iterator(std::filesystem::path(TEST_TEST_PG_DATA_PATH "/Models/Pool/")))
+	{
+		if (std::filesystem::is_directory(entry.path())) {
+			for (const std::filesystem::directory_entry& entry1 : std::filesystem::directory_iterator(entry.path()))
+			{
+				if (entry1.path().extension() == ".obj")
+				{
+					objModelPathes.push_back(std::filesystem::canonical(entry1.path()));
+				}
+			}
+		}
+	}
+#endif
 	for (auto objModelPath : objModelPathes)
 	{
 		if (!m_ObjModelAssets.LoadAsset(objModelPath.filename().replace_extension().string(), objModelPath.string()))

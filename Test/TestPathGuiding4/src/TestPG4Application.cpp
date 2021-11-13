@@ -916,7 +916,7 @@ private:
 		m_Params.cpuHandle[0].accumBuffer = m_ParentApp->GetAccumBuffer().getDevicePtr();
 		m_Params.cpuHandle[0].frameBuffer = nullptr;
 		m_Params.cpuHandle[0].seedBuffer = m_SeedBuffer.getDevicePtr();
-		m_Params.cpuHandle[0].isBuilt = false;
+		m_Params.cpuHandle[0].isBuilt	= false;
 		m_Params.cpuHandle[0].maxTraceDepth = m_ParentApp->GetMaxTraceDepth();
 		m_Params.cpuHandle[0].samplePerLaunch = 1;
 		m_Params.Upload();
@@ -950,8 +950,9 @@ private:
 			//CurIteration > 0 -> Reset
 			m_SampleForRemain = m_SampleForRemain - m_SampleForPass;
 			m_SampleForPass = std::min<uint32_t>(m_SampleForRemain, (1 << m_CurIteration) * m_SamplePerLaunch);
-			if (m_SampleForRemain - m_SampleForPass < 2 * m_SampleForPass)
+			if ((m_SampleForRemain - m_SampleForPass < 2 * m_SampleForPass)||(m_SamplePerAll>=m_RatioForBudget * static_cast<float>(m_SampleForBudget)))
 			{
+				std::cout << "Final: m_SamplePerAll=" << m_SamplePerAll << std::endl;
 				m_SampleForPass = m_SampleForRemain;
 			}
 			/*Remain>Pass -> Not Final Iteration*/
@@ -971,15 +972,15 @@ private:
 		{
 			return;
 		}
-		m_Params.cpuHandle[0].width = config.width;
-		m_Params.cpuHandle[0].height = config.height;
-		m_Params.cpuHandle[0].sdTree = m_ParentApp->GetSTree()->GetGpuHandle();
-		m_Params.cpuHandle[0].accumBuffer = m_ParentApp->GetAccumBuffer().getDevicePtr();
-		m_Params.cpuHandle[0].frameBuffer = pUserData->frameBuffer;
-		m_Params.cpuHandle[0].seedBuffer = m_SeedBuffer.getDevicePtr();
-		m_Params.cpuHandle[0].isBuilt = m_CurIteration  > pUserData->iterationForBuilt;
-		m_Params.cpuHandle[0].isFinal = m_SampleForPass >= m_SampleForRemain;
-		m_Params.cpuHandle[0].samplePerALL = m_SamplePerAll;
+		m_Params.cpuHandle[0].width           = config.width;
+		m_Params.cpuHandle[0].height          = config.height;
+		m_Params.cpuHandle[0].sdTree          = m_ParentApp->GetSTree()->GetGpuHandle();
+		m_Params.cpuHandle[0].accumBuffer     = m_ParentApp->GetAccumBuffer().getDevicePtr();
+		m_Params.cpuHandle[0].frameBuffer     = pUserData->frameBuffer;
+		m_Params.cpuHandle[0].seedBuffer      = m_SeedBuffer.getDevicePtr();
+		m_Params.cpuHandle[0].isBuilt         = m_CurIteration  > pUserData->iterationForBuilt;
+		m_Params.cpuHandle[0].isFinal         = m_SampleForPass >= m_SampleForRemain;
+		m_Params.cpuHandle[0].samplePerALL    = m_SamplePerAll;
 		m_Params.cpuHandle[0].samplePerLaunch = m_SamplePerLaunch;
 		cudaMemcpyAsync(m_Params.gpuHandle.getDevicePtr(), &m_Params.cpuHandle[0], sizeof(RayTraceParams), cudaMemcpyHostToDevice, config.stream);
 		//cudaMemcpy(m_Params.gpuHandle.getDevicePtr(), &m_Params.cpuHandle[0], sizeof(RayTraceParams), cudaMemcpyHostToDevice);
@@ -1039,13 +1040,14 @@ private:
 	rtlib::CUDAUploadBuffer<RayTraceParams> m_Params = {};
 	rtlib::CUDABuffer<unsigned int> m_SeedBuffer = {};
 	unsigned int m_LightHgRecIndex = 0;
-	unsigned int m_SamplePerAll = 0;
-	unsigned int m_SamplePerTmp = 0;
+	unsigned int m_SamplePerAll    = 0;
+	unsigned int m_SamplePerTmp    = 0;
 	unsigned int m_SamplePerLaunch = 0;
 	unsigned int m_SampleForBudget = 0;
 	unsigned int m_SampleForRemain = 0;
-	unsigned int m_SampleForPass = 0;
-	unsigned int m_CurIteration = 0;
+	unsigned int m_SampleForPass   = 0;
+	unsigned int m_CurIteration    = 0;
+	float        m_RatioForBudget  = 0.10f;
 };
 // GuideNEETracer
 class TestPG4GuideNEETracer : public test::RTTracer
@@ -1498,7 +1500,7 @@ public:
 			return;
 		}
 
-		m_Params.cpuHandle[0].width = config.width;
+		m_Params.cpuHandle[0].width  = config.width;
 		m_Params.cpuHandle[0].height = config.height;
 		m_Params.cpuHandle[0].sdTree = m_ParentApp->GetSTree()->GetGpuHandle();
 		m_Params.cpuHandle[0].diffuseBuffer = pUserData->diffuseBuffer;
@@ -1806,10 +1808,11 @@ void TestPG4Application::InitAssets()
 	auto objModelPathes = std::vector< std::filesystem::path>{
 		//std::filesystem::canonical(std::filesystem::path(TEST_TEST_PG_DATA_PATH "/Models/Lumberyard/Exterior/exterior.obj")),
 		//std::filesystem::canonical(std::filesystem::path(TEST_TEST_PG_DATA_PATH "/Models/Lumberyard/Interior/interior.obj"))
-		//std::filesystem::canonical(std::filesystem::path(TEST_TEST_PG_DATA_PATH "/Models/CornellBox/CornellBox-Water.obj"))
+		std::filesystem::canonical(std::filesystem::path(TEST_TEST_PG_DATA_PATH "/Models/CornellBox/CornellBox-Water.obj"))
 		//std::filesystem::canonical(std::filesystem::path(TEST_TEST_PG_DATA_PATH "/Models/CornellBox/CornellBox-Original.obj"))
 		//std::filesystem::canonical(std::filesystem::path(TEST_TEST_PG_DATA_PATH "/Models/Sponza/Sponza.obj"))
 	};
+#if 0
 	for (const std::filesystem::directory_entry entry : std::filesystem::directory_iterator(std::filesystem::path(TEST_TEST_PG_DATA_PATH "/Models/Pool/")))
 	{
 		if (std::filesystem::is_directory(entry.path())) {
@@ -1822,78 +1825,13 @@ void TestPG4Application::InitAssets()
 			}
 		}
 	}
+#endif
 	for (auto objModelPath : objModelPathes)
 	{
 		if (!m_ObjModelAssets.LoadAsset(objModelPath.filename().replace_extension().string(), objModelPath.string()))
 		{
 			throw std::runtime_error("Failed To Load Obj Model!");
 		}
-	}
-	{
-		auto aabb = rtlib::utils::AABB();
-		for (auto& [name, objModelAsset] : m_ObjModelAssets.GetAssets())
-		{
-			for (auto& position : objModelAsset.meshGroup->GetSharedResource()->vertexBuffer) {
-				aabb.Update(position);
-			}
-		}
-		/*8点*/
-		auto lightBox = rtlib::utils::Box();
-		lightBox.x0   = aabb.min.x - 100.0f;
-		lightBox.x1   = aabb.max.x + 100.0f;
-		lightBox.y0   = aabb.min.y - 100.0f;
-		lightBox.y1   = aabb.max.y + 100.0f;
-		lightBox.z0   = aabb.min.z - 100.0f;
-		lightBox.z1   = aabb.max.z + 100.0f;
-		auto vertices = lightBox.getVertices();
-		auto indices  = lightBox.getIndices();
-		auto lightMeshGroup = rtlib::ext::MeshGroup::New();
-		auto lightSharedRes = rtlib::ext::MeshSharedResource::New();
-		lightSharedRes->vertexBuffer.Resize(vertices.size());
-		std::memcpy(lightSharedRes->vertexBuffer.GetCpuData(), vertices.data(), sizeof(float3) * vertices.size());
-		lightSharedRes->texCrdBuffer.Resize(vertices.size());
-		for (auto& texCrd : lightSharedRes->texCrdBuffer) { texCrd = { 0.5f,0.5f }; }
-		lightSharedRes->normalBuffer.Resize(vertices.size());
-		for (auto& normal : lightSharedRes->normalBuffer) { normal = { 0.0f,0.0f,0.0f }; }
-		auto lightUniqueRes = rtlib::ext::MeshUniqueResource::New();
-		lightUniqueRes->triIndBuffer.Resize(indices.size());
-		std::memcpy(lightUniqueRes->triIndBuffer.GetCpuData(), indices.data(),   sizeof(uint3) * indices.size());
-		lightUniqueRes->matIndBuffer.Resize(indices.size());
-		for (auto& matInd : lightUniqueRes->matIndBuffer) { matInd = 0; }
-		lightUniqueRes->materials = std::vector<uint32_t>({ 0 });
-		lightUniqueRes->variables.SetBool("hasLight", true);
-		auto materials = std::vector<rtlib::ext::VariableMap>();
-		materials.resize(1);
-		materials[0].SetString("name", "light");
-		materials[0].SetUInt32("illum", 2);
-		materials[0].SetFloat3("diffCol",
-		{
-				0.0f,0.0f,0.0f
-		});
-		materials[0].SetFloat3("specCol",
-			{
-					0.0f,0.0f,0.0f
-			});
-		materials[0].SetFloat3("tranCol",
-			{
-					0.0f,0.0f,0.0f
-			});
-		materials[0].SetFloat3("emitCol",
-			{
-					1.0f,1.0f,1.0f
-			});
-		materials[0].SetString("diffTex", "");
-		materials[0].SetString("specTex", "");
-		materials[0].SetString("emitTex", "");
-		materials[0].SetString("shinTex", "");
-		materials[0].SetFloat1("shinness", 10.0f);
-		materials[0].SetFloat1("refrIndx", 1.0f);
-		lightMeshGroup->SetSharedResource(lightSharedRes);
-		lightMeshGroup->SetUniqueResource("light", lightUniqueRes);
-		auto objModel = test::RTObjModel();
-		objModel.materials = std::move(materials);
-		objModel.meshGroup = lightMeshGroup;
-		m_ObjModelAssets.GetAssets()["light"] = objModel;
 	}
 	auto smpTexPath = std::filesystem::canonical(std::filesystem::path(TEST_TEST_PG_DATA_PATH "/Textures/white.png"));
 	if (!m_TextureAssets.LoadAsset("", smpTexPath.string()))
@@ -2056,13 +1994,13 @@ void TestPG4Application::InitAccelerationStructures()
 void TestPG4Application::InitLight()
 {
 	auto ChooseNEE = [](const rtlib::ext::MeshPtr& mesh)->bool {
-		return !(mesh->GetUniqueResource()->triIndBuffer.Size() < 200 || mesh->GetUniqueResource()->triIndBuffer.Size() > 230);
+		return (mesh->GetUniqueResource()->triIndBuffer.Size() < 200 || mesh->GetUniqueResource()->triIndBuffer.Size() > 230);
 	};
 	auto lightGASHandle = m_GASHandles["Light"];
 	for (auto& mesh : lightGASHandle->GetMeshes())
 	{
 		//Select NEE Light
-		if (ChooseNEE(mesh)) {
+		if (!ChooseNEE(mesh)) {
 			mesh->GetUniqueResource()->variables.SetBool("useNEE", false);
 		}
 		else {
@@ -2105,7 +2043,7 @@ void TestPG4Application::InitSTree()
 			worldAABB.Update(mesh->GetSharedResource()->vertexBuffer[index.z]);
 		}
 	}
-	m_STree = std::make_shared<test::RTSTreeWrapper>(worldAABB.min, worldAABB.max, 20);
+	m_STree = std::make_shared<RTSTreeWrapper>(worldAABB.min, worldAABB.max, 20);
 	m_STree->Upload();
 }
 // FrameResources
@@ -2322,11 +2260,11 @@ void TestPG4Application::DrawGui()
 			if (ImGui::SliderFloat3("LightColor", lightColor, 0.0f, 10.0f))
 			{
 				m_BgLightColor = make_float3(lightColor[0], lightColor[1], lightColor[2]);
-				m_UpdateLight = true;
+				m_UpdateLight  = true;
 			}
 			if (ImGui::SliderFloat("CameraFovY", &cameraFovY, -90.0f, 90.0f))
 			{
-				m_CameraFovY = cameraFovY;
+				m_CameraFovY   = cameraFovY;
 				m_UpdateCamera = true;
 			}
 			if (ImGui::SliderFloat("MovementSpeed", &movementSpeed, 0.0f, 100.0f))
@@ -2785,6 +2723,7 @@ void TestPG4Application::FreeFrameResources()
 {
 	m_RenderTexture->reset();
 	m_FrameBuffer->CleanUp();
+	m_AccumBuffer.reset();
 }
 // Free: Tracers
 void TestPG4Application::FreeTracers()
@@ -2828,7 +2767,7 @@ auto TestPG4Application::GetBackGroundLight() const -> float3
 	return m_BgLightColor;
 }
 //  Get: STree
-auto TestPG4Application::GetSTree() const -> std::shared_ptr<test::RTSTreeWrapper>
+auto TestPG4Application::GetSTree() const -> std::shared_ptr< RTSTreeWrapper>
 {
 	return m_STree;
 }

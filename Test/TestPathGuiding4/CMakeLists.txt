@@ -22,7 +22,7 @@ configure_file(
     ${TEST_TEST_PG_CUDA_PATH}/PathGuidingConfig.h
 )
 
-set(RAY_TRACE_MAX_VERTEX_COUNT 32)
+set(RAY_TRACE_MAX_VERTEX_COUNT 101)
 set(RAY_TRACE_ENABLE_SAMPLE    1)
 
 configure_file(

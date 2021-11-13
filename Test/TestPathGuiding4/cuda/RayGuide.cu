@@ -89,23 +89,14 @@ static __forceinline__ __device__ void         setRayDirection(const float3& dir
 static __forceinline__ __device__ void         setPayloadOccluded(bool occluded) {
     optixSetPayload_0(static_cast<unsigned int>(occluded));
 }
-static __forceinline__ __device__ void         traceRadiance(
-    OptixTraversableHandle handle,
-    float3& rayOrigin,
-    float3& rayDirection,
-    float tmin, float tmax,
-    RadiancePRD* prd) {
+static __forceinline__ __device__ void         traceRadiance(OptixTraversableHandle handle,float3& rayOrigin,float3& rayDirection,float tmin, float tmax, RadiancePRD* prd) {
     unsigned int p0, p1, p2, p3, p4, p5, p6, p7;
     packPointer(prd, p0, p1);
     optixTrace(handle, rayOrigin, rayDirection, tmin, tmax, 0.0f, OptixVisibilityMask(255), OPTIX_RAY_FLAG_NONE, RAY_TYPE_RADIANCE, RAY_TYPE_COUNT, RAY_TYPE_RADIANCE, p0, p1, p2, p3, p4, p5, p6, p7);
-    rayOrigin = unpackFloat3(p2, p3, p4);
+    rayOrigin    = unpackFloat3(p2, p3, p4);
     rayDirection = unpackFloat3(p5, p6, p7);
 }
-static __forceinline__ __device__ bool         traceOccluded(
-    OptixTraversableHandle handle,
-    const float3& rayOrigin,
-    const float3& rayDirection,
-    float tmin, float tmax) {
+static __forceinline__ __device__ bool         traceOccluded(OptixTraversableHandle handle,const float3& rayOrigin,const float3& rayDirection,float tmin, float tmax) {
     unsigned int occluded = false;
     optixTrace(handle, rayOrigin, rayDirection, tmin, tmax, 0.0f, OptixVisibilityMask(255), OPTIX_RAY_FLAG_TERMINATE_ON_FIRST_HIT, RAY_TYPE_OCCLUSION, RAY_TYPE_COUNT, RAY_TYPE_OCCLUSION, occluded);
     return occluded;
@@ -227,7 +218,6 @@ extern "C" __global__ void __raygen__pg_def() {
                 }
             }
             //OK
-            //Result�̍X�V
             result += prd.radiance;
             bool isValidThroughPut = (!isnan(prd.throughPut.x) && !isnan(prd.throughPut.y) && !isnan(prd.throughPut.z) &&
                                     isfinite(prd.throughPut.x) && isfinite(prd.throughPut.y) && isfinite(prd.throughPut.z) &&
@@ -505,13 +495,13 @@ extern "C" __global__ void __closesthit__radiance_for_diffuse_pg_def() {
     const auto diffuse = hgData->getDiffuseColor(texCoord);
     const auto emission = hgData->getEmissionColor(texCoord);
 
-    const auto distance  = optixGetRayTmax();
-    const auto position  = optixGetWorldRayOrigin() + distance * rayDirection;
-    auto  dTreeVoxelSize = make_float3(0.0f);
-    const auto dTree     = params.sdTree.GetDTreeWrapper(position, dTreeVoxelSize);
+    const auto distance = optixGetRayTmax();
+    const auto position = optixGetWorldRayOrigin() + distance * rayDirection;
+    auto  dTreeVoxelSize= make_float3(0.0f);
+    const auto dTree    = params.sdTree.GetDTreeWrapper(position, dTreeVoxelSize);
 
-    float3 newDirection1 = make_float3(0.0f);
-    float3 newDirection2 = make_float3(0.0f);
+    float3 newDirection1= make_float3(0.0f);
+    float3 newDirection2= make_float3(0.0f);
     float  cosine1      = 0.0f;
     float  cosine2      = 0.0f;
 
@@ -530,17 +520,17 @@ extern "C" __global__ void __closesthit__radiance_for_diffuse_pg_def() {
         newDirection1 = dTree->Sample(xor32);
         cosine1 = rtlib::dot(normal, newDirection1);
 
-        if (isnan(newDirection1.x) || isnan(newDirection1.y) || isnan(newDirection1.z)) {
-            printf("newDirection1 is nan: new Direction1 = (%f, %f, %f) normal = (%f, %f, %f) n0 = (%f, %f, %f)\n", newDirection1.x, newDirection1.y, newDirection1.z, normal.x, normal.y, normal.z, n0.x, n0.y, n0.z);
-        }
+        //if (isnan(newDirection1.x) || isnan(newDirection1.y) || isnan(newDirection1.z)) {
+        //    printf("newDirection1 is nan: new Direction1 = (%f, %f, %f) normal = (%f, %f, %f) n0 = (%f, %f, %f)\n", newDirection1.x, newDirection1.y, newDirection1.z, normal.x, normal.y, normal.z, n0.x, n0.y, n0.z);
+        //}
     }
     {
         newDirection2 = sampleCosinePDF(normal,xor32);
         cosine2 = rtlib::dot(normal, newDirection2);
-        if (isnan(newDirection2.x) || isnan(newDirection2.y) || isnan(newDirection2.z))
-        {
-            printf("newDirection2 is nan!\n");
-        }
+        //if (isnan(newDirection2.x) || isnan(newDirection2.y) || isnan(newDirection2.z))
+        //{
+        //   printf("newDirection2 is nan!\n");
+        //}
     }
 
     const float rnd          = rtlib::random_float1(xor32);
@@ -550,11 +540,11 @@ extern "C" __global__ void __closesthit__radiance_for_diffuse_pg_def() {
     //両方とも正なら
     if (params.isBuilt) {
         const auto  dTreePdf = rtlib::max(dTree->Pdf(newDirection), 0.0f);
-        const auto  woPdf = params.sdTree.fraction * bsdfPdf + (1.0f- params.sdTree.fraction) * dTreePdf;
-        prd->bsdfPdf     = bsdfPdf;
-        prd->dTreePdf    = dTreePdf;
-        prd->woPdf       = woPdf;
-        prd->throughPut *= (prd->bsdfVal * rtlib::max(cosine, 0.0f) / woPdf);
+        const auto  woPdf    = params.sdTree.fraction * bsdfPdf + (1.0f- params.sdTree.fraction) * dTreePdf;
+        prd->bsdfPdf         = bsdfPdf;
+        prd->dTreePdf        = dTreePdf;
+        prd->woPdf           = woPdf;
+        prd->throughPut     *=(prd->bsdfVal * rtlib::max(cosine, 0.0f) / woPdf);
         setRayDirection(newDirection);
         prd->cosine = cosine;
     }
@@ -588,13 +578,13 @@ extern "C" __global__ void __closesthit__radiance_for_diffuse_pg_nee_with_nee_li
     const auto t2 = hgData->texCoords[hgData->indices[primitiveID].z];
     const auto texCoord = (1.0f - barycentric.x - barycentric.y) * t0 + barycentric.x * t1 + barycentric.y * t2;
 
-    const auto diffuse = hgData->getDiffuseColor(texCoord);
+    const auto diffuse  = hgData->getDiffuseColor(texCoord);
     const auto emission = hgData->getEmissionColor(texCoord);
 
-    const auto distance = optixGetRayTmax();
-    const auto position = optixGetWorldRayOrigin() + distance * rayDirection;
+    const auto distance  = optixGetRayTmax();
+    const auto position  = optixGetWorldRayOrigin() + distance * rayDirection;
     auto  dTreeVoxelSize = make_float3(0.0f);
-    const auto dTree = params.sdTree.GetDTreeWrapper(position, dTreeVoxelSize);
+    const auto dTree     = params.sdTree.GetDTreeWrapper(position, dTreeVoxelSize);
 
     float3 newDirection1 = make_float3(0.0f);
     float3 newDirection2 = make_float3(0.0f);
@@ -626,7 +616,7 @@ extern "C" __global__ void __closesthit__radiance_for_diffuse_pg_nee_with_nee_li
     }
     {
         newDirection2 = sampleCosinePDF(normal, xor32);
-        cosine2 = rtlib::dot(normal, newDirection2);
+        cosine2       = rtlib::dot(normal, newDirection2);
         if (isnan(newDirection2.x) || isnan(newDirection2.y) || isnan(newDirection2.z))
         {
             printf("newDirection2 is nan!\n");
@@ -783,12 +773,27 @@ extern "C" __global__ void __closesthit__radiance_for_specular() {
     auto* hgData = reinterpret_cast<HitgroupData*>(optixGetSbtDataPointer());
     const float3 rayDirection = optixGetWorldRayDirection();
     const int    primitiveID = optixGetPrimitiveIndex();
+    const float2 barycentric = optixGetTriangleBarycentrics();
     const float3 v0 = optixTransformPointFromObjectToWorldSpace(hgData->vertices[hgData->indices[primitiveID].x]);
     const float3 v1 = optixTransformPointFromObjectToWorldSpace(hgData->vertices[hgData->indices[primitiveID].y]);
     const float3 v2 = optixTransformPointFromObjectToWorldSpace(hgData->vertices[hgData->indices[primitiveID].z]);
-    const float3 n0 = optixTransformNormalFromObjectToWorldSpace(rtlib::normalize(rtlib::cross(v1 - v0, v2 - v0)));
-    const float3 normal = faceForward(n0, make_float3(-rayDirection.x, -rayDirection.y, -rayDirection.z), n0);
-    const float2 barycentric = optixGetTriangleBarycentrics();
+    float3       n0 = optixTransformNormalFromObjectToWorldSpace(rtlib::normalize(rtlib::cross(v1 - v0, v2 - v0)));
+    if (hgData->normals) {
+        const float3 nv0 = hgData->normals[hgData->indices[primitiveID].x];
+        const float3 nv1 = hgData->normals[hgData->indices[primitiveID].y];
+        const float3 nv2 = hgData->normals[hgData->indices[primitiveID].z];
+        const bool isValidNv0 = !((nv0.x == 0.0f) && (nv0.y == 0.0f) && (nv0.z == 0.0f));
+        const bool isValidNv1 = !((nv1.x == 0.0f) && (nv1.y == 0.0f) && (nv1.z == 0.0f));
+        const bool isValidNv2 = !((nv2.x == 0.0f) && (nv2.y == 0.0f) && (nv2.z == 0.0f));
+        if (isValidNv0 && isValidNv1 && isValidNv2)
+        {
+            float3 nv = optixTransformNormalFromObjectToWorldSpace(rtlib::normalize((1.0f - barycentric.x - barycentric.y) * nv0 + barycentric.x * nv1 + barycentric.y * nv2));
+            if (rtlib::dot(nv, n0) > 0.0f) {
+                n0 = nv;
+            }
+        }
+    }
+    float3 normal = n0;
     const auto t0 = hgData->texCoords[hgData->indices[primitiveID].x];
     const auto t1 = hgData->texCoords[hgData->indices[primitiveID].y];
     const auto t2 = hgData->texCoords[hgData->indices[primitiveID].z];
@@ -822,11 +827,27 @@ extern "C" __global__ void __closesthit__radiance_for_refraction() {
     auto* hgData = reinterpret_cast<HitgroupData*>(optixGetSbtDataPointer());
     const float3 rayDirection = optixGetWorldRayDirection();
     const int    primitiveID = optixGetPrimitiveIndex();
+    const float2 barycentric = optixGetTriangleBarycentrics();
     const float3 v0 = optixTransformPointFromObjectToWorldSpace(hgData->vertices[hgData->indices[primitiveID].x]);
     const float3 v1 = optixTransformPointFromObjectToWorldSpace(hgData->vertices[hgData->indices[primitiveID].y]);
     const float3 v2 = optixTransformPointFromObjectToWorldSpace(hgData->vertices[hgData->indices[primitiveID].z]);
-    const float3 n0 = optixTransformNormalFromObjectToWorldSpace(rtlib::normalize(rtlib::cross(v1 - v0, v2 - v0)));
-    float3 normal   = {};
+    float3       n0 = optixTransformNormalFromObjectToWorldSpace(rtlib::normalize(rtlib::cross(v1 - v0, v2 - v0)));
+    if (hgData->normals) {
+        const float3 nv0 = hgData->normals[hgData->indices[primitiveID].x];
+        const float3 nv1 = hgData->normals[hgData->indices[primitiveID].y];
+        const float3 nv2 = hgData->normals[hgData->indices[primitiveID].z];
+        const bool isValidNv0 = !((nv0.x == 0.0f) && (nv0.y == 0.0f) && (nv0.z == 0.0f));
+        const bool isValidNv1 = !((nv1.x == 0.0f) && (nv1.y == 0.0f) && (nv1.z == 0.0f));
+        const bool isValidNv2 = !((nv2.x == 0.0f) && (nv2.y == 0.0f) && (nv2.z == 0.0f));
+        if (isValidNv0 && isValidNv1 && isValidNv2)
+        {
+            float3 nv = optixTransformNormalFromObjectToWorldSpace(rtlib::normalize((1.0f - barycentric.x - barycentric.y) * nv0 + barycentric.x * nv1 + barycentric.y * nv2));
+            if (rtlib::dot(nv, n0) > 0.0f) {
+                n0 = nv;
+            }
+        }
+    }
+    float3 normal = {};
     float  refInd   = 0.0f;
     if (rtlib::dot(n0, rayDirection) < 0.0f) {
         normal = n0;
@@ -836,7 +857,6 @@ extern "C" __global__ void __closesthit__radiance_for_refraction() {
         normal = make_float3(-n0.x, -n0.y, -n0.z);
         refInd = hgData->refrInd;
     }
-    const float2 barycentric = optixGetTriangleBarycentrics();
     const auto t0 = hgData->texCoords[hgData->indices[primitiveID].x];
     const auto t1 = hgData->texCoords[hgData->indices[primitiveID].y];
     const auto t2 = hgData->texCoords[hgData->indices[primitiveID].z];
@@ -869,8 +889,9 @@ extern "C" __global__ void __closesthit__radiance_for_refraction() {
             prd->throughPut *= prd->bsdfVal;
         }
         else {
-            float  cosine_o   = sqrtf(1.0f - sine_o_2);
-            float3 refractDir = rtlib::normalize((rayDirection - (cosine_o - cosine_i) * normal) / refInd);
+            float  cosine_o = sqrtf(1.0f - sine_o_2);
+            float3 k = (rayDirection + cosine_i * normal) / sqrtf(1.0f - cosine_i * cosine_i);
+            float3 refractDir = rtlib::normalize(sqrtf(sine_o_2) * k - cosine_o * normal);
             float cosine      = rtlib::dot(refractDir, normal);
             prd->woPdf        = prd->dTreePdf = 0.0f;
             prd->bsdfPdf      = std::fabsf(cosine);
@@ -1113,15 +1134,15 @@ extern "C" __global__ void __closesthit__radiance_for_phong_pg_def() {
     const auto  a_diffuse  = (diffuse.x + diffuse.y + diffuse.z) / 3.0f;
     const auto  a_specular = (specular.x + specular.y + specular.z) / 3.0f;
     const float rnd1       = rtlib::random_float1(xor32);
-    const float rnd2       = rtlib::random_float1(xor32);
 
     if (rnd1 < a_diffuse) {
-        const auto  newDirection = rnd2 < params.sdTree.fraction ? newDirection1 : newDirection2;
-        const auto  cosine       = rnd2 < params.sdTree.fraction ?       cosine1 :       cosine2;
-        const auto  bsdfPdf      = rtlib::max(cosine / RTLIB_M_PI     , 0.0f);
-        const auto  bsdfVal      = diffuse / (RTLIB_M_PI * a_diffuse);
         //両方とも正なら
         if (params.isBuilt) {
+            const float rnd2     = rtlib::random_float1(xor32);
+            const auto  newDirection = rnd2 < params.sdTree.fraction ? newDirection1 : newDirection2;
+            const auto  cosine   = rnd2 < params.sdTree.fraction ? cosine1 : cosine2;
+            const auto  bsdfPdf  = rtlib::max(cosine / RTLIB_M_PI, 0.0f);
+            const auto  bsdfVal  = diffuse / (RTLIB_M_PI * a_diffuse);
             const auto  dTreePdf = rtlib::max(dTree->Pdf(newDirection), 0.0f);
             const auto  woPdf    = params.sdTree.fraction * dTreePdf + (1.0f - params.sdTree.fraction) * bsdfPdf;
             prd->bsdfVal         = bsdfVal;
@@ -1144,15 +1165,16 @@ extern "C" __global__ void __closesthit__radiance_for_phong_pg_def() {
     }
     else if (rnd1 < a_diffuse + a_specular)
     {
-        const auto  newDirection = rnd2 < params.sdTree.fraction ? newDirection1 : newDirection3;
-        const auto  cosine       = rnd2 < params.sdTree.fraction ? cosine1       : cosine3;
-        const auto  bsdfPdf  = getValPhongPDF(newDirection, reflectDir, shinness);
-        const auto  bsdfVal  = specular * bsdfPdf / a_specular;
         //両方とも正なら
         if (params.isBuilt)
         {
-            const auto  dTreePdf = rtlib::max(dTree->Pdf(newDirection), 0.0f);
-            const auto  woPdf    = params.sdTree.fraction * dTreePdf + (1.0f- params.sdTree.fraction) * bsdfPdf;
+            const float rnd2         = rtlib::random_float1(xor32);
+            const auto  newDirection = rnd2 < params.sdTree.fraction ? newDirection1 : newDirection3;
+            const auto  cosine       = rnd2 < params.sdTree.fraction ? cosine1 : cosine3;
+            const auto  bsdfPdf      = getValPhongPDF(newDirection, reflectDir, shinness);
+            const auto  bsdfVal      = specular * bsdfPdf / a_specular;
+            const auto  dTreePdf     = rtlib::max(dTree->Pdf(newDirection), 0.0f);
+            const auto  woPdf        = params.sdTree.fraction * dTreePdf + (1.0f- params.sdTree.fraction) * bsdfPdf;
             //printf("Hit1! %f %f\n", woPdf,dTreePdf);
             prd->dTreePdf    = dTreePdf;
             prd->bsdfPdf     = bsdfPdf;

@@ -93,16 +93,13 @@ struct DTreeNode {
 		DTreeNode* cur = this;
 		int        idx = cur->GetChildIdx(p);
 		int      depth = 1;
-		while (depth < PATH_GUIDING_DTREE_MAX_DEPTH) {
+		while (!cur->IsLeaf(idx)) {
 			//Leafだったら加算する
-			if (cur->IsLeaf(idx)) {
-				cur->AddSumAtomic(idx, irradiance);
-				break;
-			}
 			cur = &nodes[cur->children[idx]];
 			idx = cur->GetChildIdx(p);
 			++depth;
 		}
+		cur->AddSumAtomic(idx, irradiance);
 		return;
 	}
 	RTLIB_INLINE RTLIB_DEVICE      void  Record(const float2& origin, float size, float2 nodeOrigin, float nodeSize, float value, DTreeNode* nodes) noexcept {
@@ -149,7 +146,6 @@ struct DTreeNode {
 			}
 		}
 	}
-
 	RTLIB_INLINE RTLIB_HOST_DEVICE static auto ComputeOverlappingVolume(const float2& min1, const float2& max1, const float2& min2, const float2& max2)noexcept->float {
 		float lengths[2] = {
 			fmaxf(fminf(max1.x,max2.x) - fmaxf(min1.x,min2.x),0.0f),
@@ -160,35 +156,24 @@ struct DTreeNode {
 	template<typename RNG>
 	RTLIB_INLINE RTLIB_HOST_DEVICE auto Sample(RNG& rng, const DTreeNode* nodes)const noexcept -> float2 {
 		const DTreeNode* cur = this;
-		int    depth = 1;
-		float2 result = make_float2(0.0f);
-		double size = 1.0f;
+		float2 result        = make_float2(0.0f);
+		double size          = 1.0f;
 		for (;;) {
-			int   idx = 0;
-			float topLeft = cur->sums[0];
+			int   idx      = 0;
+			float topLeft  = cur->sums[0];
 			float topRight = cur->sums[1];
-			float partial = cur->sums[0] + cur->sums[2];
-			float total = cur->GetSumOfAll();
-#if 0
-			float mulOfSum = cur->sums[0] * cur->sums[1] * cur->sums[2] * cur->sums[3];
-			//if( total <=0.0f){
-			if (mulOfSum <= 0.0f)
-#else
-			if (total <= 0.0f)
-#endif
-			{
-				//printf("Bug!\n");
-				result += rtlib::random_float2(rng) * size;
-				break;
-			}
+			float partial  = cur->sums[0] + cur->sums[2];
+			float total    = cur->GetSumOfAll();
+			//use Two RND Value
+			//use Signle RND Value
 			//(s0+s2)/(s0+s1+s2+s3)
 			float boundary = partial / total;
-			auto  origin = make_float2(0.0f);
-			float sample = rtlib::random_float1(rng);
+			auto  origin   = make_float2(0.0f);
+			float sample   = rtlib::random_float1(rng);
 
 			if (sample < boundary)
 			{
-				sample /= boundary;
+				sample   = sample  / boundary;
 				boundary = topLeft / partial;
 			}
 			else
@@ -199,28 +184,21 @@ struct DTreeNode {
 				boundary = topRight / partial;
 				idx     |= (1 << 0);
 			}
-
-			if (sample < boundary)
-			{
-				sample /= boundary;
-			}
-			else
-			{
+			if (sample >= boundary){
 				origin.y = 0.5f;
-				sample = (sample - boundary) / (1.0f - boundary);
 				idx |= (1 << 1);
 			}
 
-			if (cur->IsLeaf(idx))
+			result += size * origin;
+			size   *= 0.5f;
+
+			if (cur->IsLeaf(idx)||cur->sums[idx]<=0.0f)
 			{
-				result += size * (origin + 0.5f * rtlib::random_float2(rng));
+				result += size * rtlib::random_float2(rng);
 				break;
 			}
 
-			result += size * origin;
-			size *= 0.5f;
 			cur = &nodes[cur->children[idx]];
-			++depth;
 		}
 		return result;
 	}
@@ -422,7 +400,6 @@ struct DTree {
 		if (GetMean() <= 0.0f) {
 			return 1.0f / (4.0f * RTLIB_M_PI);
 		}
-
 		return nodes[0].Pdf(p, nodes) / (4.0f * RTLIB_M_PI);
 	}
 	RTLIB_INLINE RTLIB_HOST_DEVICE auto GetDepth(float2 p)const noexcept -> int {
@@ -465,14 +442,10 @@ struct STreeNode {
 	}
 	RTLIB_INLINE RTLIB_HOST_DEVICE auto  GetChildIdx(float3& p)const noexcept -> int {
 		float* p_A = reinterpret_cast<float*>(&p);
-		if (p_A[axis] < 0.5f) {
-			MoveToLeft(p_A[axis]);
-			return 0;
-		}
-		else {
-			MoveToRight(p_A[axis]);
-			return 1;
-		}
+		p_A[axis] *= 2.0f;
+		int    idx = p_A[axis];
+		p_A[axis] -= static_cast<float>(idx);
+		return idx;
 	}
 	RTLIB_INLINE RTLIB_HOST_DEVICE bool  IsLeaf()const noexcept {
 		return dTree != nullptr;
@@ -481,19 +454,15 @@ struct STreeNode {
 		const STreeNode* cur = this;
 		int              idx = cur->GetChildIdx(p);
 		int            depth = 1;
-		while (depth < PATH_GUIDING_STREE_MAX_DEPTH) {
-			if (cur->IsLeaf()) {
-				return cur->dTree;
-			}
-			reinterpret_cast<float*>(&size)[cur->axis] /= 2.0f;
-			cur = &nodes[cur->children[idx]];
-			idx = cur->GetChildIdx(p);
+		unsigned int  t_axis = this->axis;
+		while (!cur->IsLeaf()) {
+			reinterpret_cast<float*>(&size)[t_axis] /= 2.0f;
+			cur  = &nodes[cur->children[idx]];
+			idx  = cur->GetChildIdx(p);
+			t_axis = (t_axis + 1) % 3;
 			++depth;
 		}
-#ifndef NDEBUG
-		printf("STree Stack is Overflowed!");
-#endif
-		return nullptr;
+		return cur->dTree;
 	}
 	RTLIB_INLINE RTLIB_HOST_DEVICE auto  GetDTreeWrapper()const noexcept -> DTreeWrapper* {
 		return dTree;
@@ -558,8 +527,8 @@ struct STreeNode {
 struct STree {
 	RTLIB_INLINE RTLIB_HOST_DEVICE auto  GetDTreeWrapper(float3 p, float3& size)const noexcept -> DTreeWrapper* {
 		size = aabbMax - aabbMin;
-		p = p - aabbMin;
-		p /= size;
+		p    = p - aabbMin;
+		p   /= size;
 		return nodes[0].GetDTreeWrapper(p, size, nodes);
 	}
 	RTLIB_INLINE RTLIB_HOST_DEVICE auto  GetDTreeWrapper(float3 p)const noexcept -> DTreeWrapper* {
@@ -578,6 +547,113 @@ struct STree {
 	float3     aabbMax;
 	float      fraction;
 };
+struct STreeNode2 {
+	RTLIB_INLINE RTLIB_HOST_DEVICE auto  GetNodeIdx(float3& p)const noexcept -> unsigned int {
+		return children[GetChildIdx(p)];
+	}
+	RTLIB_INLINE RTLIB_HOST_DEVICE auto  GetChildIdx(float3& p)const noexcept -> int {
+		int i_x = 2.0f * p.x;
+		int i_y = 2.0f * p.y;
+		int i_z = 2.0f * p.z;
+		p *= 2.0f;
+		p -= make_float3((float)i_x, (float)i_y, (float)i_z);
+		return i_x + (1 << 1) * i_y + (1 << 2) * i_z;
+	}
+	RTLIB_INLINE RTLIB_HOST_DEVICE bool  IsLeaf()const noexcept {
+		return dTree != nullptr;
+	}
+	RTLIB_INLINE RTLIB_HOST_DEVICE auto  GetDTreeWrapper(float3& p, float3& size, const STreeNode2* nodes)const noexcept -> DTreeWrapper* {
+		const STreeNode2* cur = this;
+		int               idx = cur->GetChildIdx(p);
+		while (!cur->IsLeaf()) {
+			size  /= 2.0f;
+			cur    = &nodes[cur->children[idx]];
+			idx    = cur->GetChildIdx(p);
+		}
+		return cur->dTree;
+	}
+	RTLIB_INLINE RTLIB_HOST_DEVICE auto  GetDTreeWrapper()const noexcept -> DTreeWrapper* {
+		return dTree;
+	}
+	template<DirectionalFilter dFilter>
+	RTLIB_INLINE RTLIB_DEVICE      void  Record(const float3& min1, const float3& max1, float3 min2, float3 size2, const DTreeRecord& rec, STreeNode* nodes) noexcept {
+		struct StackNode {
+			STreeNode* curNode;
+			float3     min2;
+			float3     size2;
+		};
+		StackNode stackNodes[7*PATH_GUIDING_STREE_MAX_DEPTH] = {};
+		int       stackNodeSize = 1;
+		const int stackNodeCapacity = 7*PATH_GUIDING_STREE_MAX_DEPTH;
+		stackNodes[0].curNode = this;
+		stackNodes[0].min2    = min2;
+		stackNodes[0].size2   = size2;
+		while (stackNodeSize > 0) {
+			auto  top = stackNodes[stackNodeSize - 1];
+			stackNodeSize--;
+			float w = ComputeOverlappingVolume(min1, max1, top.min2, top.min2 + top.size2);
+			if (w > 0.0f) {
+				if (top.curNode->IsLeaf()) {
+					top.curNode->dTree->Record<dFilter>({ rec.direction,rec.radiance,rec.product,rec.woPdf,rec.bsdfPdf,rec.dTreePdf,rec.statisticalWeight * w,rec.isDelta });
+				}
+				else if (stackNodeSize < stackNodeCapacity) {
+					float3 t_size2 = top.size2;
+					t_size2       /= 2.0f;
+					for (int i = 0; i < 8; ++i) {
+						float3 t_min2 = top.min2;
+						if (i & 1) {
+							t_min2.x += t_size2.x;
+						}
+						if (i & 2) {
+							t_min2.y += t_size2.y;
+						}
+
+						if (i & 4) {
+							t_min2.z += t_size2.z;
+						}
+						stackNodes[stackNodeSize + i].curNode = &nodes[top.curNode->children[i]];
+						stackNodes[stackNodeSize + i].min2    = t_min2;
+						stackNodes[stackNodeSize + i].size2   = t_size2;
+					}
+					stackNodeSize += 8;
+				}
+			}
+		}
+	}
+	RTLIB_INLINE RTLIB_HOST_DEVICE static auto ComputeOverlappingVolume(const float3& min1, const float3& max1, const float3& min2, const float3& max2)noexcept->float {
+		float lengths[3] = {
+			fmaxf(fminf(max1.x,max2.x) - fmaxf(min1.x,min2.x),0.0f),
+			fmaxf(fminf(max1.y,max2.y) - fmaxf(min1.y,min2.y),0.0f),
+			fmaxf(fminf(max1.z,max2.z) - fmaxf(min1.z,min2.z),0.0f)
+		};
+		return lengths[0] * lengths[1] * lengths[2];
+	}
+	unsigned int  children[8];
+	DTreeWrapper* dTree;
+};
+struct STree2 {
+	RTLIB_INLINE RTLIB_HOST_DEVICE auto  GetDTreeWrapper(float3 p, float3& size)const noexcept -> DTreeWrapper* {
+		size = aabbMax - aabbMin;
+		p = p - aabbMin;
+		p /= size;
+		return nodes[0].GetDTreeWrapper(p, size, nodes);
+	}
+	RTLIB_INLINE RTLIB_HOST_DEVICE auto  GetDTreeWrapper(float3 p)const noexcept -> DTreeWrapper* {
+		float3 size;
+		return GetDTreeWrapper(p, size);
+	}
+	template<DirectionalFilter dFilter>
+	RTLIB_INLINE RTLIB_DEVICE      void  Record(const float3& p, const float3& dVoxelSize, DTreeRecord rec)
+	{
+		float volume = dVoxelSize.x * dVoxelSize.y * dVoxelSize.z;
+		rec.statisticalWeight /= volume;
+		nodes[0].Record<dFilter>(p - dVoxelSize * 0.5f, p + dVoxelSize * 0.5f, aabbMin, aabbMax - aabbMin, rec, nodes);
+	}
+	STreeNode2* nodes;
+	float3      aabbMin;
+	float3      aabbMax;
+	float       fraction;
+};
 struct TraceVertex {
 	template<SpatialFilter sFilter>
 	struct Impl;
@@ -585,8 +661,8 @@ struct TraceVertex {
 	template<>
 	struct Impl<SpatialFilter::SpatialFilterNearest>
 	{
-		template<DirectionalFilter dFilter>
-		RTLIB_INLINE RTLIB_HOST_DEVICE static void Record(TraceVertex& v, STree& sTree, const DTreeRecord& rec)
+		template<DirectionalFilter dFilter, typename STreeType>
+		RTLIB_INLINE RTLIB_HOST_DEVICE static void Record(TraceVertex& v, STreeType& sTree, const DTreeRecord& rec)
 		{
 			v.dTree->Record<dFilter>(rec);
 		}
@@ -595,8 +671,8 @@ struct TraceVertex {
 	template<>
 	struct Impl<SpatialFilter::SpatialFilterBox>
 	{
-		template<DirectionalFilter dFilter>
-		RTLIB_INLINE RTLIB_HOST_DEVICE static void Record(TraceVertex& v, STree& sTree, const DTreeRecord& rec)
+		template<DirectionalFilter dFilter, typename STreeType>
+		RTLIB_INLINE RTLIB_HOST_DEVICE static void Record(TraceVertex& v, STreeType& sTree, const DTreeRecord& rec)
 		{
 			sTree.Record<dFilter>(v.rayOrigin,v.dTreeVoxelSize, rec);
 		}
@@ -617,8 +693,8 @@ struct TraceVertex {
 	RTLIB_INLINE RTLIB_HOST_DEVICE void Record(const float3& r) noexcept {
 		radiance += r;
 	}
-	template<SpatialFilter sFilter, DirectionalFilter dFilter>
-	RTLIB_INLINE RTLIB_HOST_DEVICE void Commit(STree& sTree,float statisticalWeight)noexcept
+	template<SpatialFilter sFilter, DirectionalFilter dFilter, typename STreeType>
+	RTLIB_INLINE RTLIB_HOST_DEVICE void Commit(STreeType& sTree,float statisticalWeight)noexcept
 	{
 		if (!dTree) {
 			return;
@@ -626,7 +702,7 @@ struct TraceVertex {
 		bool isValidRadiance = (isfinite(radiance.x) && radiance.x >= 0.0f) &&
 			(isfinite(radiance.y) && radiance.y >= 0.0f) &&
 			(isfinite(radiance.z) && radiance.z >= 0.0f);
-		bool isValidBsdfVal = (isfinite(bsdfVal.x) && bsdfVal.x >= 0.0f) &&
+		bool isValidBsdfVal  = (isfinite(bsdfVal.x) && bsdfVal.x >= 0.0f) &&
 			(isfinite(bsdfVal.y) && bsdfVal.y >= 0.0f) &&
 			(isfinite(bsdfVal.z) && bsdfVal.z >= 0.0f);
 		if (woPdf <= 0.0f || !isValidRadiance || !isValidBsdfVal)
@@ -647,7 +723,7 @@ struct TraceVertex {
 		localRadiance *= fabsf(cosine);
 #endif
 		//printf("localRadiance=(%f,%f,%f)\n",localRadiance.x,localRadiance.y,localRadiance.z);
-		float3 product         =  localRadiance * bsdfVal;
+		float3 product         =  localRadiance   * bsdfVal;
 		float localRadianceAvg = (localRadiance.x + localRadiance.y + localRadiance.z) / 3.0f;
 		float productAvg       = (product.x + product.y + product.z) / 3.0f;
 		DTreeRecord rec{ rayDirection,localRadianceAvg ,productAvg,woPdf,bsdfPdf,dTreePdf,statisticalWeight,isDelta };

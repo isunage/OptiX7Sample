@@ -114,7 +114,7 @@ struct RayTraceParams {
     unsigned int           samplePerALL;
     unsigned int           maxTraceDepth;
     OptixTraversableHandle gasHandle;
-    STree                  sdTree;
+    STree2                 sdTree;
     MeshLightList          light;
     bool                   isBuilt;
     bool                   isFinal;
@@ -131,7 +131,7 @@ struct RayDebugParams {
     unsigned int           width;
     unsigned int           height;
     OptixTraversableHandle gasHandle;
-    STree                  sdTree;
+    STree2                 sdTree;
     MeshLightList          light;
 };
 struct RayGenData{

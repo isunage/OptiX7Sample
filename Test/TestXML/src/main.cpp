@@ -1524,6 +1524,7 @@ int main() {
 	if (!mitsuba_loader::LoadScene(TEST_TEST_XML_DATA_PATH"/Scenes/Pool/pool.xml", scene)) {
 		return -1;
 	}
+
 	for (auto& [name, serializedData] : scene.serializedFiles) {
 		auto current_serialized_dir = std::filesystem::path(std::string(TEST_TEST_XML_DATA_PATH) + "/Models/Pool/" + name + "/");
 		std::filesystem::create_directory(current_serialized_dir);
