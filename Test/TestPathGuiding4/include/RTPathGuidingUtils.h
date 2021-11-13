@@ -11,6 +11,7 @@
 #include <RTLib/CUDA.h>
 #include <RTLib/VectorFunction.h>
 namespace test {
+	using  RTAdamOptimizer = ::AdamOptimizer;
 	using  RTDTreeNode = ::DTreeNode;
 	class  RTDTree {
 	public:
@@ -229,8 +230,9 @@ namespace test {
 			//Buildingを削除し、samplingで得た新しい構造に変更
 			building.Reset(sampling, newMaxDepth, subDivTh);
 		}
-		RTDTree    building;
-		RTDTree    sampling;
+		RTAdamOptimizer bsdfSampleFractionOptimizer;
+		RTDTree         building;
+		RTDTree         sampling;
 	};
 	struct RTSTreeNode {
 		RTSTreeNode()noexcept : dTree(), isLeaf{ true }, axis{ 0 }, padding{ 0 }, children{}{}
@@ -876,6 +878,8 @@ namespace test {
 						//DTREE
 						sTreeNodes[i].dTree = m_GpuDTreeWrappers.getDevicePtr() + dTreeIndex;
 						//BUILDING
+						dTreeWrappers[dTreeIndex].mutex                      = 0;
+						dTreeWrappers[dTreeIndex].bsdfSampleFractionOptimizer= m_CpuSTree.Node(i).dTree.bsdfSampleFractionOptimizer;
 						dTreeWrappers[dTreeIndex].building.area              = m_CpuSTree.Node(i).dTree.building.GetArea();
 						dTreeWrappers[dTreeIndex].building.sum               = m_CpuSTree.Node(i).dTree.building.GetSum();
 						dTreeWrappers[dTreeIndex].building.statisticalWeight = m_CpuSTree.Node(i).dTree.building.GetStatisticalWeight();
@@ -934,6 +938,7 @@ namespace test {
 				size_t cpuDTreeNodeOffsetBuilding = 0;
 				for (size_t i = 0; i < gpuSTreeNodeCnt; ++i) {
 					if (m_CpuSTree.Node(i).isLeaf) {
+						m_CpuSTree.Node(i).dTree.bsdfSampleFractionOptimizer = dTreeWrappers[cpuDTreeIndex].bsdfSampleFractionOptimizer;
 						m_CpuSTree.Node(i).dTree.building.SetSum(dTreeWrappers[cpuDTreeIndex].building.sum);
 						m_CpuSTree.Node(i).dTree.building.SetStatisticalWeight(dTreeWrappers[cpuDTreeIndex].building.statisticalWeight);
 						for (size_t j = 0; j < m_CpuSTree.Node(i).dTree.building.GetNumNodes(); ++j) {

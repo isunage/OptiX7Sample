@@ -22,6 +22,60 @@ enum   DirectionalFilter {
 	//Too Slow in GPU
 	DirectionalFilterBox,
 };
+struct AdamOptimizer
+{
+	RTLIB_INLINE RTLIB_HOST_DEVICE AdamOptimizer(float learningRate = 0.1f,int batchSize = 8, float epsilon = 1e-8, float beta1 = 0.9f, float beta2 = 0.999f) :m_State{}
+	{
+		m_Hparams = { learningRate,batchSize,epsilon,beta1,beta2 };
+	}
+	RTLIB_INLINE RTLIB_HOST_DEVICE AdamOptimizer(const AdamOptimizer& optimizer) {
+		m_Hparams = optimizer.m_Hparams;
+		m_State = optimizer.m_State;
+	}
+	RTLIB_INLINE RTLIB_HOST_DEVICE AdamOptimizer& operator=(const AdamOptimizer& optimizer) {
+		m_Hparams = optimizer.m_Hparams;
+		m_State = optimizer.m_State;
+		return *this;
+	}
+	RTLIB_INLINE RTLIB_HOST_DEVICE auto GetVariable()const ->float
+	{
+		return m_State.variable;
+	}
+	RTLIB_INLINE RTLIB_DEVICE void Append(float gradient, float statisticalWeight)
+	{
+		m_State.batchGradient     += gradient * statisticalWeight;
+		m_State.batchAccumulation += statisticalWeight;
+		if (m_State.batchAccumulation > m_Hparams.batchSize) {
+			m_State.iter++;
+			float realGradient = m_State.batchGradient / m_State.batchAccumulation;
+			float l = m_Hparams.learningRate * sqrtf(1.0f - powf(m_Hparams.beta2, m_State.iter)) / (1.0f - powf(m_Hparams.beta1, m_State.iter));
+			m_State.moment1 = m_Hparams.beta1 * m_State.moment1 + (1.0f - m_Hparams.beta1) * realGradient;
+			m_State.moment2 = m_Hparams.beta2 * m_State.moment2 + (1.0f - m_Hparams.beta2) * realGradient * realGradient;
+			m_State.variable -= l * m_State.moment1 / (sqrtf(m_State.moment2) + m_Hparams.epsilon);
+			m_State.variable = rtlib::clamp(m_State.variable, -20.0f, 20.0f);
+			m_State.batchGradient     = 0.0f;
+			m_State.batchAccumulation = 0.0f;
+		}
+		
+	}
+	struct State
+	{
+		float batchGradient = 0.0f;
+		float batchAccumulation = 0.0f;
+		int  iter       = 0;
+		float moment1   = 0.0f;
+		float moment2   = 0.0f;
+		float variable  = 0.0f;
+	} m_State;
+	struct HParams
+	{
+		float learningRate;
+		int   batchSize;
+		float epsilon;
+		float beta1;
+		float beta2;
+	} m_Hparams;
+};
 struct DTreeNode {
 	RTLIB_INLINE RTLIB_HOST_DEVICE DTreeNode()noexcept {
 		for (int i = 0; i < 4; ++i) {
@@ -156,6 +210,7 @@ struct DTreeNode {
 	template<typename RNG>
 	RTLIB_INLINE RTLIB_HOST_DEVICE auto Sample(RNG& rng, const DTreeNode* nodes)const noexcept -> float2 {
 		const DTreeNode* cur = this;
+		int    depth         = 1;
 		float2 result        = make_float2(0.0f);
 		double size          = 1.0f;
 		for (;;) {
@@ -184,9 +239,15 @@ struct DTreeNode {
 				boundary = topRight / partial;
 				idx     |= (1 << 0);
 			}
-			if (sample >= boundary){
+			if (sample < boundary)
+			{
+				//sample /= boundary;
+			}
+			else
+			{
 				origin.y = 0.5f;
-				idx |= (1 << 1);
+				//sample = (sample - boundary) / (1.0f - boundary);
+				idx     |= (1 << 1);
 			}
 
 			result += size * origin;
@@ -244,7 +305,6 @@ struct DTreeNode {
 		//}
 		return result;
 	}
-
 	RTLIB_INLINE RTLIB_HOST_DEVICE auto GetDepth(float2& p, const DTreeNode* nodes)const noexcept -> int {
 		const DTreeNode* cur = this;
 		int              idx = cur->GetChildIdx(p);
@@ -257,7 +317,6 @@ struct DTreeNode {
 		}
 		return depth;
 	}
-
 	RTLIB_INLINE RTLIB_HOST_DEVICE static void MoveToLeft(float& p)noexcept {
 		p *= 2.0f;
 	}
@@ -400,6 +459,7 @@ struct DTree {
 		if (GetMean() <= 0.0f) {
 			return 1.0f / (4.0f * RTLIB_M_PI);
 		}
+
 		return nodes[0].Pdf(p, nodes) / (4.0f * RTLIB_M_PI);
 	}
 	RTLIB_INLINE RTLIB_HOST_DEVICE auto GetDepth(float2 p)const noexcept -> int {
@@ -425,6 +485,10 @@ struct DTreeWrapper {
 			float irradiance = rec.radiance / rec.woPdf;
 			building.RecordIrradiance<dFilter>(rtlib::dir_to_canonical(rec.direction), irradiance, rec.statisticalWeight);
 		}
+		if (rec.product > 0.0f)
+		{
+			OptimizeBsdfSampleFraction(rec, 1.0f);
+		}
 	}
 	template<typename RNG>
 	RTLIB_INLINE RTLIB_HOST_DEVICE auto  Sample(RNG& rng)const noexcept -> float3 {
@@ -433,8 +497,41 @@ struct DTreeWrapper {
 	RTLIB_INLINE RTLIB_HOST_DEVICE auto  Pdf(const float3& dir)const noexcept -> float {
 		return sampling.Pdf(rtlib::dir_to_canonical(dir));
 	}
-	DTree building;
-	DTree sampling;
+	RTLIB_INLINE RTLIB_HOST_DEVICE auto GetBsdfSampleFraction()const -> float {
+		float variable = bsdfSampleFractionOptimizer.GetVariable();
+		float samplingFraction = 1.0f / (1.0f + expf(-variable));
+		return samplingFraction;
+	}
+	RTLIB_INLINE RTLIB_DEVICE void OptimizeBsdfSampleFraction(const DTreeRecord& rec, float ratioPower)
+	{
+		bool leave = true;
+		while (leave)
+		{
+#ifdef __CUDA_ARCH__
+			if (atomicCAS(&mutex, 0, 1) != 0)
+#endif
+			{
+				float variable		   = bsdfSampleFractionOptimizer.GetVariable();
+				float samplingFraction = 1.0f / (1.0f + expf(-variable));
+				float mixPdf		   = samplingFraction * rec.bsdfPdf + (1 - samplingFraction) * rec.dTreePdf;
+				float ratio			   = powf(rec.product / mixPdf, ratioPower);
+				float dLoss_dSamplingFraction = -ratio / rec.woPdf * (rec.bsdfPdf - rec.dTreePdf);
+				float dLoss_dVariable  = dLoss_dSamplingFraction * samplingFraction * (1.0f - samplingFraction);
+				float regGradient      = 0.01f * variable;
+				float gradient         = regGradient + dLoss_dVariable;
+				bsdfSampleFractionOptimizer.Append(gradient, rec.statisticalWeight);
+				leave = false;
+#ifdef __CUDA_ARCH__
+				atomicExch(&mutex, 0);
+#endif
+			}
+			break;
+		}
+	}
+	AdamOptimizer bsdfSampleFractionOptimizer;
+	DTree		  building;
+	DTree		  sampling;
+	int           mutex;
 };
 struct STreeNode {
 	RTLIB_INLINE RTLIB_HOST_DEVICE auto  GetNodeIdx(float3& p)const noexcept -> unsigned int {
