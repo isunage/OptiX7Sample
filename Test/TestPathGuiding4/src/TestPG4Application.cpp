@@ -1358,7 +1358,7 @@ private:
 			//CurIteration > 0 -> Reset
 			m_SampleForRemain = m_SampleForRemain - m_SampleForPass;
 			m_SampleForPass = std::min<uint32_t>(m_SampleForRemain, (1 << m_CurIteration) * m_SamplePerLaunch);
-			if (m_SampleForRemain - m_SampleForPass < 2 * m_SampleForPass)
+			if ((m_SampleForRemain - m_SampleForPass < 2 * m_SampleForPass)|| (m_SamplePerAll >= m_RatioForBudget * static_cast<float>(m_SampleForBudget)))
 			{
 				m_SampleForPass = m_SampleForRemain;
 			}
@@ -1454,6 +1454,7 @@ private:
 	unsigned int m_SampleForRemain = 0;
 	unsigned int m_SampleForPass = 0;
 	unsigned int m_CurIteration = 0;
+	float        m_RatioForBudget = 0.10f;
 };
 // DebugTracer
 class TestPG4DebugTracer : public test::RTTracer
