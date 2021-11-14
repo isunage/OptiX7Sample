@@ -24,7 +24,7 @@ enum   DirectionalFilter {
 };
 struct AdamOptimizer
 {
-	RTLIB_INLINE RTLIB_HOST_DEVICE AdamOptimizer(float learningRate = 0.1f,int batchSize = 8, float epsilon = 1e-8, float beta1 = 0.9f, float beta2 = 0.999f) :m_State{}
+	RTLIB_INLINE RTLIB_HOST_DEVICE AdamOptimizer(float learningRate = 0.1f,int batchSize = 1, float epsilon = 1e-8, float beta1 = 0.9f, float beta2 = 0.999f) :m_State{}
 	{
 		m_Hparams = { learningRate,batchSize,epsilon,beta1,beta2 };
 	}
@@ -479,16 +479,34 @@ struct DTreeRecord {
 	bool   isDelta;
 };
 struct DTreeWrapper {
-	template<DirectionalFilter dFilter>
+	template<bool isBuilt >
+	struct OptimizeBsdfSampleFractionImpl;
+	template<>
+	struct OptimizeBsdfSampleFractionImpl<false>
+	{
+		static RTLIB_INLINE RTLIB_DEVICE void OptimizeBsdfSampleFraction(DTreeWrapper* dTreeWrapper, const DTreeRecord& rec, float ratioPower)noexcept
+		{
+			return;
+		}
+	};
+	template<>
+	struct OptimizeBsdfSampleFractionImpl<true>
+	{
+		static RTLIB_INLINE RTLIB_DEVICE void OptimizeBsdfSampleFraction(DTreeWrapper* dTreeWrapper, const DTreeRecord& rec, float ratioPower)noexcept
+		{
+			if (rec.product > 0.0f)
+			{
+				dTreeWrapper->OptimizeBsdfSampleFraction(rec, ratioPower);
+			}
+		}
+	};
+	template<DirectionalFilter dFilter, bool isBuilt>
 	RTLIB_INLINE RTLIB_DEVICE      void  Record(const DTreeRecord& rec) noexcept {
 		if (!rec.isDelta) {
 			float irradiance = rec.radiance / rec.woPdf;
 			building.RecordIrradiance<dFilter>(rtlib::dir_to_canonical(rec.direction), irradiance, rec.statisticalWeight);
 		}
-		if (rec.product > 0.0f)
-		{
-			OptimizeBsdfSampleFraction(rec, 1.0f);
-		}
+		OptimizeBsdfSampleFractionImpl<isBuilt>::OptimizeBsdfSampleFraction(this, rec, 1.0f);
 	}
 	template<typename RNG>
 	RTLIB_INLINE RTLIB_HOST_DEVICE auto  Sample(RNG& rng)const noexcept -> float3 {
@@ -513,7 +531,7 @@ struct DTreeWrapper {
 			{
 				float variable		   = bsdfSampleFractionOptimizer.GetVariable();
 				float samplingFraction = 1.0f / (1.0f + expf(-variable));
-				float mixPdf		   = samplingFraction * rec.bsdfPdf + (1 - samplingFraction) * rec.dTreePdf;
+				float mixPdf		   = samplingFraction * rec.bsdfPdf + (1.0f - samplingFraction) * rec.dTreePdf;
 				float ratio			   = powf(rec.product / mixPdf, ratioPower);
 				float dLoss_dSamplingFraction = -ratio / rec.woPdf * (rec.bsdfPdf - rec.dTreePdf);
 				float dLoss_dVariable  = dLoss_dSamplingFraction * samplingFraction * (1.0f - samplingFraction);
@@ -564,7 +582,7 @@ struct STreeNode {
 	RTLIB_INLINE RTLIB_HOST_DEVICE auto  GetDTreeWrapper()const noexcept -> DTreeWrapper* {
 		return dTree;
 	}
-	template<DirectionalFilter dFilter>
+	template<DirectionalFilter dFilter,bool isBuilt>
 	RTLIB_INLINE RTLIB_DEVICE      void  Record(const float3& min1, const float3& max1, float3 min2, float3 size2, const DTreeRecord& rec, STreeNode* nodes) noexcept {
 		struct StackNode {
 			STreeNode* curNode;
@@ -583,7 +601,7 @@ struct STreeNode {
 			float w   = ComputeOverlappingVolume(min1, max1, top.min2, top.min2 + top.size2);
 			if (w > 0.0f) {
 				if (top.curNode->IsLeaf()) {
-					top.curNode->dTree->Record<dFilter>({ rec.direction,rec.radiance,rec.product,rec.woPdf,rec.bsdfPdf,rec.dTreePdf,rec.statisticalWeight * w,rec.isDelta });
+					top.curNode->dTree->Record<dFilter, isBuilt>({ rec.direction,rec.radiance,rec.product,rec.woPdf,rec.bsdfPdf,rec.dTreePdf,rec.statisticalWeight * w,rec.isDelta });
 				}
 				else if (stackNodeSize < stackNodeCapacity ) {
 					float3 t_size2 = top.size2;
@@ -672,7 +690,7 @@ struct STreeNode2 {
 	RTLIB_INLINE RTLIB_HOST_DEVICE auto  GetDTreeWrapper()const noexcept -> DTreeWrapper* {
 		return dTree;
 	}
-	template<DirectionalFilter dFilter>
+	template<DirectionalFilter dFilter, bool isBuilt>
 	RTLIB_INLINE RTLIB_DEVICE      void  Record(const float3& min1, const float3& max1, float3 min2, float3 size2, const DTreeRecord& rec, STreeNode* nodes) noexcept {
 		struct StackNode {
 			STreeNode* curNode;
@@ -691,7 +709,7 @@ struct STreeNode2 {
 			float w = ComputeOverlappingVolume(min1, max1, top.min2, top.min2 + top.size2);
 			if (w > 0.0f) {
 				if (top.curNode->IsLeaf()) {
-					top.curNode->dTree->Record<dFilter>({ rec.direction,rec.radiance,rec.product,rec.woPdf,rec.bsdfPdf,rec.dTreePdf,rec.statisticalWeight * w,rec.isDelta });
+					top.curNode->dTree->Record<dFilter, isBuilt>({ rec.direction,rec.radiance,rec.product,rec.woPdf,rec.bsdfPdf,rec.dTreePdf,rec.statisticalWeight * w,rec.isDelta });
 				}
 				else if (stackNodeSize < stackNodeCapacity) {
 					float3 t_size2 = top.size2;
@@ -739,12 +757,12 @@ struct STree2 {
 		float3 size;
 		return GetDTreeWrapper(p, size);
 	}
-	template<DirectionalFilter dFilter>
+	template<DirectionalFilter dFilter, bool isBuilt>
 	RTLIB_INLINE RTLIB_DEVICE      void  Record(const float3& p, const float3& dVoxelSize, DTreeRecord rec)
 	{
 		float volume = dVoxelSize.x * dVoxelSize.y * dVoxelSize.z;
 		rec.statisticalWeight /= volume;
-		nodes[0].Record<dFilter>(p - dVoxelSize * 0.5f, p + dVoxelSize * 0.5f, aabbMin, aabbMax - aabbMin, rec, nodes);
+		nodes[0].Record<dFilter, isBuilt>(p - dVoxelSize * 0.5f, p + dVoxelSize * 0.5f, aabbMin, aabbMax - aabbMin, rec, nodes);
 	}
 	STreeNode2* nodes;
 	float3      aabbMin;
@@ -758,20 +776,20 @@ struct TraceVertex {
 	template<>
 	struct Impl<SpatialFilter::SpatialFilterNearest>
 	{
-		template<DirectionalFilter dFilter, typename STreeType>
+		template<DirectionalFilter dFilter, bool isBuilt, typename STreeType>
 		RTLIB_INLINE RTLIB_HOST_DEVICE static void Record(TraceVertex& v, STreeType& sTree, const DTreeRecord& rec)
 		{
-			v.dTree->Record<dFilter>(rec);
+			v.dTree->Record<dFilter, isBuilt>(rec);
 		}
 	};
 	
 	template<>
 	struct Impl<SpatialFilter::SpatialFilterBox>
 	{
-		template<DirectionalFilter dFilter, typename STreeType>
+		template<DirectionalFilter dFilter, bool isBuilt, typename STreeType>
 		RTLIB_INLINE RTLIB_HOST_DEVICE static void Record(TraceVertex& v, STreeType& sTree, const DTreeRecord& rec)
 		{
-			sTree.Record<dFilter>(v.rayOrigin,v.dTreeVoxelSize, rec);
+			sTree.Record<dFilter, isBuilt>(v.rayOrigin,v.dTreeVoxelSize, rec);
 		}
 	};
 
@@ -790,7 +808,7 @@ struct TraceVertex {
 	RTLIB_INLINE RTLIB_HOST_DEVICE void Record(const float3& r) noexcept {
 		radiance += r;
 	}
-	template<SpatialFilter sFilter, DirectionalFilter dFilter, typename STreeType>
+	template<SpatialFilter sFilter, DirectionalFilter dFilter, bool isBuilt,typename STreeType>
 	RTLIB_INLINE RTLIB_HOST_DEVICE void Commit(STreeType& sTree,float statisticalWeight)noexcept
 	{
 		if (!dTree) {
@@ -824,7 +842,7 @@ struct TraceVertex {
 		float localRadianceAvg = (localRadiance.x + localRadiance.y + localRadiance.z) / 3.0f;
 		float productAvg       = (product.x + product.y + product.z) / 3.0f;
 		DTreeRecord rec{ rayDirection,localRadianceAvg ,productAvg,woPdf,bsdfPdf,dTreePdf,statisticalWeight,isDelta };
-		Impl<sFilter>::Record<dFilter>(*this, sTree, rec);
+		Impl<sFilter>::Record<dFilter, isBuilt>(*this, sTree, rec);
 	}
 };
 #endif
