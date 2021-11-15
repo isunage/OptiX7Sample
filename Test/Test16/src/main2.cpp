@@ -281,11 +281,11 @@ public:
             moduleCompileOptions.maxRegisterCount = OPTIX_COMPILE_DEFAULT_MAX_REGISTER_COUNT;
             moduleCompileOptions.numBoundValues = 0;
 #ifndef NDEBUG
-            moduleCompileOptions.debugLevel = static_cast<OptixCompileDebugLevel>(rtlib::OPXCompileDebugLevel::None);
+            moduleCompileOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_NONE;
             moduleCompileOptions.optLevel = OPTIX_COMPILE_OPTIMIZATION_LEVEL_3;
 #else
             moduleCompileOptions.optLevel = OPTIX_COMPILE_OPTIMIZATION_DEFAULT;
-            moduleCompileOptions.debugLevel = static_cast<OptixCompileDebugLevel>(rtlib::OPXCompileDebugLevel::Minimal);
+            moduleCompileOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_LINEINFO;
 #endif
             try {
                 tracePipeline->modules["RayTrace"] = tracePipeline->pipeline.createModule(ptxSource, moduleCompileOptions);
@@ -313,9 +313,9 @@ public:
             OptixPipelineLinkOptions pipelineLinkOptions = {};
             pipelineLinkOptions.maxTraceDepth = 2;
 #ifndef NDEBUG
-            pipelineLinkOptions.debugLevel = static_cast<OptixCompileDebugLevel>(rtlib::OPXCompileDebugLevel::Minimal);
+            pipelineLinkOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_LINEINFO;
 #else
-            pipelineLinkOptions.debugLevel = static_cast<OptixCompileDebugLevel>(rtlib::OPXCompileDebugLevel::Minimal);
+            pipelineLinkOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_LINEINFO;
 #endif
             tracePipeline->pipeline.link(pipelineLinkOptions);
         }

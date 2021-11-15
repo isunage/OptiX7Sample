@@ -821,19 +821,19 @@ void Test22Application::InitPipelines()
 		auto traceLinkOptions = OptixPipelineLinkOptions{};
 		{
 #ifndef NDEBUG
-			traceLinkOptions.debugLevel = static_cast<OptixCompileDebugLevel>(rtlib::OPXCompileDebugLevel::Minimal);
+			traceLinkOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_LINEINFO;
 #else
-			traceLinkOptions.debugLevel = static_cast<OptixCompileDebugLevel>(rtlib::OPXCompileDebugLevel::None);
+			traceLinkOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_NONE;
 #endif
 			traceLinkOptions.maxTraceDepth = 2;
 		}
 		auto traceModuleOptions = OptixModuleCompileOptions{};
 		{
 #ifndef NDEBUG
-			traceModuleOptions.debugLevel = static_cast<OptixCompileDebugLevel>(rtlib::OPXCompileDebugLevel::Minimal);
+			traceModuleOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_LINEINFO;
 			traceModuleOptions.optLevel = OPTIX_COMPILE_OPTIMIZATION_DEFAULT;
 #else
-			traceModuleOptions.debugLevel = static_cast<OptixCompileDebugLevel>(rtlib::OPXCompileDebugLevel::None);
+			traceModuleOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_NONE;
 			traceModuleOptions.optLevel = OPTIX_COMPILE_OPTIMIZATION_LEVEL_3;
 #endif
 		}
@@ -873,19 +873,19 @@ void Test22Application::InitPipelines()
 		auto debugLinkOptions = OptixPipelineLinkOptions{};
 		{
 #ifndef NDEBUG
-			debugLinkOptions.debugLevel = static_cast<OptixCompileDebugLevel>(rtlib::OPXCompileDebugLevel::Minimal);
+			debugLinkOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_LINEINFO;
 #else
-			debugLinkOptions.debugLevel = static_cast<OptixCompileDebugLevel>(rtlib::OPXCompileDebugLevel::None);
+			debugLinkOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_NONE;
 #endif
 			debugLinkOptions.maxTraceDepth = 1;
 		}
 		auto debugModuleOptions = OptixModuleCompileOptions{};
 		{
 #ifndef NDEBUG
-			debugModuleOptions.debugLevel = static_cast<OptixCompileDebugLevel>(rtlib::OPXCompileDebugLevel::Minimal);
+			debugModuleOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_LINEINFO;
 			debugModuleOptions.optLevel = OPTIX_COMPILE_OPTIMIZATION_DEFAULT;
 #else
-			debugModuleOptions.debugLevel = static_cast<OptixCompileDebugLevel>(rtlib::OPXCompileDebugLevel::None);
+			debugModuleOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_NONE;
 			debugModuleOptions.optLevel = OPTIX_COMPILE_OPTIMIZATION_LEVEL_3;
 #endif
 			debugModuleOptions.maxRegisterCount = OPTIX_COMPILE_DEFAULT_MAX_REGISTER_COUNT;

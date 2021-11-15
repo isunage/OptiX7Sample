@@ -153,19 +153,19 @@ private:
 		auto traceLinkOptions = OptixPipelineLinkOptions{};
 		{
 #ifndef NDEBUG
-			traceLinkOptions.debugLevel = static_cast<OptixCompileDebugLevel>(rtlib::OPXCompileDebugLevel::Minimal);
+			traceLinkOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_LINEINFO;
 #else
-			traceLinkOptions.debugLevel = static_cast<OptixCompileDebugLevel>(rtlib::OPXCompileDebugLevel::None);
+			traceLinkOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_LINEINFO;
 #endif
 			traceLinkOptions.maxTraceDepth = 2;
 		}
 		auto traceModuleOptions = OptixModuleCompileOptions{};
 		{
 #ifndef NDEBUG
-			traceModuleOptions.debugLevel= static_cast<OptixCompileDebugLevel>(rtlib::OPXCompileDebugLevel::Minimal);
+			traceModuleOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_LINEINFO;
 			traceModuleOptions.optLevel = OPTIX_COMPILE_OPTIMIZATION_DEFAULT;
 #else
-			traceModuleOptions.debugLevel= static_cast<OptixCompileDebugLevel>(rtlib::OPXCompileDebugLevel::None);
+			traceModuleOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_LINEINFO;
 			traceModuleOptions.optLevel = OPTIX_COMPILE_OPTIMIZATION_LEVEL_3;
 #endif
 		}
@@ -461,19 +461,19 @@ private:
 		auto traceLinkOptions = OptixPipelineLinkOptions{};
 		{
 #ifndef NDEBUG
-			traceLinkOptions.debugLevel = static_cast<OptixCompileDebugLevel>(rtlib::OPXCompileDebugLevel::Minimal);
+			traceLinkOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_LINEINFO;
 #else
-			traceLinkOptions.debugLevel = static_cast<OptixCompileDebugLevel>(rtlib::OPXCompileDebugLevel::None);
+			traceLinkOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_LINEINFO;
 #endif
 			traceLinkOptions.maxTraceDepth = 2;
 		}
 		auto traceModuleOptions = OptixModuleCompileOptions{};
 		{
 #ifndef NDEBUG
-			traceModuleOptions.debugLevel = static_cast<OptixCompileDebugLevel>(rtlib::OPXCompileDebugLevel::Minimal);
+			traceModuleOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_LINEINFO;
 			traceModuleOptions.optLevel = OPTIX_COMPILE_OPTIMIZATION_DEFAULT;
 #else
-			traceModuleOptions.debugLevel = static_cast<OptixCompileDebugLevel>(rtlib::OPXCompileDebugLevel::None);
+			traceModuleOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_LINEINFO;
 			traceModuleOptions.optLevel = OPTIX_COMPILE_OPTIMIZATION_LEVEL_3;
 #endif
 		}
@@ -784,19 +784,19 @@ private:
 		auto guideLinkOptions = OptixPipelineLinkOptions{};
 		{
 #ifndef NDEBUG
-			guideLinkOptions.debugLevel = static_cast<OptixCompileDebugLevel>(rtlib::OPXCompileDebugLevel::Minimal);
+			guideLinkOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_LINEINFO;
 #else
-			guideLinkOptions.debugLevel = static_cast<OptixCompileDebugLevel>(rtlib::OPXCompileDebugLevel::None);
+			guideLinkOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_NONE;
 #endif
 			guideLinkOptions.maxTraceDepth = 2;
 		}
 		auto guideModuleOptions = OptixModuleCompileOptions{};
 		{
 #ifndef NDEBUG
-			guideModuleOptions.debugLevel = static_cast<OptixCompileDebugLevel>(rtlib::OPXCompileDebugLevel::Minimal);
+			guideModuleOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_LINEINFO;
 			guideModuleOptions.optLevel = OPTIX_COMPILE_OPTIMIZATION_DEFAULT;
 #else
-			guideModuleOptions.debugLevel = static_cast<OptixCompileDebugLevel>(rtlib::OPXCompileDebugLevel::None);
+			guideModuleOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_NONE;
 			guideModuleOptions.optLevel = OPTIX_COMPILE_OPTIMIZATION_LEVEL_3;
 #endif
 		}
@@ -1159,19 +1159,19 @@ private:
 		auto guideLinkOptions = OptixPipelineLinkOptions{};
 		{
 #ifndef NDEBUG
-			guideLinkOptions.debugLevel = static_cast<OptixCompileDebugLevel>(rtlib::OPXCompileDebugLevel::Minimal);
+			guideLinkOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_LINEINFO;
 #else
-			guideLinkOptions.debugLevel = static_cast<OptixCompileDebugLevel>(rtlib::OPXCompileDebugLevel::None);
+			guideLinkOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_NONE;
 #endif
 			guideLinkOptions.maxTraceDepth = 2;
 		}
 		auto guideModuleOptions = OptixModuleCompileOptions{};
 		{
 #ifndef NDEBUG
-			guideModuleOptions.debugLevel = static_cast<OptixCompileDebugLevel>(rtlib::OPXCompileDebugLevel::Minimal);
+			guideModuleOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_LINEINFO;
 			guideModuleOptions.optLevel = OPTIX_COMPILE_OPTIMIZATION_DEFAULT;
 #else
-			guideModuleOptions.debugLevel = static_cast<OptixCompileDebugLevel>(rtlib::OPXCompileDebugLevel::None);
+			guideModuleOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_NONE;
 			guideModuleOptions.optLevel = OPTIX_COMPILE_OPTIMIZATION_LEVEL_3;
 #endif
 		}
@@ -1358,7 +1358,7 @@ private:
 			//CurIteration > 0 -> Reset
 			m_SampleForRemain = m_SampleForRemain - m_SampleForPass;
 			m_SampleForPass = std::min<uint32_t>(m_SampleForRemain, (1 << m_CurIteration) * m_SamplePerLaunch);
-			if ((m_SampleForRemain - m_SampleForPass < 2 * m_SampleForPass)|| (m_SamplePerAll >= m_RatioForBudget * static_cast<float>(m_SampleForBudget)))
+			if (m_SampleForRemain - m_SampleForPass < 2 * m_SampleForPass)
 			{
 				m_SampleForPass = m_SampleForRemain;
 			}
@@ -1454,7 +1454,6 @@ private:
 	unsigned int m_SampleForRemain = 0;
 	unsigned int m_SampleForPass = 0;
 	unsigned int m_CurIteration = 0;
-	float        m_RatioForBudget = 0.10f;
 };
 // DebugTracer
 class TestPG4DebugTracer : public test::RTTracer
@@ -1500,15 +1499,16 @@ public:
 		{
 			return;
 		}
-		m_Params.cpuHandle[0].width			 = config.width;
-		m_Params.cpuHandle[0].height		 = config.height;
-		m_Params.cpuHandle[0].sdTree		 = m_ParentApp->GetSTree()->GetGpuHandle();
-		m_Params.cpuHandle[0].diffuseBuffer  = pUserData->diffuseBuffer;
+
+		m_Params.cpuHandle[0].width  = config.width;
+		m_Params.cpuHandle[0].height = config.height;
+		m_Params.cpuHandle[0].sdTree = m_ParentApp->GetSTree()->GetGpuHandle();
+		m_Params.cpuHandle[0].diffuseBuffer = pUserData->diffuseBuffer;
 		m_Params.cpuHandle[0].specularBuffer = pUserData->specularBuffer;
 		m_Params.cpuHandle[0].emissionBuffer = pUserData->emissionBuffer;
 		m_Params.cpuHandle[0].transmitBuffer = pUserData->transmitBuffer;
-		m_Params.cpuHandle[0].normalBuffer	 = pUserData->normalBuffer;
-		m_Params.cpuHandle[0].depthBuffer	 = pUserData->depthBuffer;
+		m_Params.cpuHandle[0].normalBuffer = pUserData->normalBuffer;
+		m_Params.cpuHandle[0].depthBuffer = pUserData->depthBuffer;
 		m_Params.cpuHandle[0].texCoordBuffer = pUserData->texCoordBuffer;
 		m_Params.cpuHandle[0].sTreeColBuffer = pUserData->sTreeColBuffer;
 		cudaMemcpyAsync(m_Params.gpuHandle.getDevicePtr(), &m_Params.cpuHandle[0], sizeof(RayDebugParams), cudaMemcpyHostToDevice, config.stream);
@@ -1570,19 +1570,19 @@ private:
 		auto debugLinkOptions = OptixPipelineLinkOptions{};
 		{
 #ifndef NDEBUG
-			debugLinkOptions.debugLevel = static_cast<OptixCompileDebugLevel>(rtlib::OPXCompileDebugLevel::Minimal);
+			debugLinkOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_LINEINFO;
 #else
-			debugLinkOptions.debugLevel = static_cast<OptixCompileDebugLevel>(rtlib::OPXCompileDebugLevel::None);
+			debugLinkOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_NONE;
 #endif
 			debugLinkOptions.maxTraceDepth = 1;
 		}
 		auto debugModuleOptions = OptixModuleCompileOptions{};
 		{
 #ifndef NDEBUG
-			debugModuleOptions.debugLevel = static_cast<OptixCompileDebugLevel>(rtlib::OPXCompileDebugLevel::Minimal);
+			debugModuleOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_LINEINFO;
 			debugModuleOptions.optLevel = OPTIX_COMPILE_OPTIMIZATION_DEFAULT;
 #else
-			debugModuleOptions.debugLevel = static_cast<OptixCompileDebugLevel>(rtlib::OPXCompileDebugLevel::None);
+			debugModuleOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_NONE;
 			debugModuleOptions.optLevel = OPTIX_COMPILE_OPTIMIZATION_LEVEL_3;
 #endif
 			debugModuleOptions.maxRegisterCount = OPTIX_COMPILE_DEFAULT_MAX_REGISTER_COUNT;

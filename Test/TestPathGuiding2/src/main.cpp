@@ -465,9 +465,9 @@ private:
 
 			linkOptions.maxTraceDepth = 1;
 #ifndef NDEBUG
-			linkOptions.debugLevel = static_cast<OptixCompileDebugLevel>(rtlib::OPXCompileDebugLevel::Minimal);
+			linkOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_LINEINFO;
 #else
-			linkOptions.debugLevel = static_cast<OptixCompileDebugLevel>(rtlib::OPXCompileDebugLevel::None);
+			linkOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_NONE;
 #endif
 
 			tracePipeline2->Init(m_Tracer.GetContext(), compileOptions, linkOptions);
@@ -478,11 +478,11 @@ private:
 			moduleCompileOptions.maxRegisterCount = OPTIX_COMPILE_DEFAULT_MAX_REGISTER_COUNT;
 			moduleCompileOptions.numBoundValues = 0;
 #ifndef NDEBUG
-			moduleCompileOptions.debugLevel = static_cast<OptixCompileDebugLevel>(rtlib::OPXCompileDebugLevel::Minimal);
+			moduleCompileOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_LINEINFO;
 			moduleCompileOptions.optLevel   = OPTIX_COMPILE_OPTIMIZATION_DEFAULT;
 #else
 			moduleCompileOptions.optLevel   = OPTIX_COMPILE_OPTIMIZATION_LEVEL_3;
-			moduleCompileOptions.debugLevel = static_cast<OptixCompileDebugLevel>(rtlib::OPXCompileDebugLevel::None);
+			moduleCompileOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_NONE;
 #endif
 			tracePipeline2->LoadModuleFromPtxFile("RayGuiding", TEST_TEST_PG_CUDA_PATH"/RayGuiding.ptx", moduleCompileOptions);
 		}
@@ -704,9 +704,9 @@ private:
 
 			linkOptions.maxTraceDepth = 2;
 #ifndef NDEBUG
-			linkOptions.debugLevel = static_cast<OptixCompileDebugLevel>(rtlib::OPXCompileDebugLevel::Minimal);
+			linkOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_LINEINFO;
 #else
-			linkOptions.debugLevel = static_cast<OptixCompileDebugLevel>(rtlib::OPXCompileDebugLevel::None);
+			linkOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_NONE;
 #endif
 
 			debugPipeline2->Init(m_Tracer.GetContext(), compileOptions, linkOptions);
@@ -717,11 +717,11 @@ private:
 			moduleCompileOptions.maxRegisterCount = OPTIX_COMPILE_DEFAULT_MAX_REGISTER_COUNT;
 			moduleCompileOptions.numBoundValues = 0;
 #ifndef NDEBUG
-			moduleCompileOptions.debugLevel = static_cast<OptixCompileDebugLevel>(rtlib::OPXCompileDebugLevel::Minimal);
+			moduleCompileOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_LINEINFO;
 			moduleCompileOptions.optLevel = OPTIX_COMPILE_OPTIMIZATION_DEFAULT;
 #else
 			moduleCompileOptions.optLevel = OPTIX_COMPILE_OPTIMIZATION_LEVEL_3;
-			moduleCompileOptions.debugLevel = static_cast<OptixCompileDebugLevel>(rtlib::OPXCompileDebugLevel::None);
+			moduleCompileOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_NONE;
 #endif
 			debugPipeline2->LoadModuleFromPtxFile("RayDebug", TEST_TEST_PG_CUDA_PATH"/RayDebug.ptx", moduleCompileOptions);
 		}
