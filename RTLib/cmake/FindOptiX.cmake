@@ -3,7 +3,6 @@ unset(OptiX_VERSION_MAJOR)
 unset(OptiX_VERSION_MINOR)
 unset(OptiX_VERSION_PATCH)
 unset(OptiX_VERSION_STR)
-
 if(CMAKE_SIZEOF_VOID_P EQUAL 8 AND NOT APPLE)
     set(bit_dest "64")
 else()
@@ -18,6 +17,7 @@ if(NOT OptiX_INSTALL_DIR)
         set(OptiX_INSTALL_DIR $ENV{OptiX_INSTALL_DIR})
     else()
         set(OptiX_INSTALL_DIR_LIST 
+        "C:/ProgramData/NVIDIA Corporation/OptiX SDK 7.4.0"
         "C:/ProgramData/NVIDIA Corporation/OptiX SDK 7.3.0"
         "C:/ProgramData/NVIDIA Corporation/OptiX SDK 7.2.0"
         "C:/ProgramData/NVIDIA Corporation/OptiX SDK 7.1.0"
@@ -80,4 +80,3 @@ if(OptiX_FOUND AND NOT OptiX::OptiX)
         target_include_directories(OptiX::OptiX INTERFACE ${OptiX_INCLUDE_DIR})
     endif()
 endif()
-
