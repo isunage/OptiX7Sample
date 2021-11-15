@@ -13,7 +13,7 @@ endif()
 set(OptiX_INSTALL_DIR CACHE PATH "OptiX Install Directory")
 
 if(NOT OptiX_INSTALL_DIR)
-    if(WIN32)
+    if(WIN32) 
     if($ENV{OptiX_INSTALL_DIR})
         set(OptiX_INSTALL_DIR $ENV{OptiX_INSTALL_DIR})
     else()
