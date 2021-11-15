@@ -12,7 +12,7 @@
 enum   SpatialFilter
 {
 	//Suitable in GPU
-	SpatialFilterNearest,
+	SpatialFilterNearest, 
 	//Too Slow in GPU
 	SpatialFilterBox,
 };

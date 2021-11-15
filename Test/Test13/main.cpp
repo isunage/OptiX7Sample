@@ -324,7 +324,7 @@ int main() {
         auto moduleCompileOptions  = OptixModuleCompileOptions{};
         {
             moduleCompileOptions.optLevel = OPTIX_COMPILE_OPTIMIZATION_DEFAULT;
-            moduleCompileOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_LINEINFO;
+            moduleCompileOptions.debugLevel = static_cast<OptixCompileDebugLevel>(rtlib::OPXCompileDebugLevel::Minimal);
             moduleCompileOptions.maxRegisterCount = OPTIX_COMPILE_DEFAULT_MAX_REGISTER_COUNT;
             moduleCompileOptions.numBoundValues = 0;
             moduleCompileOptions.boundValues = 0;
@@ -338,7 +338,7 @@ int main() {
         auto pipelineLinkOptions   = OptixPipelineLinkOptions{};
         {
             pipelineLinkOptions.maxTraceDepth = 2;
-            pipelineLinkOptions.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_LINEINFO;
+            pipelineLinkOptions.debugLevel = static_cast<OptixCompileDebugLevel>(rtlib::OPXCompileDebugLevel::Minimal);
         }
         pipeline.link(pipelineLinkOptions);
         auto      raygenRecord     = raygenPG.getSBTRecord<RayGenData>();
