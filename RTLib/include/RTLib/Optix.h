@@ -22,6 +22,27 @@ namespace rtlib{
         char header[OPTIX_SBT_RECORD_HEADER_SIZE];
         T      data;
     };
+    enum class OPXCompileDebugLevel : unsigned int
+    {
+        Default  = OPTIX_COMPILE_DEBUG_LEVEL_DEFAULT,
+        None     = OPTIX_COMPILE_DEBUG_LEVEL_NONE,
+#if (((OPTIX_VERSION%10000)/100)==4)
+        LineInfo = OPTIX_COMPILE_DEBUG_LEVEL_MINIMAL,
+#else
+        LineInfo = OPTIX_COMPILE_DEBUG_LEVEL_LINEINFO,
+#endif
+#if (((OPTIX_VERSION%10000)/100)==4)
+        Minimal  = OPTIX_COMPILE_DEBUG_LEVEL_MINIMAL,
+#else
+        Minimal  = OPTIX_COMPILE_DEBUG_LEVEL_LINEINFO,
+#endif
+        Full     = OPTIX_COMPILE_DEBUG_LEVEL_FULL,
+#if (((OPTIX_VERSION%10000)/100)==4)
+        Moderate = OPTIX_COMPILE_DEBUG_LEVEL_MODERATE
+#else
+        Moderate = OPTIX_COMPILE_DEBUG_LEVEL_LINEINFO
+#endif
+    };
     //SceneGraph
     //IAS(TL)->*Instace->GAS->BI
     //       ->*Instace->GAS->BI
