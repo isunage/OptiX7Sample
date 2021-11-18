@@ -20,3 +20,6 @@ NVIDIA OptiX7.3を用いたpath tracing実装
 # Build 
 - Windows OS, CMake Version 3.19 以上, Visual Studio 2019を前提
 - ルートディレクトリ上でbuildディレクトリを作成し、そのディレクトリで cmake ../ -G "Visual Studio 16 2019"を実行
+# Tips
+- Bound Valueによる最適化は、Module内で多数のレイ呼び出しを行う場合かえって低速化する可能性がある
+(OptiX 7.4のSampleでは1,2 sppでは高速化したが、サンプル数が増えるにつれて若干低速化している)

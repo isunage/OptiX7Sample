@@ -64,7 +64,7 @@ namespace test{
         void SetNextPos( const ImVec2& pos , ImGuiCond cond = 0, const ImVec2& pivot = ImVec2(0, 0));
         void SetNextSize(const ImVec2& size, ImGuiCond cond = 0);
         void DrawFrame();
-        virtual void DrawGui() {}
+        virtual void DrawGui() = 0;
         virtual ~RTGuiWindow()noexcept {}
     private:
         bool                      m_IsActive     = true;
