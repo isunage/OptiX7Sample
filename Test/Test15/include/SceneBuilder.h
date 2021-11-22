@@ -3,7 +3,7 @@
 #include <tiny_obj_loader.h>
 #include <RTLib/Optix.h>
 #include <RTLib/CUDA.h>
-#include <RTLib/VectorFunction.h>
+#include <RTLib/ext/Math/VectorFunction.h>
 #include <string>
 #include <vector>
 #include <array>

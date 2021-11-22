@@ -9,7 +9,7 @@
 #include <RTLib/ext/Camera.h>
 #include <RTLib/Optix.h>
 #include <RTLib/Config.h>
-#include <RTLib/VectorFunction.h>
+#include <RTLib/ext/Math/VectorFunction.h>
 #include <RTLib/Exceptions.h>
 #include <RTLib/Utils.h>
 #include <Test11Config.h>

@@ -2,9 +2,12 @@
 #include <TestLib/RTFramebuffer.h>
 #include <TestLib/RTGui.h>
 #include <RTLib/ext/RectRenderer.h>
+#include <RTLib/ext/Math/Matrix.h>
 #include <TestLibConfig.h>
 #include <GLFW/glfw3.h>
 #include <glad/glad.h>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtx/string_cast.hpp>
 #include <memory>
 #include <deque>
 #include <filesystem>
@@ -184,12 +187,8 @@ private:
 		guiWindow1->SetNextPos( ImVec2(  0,   0), ImGuiCond_Once);
 		guiWindow1->SetNextSize(ImVec2(500, 500), ImGuiCond_Once);
 
-		auto guiWindow2 = std::make_shared<test::RTGuiWindow>("Frame2");
-		guiWindow2->SetNextPos(ImVec2(500, 500), ImGuiCond_Once);
-		guiWindow2->SetNextSize(ImVec2(500, 500), ImGuiCond_Once);
 		
 		m_Gui->AddGuiWindow(guiWindow1);
-		m_Gui->AddGuiWindow(guiWindow2);
 	}
 	void FreeGui() {
 		m_Gui->CleanUp();
@@ -223,6 +222,36 @@ private:
 };
 int main(int argc, const char** argv)
 {
+	auto matrix = rtlib::Matrix3x3(
+		make_float3(2.0f, 3.0f, 6.0f),
+		make_float3(2.0f, 3.0f, 4.0f),
+		make_float3(4.0f, 3.0f, 1.0f)
+	);
+	 matrix.Show();
+	 matrix.Transpose().Show();
+	 matrix.Inverse().Show();
+	 matrix.InverseTranspose().Show();
+	(matrix.Inverse() * matrix).Show();
+	(matrix.InverseTranspose() * matrix.Transpose()).Show();
+	auto matrix2 = rtlib::Matrix4x4(
+		make_float4(2.0f, 3.0f, 6.0f,7.0f),
+		make_float4(2.0f, 5.0f, 7.0f,9.0f),
+		make_float4(4.0f, 3.0f, 1.0f,5.0f),
+		make_float4(7.0f, 8.0f, 9.0f, 5.0f)
+	);
+	matrix2.Show();
+	matrix2.Transpose().Show();
+	std::cout << matrix2.Det() << std::endl;
+	matrix2.Inverse().Show();
+	matrix2.InverseTranspose().Show();
+	(matrix2.Inverse() * matrix2).Show();
+	(matrix2.InverseTranspose() * matrix2.Transpose()).Show();
+	auto m = rtlib::Matrix4x4::Rotate(make_float3(3.0f, 2.0f, 1.0f), (float)RTLIB_M_PI / 6.0f);
+	(m * m * m * m * m *m * m * m * m * m * m * m).Show();
+	auto m2= glm::rotate(glm::identity<glm::mat4>(), (float)RTLIB_M_PI / 6.0f, glm::vec3(3.0f, 2.0f, 1.0f));
+	std::cout << glm::to_string(m2*m2*m2* m2 * m2 * m2* m2 * m2 * m2 * m2 * m2 * m2) << std::endl;
 	auto app = std::shared_ptr<test::RTApplication>(new TestLibTestApplication(1024, 1024, "TestLibTest"));
+	(m*m*m).Show();
+	std::cout << glm::to_string(m2*m2*m2) << std::endl;
 	return app->Run(argc,argv);
 }

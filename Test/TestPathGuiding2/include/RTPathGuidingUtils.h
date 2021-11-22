@@ -9,7 +9,7 @@
 #include <functional>
 #include <stb_image_write.h>
 #include <RTLib/CUDA.h>
-#include <RTLib/VectorFunction.h>
+#include <RTLib/ext/Math/VectorFunction.h>
 namespace test {
 	using  RTDTreeNode = ::DTreeNode;
 	class  RTDTree {

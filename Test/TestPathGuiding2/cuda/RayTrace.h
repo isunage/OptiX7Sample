@@ -2,10 +2,10 @@
 #define RAY_TRACE_H
 #include <cuda_runtime.h>
 #include <optix.h>
-#include <RTLib/Math.h>
-#include <RTLib/Random.h>
-#include <RTLib/VectorFunction.h>
-#include <RTLib/Math.h>
+#include <RTLib/ext/Math.h>
+#include <RTLib/ext/Math/Random.h>
+#include <RTLib/ext/Math/VectorFunction.h>
+#include <RTLib/ext/Math.h>
 #include <RayTraceConfig.h>
 #include <PathGuiding.h>
 //#define RAY_GUIDING_SAMPLE_BY_UNIFORM_SPHERE

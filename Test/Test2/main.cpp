@@ -1,9 +1,9 @@
 #include <RTLib/CUDA.h>
 #include <RTLib/Config.h>
 #include <RTLib/Exceptions.h>
-#include <RTLib/Math.h>
-#include <RTLib/VectorFunction.h>
-#include <RTLib/Random.h>
+#include <RTLib/ext/Math.h>
+#include <RTLib/ext/Math/VectorFunction.h>
+#include <RTLib/ext/Math/Random.h>
 #include <iostream>
 #include <string_view>
 #include <stdexcept>

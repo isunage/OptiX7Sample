@@ -2,7 +2,7 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <RTLib/Optix.h>
 #include <RTLib/Config.h>
-#include <RTLib/VectorFunction.h>
+#include <RTLib/ext/Math/VectorFunction.h>
 #include <RTLib/Exceptions.h>
 #include <GLFW/glfw3.h>
 #include <stb_image.h>

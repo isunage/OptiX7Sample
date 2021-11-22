@@ -3,7 +3,7 @@
 #include <RTLib/Optix.h>
 #include <RTLib/ext/Camera.h>
 #include <RTLib/Config.h>
-#include <RTLib/VectorFunction.h>
+#include <RTLib/ext/Math/VectorFunction.h>
 #include <RTLib/Exceptions.h>
 #include <RTLib/Utils.h>
 #include <GLFW/glfw3.h>

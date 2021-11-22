@@ -4,9 +4,9 @@
 #include <RTLib/CUDA.h>
 #include <RTLib/CUDA_GL.h>
 #include <RTLib/Utils.h>
-#include <RTLib/Math.h>
-#include <RTLib/VectorFunction.h>
-#include <RTLib/Random.h>
+#include <RTLib/ext/Math.h>
+#include <RTLib/ext/Math/VectorFunction.h>
+#include <RTLib/ext/Math/Random.h>
 #include <GLFW/glfw3.h>
 #include <stb_image.h>
 #include <stb_image_resize.h>

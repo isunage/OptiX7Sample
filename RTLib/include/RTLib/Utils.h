@@ -1,6 +1,6 @@
 #ifndef RTLIB_UTILS_H
 #define RTLIB_UTILS_H
-#include "VectorFunction.h"
+#include "ext/Math/VectorFunction.h"
 #include <vector>
 namespace rtlib{
     namespace utils {

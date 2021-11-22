@@ -1,7 +1,7 @@
 #ifndef RTLIB_EXT_MESH_MESH_H
 #define RTLIB_EXT_MESH_MESH_H
 #include "../CUDA.h"
-#include "../VectorFunction.h"
+#include "Math/VectorFunction.h"
 #include "Resources.h"
 #include "VariableMap.h"
 #include <string>

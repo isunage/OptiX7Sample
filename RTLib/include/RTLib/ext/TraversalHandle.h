@@ -79,9 +79,9 @@ namespace rtlib{
             //Add InstanceSet
             void AddInstanceSet(const InstanceSetPtr& instanceSet)noexcept;
             //Get InstanceSet
-            auto GetInstanceSet(size_t idx)const noexcept -> const rtlib::ext::InstanceSetPtr&;
-            auto GetInstanceSets()      noexcept ->       std::vector<rtlib::ext::InstanceSetPtr >&;
-            auto GetInstanceSets()const noexcept -> const std::vector<rtlib::ext::InstanceSetPtr >&;
+            auto GetInstanceSet(size_t idx)const noexcept -> const    rtlib::ext::InstanceSetPtr&;
+            auto GetInstanceSets()      noexcept ->       std::vector<rtlib::ext::InstanceSetPtr>&;
+            auto GetInstanceSets()const noexcept -> const std::vector<rtlib::ext::InstanceSetPtr>&;
             //GetHandle
             auto GetHandle()const noexcept -> OptixTraversableHandle
             {

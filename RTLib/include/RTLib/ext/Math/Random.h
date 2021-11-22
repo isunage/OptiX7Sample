@@ -4,10 +4,10 @@
 #if defined(__cplusplus) && !defined(__CUDA_ARCH__)
 #include <type_traits>
 #endif
-#include "TypeTraits.h"
-#include "Preprocessors.h"
+#include "../../TypeTraits.h"
+#include "../../Preprocessors.h"
 #include "VectorFunction.h"
-#include "Math.h"
+#include "../Math.h"
 namespace rtlib{
     //xoshiro family random number generator
     //https://prng.di.unimi.it/を参考に実装

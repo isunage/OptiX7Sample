@@ -4,7 +4,7 @@
 #include <RTLib/CUDA_GL.h>
 #include <RTLib/ext/Camera.h>
 #include <RTLib/Utils.h>
-#include <RTLib/VectorFunction.h>
+#include <RTLib/ext/Math/VectorFunction.h>
 #include <RTLib/ext/RectRenderer.h>
 #include <RTLib/ext/Resources/CUDA.h>
 #include <cuda/RayTrace.h>
