@@ -103,10 +103,30 @@ bool test::RTObjModelAssetManager::LoadAsset(const std::string& keyName, const s
     auto& materials = reader.GetMaterials();
     {
         meshGroup->SetSharedResource(std::make_shared<rtlib::ext::MeshSharedResource>());
-        auto& vertexBuffer = meshGroup->GetSharedResource()->vertexBuffer;
-        auto& texCrdBuffer = meshGroup->GetSharedResource()->texCrdBuffer;
-        auto& normalBuffer = meshGroup->GetSharedResource()->normalBuffer;
+        meshGroup->GetSharedResource()->vertexBuffers.resize(3);
+        auto& vertexBuffer = meshGroup->GetSharedResource()->vertexBuffers[0];
+        auto& normalBuffer = meshGroup->GetSharedResource()->vertexBuffers[1];
+        auto& texCrdBuffer = meshGroup->GetSharedResource()->vertexBuffers[2];
 
+
+        meshGroup->GetSharedResource()->layouts.resize(3);
+        meshGroup->GetSharedResource()->layouts[0].stride = sizeof(float3);
+        meshGroup->GetSharedResource()->layouts[1].stride = sizeof(float3);
+        meshGroup->GetSharedResource()->layouts[2].stride = sizeof(float2);
+
+        meshGroup->GetSharedResource()->attributes.resize(3);
+        meshGroup->GetSharedResource()->attributes[0].name        = "position";
+        meshGroup->GetSharedResource()->attributes[0].format      = rtlib::ext::MeshVertexFormat::Float3;
+        meshGroup->GetSharedResource()->attributes[0].offset      = 0;
+        meshGroup->GetSharedResource()->attributes[0].bufferIndex = 0;
+        meshGroup->GetSharedResource()->attributes[1].name        = "normal";
+        meshGroup->GetSharedResource()->attributes[1].format      = rtlib::ext::MeshVertexFormat::Float3;
+        meshGroup->GetSharedResource()->attributes[1].offset      = 0;
+        meshGroup->GetSharedResource()->attributes[1].bufferIndex = 1;
+        meshGroup->GetSharedResource()->attributes[2].name        = "texCoord";
+        meshGroup->GetSharedResource()->attributes[2].format      = rtlib::ext::MeshVertexFormat::Float2;
+        meshGroup->GetSharedResource()->attributes[2].offset      = 0;
+        meshGroup->GetSharedResource()->attributes[2].bufferIndex = 2;
         struct MyHash
         {
             MyHash()noexcept {}
@@ -149,35 +169,35 @@ bool test::RTObjModelAssetManager::LoadAsset(const std::string& keyName, const s
                 }
             }
         }
-        std::cout << "VertexBuffer: " << attrib.vertices.size() / 3  << "->" << indices.size() << std::endl;
-        std::cout << "NormalBuffer: " << attrib.normals.size() / 3   << "->" << indices.size() << std::endl;
+        std::cout << "VertexBuffer: " << attrib.vertices.size()  / 3 << "->" << indices.size() << std::endl;
+        std::cout << "NormalBuffer: " << attrib.normals.size()   / 3 << "->" << indices.size() << std::endl;
         std::cout << "TexCrdBuffer: " << attrib.texcoords.size() / 2 << "->" << indices.size() << std::endl;
-        vertexBuffer.Resize(indices.size());
-        texCrdBuffer.Resize(indices.size());
-        normalBuffer.Resize(indices.size());
+        vertexBuffer.Resize(3 * indices.size());
+        normalBuffer.Resize(3 * indices.size());
+        texCrdBuffer.Resize(2 * indices.size());
 
         for (size_t i = 0; i < indices.size(); ++i) {
             tinyobj::index_t idx = indices[i];
-            vertexBuffer[i] = make_float3(
-                attrib.vertices[3 * idx.vertex_index + 0],
-                attrib.vertices[3 * idx.vertex_index + 1],
-                attrib.vertices[3 * idx.vertex_index + 2]);
+            vertexBuffer[3 * i + 0] = attrib.vertices[3 * idx.vertex_index + 0];
+            vertexBuffer[3 * i + 1] = attrib.vertices[3 * idx.vertex_index + 1];
+            vertexBuffer[3 * i + 2] = attrib.vertices[3 * idx.vertex_index + 2];
             if (idx.normal_index >= 0) {
-                normalBuffer[i] = make_float3(
-                    attrib.normals[3 * idx.normal_index + 0],
-                    attrib.normals[3 * idx.normal_index + 1],
-                    attrib.normals[3 * idx.normal_index + 2]);
+                normalBuffer[3 * i + 0] = attrib.normals[3 * idx.normal_index + 0];
+                normalBuffer[3 * i + 1] = attrib.normals[3 * idx.normal_index + 1];
+                normalBuffer[3 * i + 2] = attrib.normals[3 * idx.normal_index + 2];
             }
             else {
-                normalBuffer[i] = make_float3(0.0f, 1.0f, 0.0f);
+                normalBuffer[3 * i + 0] = 0.0f;
+                normalBuffer[3 * i + 1] = 1.0f;
+                normalBuffer[3 * i + 2] = 0.0f;
             }
             if (idx.texcoord_index >= 0) {
-                texCrdBuffer[i] = make_float2(
-                    attrib.texcoords[2 * idx.texcoord_index + 0],
-                    attrib.texcoords[2 * idx.texcoord_index + 1]);
+                texCrdBuffer[2 * i + 0] = attrib.texcoords[2 * idx.texcoord_index + 0];
+                texCrdBuffer[2 * i + 1] = attrib.texcoords[2 * idx.texcoord_index + 1];
             }
             else {
-                texCrdBuffer[i] = make_float2(0.5f, 0.5f);
+                texCrdBuffer[2 * i + 0] = 0.5f;
+                texCrdBuffer[2 * i + 1] = 0.5f;
             }
         }
 

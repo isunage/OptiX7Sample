@@ -12,7 +12,7 @@
 
 bool test::RTTextureAssetManager::LoadAsset(const std::string& keyName, const std::string& texPath)
 {
-    if (m_Textures.count(keyName) != 0) {
+    if (m_Textures.count(keyName)!=0) {
         return true;
     }
     int texWidth, texHeight, texComp;
@@ -69,12 +69,12 @@ auto test::RTTextureAssetManager::GetAssets() -> std::unordered_map<std::string,
 
 bool test::RTTextureAssetManager::HasAsset(const std::string& keyName) const noexcept
 {
-    return m_Textures.count(keyName) != 0;
+    return m_Textures.count(keyName)!=0;
 }
 
 void test::RTTextureAssetManager::Reset()
 {
-    for (auto& [name, texture] : m_Textures) {
+    for (auto& [name,texture] : m_Textures) {
         texture.reset();
     }
     m_Textures.clear();
@@ -84,8 +84,8 @@ bool test::RTObjModelAssetManager::LoadAsset(const std::string& keyName, const s
 {
     auto mtlBaseDir = std::filesystem::canonical(std::filesystem::path(objFilePath).parent_path());
     tinyobj::ObjReaderConfig readerConfig = {};
-    readerConfig.mtl_search_path = mtlBaseDir.string() + "\\";
-
+    readerConfig.mtl_search_path = mtlBaseDir.string()+"\\";
+    
     tinyobj::ObjReader reader = {};
     if (!reader.ParseFromFile(objFilePath, readerConfig)) {
         if (!reader.Error().empty()) {
@@ -93,7 +93,7 @@ bool test::RTObjModelAssetManager::LoadAsset(const std::string& keyName, const s
         }
         return false;
     }
-    auto meshGroup = std::make_shared<rtlib::ext::MeshGroup>();
+    auto meshGroup      = std::make_shared<rtlib::ext::MeshGroup>();
     auto phongMaterials = std::vector<rtlib::ext::VariableMap>();
     if (!reader.Warning().empty()) {
         std::cout << "TinyObjReader: " << reader.Warning();
@@ -103,10 +103,9 @@ bool test::RTObjModelAssetManager::LoadAsset(const std::string& keyName, const s
     auto& materials = reader.GetMaterials();
     {
         meshGroup->SetSharedResource(std::make_shared<rtlib::ext::MeshSharedResource>());
-        meshGroup->GetSharedResource()->vertexBuffers.resize(3);
-        auto& vertexBuffer = meshGroup->GetSharedResource()->vertexBuffers[0];
-        auto& normalBuffer = meshGroup->GetSharedResource()->vertexBuffers[1];
-        auto& texCrdBuffer = meshGroup->GetSharedResource()->vertexBuffers[2];
+        auto& vertexBuffer = meshGroup->GetSharedResource()->vertexBuffer;
+        auto& texCrdBuffer = meshGroup->GetSharedResource()->texCrdBuffer;
+        auto& normalBuffer = meshGroup->GetSharedResource()->normalBuffer;
 
 
         meshGroup->GetSharedResource()->layouts.resize(3);
@@ -169,9 +168,9 @@ bool test::RTObjModelAssetManager::LoadAsset(const std::string& keyName, const s
                 }
             }
         }
-        std::cout << "VertexBuffer: " << attrib.vertices.size() / 3 << "->" << indices.size() << std::endl;
-        std::cout << "NormalBuffer: " << attrib.normals.size() / 3 << "->" << indices.size() << std::endl;
-        std::cout << "TexCrdBuffer: " << attrib.texcoords.size() / 2 << "->" << indices.size() << std::endl;
+        std::cout << "VertexBuffer: " << attrib.vertices.size()  / 3  << "->" << indices.size() << std::endl;
+        std::cout << "NormalBuffer: " << attrib.normals.size()   / 3  << "->" << indices.size() << std::endl;
+        std::cout << "TexCrdBuffer: " << attrib.texcoords.size() / 2  << "->" << indices.size() << std::endl;
         vertexBuffer.Resize(3 * indices.size());
         normalBuffer.Resize(3 * indices.size());
         texCrdBuffer.Resize(2 * indices.size());
@@ -192,8 +191,8 @@ bool test::RTObjModelAssetManager::LoadAsset(const std::string& keyName, const s
                 normalBuffer[3 * i + 2] = 0.0f;
             }
             if (idx.texcoord_index >= 0) {
-                texCrdBuffer[2 * i + 0] = attrib.texcoords[2 * idx.texcoord_index + 0];
-                texCrdBuffer[2 * i + 1] = attrib.texcoords[2 * idx.texcoord_index + 1];
+                texCrdBuffer[2 * i + 0] = attrib.texcoords[2 * idx.normal_index + 0];
+                texCrdBuffer[2 * i + 1] = attrib.texcoords[2 * idx.normal_index + 1];
             }
             else {
                 texCrdBuffer[2 * i + 0] = 0.5f;
@@ -204,7 +203,7 @@ bool test::RTObjModelAssetManager::LoadAsset(const std::string& keyName, const s
         std::unordered_map<std::size_t, std::size_t> texCrdMap = {};
         for (size_t i = 0; i < shapes.size(); ++i) {
             std::unordered_map<uint32_t, uint32_t> tmpMaterials = {};
-            auto uniqueResource = std::make_shared<rtlib::ext::MeshUniqueResource>();
+            auto uniqueResource  = std::make_shared<rtlib::ext::MeshUniqueResource>();
             uniqueResource->name = shapes[i].name;
             uniqueResource->triIndBuffer.Resize(shapes[i].mesh.num_face_vertices.size());
             for (size_t j = 0; j < shapes[i].mesh.num_face_vertices.size(); ++j) {
@@ -293,7 +292,7 @@ bool test::RTObjModelAssetManager::LoadAsset(const std::string& keyName, const s
             std::unordered_set<bool> materialEmitSet = {};
             for (auto& matIdx : uniqueResource->materials) {
                 auto material = phongMaterials[matIdx];
-                auto emitCol = material.GetFloat3As<float3>("emitCol");
+                auto emitCol  = material.GetFloat3As<float3>("emitCol");
                 if (emitCol.x + emitCol.y + emitCol.z > 0.0f) {
                     materialEmitSet.insert(true);
                 }
@@ -308,6 +307,7 @@ bool test::RTObjModelAssetManager::LoadAsset(const std::string& keyName, const s
                 uniqueResource->variables.SetBool("hasLight", true);
             }
             else {
+
                 uniqueResource->variables.SetBool("hasLight", false);
             }
         }
@@ -315,18 +315,18 @@ bool test::RTObjModelAssetManager::LoadAsset(const std::string& keyName, const s
         for (auto& [name, uniqueResource] : splitMeshGroup->GetUniqueResources())
         {
             meshGroup->RemoveMesh(name);
-            auto newSurfMatIndMap = std::unordered_map<uint32_t, uint32_t>();
-            auto newEmitMatIndMap = std::unordered_map<uint32_t, uint32_t>();
-            auto newSurfUniqueResource = rtlib::ext::MeshUniqueResource::New();
-            auto newEmitUniqueResource = rtlib::ext::MeshUniqueResource::New();
+            auto newSurfMatIndMap       = std::unordered_map<uint32_t, uint32_t>();
+            auto newEmitMatIndMap       = std::unordered_map<uint32_t, uint32_t>();
+            auto newSurfUniqueResource  = rtlib::ext::MeshUniqueResource::New();
+            auto newEmitUniqueResource  = rtlib::ext::MeshUniqueResource::New();
             newSurfUniqueResource->name = uniqueResource->name + ".Surface";
             newSurfUniqueResource->variables.SetBool("hasLight",false);
             newEmitUniqueResource->name = uniqueResource->name + ".Emission";
             newEmitUniqueResource->variables.SetBool("hasLight", true);
-            for (auto i = 0; i < uniqueResource->matIndBuffer.Size(); ++i) {
+            for (auto i = 0; i < uniqueResource->matIndBuffer.Size();++i) {
                 auto  matIndex = uniqueResource->matIndBuffer[i];
                 auto& material = phongMaterials[uniqueResource->materials[matIndex]];
-                auto emitCol = material.GetFloat3As<float3>("emitCol");
+                auto emitCol   = material.GetFloat3As<float3>("emitCol");
                 if (emitCol.x + emitCol.y + emitCol.z > 0.0f) {
                     if (newEmitMatIndMap.count(matIndex) == 0)
                     {
@@ -375,7 +375,7 @@ auto test::RTObjModelAssetManager::GetAsset(const std::string& keyName) -> RTObj
 
 bool test::RTObjModelAssetManager::HasAsset(const std::string& keyName) const noexcept
 {
-    return m_ObjModels.count(keyName) != 0;
+    return m_ObjModels.count(keyName)!=0;
 }
 
 auto test::RTObjModelAssetManager::GetAssets() const -> const std::unordered_map<std::string, RTObjModel>&

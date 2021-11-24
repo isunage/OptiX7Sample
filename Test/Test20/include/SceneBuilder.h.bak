@@ -42,28 +42,7 @@ namespace test {
                    meshGroup->GetSharedResource()->vertexBuffers.resize(3);
                 auto& vertexBuffer = meshGroup->GetSharedResource()->vertexBuffers[0];
                 auto& normalBuffer = meshGroup->GetSharedResource()->vertexBuffers[1];
-                auto& texCrdBuffer = meshGroup->GetSharedResource()->vertexBuffers[2];
-
-
-                meshGroup->GetSharedResource()->layouts.resize(3);
-                meshGroup->GetSharedResource()->layouts[0].stride = sizeof(float3);
-                meshGroup->GetSharedResource()->layouts[1].stride = sizeof(float3);
-                meshGroup->GetSharedResource()->layouts[2].stride = sizeof(float2);
-
-                meshGroup->GetSharedResource()->attributes.resize(3);
-                meshGroup->GetSharedResource()->attributes[0].name = "position";
-                meshGroup->GetSharedResource()->attributes[0].format = rtlib::ext::MeshVertexFormat::Float3;
-                meshGroup->GetSharedResource()->attributes[0].offset = 0;
-                meshGroup->GetSharedResource()->attributes[0].bufferIndex = 0;
-                meshGroup->GetSharedResource()->attributes[1].name = "normal";
-                meshGroup->GetSharedResource()->attributes[1].format = rtlib::ext::MeshVertexFormat::Float3;
-                meshGroup->GetSharedResource()->attributes[1].offset = 0;
-                meshGroup->GetSharedResource()->attributes[1].bufferIndex = 1;
-                meshGroup->GetSharedResource()->attributes[2].name = "texCoord";
-                meshGroup->GetSharedResource()->attributes[2].format = rtlib::ext::MeshVertexFormat::Float2;
-                meshGroup->GetSharedResource()->attributes[2].offset = 0;
-                meshGroup->GetSharedResource()->attributes[2].bufferIndex = 2;
-
+auto&texCrdBuffer=meshGroup->GetSharedResource()->vertexBuffers[2];meshGroup->GetSharedResource()->layouts.resize(3);meshGroup->GetSharedResource()->layouts[0].stride=sizeof(float3);meshGroup->GetSharedResource()->layouts[1].stride=sizeof(float3);meshGroup->GetSharedResource()->layouts[2].stride=sizeof(float2);meshGroup->GetSharedResource()->attributes.resize(3);meshGroup->GetSharedResource()->attributes[0].name="position";meshGroup->GetSharedResource()->attributes[0].format=rtlib::ext::MeshVertexFormat::Float3;meshGroup->GetSharedResource()->attributes[0].offset=0;meshGroup->GetSharedResource()->attributes[0].bufferIndex=0;meshGroup->GetSharedResource()->attributes[1].name="normal";meshGroup->GetSharedResource()->attributes[1].format=rtlib::ext::MeshVertexFormat::Float3;meshGroup->GetSharedResource()->attributes[1].offset=0;meshGroup->GetSharedResource()->attributes[1].bufferIndex=1;meshGroup->GetSharedResource()->attributes[2].name="texCoord";meshGroup->GetSharedResource()->attributes[2].format=rtlib::ext::MeshVertexFormat::Float2;meshGroup->GetSharedResource()->attributes[2].offset=0;meshGroup->GetSharedResource()->attributes[2].bufferIndex=2;
                 struct MyHash
                 {
                     MyHash()noexcept {}

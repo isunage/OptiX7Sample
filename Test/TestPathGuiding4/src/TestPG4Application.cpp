@@ -218,21 +218,18 @@ private:
 				{
 					for (auto &mesh : baseGASHandle->GetMeshes())
 					{
-						if (!mesh->GetSharedResource()->vertexBuffer.HasGpuComponent("CUDA")) {
-							throw std::runtime_error("VertexBuffer of Mesh '" + mesh->GetUniqueResource()->name + "' Has No CUDA Component!");
-						}
-						if (!mesh->GetSharedResource()->normalBuffer.HasGpuComponent("CUDA")) {
-							throw std::runtime_error("NormalBuffer of Mesh '" + mesh->GetUniqueResource()->name + "' Has No CUDA Component!");
-						}
-						if (!mesh->GetSharedResource()->texCrdBuffer.HasGpuComponent("CUDA")) {
-							throw std::runtime_error("TexCrdBuffer of Mesh '" + mesh->GetUniqueResource()->name + "' Has No CUDA Component!");
+						for (auto& vertexBuffer : mesh->GetSharedResource()->vertexBuffers)
+						{
+							if (!vertexBuffer.HasGpuComponent("CUDA")) {
+								throw std::runtime_error("VertexBuffer of Mesh '" + mesh->GetUniqueResource()->name + "' Has No CUDA Component!");
+							}
 						}
 						if (!mesh->GetUniqueResource()->triIndBuffer.HasGpuComponent("CUDA")) {
 							throw std::runtime_error("TriIndBuffer of Mesh '" + mesh->GetUniqueResource()->name + "' Has No CUDA Component!");
 						}
-						auto cudaVertexBuffer = mesh->GetSharedResource()->vertexBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float3>>("CUDA");
-						auto cudaNormalBuffer = mesh->GetSharedResource()->normalBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float3>>("CUDA");
-						auto cudaTexCrdBuffer = mesh->GetSharedResource()->texCrdBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float2>>("CUDA");
+						auto cudaVertexBuffer = mesh->GetSharedResource()->vertexBuffers[0].GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float>>("CUDA");
+						auto cudaNormalBuffer = mesh->GetSharedResource()->vertexBuffers[1].GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float>>("CUDA");
+						auto cudaTexCrdBuffer = mesh->GetSharedResource()->vertexBuffers[2].GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float>>("CUDA");
 						auto cudaTriIndBuffer = mesh->GetUniqueResource()->triIndBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<uint3>> ("CUDA");
 						for (size_t i = 0; i < mesh->GetUniqueResource()->materials.size(); ++i)
 						{
@@ -240,9 +237,9 @@ private:
 							auto &material = materials[materialId];
 							HitgroupData radianceHgData = {};
 							{
-								radianceHgData.vertices   = cudaVertexBuffer->GetHandle().getDevicePtr();
-								radianceHgData.normals    = cudaNormalBuffer->GetHandle().getDevicePtr();
-								radianceHgData.texCoords  = cudaTexCrdBuffer->GetHandle().getDevicePtr();
+								radianceHgData.vertices   =(float3*) cudaVertexBuffer->GetHandle().getDevicePtr();
+								radianceHgData.normals    =(float3*) cudaNormalBuffer->GetHandle().getDevicePtr();
+								radianceHgData.texCoords  =(float2*) cudaTexCrdBuffer->GetHandle().getDevicePtr();
 								radianceHgData.indices    = cudaTriIndBuffer->GetHandle().getDevicePtr();
 								radianceHgData.diffuseTex = m_ParentApp->GetTexture(material.GetString("diffTex")).getHandle();
 								radianceHgData.specularTex = m_ParentApp->GetTexture(material.GetString("specTex")).getHandle();
@@ -529,21 +526,18 @@ private:
 				{
 					for (auto &mesh : baseGASHandle->GetMeshes())
 					{
-						if (!mesh->GetSharedResource()->vertexBuffer.HasGpuComponent("CUDA")) {
-							throw std::runtime_error("VertexBuffer of Mesh '" + mesh->GetUniqueResource()->name + "' Has No CUDA Component!");
-						}
-						if (!mesh->GetSharedResource()->normalBuffer.HasGpuComponent("CUDA")) {
-							throw std::runtime_error("NormalBuffer of Mesh '" + mesh->GetUniqueResource()->name + "' Has No CUDA Component!");
-						}
-						if (!mesh->GetSharedResource()->texCrdBuffer.HasGpuComponent("CUDA")) {
-							throw std::runtime_error("TexCrdBuffer of Mesh '" + mesh->GetUniqueResource()->name + "' Has No CUDA Component!");
+						for (auto& vertexBuffer : mesh->GetSharedResource()->vertexBuffers)
+						{
+							if (!vertexBuffer.HasGpuComponent("CUDA")) {
+								throw std::runtime_error("VertexBuffer of Mesh '" + mesh->GetUniqueResource()->name + "' Has No CUDA Component!");
+							}
 						}
 						if (!mesh->GetUniqueResource()->triIndBuffer.HasGpuComponent("CUDA")) {
 							throw std::runtime_error("TriIndBuffer of Mesh '" + mesh->GetUniqueResource()->name + "' Has No CUDA Component!");
 						}
-						auto cudaVertexBuffer = mesh->GetSharedResource()->vertexBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float3>>("CUDA");
-						auto cudaNormalBuffer = mesh->GetSharedResource()->normalBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float3>>("CUDA");
-						auto cudaTexCrdBuffer = mesh->GetSharedResource()->texCrdBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float2>>("CUDA");
+						auto cudaVertexBuffer = mesh->GetSharedResource()->vertexBuffers[0].GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float>>("CUDA");
+						auto cudaNormalBuffer = mesh->GetSharedResource()->vertexBuffers[1].GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float>>("CUDA");
+						auto cudaTexCrdBuffer = mesh->GetSharedResource()->vertexBuffers[2].GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float>>("CUDA");
 						auto cudaTriIndBuffer = mesh->GetUniqueResource()->triIndBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<uint3>>("CUDA");
 						for (size_t i = 0; i < mesh->GetUniqueResource()->materials.size(); ++i)
 						{
@@ -551,9 +545,9 @@ private:
 							auto &material = materials[materialId];
 							HitgroupData radianceHgData = {};
 							{
-								radianceHgData.vertices = cudaVertexBuffer->GetHandle().getDevicePtr();
-								radianceHgData.normals = cudaNormalBuffer->GetHandle().getDevicePtr();
-								radianceHgData.texCoords = cudaTexCrdBuffer->GetHandle().getDevicePtr();
+								radianceHgData.vertices  = (float3*)cudaVertexBuffer->GetHandle().getDevicePtr();
+								radianceHgData.normals   = (float3*)cudaNormalBuffer->GetHandle().getDevicePtr();
+								radianceHgData.texCoords = (float2*)cudaTexCrdBuffer->GetHandle().getDevicePtr();
 								radianceHgData.indices = cudaTriIndBuffer->GetHandle().getDevicePtr();
 								radianceHgData.diffuseTex = m_ParentApp->GetTexture(material.GetString("diffTex")).getHandle();
 								radianceHgData.specularTex = m_ParentApp->GetTexture(material.GetString("specTex")).getHandle();
@@ -842,21 +836,18 @@ private:
 				{
 					for (auto &mesh : baseGASHandle->GetMeshes())
 					{
-						if (!mesh->GetSharedResource()->vertexBuffer.HasGpuComponent("CUDA")) {
-							throw std::runtime_error("VertexBuffer of Mesh '" + mesh->GetUniqueResource()->name + "' Has No CUDA Component!");
-						}
-						if (!mesh->GetSharedResource()->normalBuffer.HasGpuComponent("CUDA")) {
-							throw std::runtime_error("NormalBuffer of Mesh '" + mesh->GetUniqueResource()->name + "' Has No CUDA Component!");
-						}
-						if (!mesh->GetSharedResource()->texCrdBuffer.HasGpuComponent("CUDA")) {
-							throw std::runtime_error("TexCrdBuffer of Mesh '" + mesh->GetUniqueResource()->name + "' Has No CUDA Component!");
+						for (auto& vertexBuffer : mesh->GetSharedResource()->vertexBuffers)
+						{
+							if (!vertexBuffer.HasGpuComponent("CUDA")) {
+								throw std::runtime_error("VertexBuffer of Mesh '" + mesh->GetUniqueResource()->name + "' Has No CUDA Component!");
+							}
 						}
 						if (!mesh->GetUniqueResource()->triIndBuffer.HasGpuComponent("CUDA")) {
 							throw std::runtime_error("TriIndBuffer of Mesh '" + mesh->GetUniqueResource()->name + "' Has No CUDA Component!");
 						}
-						auto cudaVertexBuffer = mesh->GetSharedResource()->vertexBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float3>>("CUDA");
-						auto cudaNormalBuffer = mesh->GetSharedResource()->normalBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float3>>("CUDA");
-						auto cudaTexCrdBuffer = mesh->GetSharedResource()->texCrdBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float2>>("CUDA");
+						auto cudaVertexBuffer = mesh->GetSharedResource()->vertexBuffers[0].GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float>>("CUDA");
+						auto cudaNormalBuffer = mesh->GetSharedResource()->vertexBuffers[1].GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float>>("CUDA");
+						auto cudaTexCrdBuffer = mesh->GetSharedResource()->vertexBuffers[2].GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float>>("CUDA");
 						auto cudaTriIndBuffer = mesh->GetUniqueResource()->triIndBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<uint3>>("CUDA");
 						for (size_t i = 0; i <  mesh->GetUniqueResource()->materials.size(); ++i)
 						{
@@ -864,9 +855,9 @@ private:
 							auto &material = materials[materialId];
 							HitgroupData radianceHgData = {};
 							{
-								radianceHgData.vertices    = cudaVertexBuffer->GetHandle().getDevicePtr();
-								radianceHgData.normals     = cudaNormalBuffer->GetHandle().getDevicePtr();
-								radianceHgData.texCoords   = cudaTexCrdBuffer->GetHandle().getDevicePtr();
+								radianceHgData.vertices = (float3*)cudaVertexBuffer->GetHandle().getDevicePtr();
+								radianceHgData.normals = (float3*)cudaNormalBuffer->GetHandle().getDevicePtr();
+								radianceHgData.texCoords = (float2*)cudaTexCrdBuffer->GetHandle().getDevicePtr();
 								radianceHgData.indices     = cudaTriIndBuffer->GetHandle().getDevicePtr();
 								radianceHgData.diffuseTex  = m_ParentApp->GetTexture(material.GetString("diffTex")).getHandle();
 								radianceHgData.specularTex = m_ParentApp->GetTexture(material.GetString("specTex")).getHandle();
@@ -1230,21 +1221,18 @@ private:
 				{
 					for (auto &mesh : baseGASHandle->GetMeshes())
 					{
-						if (!mesh->GetSharedResource()->vertexBuffer.HasGpuComponent("CUDA")) {
-							throw std::runtime_error("VertexBuffer of Mesh '" + mesh->GetUniqueResource()->name + "' Has No CUDA Component!");
-						}
-						if (!mesh->GetSharedResource()->normalBuffer.HasGpuComponent("CUDA")) {
-							throw std::runtime_error("NormalBuffer of Mesh '" + mesh->GetUniqueResource()->name + "' Has No CUDA Component!");
-						}
-						if (!mesh->GetSharedResource()->texCrdBuffer.HasGpuComponent("CUDA")) {
-							throw std::runtime_error("TexCrdBuffer of Mesh '" + mesh->GetUniqueResource()->name + "' Has No CUDA Component!");
+						for (auto& vertexBuffer : mesh->GetSharedResource()->vertexBuffers)
+						{
+							if (!vertexBuffer.HasGpuComponent("CUDA")) {
+								throw std::runtime_error("VertexBuffer of Mesh '" + mesh->GetUniqueResource()->name + "' Has No CUDA Component!");
+							}
 						}
 						if (!mesh->GetUniqueResource()->triIndBuffer.HasGpuComponent("CUDA")) {
 							throw std::runtime_error("TriIndBuffer of Mesh '" + mesh->GetUniqueResource()->name + "' Has No CUDA Component!");
 						}
-						auto cudaVertexBuffer = mesh->GetSharedResource()->vertexBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float3>>("CUDA");
-						auto cudaNormalBuffer = mesh->GetSharedResource()->normalBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float3>>("CUDA");
-						auto cudaTexCrdBuffer = mesh->GetSharedResource()->texCrdBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float2>>("CUDA");
+						auto cudaVertexBuffer = mesh->GetSharedResource()->vertexBuffers[0].GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float>>("CUDA");
+						auto cudaNormalBuffer = mesh->GetSharedResource()->vertexBuffers[1].GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float>>("CUDA");
+						auto cudaTexCrdBuffer = mesh->GetSharedResource()->vertexBuffers[2].GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float>>("CUDA");
 						auto cudaTriIndBuffer = mesh->GetUniqueResource()->triIndBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<uint3>>("CUDA");
 						for (size_t i = 0; i < mesh->GetUniqueResource()->materials.size(); ++i)
 						{
@@ -1252,9 +1240,9 @@ private:
 							auto &material = materials[materialId];
 							HitgroupData radianceHgData = {};
 							{
-								radianceHgData.vertices = cudaVertexBuffer->GetHandle().getDevicePtr();
-								radianceHgData.normals = cudaNormalBuffer->GetHandle().getDevicePtr();
-								radianceHgData.texCoords = cudaTexCrdBuffer->GetHandle().getDevicePtr();
+								radianceHgData.vertices = (float3*)cudaVertexBuffer->GetHandle().getDevicePtr();
+								radianceHgData.normals = (float3*)cudaNormalBuffer->GetHandle().getDevicePtr();
+								radianceHgData.texCoords = (float2*)cudaTexCrdBuffer->GetHandle().getDevicePtr();
 								radianceHgData.indices = cudaTriIndBuffer->GetHandle().getDevicePtr();
 								radianceHgData.diffuseTex = m_ParentApp->GetTexture(material.GetString("diffTex")).getHandle();
 								radianceHgData.specularTex = m_ParentApp->GetTexture(material.GetString("specTex")).getHandle();
@@ -1621,21 +1609,18 @@ private:
 				{
 					for (auto &mesh : baseGASHandle->GetMeshes())
 					{
-						if (!mesh->GetSharedResource()->vertexBuffer.HasGpuComponent("CUDA")) {
-							throw std::runtime_error("VertexBuffer of Mesh '" + mesh->GetUniqueResource()->name + "' Has No CUDA Component!");
-						}
-						if (!mesh->GetSharedResource()->normalBuffer.HasGpuComponent("CUDA")) {
-							throw std::runtime_error("NormalBuffer of Mesh '" + mesh->GetUniqueResource()->name + "' Has No CUDA Component!");
-						}
-						if (!mesh->GetSharedResource()->texCrdBuffer.HasGpuComponent("CUDA")) {
-							throw std::runtime_error("TexCrdBuffer of Mesh '" + mesh->GetUniqueResource()->name + "' Has No CUDA Component!");
+						for (auto& vertexBuffer : mesh->GetSharedResource()->vertexBuffers)
+						{
+							if (!vertexBuffer.HasGpuComponent("CUDA")) {
+								throw std::runtime_error("VertexBuffer of Mesh '" + mesh->GetUniqueResource()->name + "' Has No CUDA Component!");
+							}
 						}
 						if (!mesh->GetUniqueResource()->triIndBuffer.HasGpuComponent("CUDA")) {
 							throw std::runtime_error("TriIndBuffer of Mesh '" + mesh->GetUniqueResource()->name + "' Has No CUDA Component!");
 						}
-						auto cudaVertexBuffer = mesh->GetSharedResource()->vertexBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float3>>("CUDA");
-						auto cudaNormalBuffer = mesh->GetSharedResource()->normalBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float3>>("CUDA");
-						auto cudaTexCrdBuffer = mesh->GetSharedResource()->texCrdBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float2>>("CUDA");
+						auto cudaVertexBuffer = mesh->GetSharedResource()->vertexBuffers[0].GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float>>("CUDA");
+						auto cudaNormalBuffer = mesh->GetSharedResource()->vertexBuffers[1].GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float>>("CUDA");
+						auto cudaTexCrdBuffer = mesh->GetSharedResource()->vertexBuffers[2].GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float>>("CUDA");
 						auto cudaTriIndBuffer = mesh->GetUniqueResource()->triIndBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<uint3>>("CUDA");
 						for (size_t i = 0; i < mesh->GetUniqueResource()->materials.size(); ++i)
 						{
@@ -1643,9 +1628,9 @@ private:
 							auto &material = materials[materialId];
 							HitgroupData radianceHgData = {};
 							{
-								radianceHgData.vertices = cudaVertexBuffer->GetHandle().getDevicePtr();
-								radianceHgData.normals = cudaNormalBuffer->GetHandle().getDevicePtr();
-								radianceHgData.texCoords = cudaTexCrdBuffer->GetHandle().getDevicePtr();
+								radianceHgData.vertices = (float3*)cudaVertexBuffer->GetHandle().getDevicePtr();
+								radianceHgData.normals = (float3*)cudaNormalBuffer->GetHandle().getDevicePtr();
+								radianceHgData.texCoords = (float2*)cudaTexCrdBuffer->GetHandle().getDevicePtr();
 								radianceHgData.indices = cudaTriIndBuffer->GetHandle().getDevicePtr();
 								radianceHgData.diffuseTex = m_ParentApp->GetTexture(material.GetString("diffTex")).getHandle();
 								radianceHgData.specularTex = m_ParentApp->GetTexture(material.GetString("specTex")).getHandle();
@@ -1920,17 +1905,11 @@ void TestPG4Application::InitAccelerationStructures()
 			size_t materialOffset = 0;
 			for (auto &[name, objModel] : m_ObjModelAssets.GetAssets())
 			{
-				if (!objModel.meshGroup->GetSharedResource()->vertexBuffer.HasGpuComponent("CUDA"))
-				{
-					objModel.meshGroup->GetSharedResource()->vertexBuffer.AddGpuComponent<rtlib::ext::resources::CUDABufferComponent<float3>>("CUDA");
-				}
-				if (!objModel.meshGroup->GetSharedResource()->normalBuffer.HasGpuComponent("CUDA"))
-				{
-					objModel.meshGroup->GetSharedResource()->normalBuffer.AddGpuComponent<rtlib::ext::resources::CUDABufferComponent<float3>>("CUDA");
-				}
-				if (!objModel.meshGroup->GetSharedResource()->texCrdBuffer.HasGpuComponent("CUDA"))
-				{
-					objModel.meshGroup->GetSharedResource()->texCrdBuffer.AddGpuComponent<rtlib::ext::resources::CUDABufferComponent<float2>>("CUDA");
+				for (auto& vertexBuffer : objModel.meshGroup->GetSharedResource()->vertexBuffers) {
+					if (!vertexBuffer.HasGpuComponent("CUDA"))
+					{
+						vertexBuffer.AddGpuComponent<rtlib::ext::resources::CUDABufferComponent<float>>("CUDA");
+					}
 				}
 				for (auto &[name, meshUniqueResource] : objModel.meshGroup->GetUniqueResources())
 				{
@@ -2009,9 +1988,9 @@ void TestPG4Application::InitLight()
 			MeshLight meshLight   = {};
 			meshLight.emission    = m_Materials[mesh->GetUniqueResource()->materials[0]].GetFloat3As<float3>("emitCol");
 			meshLight.emissionTex = m_TextureAssets.GetAsset(m_Materials[mesh->GetUniqueResource()->materials[0]].GetString("emitTex")).getHandle();
-			meshLight.vertices    = mesh->GetSharedResource()->vertexBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float3>>("CUDA")->GetHandle().getDevicePtr();
-			meshLight.normals     = mesh->GetSharedResource()->normalBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float3>>("CUDA")->GetHandle().getDevicePtr();
-			meshLight.texCoords   = mesh->GetSharedResource()->texCrdBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float2>>("CUDA")->GetHandle().getDevicePtr();
+			meshLight.vertices    = (float3*)mesh->GetSharedResource()->vertexBuffers[0].GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float>>("CUDA")->GetHandle().getDevicePtr();
+			meshLight.normals     = (float3*)mesh->GetSharedResource()->vertexBuffers[1].GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float>>("CUDA")->GetHandle().getDevicePtr();
+			meshLight.texCoords   = (float2*)mesh->GetSharedResource()->vertexBuffers[2].GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float>>("CUDA")->GetHandle().getDevicePtr();
 			meshLight.indices     = mesh->GetUniqueResource()->triIndBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<uint3>>("CUDA")->GetHandle().getDevicePtr();
 			meshLight.indCount    = mesh->GetUniqueResource()->triIndBuffer.Size();
 			m_MeshLights.cpuHandle.push_back(meshLight);
@@ -2038,9 +2017,9 @@ void TestPG4Application::InitSTree()
 	{
 		for (auto &index : mesh->GetUniqueResource()->triIndBuffer)
 		{
-			worldAABB.Update(mesh->GetSharedResource()->vertexBuffer[index.x]);
-			worldAABB.Update(mesh->GetSharedResource()->vertexBuffer[index.y]);
-			worldAABB.Update(mesh->GetSharedResource()->vertexBuffer[index.z]);
+			worldAABB.Update(make_float3(mesh->GetSharedResource()->vertexBuffers[0][3 * index.x + 0], mesh->GetSharedResource()->vertexBuffers[0][3 * index.x + 1], mesh->GetSharedResource()->vertexBuffers[0][3 * index.x + 2]));
+			worldAABB.Update(make_float3(mesh->GetSharedResource()->vertexBuffers[0][3 * index.y + 0], mesh->GetSharedResource()->vertexBuffers[0][3 * index.y + 1], mesh->GetSharedResource()->vertexBuffers[0][3 * index.y + 2]));
+			worldAABB.Update(make_float3(mesh->GetSharedResource()->vertexBuffers[0][3 * index.z + 0], mesh->GetSharedResource()->vertexBuffers[0][3 * index.z + 1], mesh->GetSharedResource()->vertexBuffers[0][3 * index.z + 2]));
 		}
 	}
 	m_STree = std::make_shared<RTSTreeWrapper>(worldAABB.min, worldAABB.max, 20);

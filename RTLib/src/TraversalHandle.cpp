@@ -7,25 +7,21 @@ void rtlib::ext::GASHandle::Build(const rtlib::OPXContext* context, const OptixA
     auto buildFlags = std::vector<std::vector<unsigned int>>(this->meshes.size());
     size_t i = 0;
     size_t sbtCount = 0;
+    
     for (auto& mesh : this->meshes) {
-        if (!mesh->GetSharedResource()->vertexBuffer.HasGpuComponent("CUDA")) {
-            throw std::runtime_error("VertexBuffer of Mesh '" + mesh->GetUniqueResource()->name + "' Has No CUDA Component!");
+        for (auto& vertexBuffer : mesh->GetSharedResource()->vertexBuffers)
+        {
+            if (!vertexBuffer.HasGpuComponent("CUDA")) {
+                throw std::runtime_error("VertexBuffer of Mesh '" + mesh->GetUniqueResource()->name + "' Has No CUDA Component!");
+            }
         }
-        if (!mesh->GetSharedResource()->normalBuffer.HasGpuComponent("CUDA")) {
-            throw std::runtime_error("NormalBuffer of Mesh '" + mesh->GetUniqueResource()->name + "' Has No CUDA Component!");
+        if (mesh->GetSharedResource()->attributes[0].offset != 0 || std::string(mesh->GetSharedResource()->attributes[0].name) != "position")
+        {
+            throw std::runtime_error("Atttribute0 of VertexBuffer Must Be  Ordered As Float3(position) Layout!");
+
         }
-        if (!mesh->GetSharedResource()->texCrdBuffer.HasGpuComponent("CUDA")) {
-            throw std::runtime_error("TexCrdBuffer of Mesh '" + mesh->GetUniqueResource()->name + "' Has No CUDA Component!");
-        }
-        if (!mesh->GetUniqueResource()->triIndBuffer.HasGpuComponent("CUDA")) {
-            throw std::runtime_error("TriIndBuffer of Mesh '" + mesh->GetUniqueResource()->name + "' Has No CUDA Component!");
-        }
-        if (!mesh->GetUniqueResource()->matIndBuffer.HasGpuComponent("CUDA")) {
-            throw std::runtime_error("MatIndBuffer of Mesh '" + mesh->GetUniqueResource()->name + "' Has No CUDA Component!");
-        }
-        auto cudaVertexBuffer = mesh->GetSharedResource()->vertexBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float3>>("CUDA");
-        auto cudaNormalBuffer = mesh->GetSharedResource()->normalBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float3>>("CUDA");
-        auto cudaTexCrdBuffer = mesh->GetSharedResource()->texCrdBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float2>>("CUDA");
+
+        auto cudaVertexBuffer = mesh->GetSharedResource()->vertexBuffers[0].GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float>>("CUDA");
         auto cudaTriIndBuffer = mesh->GetUniqueResource()->triIndBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<uint3>>("CUDA");
         auto cudaMatIndBuffer = mesh->GetUniqueResource()->matIndBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<uint32_t>>("CUDA");
 
@@ -34,14 +30,14 @@ void rtlib::ext::GASHandle::Build(const rtlib::OPXContext* context, const OptixA
         std::fill(std::begin(buildFlags[i]), std::end(buildFlags[i]), OPTIX_GEOMETRY_FLAG_DISABLE_ANYHIT);
         buildInputs[i].type = OPTIX_BUILD_INPUT_TYPE_TRIANGLES;
         buildInputs[i].triangleArray.flags = buildFlags[i].data();
-        buildInputs[i].triangleArray.vertexBuffers = vertexBuffers.data() + i;
-        buildInputs[i].triangleArray.vertexFormat = OPTIX_VERTEX_FORMAT_FLOAT3;
-        buildInputs[i].triangleArray.vertexStrideInBytes = sizeof(float3);
-        buildInputs[i].triangleArray.numVertices = cudaVertexBuffer->GetHandle().getCount();
-        buildInputs[i].triangleArray.indexBuffer = reinterpret_cast<CUdeviceptr>(cudaTriIndBuffer->GetHandle().getDevicePtr());
-        buildInputs[i].triangleArray.indexFormat = OPTIX_INDICES_FORMAT_UNSIGNED_INT3;
-        buildInputs[i].triangleArray.indexStrideInBytes = sizeof(uint3);
-        buildInputs[i].triangleArray.numIndexTriplets = cudaTriIndBuffer->GetHandle().getCount();
+        buildInputs[i].triangleArray.vertexBuffers        = vertexBuffers.data() + i;
+        buildInputs[i].triangleArray.vertexFormat         = OPTIX_VERTEX_FORMAT_FLOAT3;
+        buildInputs[i].triangleArray.vertexStrideInBytes  = mesh->GetSharedResource()->layouts[0].stride;
+        buildInputs[i].triangleArray.numVertices          = cudaVertexBuffer->GetHandle().getCount()*sizeof(float)/ mesh->GetSharedResource()->layouts[0].stride;
+        buildInputs[i].triangleArray.indexBuffer          = reinterpret_cast<CUdeviceptr>(cudaTriIndBuffer->GetHandle().getDevicePtr());
+        buildInputs[i].triangleArray.indexFormat          = OPTIX_INDICES_FORMAT_UNSIGNED_INT3;
+        buildInputs[i].triangleArray.indexStrideInBytes   = sizeof(uint3);
+        buildInputs[i].triangleArray.numIndexTriplets     = cudaTriIndBuffer->GetHandle().getCount();
         buildInputs[i].triangleArray.sbtIndexOffsetBuffer = reinterpret_cast<CUdeviceptr>(cudaMatIndBuffer->GetHandle().getDevicePtr());
         buildInputs[i].triangleArray.sbtIndexOffsetSizeInBytes = sizeof(uint32_t);
         buildInputs[i].triangleArray.sbtIndexOffsetStrideInBytes = sizeof(uint32_t);

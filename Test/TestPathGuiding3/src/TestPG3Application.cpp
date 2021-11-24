@@ -39,7 +39,7 @@ class TestPG3SimpleTracer : public test::RTTracer
 public:
 	struct UserData
 	{
-		uchar4*      frameBuffer;
+		uchar4 *frameBuffer;
 		unsigned int samplePerAll;
 		unsigned int samplePerLaunch;
 	};
@@ -74,12 +74,12 @@ public:
 		{
 			return;
 		}
-		m_Params.cpuHandle[0].width       = config.width;
-		m_Params.cpuHandle[0].height      = config.height;
-		m_Params.cpuHandle[0].sdTree      = m_ParentApp->GetSTree()->GetGpuHandle();
+		m_Params.cpuHandle[0].width = config.width;
+		m_Params.cpuHandle[0].height = config.height;
+		m_Params.cpuHandle[0].sdTree = m_ParentApp->GetSTree()->GetGpuHandle();
 		m_Params.cpuHandle[0].accumBuffer = m_ParentApp->GetAccumBuffer().getDevicePtr();
 		m_Params.cpuHandle[0].frameBuffer = pUserData->frameBuffer;
-		m_Params.cpuHandle[0].seedBuffer  = m_SeedBuffer.getDevicePtr();
+		m_Params.cpuHandle[0].seedBuffer = m_SeedBuffer.getDevicePtr();
 		m_Params.cpuHandle[0].isBuilt = false;
 		m_Params.cpuHandle[0].samplePerLaunch = pUserData->samplePerLaunch;
 		cudaMemcpyAsync(m_Params.gpuHandle.getDevicePtr(), &m_Params.cpuHandle[0], sizeof(RayTraceParams), cudaMemcpyHostToDevice, config.stream);
@@ -115,7 +115,7 @@ public:
 		if (m_ParentApp->IsCameraUpdated() || m_ParentApp->IsFrameResized() || m_ParentApp->IsFrameFlushed() || m_ParentApp->IsTraceChanged() || m_ParentApp->IsLightUpdated())
 		{
 			m_Params.cpuHandle[0].maxTraceDepth = m_ParentApp->GetMaxTraceDepth();
-			m_Params.cpuHandle[0].samplePerALL  = 0;
+			m_Params.cpuHandle[0].samplePerALL = 0;
 		}
 		bool shouldRegen = ((m_SamplePerAll + m_Params.cpuHandle[0].samplePerLaunch) / 1024 != m_SamplePerAll / 1024);
 		if (m_ParentApp->IsFrameResized() || shouldRegen)
@@ -138,6 +138,7 @@ public:
 		}
 	}
 	virtual ~TestPG3SimpleTracer() {}
+
 private:
 	void InitPipeline()
 	{
@@ -224,21 +225,17 @@ private:
 				{
 					for (auto &mesh : baseGASHandle->GetMeshes())
 					{
-						if (!mesh->GetSharedResource()->vertexBuffer.HasGpuComponent("CUDA")) {
-							throw std::runtime_error("VertexBuffer of Mesh '" + mesh->GetUniqueResource()->name + "' Has No CUDA Component!");
+						for (auto &vertexBuffer : mesh->GetSharedResource()->vertexBuffers)
+						{
+							if (!vertexBuffer.HasGpuComponent("CUDA"))
+							{
+								throw std::runtime_error("VertexBuffer of Mesh '" + mesh->GetUniqueResource()->name + "' Has No CUDA Component!");
+							}
 						}
-						if (!mesh->GetSharedResource()->normalBuffer.HasGpuComponent("CUDA")) {
-							throw std::runtime_error("NormalBuffer of Mesh '" + mesh->GetUniqueResource()->name + "' Has No CUDA Component!");
-						}
-						if (!mesh->GetSharedResource()->texCrdBuffer.HasGpuComponent("CUDA")) {
-							throw std::runtime_error("TexCrdBuffer of Mesh '" + mesh->GetUniqueResource()->name + "' Has No CUDA Component!");
-						}
-						if (!mesh->GetUniqueResource()->triIndBuffer.HasGpuComponent("CUDA")) {
-							throw std::runtime_error("TriIndBuffer of Mesh '" + mesh->GetUniqueResource()->name + "' Has No CUDA Component!");
-						}
-						auto cudaVertexBuffer = mesh->GetSharedResource()->vertexBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float3>>("CUDA");
-						auto cudaNormalBuffer = mesh->GetSharedResource()->normalBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float3>>("CUDA");
-						auto cudaTexCrdBuffer = mesh->GetSharedResource()->texCrdBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float2>>("CUDA");
+
+						auto cudaVertexBuffer = mesh->GetSharedResource()->vertexBuffers[0].GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float>>("CUDA");
+						auto cudaNormalBuffer = mesh->GetSharedResource()->vertexBuffers[1].GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float>>("CUDA");
+						auto cudaTexCrdBuffer = mesh->GetSharedResource()->vertexBuffers[2].GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float>>("CUDA");
 						auto cudaTriIndBuffer = mesh->GetUniqueResource()->triIndBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<uint3>>("CUDA");
 						for (size_t i = 0; i < mesh->GetUniqueResource()->materials.size(); ++i)
 						{
@@ -246,10 +243,10 @@ private:
 							auto &material = materials[materialId];
 							HitgroupData radianceHgData = {};
 							{
-								radianceHgData.vertices   = cudaVertexBuffer->GetHandle().getDevicePtr();
-								radianceHgData.normals    = cudaNormalBuffer->GetHandle().getDevicePtr();
-								radianceHgData.texCoords  = cudaTexCrdBuffer->GetHandle().getDevicePtr();
-								radianceHgData.indices    = cudaTriIndBuffer->GetHandle().getDevicePtr();
+								radianceHgData.vertices = reinterpret_cast<float3*>(cudaVertexBuffer->GetHandle().getDevicePtr());
+								radianceHgData.normals = reinterpret_cast<float3*>(cudaNormalBuffer->GetHandle().getDevicePtr());
+								radianceHgData.texCoords = reinterpret_cast<float2*>(cudaTexCrdBuffer->GetHandle().getDevicePtr());
+								radianceHgData.indices = cudaTriIndBuffer->GetHandle().getDevicePtr();
 								radianceHgData.diffuseTex = m_ParentApp->GetTexture(material.GetString("diffTex")).getHandle();
 								radianceHgData.specularTex = m_ParentApp->GetTexture(material.GetString("specTex")).getHandle();
 								radianceHgData.emissionTex = m_ParentApp->GetTexture(material.GetString("emitTex")).getHandle();
@@ -349,7 +346,7 @@ class TestPG3SimpleNEETracer : public test::RTTracer
 public:
 	struct UserData
 	{
-		uchar4*      frameBuffer;
+		uchar4 *frameBuffer;
 		unsigned int samplePerAll;
 		unsigned int samplePerLaunch;
 	};
@@ -533,21 +530,17 @@ private:
 				{
 					for (auto &mesh : baseGASHandle->GetMeshes())
 					{
-						if (!mesh->GetSharedResource()->vertexBuffer.HasGpuComponent("CUDA")) {
-							throw std::runtime_error("VertexBuffer of Mesh '" + mesh->GetUniqueResource()->name + "' Has No CUDA Component!");
+						for (auto &vertexBuffer : mesh->GetSharedResource()->vertexBuffers)
+						{
+							if (!vertexBuffer.HasGpuComponent("CUDA"))
+							{
+								throw std::runtime_error("VertexBuffer of Mesh '" + mesh->GetUniqueResource()->name + "' Has No CUDA Component!");
+							}
 						}
-						if (!mesh->GetSharedResource()->normalBuffer.HasGpuComponent("CUDA")) {
-							throw std::runtime_error("NormalBuffer of Mesh '" + mesh->GetUniqueResource()->name + "' Has No CUDA Component!");
-						}
-						if (!mesh->GetSharedResource()->texCrdBuffer.HasGpuComponent("CUDA")) {
-							throw std::runtime_error("TexCrdBuffer of Mesh '" + mesh->GetUniqueResource()->name + "' Has No CUDA Component!");
-						}
-						if (!mesh->GetUniqueResource()->triIndBuffer.HasGpuComponent("CUDA")) {
-							throw std::runtime_error("TriIndBuffer of Mesh '" + mesh->GetUniqueResource()->name + "' Has No CUDA Component!");
-						}
-						auto cudaVertexBuffer = mesh->GetSharedResource()->vertexBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float3>>("CUDA");
-						auto cudaNormalBuffer = mesh->GetSharedResource()->normalBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float3>>("CUDA");
-						auto cudaTexCrdBuffer = mesh->GetSharedResource()->texCrdBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float2>>("CUDA");
+
+						auto cudaVertexBuffer = mesh->GetSharedResource()->vertexBuffers[0].GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float>>("CUDA");
+						auto cudaNormalBuffer = mesh->GetSharedResource()->vertexBuffers[1].GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float>>("CUDA");
+						auto cudaTexCrdBuffer = mesh->GetSharedResource()->vertexBuffers[2].GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float>>("CUDA");
 						auto cudaTriIndBuffer = mesh->GetUniqueResource()->triIndBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<uint3>>("CUDA");
 						for (size_t i = 0; i < mesh->GetUniqueResource()->materials.size(); ++i)
 						{
@@ -555,9 +548,9 @@ private:
 							auto &material = materials[materialId];
 							HitgroupData radianceHgData = {};
 							{
-								radianceHgData.vertices = cudaVertexBuffer->GetHandle().getDevicePtr();
-								radianceHgData.normals = cudaNormalBuffer->GetHandle().getDevicePtr();
-								radianceHgData.texCoords = cudaTexCrdBuffer->GetHandle().getDevicePtr();
+								radianceHgData.vertices = reinterpret_cast<float3*>(cudaVertexBuffer->GetHandle().getDevicePtr());
+								radianceHgData.normals = reinterpret_cast<float3*>(cudaNormalBuffer->GetHandle().getDevicePtr());
+								radianceHgData.texCoords = reinterpret_cast<float2*>(cudaTexCrdBuffer->GetHandle().getDevicePtr());
 								radianceHgData.indices = cudaTriIndBuffer->GetHandle().getDevicePtr();
 								radianceHgData.diffuseTex = m_ParentApp->GetTexture(material.GetString("diffTex")).getHandle();
 								radianceHgData.specularTex = m_ParentApp->GetTexture(material.GetString("specTex")).getHandle();
@@ -656,11 +649,12 @@ class TestPG3GuideTracer : public test::RTTracer
 public:
 	struct UserData
 	{
-		uchar4*      frameBuffer;
+		uchar4 *frameBuffer;
 		unsigned int samplePerAll;
 		unsigned int samplePerLaunch;
 		unsigned int sampleForBudget;
 	};
+
 private:
 	using RayGRecord = rtlib::SBTRecord<RayGenData>;
 	using MissRecord = rtlib::SBTRecord<MissData>;
@@ -736,7 +730,7 @@ public:
 			RTLIB_CUDA_CHECK(cudaMemcpy(m_HGRecordBuffers.gpuHandle.getDevicePtr() + m_LightHgRecIndex, &m_HGRecordBuffers.cpuHandle[m_LightHgRecIndex], sizeof(HitGRecord), cudaMemcpyHostToDevice));
 		}
 	}
-	virtual bool ShouldLock()const noexcept { return true; }
+	virtual bool ShouldLock() const noexcept { return true; }
 	virtual ~TestPG3GuideTracer() {}
 
 private:
@@ -759,18 +753,18 @@ private:
 		auto guideCompileOptions = OptixPipelineCompileOptions{};
 		{
 			guideCompileOptions.pipelineLaunchParamsVariableName = "params";
-			guideCompileOptions.usesPrimitiveTypeFlags           = OPTIX_PRIMITIVE_TYPE_TRIANGLE;
-			guideCompileOptions.traversableGraphFlags            = OPTIX_TRAVERSABLE_GRAPH_FLAG_ALLOW_ANY;
-			guideCompileOptions.usesMotionBlur                   = false;
-			guideCompileOptions.numAttributeValues               = 3;
-			guideCompileOptions.numPayloadValues                 = 8;
+			guideCompileOptions.usesPrimitiveTypeFlags = OPTIX_PRIMITIVE_TYPE_TRIANGLE;
+			guideCompileOptions.traversableGraphFlags = OPTIX_TRAVERSABLE_GRAPH_FLAG_ALLOW_ANY;
+			guideCompileOptions.usesMotionBlur = false;
+			guideCompileOptions.numAttributeValues = 3;
+			guideCompileOptions.numPayloadValues = 8;
 		}
 		auto guideLinkOptions = OptixPipelineLinkOptions{};
 		{
 #ifndef NDEBUG
-			guideLinkOptions.debugLevel  = static_cast<OptixCompileDebugLevel>(rtlib::OPXCompileDebugLevel::Minimal);
+			guideLinkOptions.debugLevel = static_cast<OptixCompileDebugLevel>(rtlib::OPXCompileDebugLevel::Minimal);
 #else
-			guideLinkOptions.debugLevel  = static_cast<OptixCompileDebugLevel>(rtlib::OPXCompileDebugLevel::None);
+			guideLinkOptions.debugLevel = static_cast<OptixCompileDebugLevel>(rtlib::OPXCompileDebugLevel::None);
 #endif
 			guideLinkOptions.maxTraceDepth = 2;
 		}
@@ -778,10 +772,10 @@ private:
 		{
 #ifndef NDEBUG
 			guideModuleOptions.debugLevel = static_cast<OptixCompileDebugLevel>(rtlib::OPXCompileDebugLevel::Minimal);
-			guideModuleOptions.optLevel   = OPTIX_COMPILE_OPTIMIZATION_DEFAULT;
+			guideModuleOptions.optLevel = OPTIX_COMPILE_OPTIMIZATION_DEFAULT;
 #else
 			guideModuleOptions.debugLevel = static_cast<OptixCompileDebugLevel>(rtlib::OPXCompileDebugLevel::None);
-			guideModuleOptions.optLevel   = OPTIX_COMPILE_OPTIMIZATION_LEVEL_3;
+			guideModuleOptions.optLevel = OPTIX_COMPILE_OPTIMIZATION_LEVEL_3;
 #endif
 		}
 		guideModuleOptions.maxRegisterCount = OPTIX_COMPILE_DEFAULT_MAX_REGISTER_COUNT;
@@ -831,21 +825,17 @@ private:
 				{
 					for (auto &mesh : baseGASHandle->GetMeshes())
 					{
-						if (!mesh->GetSharedResource()->vertexBuffer.HasGpuComponent("CUDA")) {
-							throw std::runtime_error("VertexBuffer of Mesh '" + mesh->GetUniqueResource()->name + "' Has No CUDA Component!");
+						for (auto &vertexBuffer : mesh->GetSharedResource()->vertexBuffers)
+						{
+							if (!vertexBuffer.HasGpuComponent("CUDA"))
+							{
+								throw std::runtime_error("VertexBuffer of Mesh '" + mesh->GetUniqueResource()->name + "' Has No CUDA Component!");
+							}
 						}
-						if (!mesh->GetSharedResource()->normalBuffer.HasGpuComponent("CUDA")) {
-							throw std::runtime_error("NormalBuffer of Mesh '" + mesh->GetUniqueResource()->name + "' Has No CUDA Component!");
-						}
-						if (!mesh->GetSharedResource()->texCrdBuffer.HasGpuComponent("CUDA")) {
-							throw std::runtime_error("TexCrdBuffer of Mesh '" + mesh->GetUniqueResource()->name + "' Has No CUDA Component!");
-						}
-						if (!mesh->GetUniqueResource()->triIndBuffer.HasGpuComponent("CUDA")) {
-							throw std::runtime_error("TriIndBuffer of Mesh '" + mesh->GetUniqueResource()->name + "' Has No CUDA Component!");
-						}
-						auto cudaVertexBuffer = mesh->GetSharedResource()->vertexBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float3>>("CUDA");
-						auto cudaNormalBuffer = mesh->GetSharedResource()->normalBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float3>>("CUDA");
-						auto cudaTexCrdBuffer = mesh->GetSharedResource()->texCrdBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float2>>("CUDA");
+
+						auto cudaVertexBuffer = mesh->GetSharedResource()->vertexBuffers[0].GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float>>("CUDA");
+						auto cudaNormalBuffer = mesh->GetSharedResource()->vertexBuffers[1].GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float>>("CUDA");
+						auto cudaTexCrdBuffer = mesh->GetSharedResource()->vertexBuffers[2].GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float>>("CUDA");
 						auto cudaTriIndBuffer = mesh->GetUniqueResource()->triIndBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<uint3>>("CUDA");
 						for (size_t i = 0; i < mesh->GetUniqueResource()->materials.size(); ++i)
 						{
@@ -853,10 +843,10 @@ private:
 							auto &material = materials[materialId];
 							HitgroupData radianceHgData = {};
 							{
-								radianceHgData.vertices   = cudaVertexBuffer->GetHandle().getDevicePtr();
-								radianceHgData.normals    = cudaNormalBuffer->GetHandle().getDevicePtr();
-								radianceHgData.texCoords  = cudaTexCrdBuffer->GetHandle().getDevicePtr();
-								radianceHgData.indices    = cudaTriIndBuffer->GetHandle().getDevicePtr();
+								radianceHgData.vertices = reinterpret_cast<float3*>(cudaVertexBuffer->GetHandle().getDevicePtr());
+								radianceHgData.normals = reinterpret_cast<float3*>(cudaNormalBuffer->GetHandle().getDevicePtr());
+								radianceHgData.texCoords = reinterpret_cast<float2*>(cudaTexCrdBuffer->GetHandle().getDevicePtr());
+								radianceHgData.indices = cudaTriIndBuffer->GetHandle().getDevicePtr();
 								radianceHgData.diffuseTex = m_ParentApp->GetTexture(material.GetString("diffTex")).getHandle();
 								radianceHgData.specularTex = m_ParentApp->GetTexture(material.GetString("specTex")).getHandle();
 								radianceHgData.emissionTex = m_ParentApp->GetTexture(material.GetString("emitTex")).getHandle();
@@ -1014,6 +1004,7 @@ private:
 	{
 		m_SeedBuffer.reset();
 	}
+
 private:
 	TestPG3Application *m_ParentApp = nullptr;
 	Pipeline m_Pipeline = {};
@@ -1042,7 +1033,7 @@ class TestPG3GuideNEETracer : public test::RTTracer
 public:
 	struct UserData
 	{
-		uchar4*      frameBuffer;
+		uchar4 *frameBuffer;
 		unsigned int samplePerAll;
 		unsigned int samplePerLaunch;
 		unsigned int sampleForBudget;
@@ -1123,7 +1114,7 @@ public:
 			RTLIB_CUDA_CHECK(cudaMemcpy(m_HGRecordBuffers.gpuHandle.getDevicePtr() + m_LightHgRecIndex, &m_HGRecordBuffers.cpuHandle[m_LightHgRecIndex], sizeof(HitGRecord), cudaMemcpyHostToDevice));
 		}
 	}
-	virtual bool ShouldLock()const noexcept override { return true; }
+	virtual bool ShouldLock() const noexcept override { return true; }
 	virtual ~TestPG3GuideNEETracer() {}
 
 private:
@@ -1157,10 +1148,10 @@ private:
 		{
 #ifndef NDEBUG
 			guideModuleOptions.debugLevel = static_cast<OptixCompileDebugLevel>(rtlib::OPXCompileDebugLevel::Minimal);
-			guideModuleOptions.optLevel   = OPTIX_COMPILE_OPTIMIZATION_DEFAULT;
+			guideModuleOptions.optLevel = OPTIX_COMPILE_OPTIMIZATION_DEFAULT;
 #else
 			guideModuleOptions.debugLevel = static_cast<OptixCompileDebugLevel>(rtlib::OPXCompileDebugLevel::None);
-			guideModuleOptions.optLevel   = OPTIX_COMPILE_OPTIMIZATION_LEVEL_3;
+			guideModuleOptions.optLevel = OPTIX_COMPILE_OPTIMIZATION_LEVEL_3;
 #endif
 		}
 		guideModuleOptions.maxRegisterCount = OPTIX_COMPILE_DEFAULT_MAX_REGISTER_COUNT;
@@ -1168,7 +1159,7 @@ private:
 		m_Modules["RayGuide"] = m_Pipeline.createModule(rayGuidePtxData, guideModuleOptions);
 		m_RGProgramGroups["Guide.Default"] = m_Pipeline.createRaygenPG({m_Modules["RayGuide"], RTLIB_RAYGEN_PROGRAM_STR(def)});
 		m_RGProgramGroups["Guide.Guiding.Default"] = m_Pipeline.createRaygenPG({m_Modules["RayGuide"], RTLIB_RAYGEN_PROGRAM_STR(pg_def)});
-		m_RGProgramGroups["Guide.Guiding.NEE"]     = m_Pipeline.createRaygenPG({ m_Modules["RayGuide"], RTLIB_RAYGEN_PROGRAM_STR(pg_nee) });
+		m_RGProgramGroups["Guide.Guiding.NEE"] = m_Pipeline.createRaygenPG({m_Modules["RayGuide"], RTLIB_RAYGEN_PROGRAM_STR(pg_nee)});
 		m_MSProgramGroups["Guide.Radiance"] = m_Pipeline.createMissPG({m_Modules["RayGuide"], RTLIB_MISS_PROGRAM_STR(radiance)});
 		m_MSProgramGroups["Guide.Occluded"] = m_Pipeline.createMissPG({m_Modules["RayGuide"], RTLIB_MISS_PROGRAM_STR(occluded)});
 		m_HGProgramGroups["Guide.Radiance.Diffuse.Default"] = m_Pipeline.createHitgroupPG({m_Modules["RayGuide"], RTLIB_CLOSESTHIT_PROGRAM_STR(radiance_for_diffuse_def)}, {}, {});
@@ -1220,21 +1211,17 @@ private:
 				{
 					for (auto &mesh : baseGASHandle->GetMeshes())
 					{
-						if (!mesh->GetSharedResource()->vertexBuffer.HasGpuComponent("CUDA")) {
-							throw std::runtime_error("VertexBuffer of Mesh '" + mesh->GetUniqueResource()->name + "' Has No CUDA Component!");
+						for (auto &vertexBuffer : mesh->GetSharedResource()->vertexBuffers)
+						{
+							if (!vertexBuffer.HasGpuComponent("CUDA"))
+							{
+								throw std::runtime_error("VertexBuffer of Mesh '" + mesh->GetUniqueResource()->name + "' Has No CUDA Component!");
+							}
 						}
-						if (!mesh->GetSharedResource()->normalBuffer.HasGpuComponent("CUDA")) {
-							throw std::runtime_error("NormalBuffer of Mesh '" + mesh->GetUniqueResource()->name + "' Has No CUDA Component!");
-						}
-						if (!mesh->GetSharedResource()->texCrdBuffer.HasGpuComponent("CUDA")) {
-							throw std::runtime_error("TexCrdBuffer of Mesh '" + mesh->GetUniqueResource()->name + "' Has No CUDA Component!");
-						}
-						if (!mesh->GetUniqueResource()->triIndBuffer.HasGpuComponent("CUDA")) {
-							throw std::runtime_error("TriIndBuffer of Mesh '" + mesh->GetUniqueResource()->name + "' Has No CUDA Component!");
-						}
-						auto cudaVertexBuffer = mesh->GetSharedResource()->vertexBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float3>>("CUDA");
-						auto cudaNormalBuffer = mesh->GetSharedResource()->normalBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float3>>("CUDA");
-						auto cudaTexCrdBuffer = mesh->GetSharedResource()->texCrdBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float2>>("CUDA");
+
+						auto cudaVertexBuffer = mesh->GetSharedResource()->vertexBuffers[0].GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float>>("CUDA");
+						auto cudaNormalBuffer = mesh->GetSharedResource()->vertexBuffers[1].GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float>>("CUDA");
+						auto cudaTexCrdBuffer = mesh->GetSharedResource()->vertexBuffers[2].GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float>>("CUDA");
 						auto cudaTriIndBuffer = mesh->GetUniqueResource()->triIndBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<uint3>>("CUDA");
 						for (size_t i = 0; i < mesh->GetUniqueResource()->materials.size(); ++i)
 						{
@@ -1242,9 +1229,9 @@ private:
 							auto &material = materials[materialId];
 							HitgroupData radianceHgData = {};
 							{
-								radianceHgData.vertices = cudaVertexBuffer->GetHandle().getDevicePtr();
-								radianceHgData.normals = cudaNormalBuffer->GetHandle().getDevicePtr();
-								radianceHgData.texCoords = cudaTexCrdBuffer->GetHandle().getDevicePtr();
+								radianceHgData.vertices = reinterpret_cast<float3*>(cudaVertexBuffer->GetHandle().getDevicePtr());
+								radianceHgData.normals = reinterpret_cast<float3*>(cudaNormalBuffer->GetHandle().getDevicePtr());
+								radianceHgData.texCoords = reinterpret_cast<float2*>(cudaTexCrdBuffer->GetHandle().getDevicePtr());
 								radianceHgData.indices = cudaTriIndBuffer->GetHandle().getDevicePtr();
 								radianceHgData.diffuseTex = m_ParentApp->GetTexture(material.GetString("diffTex")).getHandle();
 								radianceHgData.specularTex = m_ParentApp->GetTexture(material.GetString("specTex")).getHandle();
@@ -1350,15 +1337,15 @@ private:
 		{
 			return;
 		}
-		m_Params.cpuHandle[0].width           = config.width;
-		m_Params.cpuHandle[0].height          = config.height;
-		m_Params.cpuHandle[0].sdTree          = m_ParentApp->GetSTree()->GetGpuHandle();
-		m_Params.cpuHandle[0].accumBuffer     = m_ParentApp->GetAccumBuffer().getDevicePtr();
-		m_Params.cpuHandle[0].frameBuffer     = pUserData->frameBuffer;
-		m_Params.cpuHandle[0].seedBuffer      = m_SeedBuffer.getDevicePtr();
-		m_Params.cpuHandle[0].isBuilt         = m_CurIteration > 0;
-		m_Params.cpuHandle[0].isFinal         = m_SampleForPass >= m_SampleForRemain;
-		m_Params.cpuHandle[0].samplePerALL    = m_SamplePerAll;
+		m_Params.cpuHandle[0].width = config.width;
+		m_Params.cpuHandle[0].height = config.height;
+		m_Params.cpuHandle[0].sdTree = m_ParentApp->GetSTree()->GetGpuHandle();
+		m_Params.cpuHandle[0].accumBuffer = m_ParentApp->GetAccumBuffer().getDevicePtr();
+		m_Params.cpuHandle[0].frameBuffer = pUserData->frameBuffer;
+		m_Params.cpuHandle[0].seedBuffer = m_SeedBuffer.getDevicePtr();
+		m_Params.cpuHandle[0].isBuilt = m_CurIteration > 0;
+		m_Params.cpuHandle[0].isFinal = m_SampleForPass >= m_SampleForRemain;
+		m_Params.cpuHandle[0].samplePerALL = m_SamplePerAll;
 		m_Params.cpuHandle[0].samplePerLaunch = m_SamplePerLaunch;
 		cudaMemcpyAsync(m_Params.gpuHandle.getDevicePtr(), &m_Params.cpuHandle[0], sizeof(RayTraceParams), cudaMemcpyHostToDevice, config.stream);
 		//cudaMemcpy(m_Params.gpuHandle.getDevicePtr(), &m_Params.cpuHandle[0], sizeof(RayTraceParams), cudaMemcpyHostToDevice);
@@ -1367,7 +1354,7 @@ private:
 		{
 			RTLIB_CU_CHECK(cuStreamSynchronize(config.stream));
 		}
-		m_Params.cpuHandle[0].samplePerALL      += m_SamplePerLaunch;
+		m_Params.cpuHandle[0].samplePerALL += m_SamplePerLaunch;
 		m_SamplePerAll = pUserData->samplePerAll = m_Params.cpuHandle[0].samplePerALL;
 		m_SamplePerTmp += m_SamplePerLaunch;
 	}
@@ -1404,19 +1391,20 @@ private:
 	{
 		m_SeedBuffer.reset();
 	}
+
 private:
-	TestPG3Application *                    m_ParentApp          = nullptr;
-	Pipeline                                m_Pipeline           = {};
-	ModuleMap                               m_Modules            = {};
-	RGProgramGroupMap                       m_RGProgramGroups    = {};
-	MSProgramGroupMap                       m_MSProgramGroups    = {};
-	HGProgramGroupMap                       m_HGProgramGroups    = {};
-	OptixShaderBindingTable                 m_ShaderBindingTable = {};
-	rtlib::CUDAUploadBuffer<RayGRecord>     m_RGRecordBuffer     = {};
-	rtlib::CUDAUploadBuffer<MissRecord>     m_MSRecordBuffers    = {};
-	rtlib::CUDAUploadBuffer<HitGRecord>     m_HGRecordBuffers    = {};
-	rtlib::CUDAUploadBuffer<RayTraceParams> m_Params             = {};
-	rtlib::CUDABuffer<unsigned int>         m_SeedBuffer         = {};
+	TestPG3Application *m_ParentApp = nullptr;
+	Pipeline m_Pipeline = {};
+	ModuleMap m_Modules = {};
+	RGProgramGroupMap m_RGProgramGroups = {};
+	MSProgramGroupMap m_MSProgramGroups = {};
+	HGProgramGroupMap m_HGProgramGroups = {};
+	OptixShaderBindingTable m_ShaderBindingTable = {};
+	rtlib::CUDAUploadBuffer<RayGRecord> m_RGRecordBuffer = {};
+	rtlib::CUDAUploadBuffer<MissRecord> m_MSRecordBuffers = {};
+	rtlib::CUDAUploadBuffer<HitGRecord> m_HGRecordBuffers = {};
+	rtlib::CUDAUploadBuffer<RayTraceParams> m_Params = {};
+	rtlib::CUDABuffer<unsigned int> m_SeedBuffer = {};
 	unsigned int m_LightHgRecIndex = 0;
 	unsigned int m_SamplePerAll = 0;
 	unsigned int m_SamplePerTmp = 0;
@@ -1441,6 +1429,7 @@ public:
 		uchar4 *depthBuffer;
 		uchar4 *sTreeColBuffer;
 	};
+
 private:
 	using RayGRecord = rtlib::SBTRecord<RayGenData>;
 	using MissRecord = rtlib::SBTRecord<MissData>;
@@ -1581,7 +1570,7 @@ private:
 		m_RGRecordBuffer.cpuHandle[0].data.w = w;
 		m_RGRecordBuffer.Upload();
 		m_MSRecordBuffers.cpuHandle.resize(RAY_TYPE_COUNT);
-		m_MSRecordBuffers.cpuHandle[RAY_TYPE_RADIANCE]  = m_MSProgramGroups["Debug.Default"].getSBTRecord<MissData>();
+		m_MSRecordBuffers.cpuHandle[RAY_TYPE_RADIANCE] = m_MSProgramGroups["Debug.Default"].getSBTRecord<MissData>();
 		m_MSRecordBuffers.cpuHandle[RAY_TYPE_RADIANCE].data.bgColor = {0, 0, 0, 0};
 		m_MSRecordBuffers.cpuHandle[RAY_TYPE_OCCLUSION] = m_MSProgramGroups["Debug.Default"].getSBTRecord<MissData>();
 		m_MSRecordBuffers.Upload();
@@ -1594,31 +1583,27 @@ private:
 				{
 					for (auto &mesh : baseGASHandle->GetMeshes())
 					{
-						if (!mesh->GetSharedResource()->vertexBuffer.HasGpuComponent("CUDA")) {
-							throw std::runtime_error("VertexBuffer of Mesh '" + mesh->GetUniqueResource()->name + "' Has No CUDA Component!");
+						for (auto &vertexBuffer : mesh->GetSharedResource()->vertexBuffers)
+						{
+							if (!vertexBuffer.HasGpuComponent("CUDA"))
+							{
+								throw std::runtime_error("VertexBuffer of Mesh '" + mesh->GetUniqueResource()->name + "' Has No CUDA Component!");
+							}
 						}
-						if (!mesh->GetSharedResource()->normalBuffer.HasGpuComponent("CUDA")) {
-							throw std::runtime_error("NormalBuffer of Mesh '" + mesh->GetUniqueResource()->name + "' Has No CUDA Component!");
-						}
-						if (!mesh->GetSharedResource()->texCrdBuffer.HasGpuComponent("CUDA")) {
-							throw std::runtime_error("TexCrdBuffer of Mesh '" + mesh->GetUniqueResource()->name + "' Has No CUDA Component!");
-						}
-						if (!mesh->GetUniqueResource()->triIndBuffer.HasGpuComponent("CUDA")) {
-							throw std::runtime_error("TriIndBuffer of Mesh '" + mesh->GetUniqueResource()->name + "' Has No CUDA Component!");
-						}
-						auto cudaVertexBuffer = mesh->GetSharedResource()->vertexBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float3>>("CUDA");
-						auto cudaNormalBuffer = mesh->GetSharedResource()->normalBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float3>>("CUDA");
-						auto cudaTexCrdBuffer = mesh->GetSharedResource()->texCrdBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float2>>("CUDA");
-						auto cudaTriIndBuffer = mesh->GetUniqueResource()->triIndBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<uint3>> ("CUDA");
+
+						auto cudaVertexBuffer = mesh->GetSharedResource()->vertexBuffers[0].GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float>>("CUDA");
+						auto cudaNormalBuffer = mesh->GetSharedResource()->vertexBuffers[1].GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float>>("CUDA");
+						auto cudaTexCrdBuffer = mesh->GetSharedResource()->vertexBuffers[2].GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float>>("CUDA");
+						auto cudaTriIndBuffer = mesh->GetUniqueResource()->triIndBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<uint3>>("CUDA");
 						for (size_t i = 0; i < mesh->GetUniqueResource()->materials.size(); ++i)
 						{
 							auto materialId = mesh->GetUniqueResource()->materials[i];
 							auto &material = materials[materialId];
 							HitgroupData radianceHgData = {};
 							{
-								radianceHgData.vertices = cudaVertexBuffer->GetHandle().getDevicePtr();
-								radianceHgData.normals = cudaNormalBuffer->GetHandle().getDevicePtr();
-								radianceHgData.texCoords = cudaTexCrdBuffer->GetHandle().getDevicePtr();
+								radianceHgData.vertices = reinterpret_cast<float3*>(cudaVertexBuffer->GetHandle().getDevicePtr());
+								radianceHgData.normals = reinterpret_cast<float3*>(cudaNormalBuffer->GetHandle().getDevicePtr());
+								radianceHgData.texCoords = reinterpret_cast<float2*>(cudaTexCrdBuffer->GetHandle().getDevicePtr());
 								radianceHgData.indices = cudaTriIndBuffer->GetHandle().getDevicePtr();
 								radianceHgData.diffuseTex = m_ParentApp->GetTexture(material.GetString("diffTex")).getHandle();
 								radianceHgData.specularTex = m_ParentApp->GetTexture(material.GetString("specTex")).getHandle();
@@ -1634,7 +1619,7 @@ private:
 							{
 								m_LightHgRecIndex = RAY_TYPE_COUNT * sbtOffset + RAY_TYPE_COUNT * i + RAY_TYPE_RADIANCE;
 							}
-							m_HGRecordBuffers.cpuHandle[RAY_TYPE_COUNT * sbtOffset + RAY_TYPE_COUNT * i + RAY_TYPE_RADIANCE]  = m_HGProgramGroups["Debug.Default"].getSBTRecord<HitgroupData>(radianceHgData);
+							m_HGRecordBuffers.cpuHandle[RAY_TYPE_COUNT * sbtOffset + RAY_TYPE_COUNT * i + RAY_TYPE_RADIANCE] = m_HGProgramGroups["Debug.Default"].getSBTRecord<HitgroupData>(radianceHgData);
 							m_HGRecordBuffers.cpuHandle[RAY_TYPE_COUNT * sbtOffset + RAY_TYPE_COUNT * i + RAY_TYPE_OCCLUSION] = m_HGProgramGroups["Debug.Default"].getSBTRecord<HitgroupData>({});
 						}
 						sbtOffset += mesh->GetUniqueResource()->materials.size();
@@ -1688,19 +1673,20 @@ private:
 	{
 		m_Params.Reset();
 	}
+
 private:
-	TestPG3Application *					m_ParentApp          = nullptr;
-	Pipeline								m_Pipeline           = {};
-	ModuleMap								m_Modules            = {};
-	RGProgramGroupMap						m_RGProgramGroups    = {};
-	MSProgramGroupMap						m_MSProgramGroups    = {};
-	HGProgramGroupMap						m_HGProgramGroups    = {};
-	OptixShaderBindingTable					m_ShaderBindingTable = {};
-	rtlib::CUDAUploadBuffer<RayGRecord>     m_RGRecordBuffer     = {};
-	rtlib::CUDAUploadBuffer<MissRecord>     m_MSRecordBuffers    = {};
-	rtlib::CUDAUploadBuffer<HitGRecord>     m_HGRecordBuffers    = {};
-	rtlib::CUDAUploadBuffer<RayDebugParams> m_Params             = {};
-	unsigned int                            m_LightHgRecIndex    = 0;
+	TestPG3Application *m_ParentApp = nullptr;
+	Pipeline m_Pipeline = {};
+	ModuleMap m_Modules = {};
+	RGProgramGroupMap m_RGProgramGroups = {};
+	MSProgramGroupMap m_MSProgramGroups = {};
+	HGProgramGroupMap m_HGProgramGroups = {};
+	OptixShaderBindingTable m_ShaderBindingTable = {};
+	rtlib::CUDAUploadBuffer<RayGRecord> m_RGRecordBuffer = {};
+	rtlib::CUDAUploadBuffer<MissRecord> m_MSRecordBuffers = {};
+	rtlib::CUDAUploadBuffer<HitGRecord> m_HGRecordBuffers = {};
+	rtlib::CUDAUploadBuffer<RayDebugParams> m_Params = {};
+	unsigned int m_LightHgRecIndex = 0;
 };
 // GLFW
 void TestPG3Application::InitGLFW()
@@ -1783,7 +1769,7 @@ void TestPG3Application::InitAssets()
 		//std::filesystem::canonical(std::filesystem::path(TEST_TEST_PG_DATA_PATH "/Models/Lumberyard/Interior/interior.obj"))
 		std::filesystem::canonical(std::filesystem::path(TEST_TEST_PG_DATA_PATH "/Models/CornellBox/CornellBox-Water.obj"))
 		//std::filesystem::canonical(std::filesystem::path(TEST_TEST_PG_DATA_PATH "/Models/CornellBox/CornellBox-Original.obj"))
-	    //std::filesystem::canonical(std::filesystem::path(TEST_TEST_PG_DATA_PATH "/Models/Sponza/Sponza.obj"))
+		//std::filesystem::canonical(std::filesystem::path(TEST_TEST_PG_DATA_PATH "/Models/Sponza/Sponza.obj"))
 	};
 #if 0
 	for (const std::filesystem::directory_entry entry : std::filesystem::directory_iterator(std::filesystem::path(TEST_TEST_PG_DATA_PATH "/Models/Pool/")))
@@ -1805,20 +1791,14 @@ void TestPG3Application::InitAssets()
 		{
 			throw std::runtime_error("Failed To Load Obj Model!");
 		}
-		auto& objModel = m_ObjModelAssets.GetAsset(objModelPath.filename().replace_extension().string());
-		if (!objModel.meshGroup->GetSharedResource()->vertexBuffer.HasGpuComponent("CUDA"))
-		{
-			objModel.meshGroup->GetSharedResource()->vertexBuffer.AddGpuComponent<rtlib::ext::resources::CUDABufferComponent<float3>>("CUDA");
+		auto &objModel = m_ObjModelAssets.GetAsset(objModelPath.filename().replace_extension().string());
+		for (auto & vertexBuffer: objModel.meshGroup->GetSharedResource()->vertexBuffers){
+			if (!vertexBuffer.HasGpuComponent("CUDA"))
+			{
+				vertexBuffer.AddGpuComponent<rtlib::ext::resources::CUDABufferComponent<float>>("CUDA");
+			}
 		}
-		if (!objModel.meshGroup->GetSharedResource()->normalBuffer.HasGpuComponent("CUDA"))
-		{
-			objModel.meshGroup->GetSharedResource()->normalBuffer.AddGpuComponent<rtlib::ext::resources::CUDABufferComponent<float3>>("CUDA");
-		}
-		if (!objModel.meshGroup->GetSharedResource()->texCrdBuffer.HasGpuComponent("CUDA"))
-		{
-			objModel.meshGroup->GetSharedResource()->texCrdBuffer.AddGpuComponent<rtlib::ext::resources::CUDABufferComponent<float2>>("CUDA");
-		}
-		for (auto& [name, meshUniqueResource] : objModel.meshGroup->GetUniqueResources())
+		for (auto &[name, meshUniqueResource] : objModel.meshGroup->GetUniqueResources())
 		{
 			if (!meshUniqueResource->matIndBuffer.HasGpuComponent("CUDA"))
 			{
@@ -1829,7 +1809,6 @@ void TestPG3Application::InitAssets()
 				meshUniqueResource->triIndBuffer.AddGpuComponent<rtlib::ext::resources::CUDABufferComponent<uint3>>("CUDA");
 			}
 		}
-		
 	}
 	auto smpTexPath = std::filesystem::canonical(std::filesystem::path(TEST_TEST_PG_DATA_PATH "/Textures/white.png"));
 	if (!m_TextureAssets.LoadAsset("", smpTexPath.string()))
@@ -1911,7 +1890,7 @@ void TestPG3Application::InitAccelerationStructures()
 					auto mesh = rtlib::ext::Mesh::New();
 					mesh->SetUniqueResource(meshUniqueResource);
 					mesh->SetSharedResource(objModel.meshGroup->GetSharedResource());
-					
+
 					for (auto &matIdx : mesh->GetUniqueResource()->materials)
 					{
 						matIdx += materialOffset;
@@ -1935,9 +1914,13 @@ void TestPG3Application::InitAccelerationStructures()
 			rtlib::utils::AABB aabb = {};
 			for (auto &mesh : m_GASHandles["World"]->GetMeshes())
 			{
-				for (auto &vertex : mesh->GetSharedResource()->vertexBuffer)
+				for (size_t i = 0 ; mesh->GetSharedResource()->vertexBuffers[0].Size()/3; ++i)
 				{
-					aabb.Update(vertex);
+					aabb.Update(make_float3(
+						mesh->GetSharedResource()->vertexBuffers[0][3*i+0],
+						mesh->GetSharedResource()->vertexBuffers[0][3*i+1],
+						mesh->GetSharedResource()->vertexBuffers[0][3*i+2]
+					));
 				}
 			}
 			// For Sponza
@@ -1951,40 +1934,59 @@ void TestPG3Application::InitAccelerationStructures()
 			auto lightMesh = rtlib::ext::Mesh::New();
 			lightMesh->SetSharedResource(rtlib::ext::MeshSharedResource::New());
 			lightMesh->GetSharedResource()->name = "light";
-			lightMesh->GetSharedResource()->vertexBuffer = {
-				{aabb.min.x, aabb.max.y - 1e-3f, aabb.min.z},
-				{aabb.max.x, aabb.max.y - 1e-3f, aabb.min.z},
-				{aabb.max.x, aabb.max.y - 1e-3f, aabb.max.z},
-				{aabb.min.x, aabb.max.y - 1e-3f, aabb.max.z}};
-			lightMesh->GetSharedResource()->texCrdBuffer = {
-				{0.0f, 0.0f},
-				{1.0f, 0.0f},
-				{1.0f, 1.0f},
-				{0.0f, 1.0f},
+			lightMesh->GetSharedResource()->vertexBuffers.resize(3);
+			lightMesh->GetSharedResource()->vertexBuffers[0] = {
+				 aabb.min.x, aabb.max.y - 1e-3f, aabb.min.z,
+				 aabb.max.x, aabb.max.y - 1e-3f, aabb.min.z,
+				 aabb.max.x, aabb.max.y - 1e-3f, aabb.max.z,
+				 aabb.min.x, aabb.max.y - 1e-3f, aabb.max.z};
+			lightMesh->GetSharedResource()->vertexBuffers[2] = {
+				 0.0f, 0.0f,
+				 1.0f, 0.0f,
+				 1.0f, 1.0f,
+				 0.0f, 1.0f
 			};
-			lightMesh->GetSharedResource()->normalBuffer = {{0.0f, -1.0f, 0.0f}, {0.0f, -1.0f, 0.0f}, {0.0f, -1.0f, 0.0f}, {0.0f, -1.0f, 0.0f}};
+			lightMesh->GetSharedResource()->vertexBuffers[1] = {0.0f, -1.0f, 0.0f, 0.0f, -1.0f, 0.0f,0.0f, -1.0f, 0.0f, 0.0f, -1.0f, 0.0f};
 
+			lightMesh->GetSharedResource()->layouts.resize(3);
+			lightMesh->GetSharedResource()->layouts[0].stride = sizeof(float3);
+			lightMesh->GetSharedResource()->layouts[1].stride = sizeof(float3);
+			lightMesh->GetSharedResource()->layouts[2].stride = sizeof(float2);
+
+			lightMesh->GetSharedResource()->attributes.resize(3);
+			lightMesh->GetSharedResource()->attributes[0].name = "position";
+			lightMesh->GetSharedResource()->attributes[0].format = rtlib::ext::MeshVertexFormat::Float3;
+			lightMesh->GetSharedResource()->attributes[0].offset = 0;
+			lightMesh->GetSharedResource()->attributes[0].bufferIndex = 0;
+			lightMesh->GetSharedResource()->attributes[1].name = "normal";
+			lightMesh->GetSharedResource()->attributes[1].format = rtlib::ext::MeshVertexFormat::Float3;
+			lightMesh->GetSharedResource()->attributes[1].offset = 0;
+			lightMesh->GetSharedResource()->attributes[1].bufferIndex = 1;
+			lightMesh->GetSharedResource()->attributes[2].name = "texCoord";
+			lightMesh->GetSharedResource()->attributes[2].format = rtlib::ext::MeshVertexFormat::Float2;
+			lightMesh->GetSharedResource()->attributes[2].offset = 0;
+			lightMesh->GetSharedResource()->attributes[2].bufferIndex = 2;
 			auto &lightMaterial = m_Materials.back();
 			{
-				lightMaterial.SetString("name"   , "light");
-				lightMaterial.SetFloat3("diffCol", kDefaultLightColor);
-				lightMaterial.SetString("diffTex", "");
-				lightMaterial.SetFloat3("emitCol", kDefaultLightColor);
-				lightMaterial.SetString("emitTex", "");
-				lightMaterial.SetFloat3("specCol", kDefaultLightColor);
-				lightMaterial.SetString("specTex", "");
+				lightMaterial.SetString("name"    , "light");
+				lightMaterial.SetFloat3("diffCol" , kDefaultLightColor);
+				lightMaterial.SetString("diffTex" , "");
+				lightMaterial.SetFloat3("emitCol" , kDefaultLightColor);
+				lightMaterial.SetString("emitTex" , "");
+				lightMaterial.SetFloat3("specCol" , kDefaultLightColor);
+				lightMaterial.SetString("specTex" , "");
 				lightMaterial.SetFloat1("shinness", 0.0f);
-				lightMaterial.SetString("shinTex", "");
-				lightMaterial.SetFloat3("tranCol", kDefaultLightColor);
+				lightMaterial.SetString("shinTex" , "");
+				lightMaterial.SetFloat3("tranCol" , kDefaultLightColor);
 				lightMaterial.SetFloat1("refrIndx", 0.0f);
-				lightMaterial.SetUInt32("illum", 2);
+				lightMaterial.SetUInt32("illum"   , 2);
 			}
-			lightMesh->GetSharedResource()->vertexBuffer.AddGpuComponent<rtlib::ext::resources::CUDABufferComponent<float3>>("CUDA");
-			lightMesh->GetSharedResource()->normalBuffer.AddGpuComponent<rtlib::ext::resources::CUDABufferComponent<float3>>("CUDA");
-			lightMesh->GetSharedResource()->texCrdBuffer.AddGpuComponent<rtlib::ext::resources::CUDABufferComponent<float2>>("CUDA");
+			lightMesh->GetSharedResource()->vertexBuffers[0].AddGpuComponent<rtlib::ext::resources::CUDABufferComponent<float>>("CUDA");
+			lightMesh->GetSharedResource()->vertexBuffers[1].AddGpuComponent<rtlib::ext::resources::CUDABufferComponent<float>>("CUDA");
+			lightMesh->GetSharedResource()->vertexBuffers[2].AddGpuComponent<rtlib::ext::resources::CUDABufferComponent<float>>("CUDA");
 			lightMesh->SetUniqueResource(rtlib::ext::MeshUniqueResource::New());
-			lightMesh->GetUniqueResource()->name = "light";
-			lightMesh->GetUniqueResource()->materials = {(unsigned int)m_Materials.size() - 1};
+			lightMesh->GetUniqueResource()->name 		 = "light";
+			lightMesh->GetUniqueResource()->materials    = {(unsigned int)m_Materials.size() - 1};
 			lightMesh->GetUniqueResource()->matIndBuffer = {0, 0};
 			lightMesh->GetUniqueResource()->triIndBuffer = {{0, 1, 2}, {2, 3, 0}};
 			lightMesh->GetUniqueResource()->matIndBuffer.AddGpuComponent<rtlib::ext::resources::CUDABufferComponent<uint32_t>>("CUDA");
@@ -2027,9 +2029,21 @@ void TestPG3Application::InitLight()
 	auto lightVertices = std::vector<float3>();
 	for (auto &index : lightMesh->GetUniqueResource()->triIndBuffer)
 	{
-		lightVertices.push_back(lightMesh->GetSharedResource()->vertexBuffer[index.x]);
-		lightVertices.push_back(lightMesh->GetSharedResource()->vertexBuffer[index.y]);
-		lightVertices.push_back(lightMesh->GetSharedResource()->vertexBuffer[index.z]);
+		lightVertices.push_back(make_float3(
+			lightMesh->GetSharedResource()->vertexBuffers[0][3*index.x+0],
+			lightMesh->GetSharedResource()->vertexBuffers[0][3*index.x+1],
+			lightMesh->GetSharedResource()->vertexBuffers[0][3*index.x+2]
+		));
+		lightVertices.push_back(make_float3(
+			lightMesh->GetSharedResource()->vertexBuffers[0][3*index.y+0],
+			lightMesh->GetSharedResource()->vertexBuffers[0][3*index.y+1],
+			lightMesh->GetSharedResource()->vertexBuffers[0][3*index.y+2]
+		));		
+		lightVertices.push_back(make_float3(
+			lightMesh->GetSharedResource()->vertexBuffers[0][3*index.z+0],
+			lightMesh->GetSharedResource()->vertexBuffers[0][3*index.z+1],
+			lightMesh->GetSharedResource()->vertexBuffers[0][3*index.z+2]
+		));
 	}
 	auto lightAABB = rtlib::utils::AABB(lightVertices);
 	auto lightV3 = lightAABB.max - lightAABB.min;
@@ -2060,9 +2074,21 @@ void TestPG3Application::InitSTree()
 	{
 		for (auto &index : mesh->GetUniqueResource()->triIndBuffer)
 		{
-			worldAABB.Update(mesh->GetSharedResource()->vertexBuffer[index.x]);
-			worldAABB.Update(mesh->GetSharedResource()->vertexBuffer[index.y]);
-			worldAABB.Update(mesh->GetSharedResource()->vertexBuffer[index.z]);
+			worldAABB.Update(make_float3(
+				mesh->GetSharedResource()->vertexBuffers[0][3*index.x+0],
+				mesh->GetSharedResource()->vertexBuffers[0][3*index.x+1],
+				mesh->GetSharedResource()->vertexBuffers[0][3*index.x+2]
+			));
+			worldAABB.Update(make_float3(
+				mesh->GetSharedResource()->vertexBuffers[0][3*index.y+0],
+				mesh->GetSharedResource()->vertexBuffers[0][3*index.y+1],
+				mesh->GetSharedResource()->vertexBuffers[0][3*index.y+2]
+			));
+			worldAABB.Update(make_float3(
+				mesh->GetSharedResource()->vertexBuffers[0][3*index.z+0],
+				mesh->GetSharedResource()->vertexBuffers[0][3*index.z+1],
+				mesh->GetSharedResource()->vertexBuffers[0][3*index.z+2]
+			));
 		}
 	}
 	m_STree = std::make_shared<test::RTSTreeWrapper>(worldAABB.min, worldAABB.max);
@@ -2085,7 +2111,7 @@ void TestPG3Application::InitFrameResources()
 	m_DebugTexture->setParameteri(GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE, false);
 	m_DebugTexture->setParameteri(GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE, false);
 
-	m_AccumBuffer = rtlib::CUDABuffer<float3>(std::vector<float3>(m_FbWidth*m_FbHeight));
+	m_AccumBuffer = rtlib::CUDABuffer<float3>(std::vector<float3>(m_FbWidth * m_FbHeight));
 
 	m_FrameBuffer = std::make_unique<test::RTFrameBuffer>(m_FbWidth, m_FbHeight);
 	m_FrameBuffer->AddCUGLBuffer("Default");
@@ -2138,52 +2164,52 @@ void TestPG3Application::Trace()
 	if (m_LaunchDebug)
 	{
 		TestPG3DebugTracer::UserData userData = {};
-		userData.diffuseBuffer = m_FrameBuffer->GetCUGLBuffer( "Diffuse" ).map();
+		userData.diffuseBuffer = m_FrameBuffer->GetCUGLBuffer("Diffuse").map();
 		userData.specularBuffer = m_FrameBuffer->GetCUGLBuffer("Specular").map();
 		userData.emissionBuffer = m_FrameBuffer->GetCUGLBuffer("Emission").map();
 		userData.transmitBuffer = m_FrameBuffer->GetCUGLBuffer("Transmit").map();
-		userData.normalBuffer   = m_FrameBuffer->GetCUGLBuffer("Normal"  ).map();
+		userData.normalBuffer = m_FrameBuffer->GetCUGLBuffer("Normal").map();
 		userData.texCoordBuffer = m_FrameBuffer->GetCUGLBuffer("TexCoord").map();
-		userData.depthBuffer    = m_FrameBuffer->GetCUGLBuffer("Depth"   ).map();
-		userData.sTreeColBuffer = m_FrameBuffer->GetCUGLBuffer("STree"   ).map();
+		userData.depthBuffer = m_FrameBuffer->GetCUGLBuffer("Depth").map();
+		userData.sTreeColBuffer = m_FrameBuffer->GetCUGLBuffer("STree").map();
 
 		test::RTTraceConfig traceConfig = {};
-		traceConfig.width     = m_FbWidth;
-		traceConfig.height    = m_FbHeight;
-		traceConfig.depth     = 1;
-		traceConfig.isSync    = true;
+		traceConfig.width = m_FbWidth;
+		traceConfig.height = m_FbHeight;
+		traceConfig.depth = 1;
+		traceConfig.isSync = true;
 		traceConfig.pUserData = &userData;
 		m_DebugActor->Launch(traceConfig);
-		m_SampleForPrvDbg     = m_SamplePerALL;
+		m_SampleForPrvDbg = m_SamplePerALL;
 
-		m_FrameBuffer->GetCUGLBuffer("Diffuse" ).unmap();
+		m_FrameBuffer->GetCUGLBuffer("Diffuse").unmap();
 		m_FrameBuffer->GetCUGLBuffer("Specular").unmap();
 		m_FrameBuffer->GetCUGLBuffer("Emission").unmap();
 		m_FrameBuffer->GetCUGLBuffer("Transmit").unmap();
-		m_FrameBuffer->GetCUGLBuffer("Normal"  ).unmap();
+		m_FrameBuffer->GetCUGLBuffer("Normal").unmap();
 		m_FrameBuffer->GetCUGLBuffer("TexCoord").unmap();
-		m_FrameBuffer->GetCUGLBuffer("Depth"   ).unmap();
-		m_FrameBuffer->GetCUGLBuffer("STree"   ).unmap();
+		m_FrameBuffer->GetCUGLBuffer("Depth").unmap();
+		m_FrameBuffer->GetCUGLBuffer("STree").unmap();
 	}
 	auto beginTraceTime = glfwGetTime();
 	{
 		test::RTTraceConfig traceConfig = {};
-		traceConfig.width  = m_FbWidth;
+		traceConfig.width = m_FbWidth;
 		traceConfig.height = m_FbHeight;
-		traceConfig.depth  = 1;
+		traceConfig.depth = 1;
 		traceConfig.isSync = true;
 
-		auto curActor      = std::shared_ptr<test::RTTracer>{};
-		auto frameBuffer   = m_FrameBuffer->GetCUGLBuffer("Default").map();
+		auto curActor = std::shared_ptr<test::RTTracer>{};
+		auto frameBuffer = m_FrameBuffer->GetCUGLBuffer("Default").map();
 		if (!m_TraceGuide)
 		{
 			if (!m_TraceNEE)
 			{
 				TestPG3SimpleTracer::UserData userData = {};
-				userData.frameBuffer     = frameBuffer;
+				userData.frameBuffer = frameBuffer;
 				userData.samplePerLaunch = m_SamplePerLaunch;
-				userData.samplePerAll    = m_SamplePerALL;
-				traceConfig.pUserData    = &userData;
+				userData.samplePerAll = m_SamplePerALL;
+				traceConfig.pUserData = &userData;
 				m_SimpleActor->Launch(traceConfig);
 				m_SamplePerALL = userData.samplePerAll;
 				curActor = m_SimpleActor;
@@ -2191,13 +2217,13 @@ void TestPG3Application::Trace()
 			else
 			{
 				TestPG3SimpleNEETracer::UserData userData = {};
-				userData.frameBuffer     = frameBuffer;
+				userData.frameBuffer = frameBuffer;
 				userData.samplePerLaunch = m_SamplePerLaunch;
-				userData.samplePerAll    = m_SamplePerALL;
-				traceConfig.pUserData    = &userData;
+				userData.samplePerAll = m_SamplePerALL;
+				traceConfig.pUserData = &userData;
 				m_SimpleNEEActor->Launch(traceConfig);
 				m_SamplePerALL = userData.samplePerAll;
-				curActor       = m_SimpleNEEActor;
+				curActor = m_SimpleNEEActor;
 			}
 		}
 		else
@@ -2205,11 +2231,11 @@ void TestPG3Application::Trace()
 			if (!m_TraceNEE)
 			{
 				TestPG3GuideTracer::UserData userData = {};
-				userData.frameBuffer     = frameBuffer;
+				userData.frameBuffer = frameBuffer;
 				userData.samplePerLaunch = m_SamplePerLaunch;
-				userData.samplePerAll    = m_SamplePerALL;
+				userData.samplePerAll = m_SamplePerALL;
 				userData.sampleForBudget = m_SamplePerBudget;
-				traceConfig.pUserData    = &userData;
+				traceConfig.pUserData = &userData;
 				m_GuideActor->Launch(traceConfig);
 				m_SamplePerALL = userData.samplePerAll;
 				curActor = m_GuideActor;
@@ -2217,14 +2243,14 @@ void TestPG3Application::Trace()
 			else
 			{
 				TestPG3GuideNEETracer::UserData userData = {};
-				userData.frameBuffer     = frameBuffer;
+				userData.frameBuffer = frameBuffer;
 				userData.samplePerLaunch = m_SamplePerLaunch;
-				userData.samplePerAll    = m_SamplePerALL;
+				userData.samplePerAll = m_SamplePerALL;
 				userData.sampleForBudget = m_SamplePerBudget;
-				traceConfig.pUserData    = &userData;
+				traceConfig.pUserData = &userData;
 				m_GuideNEEActor->Launch(traceConfig);
-				m_SamplePerALL           = userData.samplePerAll;
-				curActor                 = m_GuideNEEActor;
+				m_SamplePerALL = userData.samplePerAll;
+				curActor = m_GuideNEEActor;
 			}
 		}
 		if (curActor->ShouldLock())
@@ -2243,12 +2269,12 @@ void TestPG3Application::Trace()
 		m_FrameBuffer->GetCUGLBuffer("Default").unmap();
 	}
 	m_DelTraceTime = glfwGetTime() - beginTraceTime;
-	m_CurTraceTime+= m_DelTraceTime;
+	m_CurTraceTime += m_DelTraceTime;
 }
 // DrawFrame
 void TestPG3Application::DrawFrame()
 {
-	m_DebugTexture->upload( 0, m_FrameBuffer->GetCUGLBuffer(m_CurDebugFrame ).getHandle(), 0, 0, m_FbWidth, m_FbHeight);
+	m_DebugTexture->upload(0, m_FrameBuffer->GetCUGLBuffer(m_CurDebugFrame).getHandle(), 0, 0, m_FbWidth, m_FbHeight);
 	m_RenderTexture->upload(0, m_FrameBuffer->GetCUGLBuffer(m_CurRenderFrame).getHandle(), 0, 0, m_FbWidth, m_FbHeight);
 	m_Renderer->draw(m_RenderTexture->getID());
 }
@@ -2267,9 +2293,9 @@ void TestPG3Application::DrawGui()
 
 	ImGui::Begin("GlobalConfig", nullptr, ImGuiWindowFlags_MenuBar);
 	{
-		float lightColor[3]    = {m_ParallelLight.emission.x, m_ParallelLight.emission.y, m_ParallelLight.emission.z};
-		float cameraFovY       = m_CameraFovY;
-		float movementSpeed    = m_MovementSpeed;
+		float lightColor[3] = {m_ParallelLight.emission.x, m_ParallelLight.emission.y, m_ParallelLight.emission.z};
+		float cameraFovY = m_CameraFovY;
+		float movementSpeed = m_MovementSpeed;
 		float mouseSensitivity = m_MouseSensitity;
 		if (!m_LockUpdate)
 		{
@@ -2414,7 +2440,7 @@ void TestPG3Application::DrawGui()
 
 	ImGui::Begin("TraceSetting", nullptr, ImGuiWindowFlags_MenuBar);
 	ImGui::Text("        spp/sec: %4.3lf", (float)m_SamplePerLaunch / m_DelTraceTime);
-	ImGui::Text("            spp: %4d"   , m_SamplePerALL);
+	ImGui::Text("            spp: %4d", m_SamplePerALL);
 	{
 		if (!m_TraceGuide && !m_LockUpdate)
 		{
@@ -2656,7 +2682,7 @@ void TestPG3Application::Update()
 	if (m_FlushFrame || m_ResizeFrame || m_UpdateCamera || m_UpdateLight || m_ChangeTrace)
 	{
 		m_AccumBuffer.resize(m_FbWidth * m_FbHeight);
-		m_AccumBuffer.upload(std::vector<float3>(m_FbWidth * m_FbHeight, float3{ 0.0f,0.0f,0.0f }));
+		m_AccumBuffer.upload(std::vector<float3>(m_FbWidth * m_FbHeight, float3{0.0f, 0.0f, 0.0f}));
 		m_SamplePerALL = 0;
 		m_CurTraceTime = 0.0;
 	}
@@ -2788,13 +2814,13 @@ auto TestPG3Application::GetTexture(const std::string &name) const -> const rtli
 	return m_TextureAssets.GetAsset(name);
 }
 
-auto TestPG3Application::GetAccumBuffer() -> rtlib::CUDABuffer<float3>&
+auto TestPG3Application::GetAccumBuffer() -> rtlib::CUDABuffer<float3> &
 {
 	// TODO: return ステートメントをここに挿入します
 	return m_AccumBuffer;
 }
 
-auto TestPG3Application::GetAccumBuffer() const -> const rtlib::CUDABuffer<float3>&
+auto TestPG3Application::GetAccumBuffer() const -> const rtlib::CUDABuffer<float3> &
 {
 	// TODO: return ステートメントをここに挿入します
 	return m_AccumBuffer;

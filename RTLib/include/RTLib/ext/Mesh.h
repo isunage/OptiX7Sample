@@ -11,12 +11,27 @@
 #include <memory>
 namespace rtlib{
     namespace ext {
+        enum class MeshVertexFormat{
+            Float ,
+            Float2,
+            Float3,
+            Float4
+        };
         struct MeshSharedResource {
-            std::string          name         = {};
-            CustomBuffer<float3> vertexBuffer = {};
-            CustomBuffer<float3> normalBuffer = {};
-            CustomBuffer<float2> texCrdBuffer = {};
-            VariableMap          variables    = {};
+            struct Attribute{
+                const char*         name;
+                size_t              bufferIndex;
+                MeshVertexFormat    format;
+                size_t              offset;
+            };
+            struct Layout {
+                size_t              stride;
+            };
+            std::string                      name           = {};
+            std::vector<CustomBuffer<float>> vertexBuffers  = {};
+            std::vector<Attribute>           attributes     = {};
+            std::vector<Layout>              layouts        = {};
+            VariableMap                      variables      = {};
             static auto New() ->std::shared_ptr<MeshSharedResource> {
                 return std::shared_ptr<MeshSharedResource>(new MeshSharedResource());
             }

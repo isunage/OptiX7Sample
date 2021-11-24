@@ -39,30 +39,9 @@ namespace test {
             auto& materials = reader.GetMaterials();
             {
                 meshGroup->SetSharedResource(std::make_shared<rtlib::ext::MeshSharedResource>());
-                meshGroup->GetSharedResource()->vertexBuffers.resize(3);
-                auto& vertexBuffer = meshGroup->GetSharedResource()->vertexBuffers[0];
-                auto& normalBuffer = meshGroup->GetSharedResource()->vertexBuffers[1];
-                auto& texCrdBuffer = meshGroup->GetSharedResource()->vertexBuffers[2];
-
-
-                meshGroup->GetSharedResource()->layouts.resize(3);
-                meshGroup->GetSharedResource()->layouts[0].stride = sizeof(float3);
-                meshGroup->GetSharedResource()->layouts[1].stride = sizeof(float3);
-                meshGroup->GetSharedResource()->layouts[2].stride = sizeof(float2);
-
-                meshGroup->GetSharedResource()->attributes.resize(3);
-                meshGroup->GetSharedResource()->attributes[0].name = "position";
-                meshGroup->GetSharedResource()->attributes[0].format = rtlib::ext::MeshVertexFormat::Float3;
-                meshGroup->GetSharedResource()->attributes[0].offset = 0;
-                meshGroup->GetSharedResource()->attributes[0].bufferIndex = 0;
-                meshGroup->GetSharedResource()->attributes[1].name = "normal";
-                meshGroup->GetSharedResource()->attributes[1].format = rtlib::ext::MeshVertexFormat::Float3;
-                meshGroup->GetSharedResource()->attributes[1].offset = 0;
-                meshGroup->GetSharedResource()->attributes[1].bufferIndex = 1;
-                meshGroup->GetSharedResource()->attributes[2].name = "texCoord";
-                meshGroup->GetSharedResource()->attributes[2].format = rtlib::ext::MeshVertexFormat::Float2;
-                meshGroup->GetSharedResource()->attributes[2].offset = 0;
-                meshGroup->GetSharedResource()->attributes[2].bufferIndex = 2;
+                auto& vertexBuffer = meshGroup->GetSharedResource()->vertexBuffer;
+                auto& texCrdBuffer = meshGroup->GetSharedResource()->texCrdBuffer;
+                auto& normalBuffer = meshGroup->GetSharedResource()->normalBuffer;
 
                 struct MyHash
                 {
@@ -109,32 +88,32 @@ namespace test {
                 std::cout << "VertexBuffer: " << attrib.vertices.size() / 3  << "->" << indices.size() << std::endl;
                 std::cout << "NormalBuffer: " << attrib.normals.size() / 3   << "->" << indices.size() << std::endl;
                 std::cout << "TexCrdBuffer: " << attrib.texcoords.size() / 2 << "->" << indices.size() << std::endl;
-                vertexBuffer.Resize(3 * indices.size());
-                texCrdBuffer.Resize(2 * indices.size());
-                normalBuffer.Resize(3 * indices.size());
+                vertexBuffer.Resize(indices.size());
+                texCrdBuffer.Resize(indices.size());
+                normalBuffer.Resize(indices.size());
 
                 for (size_t i = 0; i < indices.size(); ++i) {
                     tinyobj::index_t idx = indices[i];
-                    vertexBuffer[3 * i + 0] = attrib.vertices[3 * idx.vertex_index + 0];
-                    vertexBuffer[3 * i + 1] = attrib.vertices[3 * idx.vertex_index + 1];
-                    vertexBuffer[3 * i + 2] = attrib.vertices[3 * idx.vertex_index + 2];
+                    vertexBuffer[i] = make_float3(
+                        attrib.vertices[3 * idx.vertex_index + 0],
+                        attrib.vertices[3 * idx.vertex_index + 1],
+                        attrib.vertices[3 * idx.vertex_index + 2]);
                     if (idx.normal_index >= 0) {
-                        normalBuffer[3 * i + 0] = attrib.normals[3 * idx.normal_index + 0];
-                        normalBuffer[3 * i + 1] = attrib.normals[3 * idx.normal_index + 1];
-                        normalBuffer[3 * i + 2] = attrib.normals[3 * idx.normal_index + 2];
+                        normalBuffer[i] = make_float3(
+                            attrib.normals[3 * idx.normal_index + 0],
+                            attrib.normals[3 * idx.normal_index + 1],
+                            attrib.normals[3 * idx.normal_index + 2]);
                     }
                     else {
-                        normalBuffer[3 * i + 0] = 0.0f;
-                        normalBuffer[3 * i + 1] = 1.0f;
-                        normalBuffer[3 * i + 2] = 0.0f;
+                        normalBuffer[i] = make_float3(0.0f, 1.0f, 0.0f);
                     }
                     if (idx.texcoord_index >= 0) {
-                        texCrdBuffer[2 * i + 0] = attrib.texcoords[2 * idx.texcoord_index + 0];
-                        texCrdBuffer[2 * i + 1] = attrib.texcoords[2 * idx.texcoord_index + 1];
+                        texCrdBuffer[i] = make_float2(
+                            attrib.texcoords[2 * idx.texcoord_index + 0],
+                            attrib.texcoords[2 * idx.texcoord_index + 1]);
                     }
                     else {
-                        texCrdBuffer[2 * i + 0] = 0.5f;
-                        texCrdBuffer[2 * i + 1] = 0.5f;
+                        texCrdBuffer[i] = make_float2(0.5f, 0.5f);
                     }
                 }
 
@@ -247,30 +226,9 @@ namespace test {
             auto& materials = reader.GetMaterials();
             {
                 meshGroup->SetSharedResource(std::make_shared<rtlib::ext::MeshSharedResource>());
-                meshGroup->GetSharedResource()->vertexBuffers.resize(3);
-                auto& vertexBuffer = meshGroup->GetSharedResource()->vertexBuffers[0];
-                auto& normalBuffer = meshGroup->GetSharedResource()->vertexBuffers[1];
-                auto& texCrdBuffer = meshGroup->GetSharedResource()->vertexBuffers[2];
-
-
-                meshGroup->GetSharedResource()->layouts.resize(3);
-                meshGroup->GetSharedResource()->layouts[0].stride = sizeof(float3);
-                meshGroup->GetSharedResource()->layouts[1].stride = sizeof(float3);
-                meshGroup->GetSharedResource()->layouts[2].stride = sizeof(float2);
-
-                meshGroup->GetSharedResource()->attributes.resize(3);
-                meshGroup->GetSharedResource()->attributes[0].name = "position";
-                meshGroup->GetSharedResource()->attributes[0].format = rtlib::ext::MeshVertexFormat::Float3;
-                meshGroup->GetSharedResource()->attributes[0].offset = 0;
-                meshGroup->GetSharedResource()->attributes[0].bufferIndex = 0;
-                meshGroup->GetSharedResource()->attributes[1].name = "normal";
-                meshGroup->GetSharedResource()->attributes[1].format = rtlib::ext::MeshVertexFormat::Float3;
-                meshGroup->GetSharedResource()->attributes[1].offset = 0;
-                meshGroup->GetSharedResource()->attributes[1].bufferIndex = 1;
-                meshGroup->GetSharedResource()->attributes[2].name = "texCoord";
-                meshGroup->GetSharedResource()->attributes[2].format = rtlib::ext::MeshVertexFormat::Float2;
-                meshGroup->GetSharedResource()->attributes[2].offset = 0;
-                meshGroup->GetSharedResource()->attributes[2].bufferIndex = 2;
+                auto& vertexBuffer = meshGroup->GetSharedResource()->vertexBuffer;
+                auto& texCrdBuffer = meshGroup->GetSharedResource()->texCrdBuffer;
+                auto& normalBuffer = meshGroup->GetSharedResource()->normalBuffer;
 
                 struct MyHash
                 {
@@ -312,32 +270,32 @@ namespace test {
                 std::cout << "VertexBuffer: " << attrib.vertices.size() / 3 << "->" << indices.size() << std::endl;
                 std::cout << "NormalBuffer: " << attrib.normals.size() / 3 << "->" << indices.size() << std::endl;
                 std::cout << "TexCrdBuffer: " << attrib.texcoords.size() / 2 << "->" << indices.size() << std::endl;
-                vertexBuffer.Resize(3*indices.size());
-                texCrdBuffer.Resize(2*indices.size());
-                normalBuffer.Resize(3*indices.size());
-                //NormalBuffer
+                vertexBuffer.Resize(indices.size());
+                texCrdBuffer.Resize(indices.size());
+                normalBuffer.Resize(indices.size());
+
                 for (size_t i = 0; i < indices.size(); ++i) {
                     tinyobj::index_t idx = indices[i];
-                    vertexBuffer[3 * i + 0] = attrib.vertices[3 * idx.vertex_index + 0];
-                    vertexBuffer[3 * i + 1] = attrib.vertices[3 * idx.vertex_index + 1];
-                    vertexBuffer[3 * i + 2] = attrib.vertices[3 * idx.vertex_index + 2];
+                    vertexBuffer[i] = make_float3(
+                        attrib.vertices[3 * idx.vertex_index + 0],
+                        attrib.vertices[3 * idx.vertex_index + 1],
+                        attrib.vertices[3 * idx.vertex_index + 2]);
                     if (idx.normal_index >= 0) {
-                        normalBuffer[3 * i + 0] = attrib.normals[3 * idx.normal_index + 0];
-                        normalBuffer[3 * i + 1] = attrib.normals[3 * idx.normal_index + 1];
-                        normalBuffer[3 * i + 2] = attrib.normals[3 * idx.normal_index + 2];
+                        normalBuffer[i] = make_float3(
+                            attrib.normals[3 * idx.normal_index + 0],
+                            attrib.normals[3 * idx.normal_index + 1],
+                            attrib.normals[3 * idx.normal_index + 2]);
                     }
                     else {
-                        normalBuffer[3 * i + 0] = 0.0f;
-                        normalBuffer[3 * i + 1] = 1.0f;
-                        normalBuffer[3 * i + 2] = 0.0f;
+                        normalBuffer[i] = make_float3(0.0f, 1.0f, 0.0f);
                     }
                     if (idx.texcoord_index >= 0) {
-                        texCrdBuffer[2 * i + 0] = attrib.texcoords[2 * idx.texcoord_index + 0];
-                        texCrdBuffer[2 * i + 1] = attrib.texcoords[2 * idx.texcoord_index + 1];
+                        texCrdBuffer[i] = make_float2(
+                            attrib.texcoords[2 * idx.texcoord_index + 0],
+                            attrib.texcoords[2 * idx.texcoord_index + 1]);
                     }
                     else {
-                        texCrdBuffer[2 * i + 0] = 0.5f;
-                        texCrdBuffer[2 * i + 1] = 0.5f;
+                        texCrdBuffer[i] = make_float2(0.5f, 0.5f);
                     }
                 }
                 size_t offset = 0;
