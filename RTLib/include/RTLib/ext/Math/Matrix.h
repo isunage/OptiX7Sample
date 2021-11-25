@@ -23,6 +23,11 @@ namespace rtlib
     class Matrix3x3
     {
     public:
+        RTLIB_INLINE RTLIB_HOST_DEVICE          Matrix3x3()noexcept : Matrix3x3(
+            make_float3(0.0f, 0.0f, 0.0f),
+            make_float3(0.0f, 0.0f, 0.0f),
+            make_float3(0.0f, 0.0f, 0.0f))
+        {}
         RTLIB_INLINE RTLIB_HOST_DEVICE          Matrix3x3(const float3& c0, const float3& c1, const float3& c2)noexcept : m_Base
         {
             c0,c1,c2
@@ -269,6 +274,12 @@ namespace rtlib
     class Matrix4x4
     {
     public:
+        RTLIB_INLINE RTLIB_HOST_DEVICE          Matrix4x4()noexcept : Matrix4x4(
+            make_float4(0.0f, 0.0f, 0.0f, 0.0f),
+            make_float4(0.0f, 0.0f, 0.0f, 0.0f),
+            make_float4(0.0f, 0.0f, 0.0f, 0.0f),
+            make_float4(0.0f, 0.0f, 0.0f, 0.0f))
+        {}
         RTLIB_INLINE RTLIB_HOST_DEVICE          Matrix4x4(const float4& c0, const float4& c1, const float4& c2, const float4& c3)noexcept : m_Base
         {
             c0,c1,c2,c3
