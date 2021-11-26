@@ -1,0 +1,10 @@
+{
+    "Phong0" : {
+        "Type"  : "Material",
+        "Plugin": "Diffuse",
+        "Properties":{
+            "ID"           : "Hoge",
+            "Reflectance"  : [1,1,1]
+        }
+    }
+}

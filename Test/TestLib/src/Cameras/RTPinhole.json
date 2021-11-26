@@ -1,0 +1,12 @@
+{
+    "Pinhole" : {
+        "Type"  : "Camera",
+        "Plugin": "Pinhole",
+        "Properties" : {
+            "Eye"    : [0,0,0],
+            "Vup"    : [0,1,0],
+            "FovY"   : 40.0,
+            "Aspect" : 1.0
+        }
+    }
+}

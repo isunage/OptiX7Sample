@@ -1,0 +1,10 @@
+{
+    "DeltaReflection0" : {
+        "Type"  : "Material",
+        "Plugin": "DeltaReflection",
+        "Properties":{
+            "ID"    : "Hoge",
+            "Reflectance"  : [1,1,1]
+        }
+    }
+}

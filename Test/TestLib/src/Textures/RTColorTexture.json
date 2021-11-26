@@ -1,0 +1,10 @@
+{
+    "ColorTexture" : {
+        "Type"       : "Texture",
+        "Plugin"     : "Color",
+        "ID"         : "Hoge",
+        "Properties" : {
+            "Color"  : [1.0, 1.0, 1.0]
+        }
+    }
+}

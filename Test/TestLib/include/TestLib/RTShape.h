@@ -1,27 +1,26 @@
 #ifndef TEST_RT_SHAPE_H
 #define TEST_RT_SHAPE_H
-#include <TestLib/RTSerializable.h>
-#include <RTLib/ext/Mesh.h>
-#include <RTLib/ext/Math/Matrix.h>
-#include <RTLib/ext/VariableMap.h>
-#include <TestLib/RTMaterial.h>
-#include <string>
+#include <TestLib/RTInterface.h>
+#include <nlohmann/json.hpp>
 #include <memory>
-namespace test
-{
-	class RTShape : public RTSerializable
-	{
-	public:
-		RTShape()noexcept :RTSerializable(){}
-		virtual ~RTShape()noexcept {}
-	};
-	using RTShapePtr = std::shared_ptr<RTShape>;
-	class RTShapeReader: public RTSerializableReader
-	{
-	public:
-		RTShapeReader()noexcept:RTSerializableReader() {}
-		virtual ~RTShapeReader() {}
-	};
-	using RTShapeReaderPtr = std::shared_ptr<RTShapeReader>;
+#include <string>
+namespace test {
+    class RTProperties;
+    class RTShape :public RTInterface
+    {
+    public:
+        RTShape()noexcept :RTInterface() {}
+        virtual ~RTShape()noexcept {}
+    };
+    using RTShapePtr = std::shared_ptr<RTShape>;
+    class RTShapeReader
+    {
+        auto LoadJsonFromString(const std::string& jsonStr)noexcept -> RTShapePtr {
+            return LoadJsonFromData(nlohmann::json::parse(jsonStr));
+        }
+        virtual auto LoadJsonFromData(const nlohmann::json& json)noexcept -> RTShapePtr = 0;
+        virtual ~RTShapeReader()noexcept {}
+    };
+    using RTShapeReaderPtr = std::shared_ptr<RTShapeReader>;
 }
 #endif

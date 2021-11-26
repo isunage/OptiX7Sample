@@ -1,21 +1,15 @@
 add_library(TestLib 
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/TestLib/RTApplication.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/TestLib/RTFramebuffer.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/TestLib/RTTracer.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/TestLib/RTGui.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/TestLib/RTScene.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/TestLib/RTInterface.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/TestLib/RTProperties.h
     # SceneComponent
     ${CMAKE_CURRENT_SOURCE_DIR}/include/TestLib/RTShape.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/TestLib/RTMaterial.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/TestLib/RTTexture.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/TestLib/RTCamera.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/TestLib/RTFilm.h
-
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/RTApplication.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/RTFramebuffer.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/RTTracer.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/RTGui.cpp
+    
     ${CMAKE_CURRENT_SOURCE_DIR}/src/RTScene.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/RTProperties.cpp
     # Shapes
     ${CMAKE_CURRENT_SOURCE_DIR}/src/RTShape.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/Shapes/RTObjMesh.h
@@ -30,8 +24,8 @@ add_library(TestLib
     ${CMAKE_CURRENT_SOURCE_DIR}/src/Materials/RTDiffuse.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/Materials/RTPhong.h
     ${CMAKE_CURRENT_SOURCE_DIR}/src/Materials/RTPhong.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/Materials/RTDeltaSpecular.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/Materials/RTDeltaSpecular.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/Materials/RTDeltaReflection.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/Materials/RTDeltaReflection.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/Materials/RTDeltaDielectric.h
     ${CMAKE_CURRENT_SOURCE_DIR}/src/Materials/RTDeltaDielectric.cpp
     # Textures
@@ -44,8 +38,8 @@ add_library(TestLib
     ${CMAKE_CURRENT_SOURCE_DIR}/src/Textures/RTCheckTexture.cpp
     # Cameras
     ${CMAKE_CURRENT_SOURCE_DIR}/src/RTCamera.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/Cameras/RTPinholeCamera.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/Cameras/RTPinholeCamera.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/Cameras/RTPinhole.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/Cameras/RTPinhole.cpp
 
 )
 
@@ -76,18 +70,5 @@ target_include_directories(
 
 target_link_libraries(
     TestLib_Test_Shape PUBLIC TestLib
-)
-
-add_executable(TestLib_Test 
-    ${CMAKE_CURRENT_BINARY_DIR}/TestLibConfig.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp
-)
-
-target_include_directories(
-    TestLib_Test PUBLIC ${CMAKE_CURRENT_BINARY_DIR}
-)
-
-target_link_libraries(
-    TestLib_Test PUBLIC TestLib
 )
 

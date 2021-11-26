@@ -1,0 +1,21 @@
+{
+    "Box" : {
+        "Type" : "Shape",
+        "Plugin":"Sphere",
+        "ID"      : "Hoge",
+        "Material":"SmpMaterial",
+        "Properties" : {
+            "Center" : [
+                0,0,0
+            ],
+            "Radius" : 0.0,
+            "Transforms"  : 
+            [   
+                1,0,0,0,
+                0,1,0,0,
+                0,0,1,0,
+                0,0,0,1
+            ]
+        }
+    }
+}

@@ -1,0 +1,13 @@
+{
+    "CheckTexture" : {
+        "Type"       : "Texture",
+        "Plugin"     : "Check",
+        "ID"         : "Hoge",
+        "Properties" : {
+            "Colors" : [
+                [1.0, 1.0, 1.0],
+                [1.0, 1.0, 1.0]
+            ]
+        }
+    }
+}

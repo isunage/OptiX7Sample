@@ -1,0 +1,20 @@
+{
+    "ObjMesh": {
+        "Type"    : "Shape",
+        "Plugin"  : "ObjMesh",
+        "ID"      : "Hoge",
+        "Material": "Red",
+        "Properties" : {
+            "Filename"    : "./CornellBox/CornellBox-Water.obj",
+            "Meshname"    : "Floor",
+            "Materialname": "Red",
+            "Transforms"  : 
+            [   
+                1,0,0,0,
+                0,1,0,0,
+                0,0,1,0,
+                0,0,0,1
+            ]
+        }
+    }
+}

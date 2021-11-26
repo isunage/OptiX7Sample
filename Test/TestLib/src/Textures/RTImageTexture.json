@@ -1,0 +1,10 @@
+{
+    "ImageTexture" : {
+        "Type"       : "Texture",
+        "Plugin"     : "Image",
+        "ID"         : "Hoge",
+        "Properties" : {
+            "Filename" : "../Sample.png"
+        }
+    }
+}

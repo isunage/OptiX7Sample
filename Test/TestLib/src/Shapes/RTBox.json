@@ -1,0 +1,17 @@
+{
+    "Box" : {
+        "Type"    :"Shape",
+        "Plugin"  :"Box",
+        "ID"      :"Hoge",
+        "Material":"SmpMaterial",
+        "Properties" : {
+            "Transforms"  : 
+            [   
+                1,0,0,0,
+                0,1,0,0,
+                0,0,1,0,
+                0,0,0,1
+            ]
+        }
+    }
+}

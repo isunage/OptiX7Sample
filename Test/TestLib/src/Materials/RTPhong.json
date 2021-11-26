@@ -1,0 +1,12 @@
+{
+    "Phong0" : {
+        "Type"  : "Material",
+        "Plugin": "Phong",
+        "Properties":{
+            "ID"                  : "Phong0",
+            "SpecularReflectance" : [1.0,1.0,1.0],
+            "DiffuseReflectance"  : [1.0,1.0,1.0],
+            "SpecularExponent"    : 20.0
+        }
+    }
+}

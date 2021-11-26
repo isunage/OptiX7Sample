@@ -212,15 +212,15 @@ namespace rtlib
         friend RTLIB_INLINE RTLIB_HOST_DEVICE float3    operator*(const Matrix3x3& m1, const float3&    m2)noexcept
         {
             return make_float3(
-                m1.RTLIB_IMPL_MATRIX_AT(0, 0) * m2.x +
-                m1.RTLIB_IMPL_MATRIX_AT(0, 1) * m2.y +
-                m1.RTLIB_IMPL_MATRIX_AT(0, 2) * m2.z,
-                m1.RTLIB_IMPL_MATRIX_AT(1, 0) * m2.x +
-                m1.RTLIB_IMPL_MATRIX_AT(1, 1) * m2.y +
-                m1.RTLIB_IMPL_MATRIX_AT(1, 2) * m2.z,
-                m1.RTLIB_IMPL_MATRIX_AT(2, 0) * m2.x +
-                m1.RTLIB_IMPL_MATRIX_AT(2, 1) * m2.y +
-                m1.RTLIB_IMPL_MATRIX_AT(2, 2) * m2.z
+                m1.RTLIB_IMPL_MATRIX_AT( 0,0) * m2.x +
+                m1.RTLIB_IMPL_MATRIX_AT( 1,0) * m2.y +
+                m1.RTLIB_IMPL_MATRIX_AT( 2,0) * m2.z,
+                m1.RTLIB_IMPL_MATRIX_AT( 0,1) * m2.x +
+                m1.RTLIB_IMPL_MATRIX_AT( 1,1) * m2.y +
+                m1.RTLIB_IMPL_MATRIX_AT( 2,1) * m2.z,
+                m1.RTLIB_IMPL_MATRIX_AT( 0,2) * m2.x +
+                m1.RTLIB_IMPL_MATRIX_AT( 1,2) * m2.y +
+                m1.RTLIB_IMPL_MATRIX_AT( 2,2) * m2.z
             );
         }
         friend RTLIB_INLINE RTLIB_HOST_DEVICE Matrix3x3 operator*(const Matrix3x3& m1, const Matrix3x3& m2)noexcept
@@ -510,22 +510,22 @@ namespace rtlib
         friend RTLIB_INLINE RTLIB_HOST_DEVICE float4    operator*(const Matrix4x4& m1, const float4& m2)noexcept
         {
             return make_float4(
-                m1.RTLIB_IMPL_MATRIX_AT(0, 0) * m2.x +
-                m1.RTLIB_IMPL_MATRIX_AT(0, 1) * m2.y +
-                m1.RTLIB_IMPL_MATRIX_AT(0, 2) * m2.z +
-                m1.RTLIB_IMPL_MATRIX_AT(0, 3) * m2.w,
-                m1.RTLIB_IMPL_MATRIX_AT(1, 0) * m2.x +
-                m1.RTLIB_IMPL_MATRIX_AT(1, 1) * m2.y +
-                m1.RTLIB_IMPL_MATRIX_AT(1, 2) * m2.z +
-                m1.RTLIB_IMPL_MATRIX_AT(1, 3) * m2.w,
-                m1.RTLIB_IMPL_MATRIX_AT(2, 0) * m2.x +
-                m1.RTLIB_IMPL_MATRIX_AT(2, 1) * m2.y +
-                m1.RTLIB_IMPL_MATRIX_AT(2, 2) * m2.z +
-                m1.RTLIB_IMPL_MATRIX_AT(2, 3) * m2.w,
-                m1.RTLIB_IMPL_MATRIX_AT(3, 0) * m2.x +
-                m1.RTLIB_IMPL_MATRIX_AT(3, 1) * m2.y +
-                m1.RTLIB_IMPL_MATRIX_AT(3, 2) * m2.z +
-                m1.RTLIB_IMPL_MATRIX_AT(3, 3) * m2.w
+                m1.RTLIB_IMPL_MATRIX_AT( 0,0) * m2.x +
+                m1.RTLIB_IMPL_MATRIX_AT( 1,0) * m2.y +
+                m1.RTLIB_IMPL_MATRIX_AT( 2,0) * m2.z +
+                m1.RTLIB_IMPL_MATRIX_AT( 3,0) * m2.w,
+                m1.RTLIB_IMPL_MATRIX_AT( 0,1) * m2.x +
+                m1.RTLIB_IMPL_MATRIX_AT( 1,1) * m2.y +
+                m1.RTLIB_IMPL_MATRIX_AT( 2,1) * m2.z +
+                m1.RTLIB_IMPL_MATRIX_AT( 3,1) * m2.w,
+                m1.RTLIB_IMPL_MATRIX_AT( 0,2) * m2.x +
+                m1.RTLIB_IMPL_MATRIX_AT( 1,2) * m2.y +
+                m1.RTLIB_IMPL_MATRIX_AT( 2,2) * m2.z +
+                m1.RTLIB_IMPL_MATRIX_AT( 3,2) * m2.w,
+                m1.RTLIB_IMPL_MATRIX_AT( 0,3) * m2.x +
+                m1.RTLIB_IMPL_MATRIX_AT( 1,3) * m2.y +
+                m1.RTLIB_IMPL_MATRIX_AT( 2,3) * m2.z +
+                m1.RTLIB_IMPL_MATRIX_AT( 3,3) * m2.w
             );
         }
         friend RTLIB_INLINE RTLIB_HOST_DEVICE Matrix4x4 operator*(const Matrix4x4& m1, const Matrix4x4& m2)noexcept

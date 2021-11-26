@@ -13,9 +13,8 @@ namespace rtlib
             float3 m_Eye;
             float3 m_LookAt;
             float3 m_Vup;
-            float m_FovY;
-            float m_Aspect;
-
+            float  m_FovY;
+            float  m_Aspect;
         public:
             Camera() noexcept : m_Eye{}, m_LookAt{}, m_Vup{}, m_FovY{}, m_Aspect{} {}
             Camera(const float3 &eye,

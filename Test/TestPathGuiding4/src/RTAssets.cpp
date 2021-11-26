@@ -285,7 +285,7 @@ bool test::RTObjModelAssetManager::LoadAsset(const std::string& keyName, const s
             phongMaterials[i].SetFloat1("refrIndx", materials[i].ior);
         }
     }
-    {
+    T{
         auto splitMeshGroup = rtlib::ext::MeshGroup::New();
         splitMeshGroup->SetSharedResource(meshGroup->GetSharedResource());
         for (auto& [name, uniqueResource] : meshGroup->GetUniqueResources())
