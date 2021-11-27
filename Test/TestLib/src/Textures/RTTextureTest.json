@@ -1,58 +1,86 @@
 {
-    "Color0" : {
-        "Type"         : "Texture",
-        "Plugin"       : "Color",
-        "Properties"   : {
-            "ID"       : "Color0",
-            "Color"    : [0.1,0.9,0.5]
-        }
-    },
-    "Image0" : {
-        "Type"         : "Texture",
-        "Plugin"       : "Image",
-        "Properties"   : {
-            "ID"       : "Image0",
-            "Filename" : "Sample.png",
-            "MagFilter": "Nearest",
-            "MinFilter": "Nearest",
-            "WarpModeS": "ClampToEdge",
-            "WarpModeT": "ClampToEdge"
-        }
-    },
-    "Check0" : {
-        "Type"         : "Texture",
-        "Plugin"       : "Check",
-        "Properties"   : {
-            "ID"       : "Check0",
-            "Texture0" : [1.0,1.0,1.0],
-            "Texture1" : [1.0,3.0,2.0],
-            "Frequency": 19.0
-        }
-    },
-    "Check1" : {
-        "Type"         : "Texture",
-        "Plugin"       : "Check",
-        "Properties"   : {
-            "ID"       : "Check1",
-            "Texture0" : [1.0,1.0,1.0],
-            "Texture1" : "Image0",
-            "Frequency": 19.0
-        }
-    },
-    "Check2" : {
-        "Type"         : "Texture",
-        "Plugin"       : "Check",
-        "Properties"   : {
-            "ID"       : "Check2",
-            "Texture0" : [1.0,1.0,1.0],
-            "Texture1" : {
-                "Type"       : "Texture",
-                "Plugin"     : "Color",
-                "Properties" : {
-                    "Color"  : [1.0,1.0,1.0]
-                }
-            },
-            "Frequency": 19.0
-        }
+  "Color0": {
+    "Type": "Texture",
+    "Plugin": "Color",
+    "Properties": {
+      "Color": [ 0.1, 0.9, 0.5 ]
     }
+  },
+  "Image0": {
+    "Type": "Texture",
+    "Plugin": "Image",
+    "Properties": {
+      "Filename": "Sample.png",
+      "MagFilter": "Nearest",
+      "MinFilter": "Nearest",
+      "WarpModeS": "ClampToEdge",
+      "WarpModeT": "ClampToEdge"
+    }
+  },
+  "Check0": {
+    "Type": "Texture",
+    "Plugin": "Check",
+    "Properties": {
+      "Texture0": [ 1.0, 1.0, 1.0 ],
+      "Texture1": [ 1.0, 3.0, 2.0 ],
+      "Frequency": 19.0
+    }
+  },
+  "Check1": {
+    "Type": "Texture",
+    "Plugin": "Check",
+    "Properties": {
+      "Texture0": [ 1.0, 1.0, 1.0 ],
+      "Texture1": "Image0",
+      "Frequency": 19.0
+    }
+  },
+  "Check2": {
+    "Type": "Texture",
+    "Plugin": "Check",
+    "Properties": {
+      "Texture0": [ 1.0, 1.0, 1.0 ],
+      "Texture1": {
+        "Type": "Texture",
+        "Plugin": "Color",
+        "Properties": {
+          "Color": [ 1.0, 1.0, 1.0 ]
+        }
+      },
+      "Frequency": 19.0
+    }
+  },
+  "Blend0": {
+    "Type": "Texture",
+    "Plugin": "Blend",
+    "Properties": {
+      "Texture0": [ 1.0, 1.0, 1.0 ],
+      "Texture1": [ 1.0, 3.0, 2.0 ],
+      "BlendMode": "Add"
+    }
+  },
+  "Blend1": {
+    "Type": "Texture",
+    "Plugin": "Blend",
+    "Properties": {
+      "Texture0": [ 1.0, 1.0, 1.0 ],
+      "Texture1": "Check1",
+      "BlendMode": "Mul"
+    }
+  },
+  "Blend2": {
+    "Type": "Texture",
+    "Plugin": "Blend",
+    "Properties": {
+      "Texture0": [ 1.0, 1.0, 1.0 ],
+      "Texture1": {
+        "Type": "Texture",
+        "Plugin": "Color",
+        "Properties": {
+          "Color": [ 1.0, 1.0, 1.0 ]
+        }
+      },
+      "BlendMode": "Sub"
+    }
+  }
 }

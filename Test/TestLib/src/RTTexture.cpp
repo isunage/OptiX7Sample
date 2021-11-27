@@ -2,6 +2,7 @@
 #include "Textures/RTImageTexture.h"
 #include "Textures/RTColorTexture.h"
 #include "Textures/RTCheckTexture.h"
+#include "Textures/RTBlendTexture.h"
 #include <TestLib/RTProperties.h>
 test::RTTextureCache::RTTextureCache() noexcept
 {
@@ -80,5 +81,6 @@ auto test::GetDefaultTextureCache() noexcept -> std::shared_ptr<RTTextureCache>
 	cache->AddReader(std::make_shared<test::RTImageTextureReader>(cache));
 	cache->AddReader(std::make_shared<test::RTColorTextureReader>(cache));
 	cache->AddReader(std::make_shared<test::RTCheckTextureReader>(cache));
+	cache->AddReader(std::make_shared<test::RTBlendTextureReader>(cache));
 	return cache;
 }

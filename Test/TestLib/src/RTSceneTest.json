@@ -104,7 +104,7 @@
         }
     },
     "Shapes"   : {
-        "Box0" : {
+        "Box0"    : {
             "Type"       : "Shape",
             "Plugin"     : "Box",
             "Material"   : "DeltaDielectic0",
@@ -116,12 +116,12 @@
                     0,0,1,0,
                     0,0,0,1
                 ],
-                "FlipNormal"  : false
+                "FlipNormals"  : false
             }
         },
-        "Box1" : {
+        "Sphere0" : {
             "Type"       : "Shape",
-            "Plugin"     : "Box",
+            "Plugin"     : "Sphere",
             "Material"   :  {
                 "Type"  : "Material",
                 "Plugin": "Phong",
@@ -132,6 +132,8 @@
                 }
             },
             "Properties" : {
+                "Center" : [0,0,0],
+                "Radius" : 1.0,
                 "Transforms"  : 
                 [   
                     1,0,0,0,
@@ -139,7 +141,25 @@
                     0,0,1,0,
                     0,0,0,1
                 ],
-                "FlipNormal"  : false
+                "FlipNormals"  : false
+            }
+        },
+        "ObjMesh0": {
+            "Type"       : "Shape",
+            "Plugin"     : "ObjMesh",
+            "Material"   : "DeltaDielectic0",
+            "Properties" : {
+                "Filename"    : "CornellBox-Water.obj",
+                "Meshname"    : "leftSphere",
+                "SubMeshname" : "leftSphere",
+                "Transforms"  : 
+                [   
+                    1,0,0,0,
+                    0,1,0,0,
+                    0,0,1,0,
+                    0,0,0,1
+                ],
+                "FlipNormals"  : false
             }
         }
     }

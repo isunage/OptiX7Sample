@@ -26,6 +26,12 @@ int main()
 		if (!texture) {
 			jsonStack.push(top);
 		}
+		else {
+			if (texture->GetID() == "") {
+				texture->SetID(std::get<0>(top));
+				texCache->AddTexture(texture);
+			}
+		}
 	}
 	return 0;
 }

@@ -37,6 +37,11 @@ auto test::RTDeltaDielectric::GetJsonAsData() const noexcept ->       nlohmann::
 	return data;
 }
 
+void test::RTDeltaDielectric::SetID(const std::string& id) noexcept
+{
+	m_Properties.SetString("ID", id);
+}
+
 auto test::RTDeltaDielectric::GetReflectance() const noexcept -> std::variant<RTTexturePtr, RTColor, RTFloat>
 {
 	if (m_Properties.HasTexture("Reflectance")) {
@@ -68,11 +73,6 @@ auto test::RTDeltaDielectric::GetIOR() const noexcept -> RTFloat
 		return m_Properties.GetFloat("IOR");
 	}
 	return 1.0f;
-}
-
-void test::RTDeltaDielectric::SetID(const RTString& id) noexcept
-{
-	return m_Properties.SetString("ID",id);
 }
 
 void test::RTDeltaDielectric::SetReflectance(const RTTexturePtr& texture) noexcept

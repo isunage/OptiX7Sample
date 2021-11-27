@@ -7,7 +7,7 @@
             "ID"          : "Hoge",
             "Filename"    : "./CornellBox/CornellBox-Water.obj",
             "Meshname"    : "Floor",
-            "Materialname": "Red",
+            "SubMeshname": "Red",
             "Transforms"  : 
             [   
                 1,0,0,0,

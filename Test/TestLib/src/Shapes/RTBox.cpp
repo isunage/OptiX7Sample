@@ -57,10 +57,10 @@ void test::RTBox::SetID(const std::string& id) noexcept
     m_Properties.SetString("ID", id);
 }
 
-auto test::RTBox::GetFlipNormal() const noexcept -> RTBool
+auto test::RTBox::GetFlipNormals() const noexcept -> RTBool
 {
-    if (m_Properties.HasBool("FlipNormal")) {
-        return m_Properties.GetBool("FlipNormal");
+    if (m_Properties.HasBool("FlipNormals")) {
+        return m_Properties.GetBool("FlipNormals");
     }
     else
     {
@@ -79,9 +79,9 @@ auto test::RTBox::GetTransforms() const noexcept -> RTMat4x4
     }
 }
 
-void test::RTBox::SetFlipNormal(const RTBool& val) noexcept
+void test::RTBox::SetFlipNormals(const RTBool& val) noexcept
 {
-    m_Properties.SetBool("FlipNormal", val);
+    m_Properties.SetBool("FlipNormals", val);
 }
 
 auto test::RTBox::SetTransforms(const RTMat4x4& mat) noexcept
@@ -128,7 +128,7 @@ auto test::RTBoxReader::LoadJsonFromData(const nlohmann::json& json) noexcept ->
         return nullptr;
     }
 
-    if (!box->m_Properties.LoadBool("FlipNormal", propertiesJson)) {
+    if (!box->m_Properties.LoadBool("FlipNormals", propertiesJson)) {
         return nullptr;
     }
 

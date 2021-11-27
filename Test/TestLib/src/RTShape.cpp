@@ -1,5 +1,7 @@
 #include "..\include\TestLib\RTShape.h"
 #include "Shapes/RTBox.h"
+#include "Shapes/RTSphere.h"
+#include "Shapes/RTObjMesh.h"
 test::RTShapeCache::RTShapeCache(const std::shared_ptr<RTMaterialCache>& cache) noexcept
 {
     m_MatCache = cache;
@@ -44,5 +46,7 @@ auto test::GetDefaultShapeCache(const std::shared_ptr<RTMaterialCache>& matCache
 {
     auto shapeCache = std::make_shared<RTShapeCache>(matCache);
     shapeCache->AddReader(std::make_shared<RTBoxReader>(matCache));
+    shapeCache->AddReader(std::make_shared<RTSphereReader>(matCache));
+    shapeCache->AddReader(std::make_shared<RTObjMeshReader>(matCache));
     return shapeCache;
 }

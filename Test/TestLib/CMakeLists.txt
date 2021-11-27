@@ -36,6 +36,8 @@ add_library(TestLib
     ${CMAKE_CURRENT_SOURCE_DIR}/src/Textures/RTColorTexture.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/Textures/RTCheckTexture.h
     ${CMAKE_CURRENT_SOURCE_DIR}/src/Textures/RTCheckTexture.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/Textures/RTBlendTexture.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/Textures/RTBlendTexture.cpp
     # Cameras
     ${CMAKE_CURRENT_SOURCE_DIR}/src/RTCamera.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/Cameras/RTPinhole.h
