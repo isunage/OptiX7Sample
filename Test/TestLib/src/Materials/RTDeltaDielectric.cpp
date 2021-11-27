@@ -6,7 +6,7 @@ test::RTDeltaDielectric::RTDeltaDielectric() noexcept
 
 auto test::RTDeltaDielectric::GetTypeName() const noexcept -> RTString 
 {
-	return "Texture";
+	return "Material";
 }
 
 auto test::RTDeltaDielectric::GetPluginName() const noexcept -> RTString 
@@ -33,9 +33,6 @@ auto test::RTDeltaDielectric::GetJsonAsData() const noexcept ->       nlohmann::
 	nlohmann::json data;
 	data["Type"] = GetTypeName();
 	data["Plugin"] = GetPluginName();
-	if (!GetID().empty()) {
-		data["ID"] = GetID();
-	}
 	data["Properties"] = GetProperties().GetJsonData();
 	return data;
 }
@@ -109,49 +106,55 @@ void test::RTDeltaDielectric::SetIOR(const RTFloat& fv) noexcept
 }
 struct test::RTDeltaDielectricReader::Impl
 {
-	std::shared_ptr<RTMaterialCache> matCache;
-	std::shared_ptr<RTTextureCache > texCache;
+	std::weak_ptr<RTMaterialCache> matCache;
+	std::weak_ptr<RTTextureCache > texCache;
 };
 test::RTDeltaDielectricReader::RTDeltaDielectricReader(const std::shared_ptr<RTMaterialCache>& matCache, const std::shared_ptr<RTTextureCache>& texCache) noexcept
 {
-	m_Impl = std::make_unique<test::RTDeltaDielectricReader::Impl>();
+	m_Impl           = std::make_unique<test::RTDeltaDielectricReader::Impl>();
 	m_Impl->matCache = matCache;
 	m_Impl->texCache = texCache;
 }
 
+auto test::RTDeltaDielectricReader::GetPluginName() const noexcept -> RTString
+{
+
+	return "DeltaDielectric";
+}
+
+
 auto test::RTDeltaDielectricReader::LoadJsonFromData(const nlohmann::json& json) noexcept -> RTMaterialPtr 
 {
 	if (!json.contains("Type") || !json["Type"].is_string() || json["Type"].get<std::string>() != "Material") {
+
 		return nullptr;
 	}
 
 	if (!json.contains("Plugin") || !json["Plugin"].is_string() || json["Plugin"].get<std::string>() != "DeltaDielectric") {
 		return nullptr;
 	}
+
 	if (!json.contains("Properties") || !json["Properties"].is_object()) {
 		return nullptr;
 	}
 
 	auto& propertiesJson = json["Properties"];
-	auto reflectance = std::make_shared<test::RTDeltaDielectric>();
+	auto dielectric = std::make_shared<test::RTDeltaDielectric>();
 
-	if (!reflectance->m_Properties.LoadFloat("Reflectance", propertiesJson) &&
-		!reflectance->m_Properties.LoadColor("Reflectance", propertiesJson) &&
-		!reflectance->m_Properties.LoadTexture("Reflectance", propertiesJson, m_Impl->texCache)) {
+	if (!dielectric->m_Properties.LoadFloat("Reflectance", propertiesJson) &&
+		!dielectric->m_Properties.LoadColor("Reflectance", propertiesJson) &&
+		!dielectric->m_Properties.LoadTexture("Reflectance", propertiesJson, m_Impl->texCache.lock())) {
 		return nullptr;
 	}
-	if (!reflectance->m_Properties.LoadFloat(  "Transmittance", propertiesJson) &&
-		!reflectance->m_Properties.LoadColor(  "Transmittance", propertiesJson) &&
-		!reflectance->m_Properties.LoadTexture("Transmittance", propertiesJson, m_Impl->texCache)) {
+	if (!dielectric->m_Properties.LoadFloat(  "Transmittance", propertiesJson) &&
+		!dielectric->m_Properties.LoadColor(  "Transmittance", propertiesJson) &&
+		!dielectric->m_Properties.LoadTexture("Transmittance", propertiesJson, m_Impl->texCache.lock())) {
 		return nullptr;
 	}
-	if (!reflectance->m_Properties.LoadFloat("IOR", propertiesJson)) {
+	if (!dielectric->m_Properties.LoadFloat("IOR", propertiesJson)) {
 		return nullptr;
 	}
-	if (reflectance->m_Properties.LoadString("ID", propertiesJson)) {
-		m_Impl->matCache->AddMaterial(reflectance);
-	}
-	return reflectance;
+	return dielectric;
 }
 
 test::RTDeltaDielectricReader::~RTDeltaDielectricReader() noexcept

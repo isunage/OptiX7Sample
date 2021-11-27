@@ -14,7 +14,6 @@ namespace test{
         }
         virtual auto GetTypeName()  const noexcept -> std::string = 0;
         virtual auto GetPluginName()const noexcept -> std::string = 0;
-        virtual auto GetID()        const noexcept -> std::string = 0;
         virtual auto GetProperties()const noexcept -> const RTProperties   & = 0;
         virtual auto GetJsonAsData()const noexcept ->       nlohmann::json   = 0;
         virtual ~RTInterface()noexcept{}

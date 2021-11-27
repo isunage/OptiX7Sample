@@ -59,16 +59,58 @@ configure_file(
     ${CMAKE_CURRENT_BINARY_DIR}/TestLibConfig.h
 )
 
-add_executable(TestLib_Test_Shape
+add_executable(TestLib_Test_Texture
     ${CMAKE_CURRENT_BINARY_DIR}/TestLibConfig.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/RTShapeTest.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/Textures/RTTextureTest.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/Textures/RTTextureTest.json
 )
 
 target_include_directories(
-    TestLib_Test_Shape PUBLIC ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/src/Shapes
+    TestLib_Test_Texture PUBLIC ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/src/Textures
 )
 
 target_link_libraries(
-    TestLib_Test_Shape PUBLIC TestLib
+    TestLib_Test_Texture PUBLIC TestLib
 )
 
+add_executable(TestLib_Test_Material
+    ${CMAKE_CURRENT_BINARY_DIR}/TestLibConfig.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/Materials/RTMaterialTest.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/Materials/RTMaterialTest.json
+)
+
+target_include_directories(
+    TestLib_Test_Material PUBLIC ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/src/Materials
+)
+
+target_link_libraries(
+    TestLib_Test_Material PUBLIC TestLib
+)
+
+add_executable(TestLib_Test_Camera
+    ${CMAKE_CURRENT_BINARY_DIR}/TestLibConfig.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/Cameras/RTCameraTest.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/Cameras/RTCameraTest.json
+)
+
+target_include_directories(
+    TestLib_Test_Camera PUBLIC ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/src/Cameras
+)
+
+target_link_libraries(
+    TestLib_Test_Camera PUBLIC TestLib
+)
+
+add_executable(TestLib_Test_Scene
+    ${CMAKE_CURRENT_BINARY_DIR}/TestLibConfig.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/RTSceneTest.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/RTSceneTest.json
+)
+
+target_include_directories(
+    TestLib_Test_Scene PUBLIC ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/src
+)
+
+target_link_libraries(
+    TestLib_Test_Scene PUBLIC TestLib
+)

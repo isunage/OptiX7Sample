@@ -16,10 +16,10 @@ namespace test
 		virtual auto GetID()         const noexcept -> RTString override;
 		virtual auto GetProperties() const noexcept -> const RTProperties & override;
 		virtual auto GetJsonAsData() const noexcept ->       nlohmann::json override;
+		virtual void SetID(const RTString& id)noexcept;
 		auto GetDiffuseReflectance() const noexcept -> std::variant<RTTexturePtr, RTColor, RTFloat>;
 		auto GetSpecularReflectance()const noexcept -> std::variant<RTTexturePtr, RTColor, RTFloat>;
 		auto GetSpecularExponent()   const noexcept -> std::variant<RTTexturePtr, RTFloat>;
-		void SetID(const RTString& id)noexcept;
 		void SetDiffuseReflectance ( const RTTexturePtr& texture)noexcept;
 		void SetDiffuseReflectance ( const RTColor&		 color  )noexcept;
 		void SetDiffuseReflectance ( const RTFloat&		 fv     )noexcept;
@@ -37,6 +37,7 @@ namespace test
 	{
 	public:
 		RTPhongReader(const std::shared_ptr<RTMaterialCache>& matCache, const std::shared_ptr< RTTextureCache>& texCache)noexcept;
+		virtual auto GetPluginName()const noexcept -> RTString override;
 		virtual auto LoadJsonFromData(const nlohmann::json& json)noexcept -> RTMaterialPtr override;
 		virtual ~RTPhongReader()noexcept;
 	private:

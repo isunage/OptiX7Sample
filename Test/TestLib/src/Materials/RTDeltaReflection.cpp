@@ -32,9 +32,6 @@ auto test::RTDeltaReflection::GetJsonAsData() const noexcept ->       nlohmann::
 	nlohmann::json data;
 	data["Type"]       = GetTypeName();
 	data["Plugin"]     = GetPluginName();
-	if (!GetID().empty()) {
-		data["ID"]     = GetID();
-	}
 	data["Properties"] = GetProperties().GetJsonData();
 	return data;
 }
@@ -74,14 +71,19 @@ void test::RTDeltaReflection::SetReflectance(const RTFloat& fv) noexcept
 }
 struct test::RTDeltaReflectionReader::Impl
 {
-	std::shared_ptr<RTMaterialCache> matCache;
-	std::shared_ptr<RTTextureCache > texCache;
+	std::weak_ptr<RTMaterialCache> matCache;
+	std::weak_ptr<RTTextureCache > texCache;
 };
 test::RTDeltaReflectionReader::RTDeltaReflectionReader(const std::shared_ptr<RTMaterialCache>& matCache, const std::shared_ptr<RTTextureCache>& texCache) noexcept
 {
 	m_Impl = std::make_unique<RTDeltaReflectionReader::Impl>();
 	m_Impl->matCache = matCache;
 	m_Impl->texCache = texCache;
+}
+
+auto test::RTDeltaReflectionReader::GetPluginName() const noexcept -> RTString
+{
+	return "DeltaReflection";
 }
 
 auto test::RTDeltaReflectionReader::LoadJsonFromData(const nlohmann::json& json) noexcept -> RTMaterialPtr 
@@ -102,11 +104,8 @@ auto test::RTDeltaReflectionReader::LoadJsonFromData(const nlohmann::json& json)
 
     if (!reflectance->m_Properties.LoadFloat(  "Reflectance", propertiesJson) &&
         !reflectance->m_Properties.LoadColor(  "Reflectance", propertiesJson) &&
-        !reflectance->m_Properties.LoadTexture("Reflectance", propertiesJson, m_Impl->texCache)) {
+        !reflectance->m_Properties.LoadTexture("Reflectance", propertiesJson, m_Impl->texCache.lock())) {
         return nullptr;
-    }
-    if (reflectance->m_Properties.LoadString("ID", propertiesJson)) {
-        m_Impl->matCache->AddMaterial(reflectance);
     }
     return reflectance;
 }

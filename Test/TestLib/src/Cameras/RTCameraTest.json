@@ -1,9 +1,10 @@
 {
-    "Pinhole" : {
+    "Pinhole0" : {
         "Type"  : "Camera",
         "Plugin": "Pinhole",
         "Properties" : {
             "Eye"    : [0,0,0],
+            "LookAt" : [0,0,1],
             "Vup"    : [0,1,0],
             "FovY"   : 40.0,
             "Aspect" : 1.0

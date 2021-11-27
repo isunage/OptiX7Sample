@@ -1,0 +1,146 @@
+{
+    "Camera"   : {
+        "Type"  : "Camera",
+        "Plugin": "Pinhole",
+        "Properties" : {
+            "Eye"    : [0,0,0],
+            "LookAt" : [0,0,1],
+            "Vup"    : [0,1,0],
+            "FovY"   : 40.0,
+            "Aspect" : 1.0
+        }
+    },
+    "Textures" : {
+        "Color0" : {
+            "Type"         : "Texture",
+            "Plugin"       : "Color",
+            "Properties"   : {
+                "Color"    : [0.1,0.9,0.5]
+            }
+        },
+        "Image0" : {
+            "Type"         : "Texture",
+            "Plugin"       : "Image",
+            "Properties"   : {
+                "Filename" : "Sample.png",
+                "MagFilter": "Nearest",
+                "MinFilter": "Nearest",
+                "WarpModeS": "ClampToEdge",
+                "WarpModeT": "ClampToEdge"
+            }
+        },
+        "Check0" : {
+            "Type"         : "Texture",
+            "Plugin"       : "Check",
+            "Properties"   : {
+                "Texture0" : [1.0,1.0,1.0],
+                "Texture1" : [1.0,3.0,2.0],
+                "Frequency": 19.0
+            }
+        },
+        "Check1" : {
+            "Type"         : "Texture",
+            "Plugin"       : "Check",
+            "Properties"   : {
+                "Texture0" : [1.0,1.0,1.0],
+                "Texture1" : "Image0",
+                "Frequency": 19.0
+            }
+        },
+        "Check2" : {
+            "Type"         : "Texture",
+            "Plugin"       : "Check",
+            "Properties"   : {
+                "Texture0" : [1.0,1.0,1.0],
+                "Texture1" : {
+                    "Type"       : "Texture",
+                    "Plugin"     : "Color",
+                    "Properties" : {
+                        "Color"  : [1.0,1.0,1.0]
+                    }
+                },
+                "Frequency": 19.0
+            }
+        }
+    },
+    "Materials": {
+        "DeltaDielectic0"  : {
+            "Type"  : "Material",
+            "Plugin": "DeltaDielectric",
+            "Properties":{
+                "Reflectance"   : {
+                    "Type"      : "Texture",
+                    "Plugin"    : "Color",
+                    "Properties": {
+                      "Color"   :  [0.5,0.3,0.1]
+                    }
+                },
+                "Transmittance": [ 1, 1, 1 ],
+                "IOR": 1.0
+              }
+        },
+        "DeltaReflection0" : {
+            "Type"  : "Material",
+            "Plugin": "DeltaReflection",
+            "Properties":{
+                "Reflectance"  : [1,1,1]
+            }
+        },
+        "Diffuse0" : {
+            "Type"  : "Material",
+            "Plugin": "Diffuse",
+            "Properties":{
+                "Reflectance"  : [1,1,1]
+            }
+        },
+        "Phong0"   : {
+            "Type"  : "Material",
+            "Plugin": "Phong",
+            "Properties":{
+                "SpecularReflectance" : [1.0,1.0,1.0],
+                "DiffuseReflectance"  : [1.0,1.0,1.0],
+                "SpecularExponent"    : 20.0
+            }
+        }
+    },
+    "Shapes"   : {
+        "Box0" : {
+            "Type"       : "Shape",
+            "Plugin"     : "Box",
+            "Material"   : "DeltaDielectic0",
+            "Properties" : {
+                "Transforms"  : 
+                [   
+                    1,0,0,0,
+                    0,1,0,0,
+                    0,0,1,0,
+                    0,0,0,1
+                ],
+                "FlipNormal"  : false
+            }
+        },
+        "Box1" : {
+            "Type"       : "Shape",
+            "Plugin"     : "Box",
+            "Material"   :  {
+                "Type"  : "Material",
+                "Plugin": "Phong",
+                "Properties":{
+                    "SpecularReflectance" : "Image0",
+                    "DiffuseReflectance"  : "Check0",
+                    "SpecularExponent"    : "Color0"
+                }
+            },
+            "Properties" : {
+                "Transforms"  : 
+                [   
+                    1,0,0,0,
+                    0,1,0,0,
+                    0,0,1,0,
+                    0,0,0,1
+                ],
+                "FlipNormal"  : false
+            }
+        }
+    }
+}

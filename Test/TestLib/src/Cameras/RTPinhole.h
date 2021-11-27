@@ -6,13 +6,13 @@
 #include <string>
 namespace test
 {
+    class RTPinholeReader;
     class RTPinhole: public RTCamera
     {
     public:
         RTPinhole()noexcept;
         virtual auto GetTypeName()  const noexcept -> RTString override;
         virtual auto GetPluginName()const noexcept -> RTString override;
-        virtual auto GetID()        const noexcept -> RTString override;
         virtual auto GetProperties()const noexcept -> const RTProperties & override;
         virtual auto GetJsonAsData()const noexcept ->       nlohmann::json override;
         auto GetEye()const noexcept -> RTPoint;
@@ -27,8 +27,19 @@ namespace test
         auto GetAspect()const noexcept -> RTFloat;
         virtual ~RTPinhole()noexcept {}
     private:
-        std::string  m_ID;
+        friend class RTPinholeReader;
         RTProperties m_Properties;
+    };
+    class RTPinholeReader : public RTCameraReader
+    {
+    public:
+        RTPinholeReader()noexcept;
+        virtual auto GetPluginName()const noexcept -> RTString override;
+        virtual auto LoadJsonFromData(const nlohmann::json& json)noexcept -> RTCameraPtr override;
+        virtual ~RTPinholeReader()noexcept;
+    private:
+        struct Impl;
+        std::unique_ptr<Impl> m_Impl;
     };
 }
 #endif

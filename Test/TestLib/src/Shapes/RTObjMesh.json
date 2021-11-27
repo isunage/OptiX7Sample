@@ -1,10 +1,10 @@
 {
     "ObjMesh": {
-        "Type"    : "Shape",
-        "Plugin"  : "ObjMesh",
-        "ID"      : "Hoge",
-        "Material": "Red",
-        "Properties" : {
+        "Type"            : "Shape",
+        "Plugin"          : "ObjMesh",
+        "Material"        : "Red",
+        "Properties"      : {
+            "ID"          : "Hoge",
             "Filename"    : "./CornellBox/CornellBox-Water.obj",
             "Meshname"    : "Floor",
             "Materialname": "Red",

@@ -32,9 +32,6 @@ auto test::RTPhong::GetJsonAsData() const noexcept -> nlohmann::json
     nlohmann::json data;
     data["Type"] = GetTypeName();
     data["Plugin"] = GetPluginName();
-    if (!GetID().empty()) {
-        data["ID"] = GetID();
-    }
     data["Properties"] = GetProperties().GetJsonData();
     return data;
 }
@@ -122,8 +119,8 @@ void test::RTPhong::SetSpecularExponent(const RTFloat& fv) noexcept
 }
 struct test::RTPhongReader::Impl
 {
-    std::shared_ptr<RTMaterialCache> matCache;
-    std::shared_ptr<RTTextureCache > texCache;
+    std::weak_ptr<RTMaterialCache> matCache;
+    std::weak_ptr<RTTextureCache > texCache;
 };
 test::RTPhongReader::RTPhongReader(const std::shared_ptr<RTMaterialCache>& matCache, const std::shared_ptr<RTTextureCache>& texCache) noexcept:test::RTMaterialReader()
 {
@@ -131,6 +128,12 @@ test::RTPhongReader::RTPhongReader(const std::shared_ptr<RTMaterialCache>& matCa
     m_Impl->matCache = matCache;
     m_Impl->texCache = texCache;
 }
+
+auto test::RTPhongReader::GetPluginName() const noexcept -> RTString
+{
+    return "Phong";
+}
+
 
 auto test::RTPhongReader::LoadJsonFromData(const nlohmann::json& json) noexcept -> RTMaterialPtr
 {
@@ -150,22 +153,25 @@ auto test::RTPhongReader::LoadJsonFromData(const nlohmann::json& json) noexcept 
     
     if (!phong->m_Properties.LoadFloat(  "DiffuseReflectance", propertiesJson) &&
         !phong->m_Properties.LoadColor(  "DiffuseReflectance", propertiesJson) &&
-        !phong->m_Properties.LoadTexture("DiffuseReflectance", propertiesJson, m_Impl->texCache)) {
+        !phong->m_Properties.LoadTexture("DiffuseReflectance", propertiesJson, m_Impl->texCache.lock())) {
         return nullptr;
     }
     
     if (!phong->m_Properties.LoadFloat(  "SpecularReflectance", propertiesJson) &&
         !phong->m_Properties.LoadColor(  "SpecularReflectance", propertiesJson) &&
-        !phong->m_Properties.LoadTexture("SpecularReflectance", propertiesJson, m_Impl->texCache)) {
+        !phong->m_Properties.LoadTexture("SpecularReflectance", propertiesJson, m_Impl->texCache.lock())) {
         return nullptr;
     }
     
     if (!phong->m_Properties.LoadFloat(  "SpecularExponent", propertiesJson) &&
-        !phong->m_Properties.LoadTexture("SpecularExponent", propertiesJson, m_Impl->texCache)) {
+        !phong->m_Properties.LoadTexture("SpecularExponent", propertiesJson   , m_Impl->texCache.lock())) {
         return nullptr;
     }
     if (phong->m_Properties.LoadString("ID", propertiesJson)) {
-        m_Impl->matCache->AddMaterial(phong);
+        auto matCache = m_Impl->matCache.lock();
+        if (matCache) {
+            matCache->AddMaterial(phong);
+        }
     }
     return phong;
 }

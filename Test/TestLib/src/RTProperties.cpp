@@ -34,16 +34,36 @@ auto test::RTProperties::GetJsonData() const noexcept -> nlohmann::json
 	}
 	for (auto& [name, val] : m_MapString)
 	{
-		data[name] = val;
+		if (name != "ID") {
+			data[name] = val;
+		}
 	}
 	for (auto& [name, val] : m_MapTexture)
 	{
-		data[name] = val->GetJsonAsData();
+		if (val->GetID() != "") {
+			data[name] = val->GetID();
+		}
+		else {
+			data[name] = val->GetJsonAsData();
+		}
+	}
+	for (auto& [name, val] : m_MapBool)
+	{
+		data[name] = val;
 	}
 	return data;
 }
 
-bool test::RTProperties::LoadFloat(const std::string& keyName, const nlohmann::json& jsonData) noexcept
+bool test::RTProperties::LoadBool(const   std::string& keyName, const nlohmann::json& jsonData) noexcept
+{
+	if (!jsonData.contains(keyName) || !jsonData[keyName].is_boolean()) {
+		return false;
+	}
+	SetBool(keyName, jsonData[keyName].get<RTBool>());
+	return true;
+}
+
+bool test::RTProperties::LoadFloat(const  std::string& keyName, const nlohmann::json& jsonData) noexcept
 {
 	if (!jsonData.contains(keyName) || !jsonData[keyName].is_number_float()) {
 		return false;
@@ -52,7 +72,7 @@ bool test::RTProperties::LoadFloat(const std::string& keyName, const nlohmann::j
 	return true;
 }
 
-bool test::RTProperties::LoadInt32(const std::string& keyName, const nlohmann::json& jsonData) noexcept
+bool test::RTProperties::LoadInt32(const  std::string& keyName, const nlohmann::json& jsonData) noexcept
 {
 	if (!jsonData.contains(keyName) || !jsonData[keyName].is_number_integer()) {
 		return false;
@@ -61,16 +81,16 @@ bool test::RTProperties::LoadInt32(const std::string& keyName, const nlohmann::j
 	return true;
 }
 
-bool test::RTProperties::LoadPoint(const std::string& keyName, const nlohmann::json& jsonData) noexcept
+bool test::RTProperties::LoadPoint(const  std::string& keyName, const nlohmann::json& jsonData) noexcept
 {
 	if (!jsonData.contains(keyName) || !jsonData[keyName].is_array()) {
 		return false;
 	}
 	std::vector<float> t_data;
-	RTColor            t_color;
+	RTPoint            t_color;
 	for (auto& v : jsonData[keyName])
 	{
-		if (!v.is_number_float()) {
+		if (!v.is_number_float()&& !v.is_number_integer()) {
 			return false;
 		}
 		t_data.push_back(v.get<float>());
@@ -90,7 +110,7 @@ bool test::RTProperties::LoadPoint(const std::string& keyName, const nlohmann::j
 	if (t_data.size() == 0) {
 		t_color = make_float3(0.0f, t_data[1], 0.0f);
 	}
-	SetColor(keyName, t_color);
+	SetPoint(keyName, t_color);
 	return true;
 }
 
@@ -103,7 +123,7 @@ bool test::RTProperties::LoadVector(const std::string& keyName, const nlohmann::
 	RTVector           t_color;
 	for (auto& v : jsonData[keyName])
 	{
-		if (!v.is_number_float()) {
+		if (!v.is_number_float() && !v.is_number_integer()) {
 			return false;
 		}
 		t_data.push_back(v.get<float>());
@@ -130,17 +150,20 @@ bool test::RTProperties::LoadVector(const std::string& keyName, const nlohmann::
 bool test::RTProperties::LoadMat4x4(const std::string& keyName, const nlohmann::json& jsonData) noexcept
 {
 	if (!jsonData.contains(keyName) || !jsonData[keyName].is_array()) {
+
 		return false;
 	}
 	std::vector<float> t_data;
 	for (auto& v : jsonData[keyName])
 	{
-		if (!v.is_number_float()) {
+		if (!v.is_number_float() && !v.is_number_integer()) {
+
 			return false;
 		}
 		t_data.push_back(v.get<float>());
 	}
-	if (t_data.size() == 16) {
+
+	if (t_data.size()!= 16) {
 		return false;
 	}
 	SetMat4x4(keyName, RTMat4x4(
@@ -152,7 +175,7 @@ bool test::RTProperties::LoadMat4x4(const std::string& keyName, const nlohmann::
 	return true;
 }
 
-bool test::RTProperties::LoadColor(const std::string& keyName, const nlohmann::json& jsonData) noexcept
+bool test::RTProperties::LoadColor(const   std::string& keyName, const nlohmann::json& jsonData) noexcept
 {
 	if (!jsonData.contains(keyName) || !jsonData[keyName].is_array()) {
 		return false;
@@ -188,7 +211,7 @@ bool test::RTProperties::LoadColor(const std::string& keyName, const nlohmann::j
 	return true;
 }
 
-bool test::RTProperties::LoadString(const std::string& keyName, const nlohmann::json& jsonData) noexcept
+bool test::RTProperties::LoadString(const  std::string& keyName, const nlohmann::json& jsonData) noexcept
 {
 	if (!jsonData.contains(keyName) || !jsonData[keyName].is_string()) {
 		return false;
@@ -205,17 +228,18 @@ bool test::RTProperties::LoadString(const std::string& keyName, const nlohmann::
 	return false;
 }
 
-bool test::RTProperties::LoadTexture(const std::string& keyName, const nlohmann::json& jsonData, std::shared_ptr<RTTextureCache>& cache) noexcept
+bool test::RTProperties::LoadTexture(const std::string& keyName, const nlohmann::json& jsonData, std::shared_ptr<RTTextureCache> cache) noexcept
 {
-	if (!jsonData.contains(keyName) || !jsonData[keyName].is_string()) {
+	if (!jsonData.contains(keyName)) {
 		return false;
 	}
-	if (!jsonData[keyName].is_string()) {
+	if (!cache) {
 		return false;
 	}
-	if (!cache->HasTexture(jsonData[keyName].get<std::string>())) {
+	auto texture = cache->LoadJsonFromData(jsonData[keyName]);
+	if (!texture) {
 		return false;
 	}
-	SetTexture(keyName, cache->GetTexture(jsonData[keyName].get<std::string>()));
+	SetTexture(keyName, texture);
 	return true;
 }
