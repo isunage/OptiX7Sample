@@ -33,6 +33,7 @@ auto test::RTSphere::GetProperties() const noexcept -> const RTProperties&
 auto test::RTSphere::GetJsonAsData() const noexcept -> nlohmann::json
 {
     nlohmann::json data;
+    data = GetProperties().GetJsonAsData();
     data["Type"] = GetTypeName();
     data["Plugin"] = GetPluginName();
     if (GetMaterial()) {
@@ -43,7 +44,6 @@ auto test::RTSphere::GetJsonAsData() const noexcept -> nlohmann::json
             data["Material"] = GetMaterial()->GetJsonAsData();
         }
     }
-    data["Properties"] = GetProperties().GetJsonData();
     return data;
 }
 
@@ -143,30 +143,22 @@ auto test::RTSphereReader::LoadJsonFromData(const nlohmann::json& json) noexcept
     if (!json.contains("Plugin") || !json["Plugin"].is_string() || json["Plugin"].get<std::string>() != "Sphere") {
         return nullptr;
     }
-
-    if (!json.contains("Properties") || !json["Properties"].is_object()) {
-        return nullptr;
-    }
-
+    
     if (!json.contains("Material")) {
         return nullptr;
     }
 
-    auto& propertiesJson = json["Properties"];
-    auto box = std::make_shared<test::RTSphere>();
-    if (!box->m_Properties.LoadMat4x4("Transforms", propertiesJson)) {
+    auto sphere = std::make_shared<test::RTSphere>();
+
+    sphere->m_Properties.LoadMat4x4("Transforms", json);
+
+    sphere->m_Properties.LoadBool( "FlipNormals", json);
+
+    if (!sphere->m_Properties.LoadPoint("Center", json)) {
         return nullptr;
     }
 
-    if (!box->m_Properties.LoadBool("FlipNormals", propertiesJson)) {
-        return nullptr;
-    }
-
-    if (!box->m_Properties.LoadPoint("Center", propertiesJson)) {
-        return nullptr;
-    }
-
-    if (!box->m_Properties.LoadFloat("Radius", propertiesJson)) {
+    if (!sphere->m_Properties.LoadFloat("Radius", json)) {
         return nullptr;
     }
 
@@ -175,8 +167,8 @@ auto test::RTSphereReader::LoadJsonFromData(const nlohmann::json& json) noexcept
     if (!material) {
         return nullptr;
     }
-    box->m_Material = material;
-    return box;
+    sphere->m_Material = material;
+    return sphere;
 }
 
 test::RTSphereReader::~RTSphereReader() noexcept

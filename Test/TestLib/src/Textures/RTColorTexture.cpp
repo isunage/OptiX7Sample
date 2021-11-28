@@ -32,9 +32,9 @@ auto test::RTColorTexture::GetProperties() const noexcept -> const RTProperties 
 auto test::RTColorTexture::GetJsonAsData() const noexcept -> nlohmann::json 
 {
 	nlohmann::json data;
+	data = GetProperties().GetJsonAsData();
 	data["Type"] = GetTypeName();
 	data["Plugin"] = GetPluginName();
-	data["Properties"] = GetProperties().GetJsonData();
 	return data;
 }
 
@@ -83,16 +83,12 @@ auto test::RTColorTextureReader::LoadJsonFromData(const nlohmann::json& json) no
 	if (!json.contains("Plugin") || !json["Plugin"].is_string() || json["Plugin"].get<std::string>() != "Color") {
 		return nullptr;
 	}
-	if (!json.contains("Properties") || !json["Properties"].is_object()) {
-		return nullptr;
-	}
 
-	auto& propertiesJson = json["Properties"];
 	auto color = std::make_shared<test::RTColorTexture>();
-	if (!color->m_Properties.LoadColor("Color"   , propertiesJson)) {
+	if (!color->m_Properties.LoadColor("Color"   , json)) {
 		return nullptr;
 	}
-	// if (color->m_Properties.LoadString("ID"      , propertiesJson)) {
+	// if (color->m_Properties.LoadString("ID"      , json)) {
 	// 	m_Impl->texCache.lock()->AddTexture(color);
 	// }
 	return color;

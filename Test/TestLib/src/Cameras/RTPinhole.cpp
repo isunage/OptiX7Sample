@@ -22,9 +22,9 @@ auto test::RTPinhole::GetProperties() const noexcept -> const RTProperties &
 auto test::RTPinhole::GetJsonAsData() const noexcept -> nlohmann::json 
 {
 	nlohmann::json data;
+	data = GetProperties().GetJsonAsData();
 	data["Type"]   = GetTypeName();
 	data["Plugin"] = GetPluginName();
-	data["Properties"] = GetProperties().GetJsonData();
 	return data;
 }
 
@@ -100,28 +100,24 @@ auto test::RTPinholeReader::LoadJsonFromData(const nlohmann::json& json) noexcep
 	if (!json.contains("Plugin") || !json["Plugin"].is_string() || json["Plugin"].get<std::string>() != "Pinhole") {
 		return nullptr;
 	}
-	if (!json.contains("Properties") || !json["Properties"].is_object()) {
-		return nullptr;
-	}
 
-	auto& propertiesJson = json["Properties"];
 	auto pinhole = std::make_shared<test::RTPinhole>();
-	if (!pinhole->m_Properties.LoadPoint("Eye", propertiesJson)) {
+	if (!pinhole->m_Properties.LoadPoint("Eye", json)) {
 		return nullptr;
 	}
-	if (!pinhole->m_Properties.LoadVector("LookAt", propertiesJson)) {
+	if (!pinhole->m_Properties.LoadVector("LookAt", json)) {
 		return nullptr;
 	}
-	if (!pinhole->m_Properties.LoadVector("Vup", propertiesJson)) {
+	if (!pinhole->m_Properties.LoadVector("Vup", json)) {
 		return nullptr;
 	}
-	if (!pinhole->m_Properties.LoadFloat("FovY", propertiesJson)) {
+	if (!pinhole->m_Properties.LoadFloat("FovY", json)) {
 		return nullptr;
 	}
-	if (!pinhole->m_Properties.LoadFloat("Aspect", propertiesJson)) {
+	if (!pinhole->m_Properties.LoadFloat("Aspect", json)) {
 		return nullptr;
 	}
-	pinhole->m_Properties.LoadString("ID", propertiesJson);
+	pinhole->m_Properties.LoadString("ID", json);
 	return pinhole;
 }
 

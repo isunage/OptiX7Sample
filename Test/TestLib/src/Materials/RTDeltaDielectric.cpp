@@ -31,9 +31,9 @@ auto test::RTDeltaDielectric::GetProperties() const noexcept -> const RTProperti
 auto test::RTDeltaDielectric::GetJsonAsData() const noexcept ->       nlohmann::json
 {
 	nlohmann::json data;
+	data = GetProperties().GetJsonAsData();
 	data["Type"] = GetTypeName();
 	data["Plugin"] = GetPluginName();
-	data["Properties"] = GetProperties().GetJsonData();
 	return data;
 }
 
@@ -134,24 +134,19 @@ auto test::RTDeltaDielectricReader::LoadJsonFromData(const nlohmann::json& json)
 		return nullptr;
 	}
 
-	if (!json.contains("Properties") || !json["Properties"].is_object()) {
-		return nullptr;
-	}
-
-	auto& propertiesJson = json["Properties"];
 	auto dielectric = std::make_shared<test::RTDeltaDielectric>();
 
-	if (!dielectric->m_Properties.LoadFloat("Reflectance", propertiesJson) &&
-		!dielectric->m_Properties.LoadColor("Reflectance", propertiesJson) &&
-		!dielectric->m_Properties.LoadTexture("Reflectance", propertiesJson, m_Impl->texCache.lock())) {
+	if (!dielectric->m_Properties.LoadFloat("Reflectance", json) &&
+		!dielectric->m_Properties.LoadColor("Reflectance", json) &&
+		!dielectric->m_Properties.LoadTexture("Reflectance", json, m_Impl->texCache.lock())) {
 		return nullptr;
 	}
-	if (!dielectric->m_Properties.LoadFloat(  "Transmittance", propertiesJson) &&
-		!dielectric->m_Properties.LoadColor(  "Transmittance", propertiesJson) &&
-		!dielectric->m_Properties.LoadTexture("Transmittance", propertiesJson, m_Impl->texCache.lock())) {
+	if (!dielectric->m_Properties.LoadFloat(  "Transmittance", json) &&
+		!dielectric->m_Properties.LoadColor(  "Transmittance", json) &&
+		!dielectric->m_Properties.LoadTexture("Transmittance", json, m_Impl->texCache.lock())) {
 		return nullptr;
 	}
-	if (!dielectric->m_Properties.LoadFloat("IOR", propertiesJson)) {
+	if (!dielectric->m_Properties.LoadFloat("IOR", json)) {
 		return nullptr;
 	}
 	return dielectric;

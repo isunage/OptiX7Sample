@@ -2,6 +2,7 @@
 #define TEST_RT_SHAPE_H
 #include <TestLib/RTMaterial.h>
 #include <TestLib/RTInterface.h>
+#include <RTLib/ext/Math/Matrix.h>
 #include <nlohmann/json.hpp>
 #include <memory>
 #include <string>
@@ -12,6 +13,8 @@ namespace test {
     {
     public:
         RTShape()noexcept :RTInterface() {}
+        virtual auto GetTransforms ()const noexcept -> rtlib::Matrix4x4           = 0;
+        virtual bool GetFlipNormals()const noexcept                               = 0;
         virtual auto GetMaterial()const noexcept   -> std::shared_ptr<RTMaterial> = 0;
         virtual auto GetID()        const noexcept -> std::string = 0;
         virtual void SetID(const std::string&)noexcept = 0;
@@ -33,6 +36,9 @@ namespace test {
     {
     public:
         RTShapeCache(const std::shared_ptr<RTMaterialCache>& cache)noexcept;
+        bool AddShape(const RTShapePtr&  shape)noexcept;
+        bool HasShape(const std::string& id)const noexcept;
+        auto GetShape(const std::string& id)const->RTShapePtr;
         bool AddReader(const RTShapeReaderPtr& reader)noexcept;
         bool HasReader(const std::string& id)const noexcept;
         auto GetReader(const std::string& id)const->RTShapeReaderPtr;
@@ -40,9 +46,9 @@ namespace test {
         ~RTShapeCache()noexcept {}
     private:
         std::unordered_map<std::string, RTShapeReaderPtr> m_Readers  = {};
+        std::unordered_map<std::string, RTShapePtr>       m_Shapes   = {};
         std::shared_ptr<RTMaterialCache>                  m_MatCache = nullptr;
     };
-
     auto GetDefaultShapeCache(const std::shared_ptr<RTMaterialCache>& cache) noexcept -> std::shared_ptr<RTShapeCache>;
 }
 #endif

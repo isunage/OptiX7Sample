@@ -32,9 +32,9 @@ auto test::RTImageTexture::GetProperties() const noexcept -> const RTProperties 
 auto test::RTImageTexture::GetJsonAsData() const noexcept -> nlohmann::json 
 {
 	nlohmann::json data;
+	data = GetProperties().GetJsonAsData();
 	data["Type"]   = GetTypeName();
 	data["Plugin"] = GetPluginName();
-	data["Properties"] = GetProperties().GetJsonData();
 	return data;
 }
 
@@ -145,28 +145,24 @@ auto test::RTImageTextureReader::LoadJsonFromData(const nlohmann::json& json) no
 	if (!json.contains("Plugin") || !json["Plugin"].is_string() || json["Plugin"].get<std::string>() != "Image") {
 		return nullptr;
 	}
-	if (!json.contains("Properties") || !json["Properties"].is_object()) {
-		return nullptr;
-	}
 
-	auto& propertiesJson = json["Properties"];
 	auto image = std::make_shared<test::RTImageTexture>();
-	if (!image->m_Properties.LoadString("Filename" ,propertiesJson)) {
+	if (!image->m_Properties.LoadString("Filename" , json)) {
 		return nullptr;
 	}
-	if (!image->m_Properties.LoadString("MagFilter", propertiesJson)) {
+	if (!image->m_Properties.LoadString("MagFilter", json)) {
 		return nullptr;
 	}
-	if (!image->m_Properties.LoadString("MinFilter", propertiesJson)) {
+	if (!image->m_Properties.LoadString("MinFilter", json)) {
 		return nullptr;
 	}
-	if (!image->m_Properties.LoadString("WarpModeS", propertiesJson)) {
+	if (!image->m_Properties.LoadString("WarpModeS", json)) {
 		return nullptr;
 	}
-	if (!image->m_Properties.LoadString("WarpModeT", propertiesJson)) {
+	if (!image->m_Properties.LoadString("WarpModeT", json)) {
 		return nullptr;
 	}
-	// if (image->m_Properties.LoadString("ID", propertiesJson)) {
+	// if (image->m_Properties.LoadString("ID", json)) {
 	// 	m_Impl->texCache.lock()->AddTexture(image);
 	// }
 	return image;

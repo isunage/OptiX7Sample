@@ -1,6 +1,6 @@
 #include "..\include\TestLib\RTProperties.h"
 
-auto test::RTProperties::GetJsonData() const noexcept -> nlohmann::json
+auto test::RTProperties::GetJsonAsData() const noexcept -> nlohmann::json
 {
 	nlohmann::json data;
 	for (auto& [name,val] : m_MapFloat)

@@ -1,5 +1,5 @@
-#ifndef TEST_RT_SHAPE_SPHERE_H
-#define TEST_RT_SHAPE_SPHERE_H
+#ifndef TEST_RT_SHAPE_INSTANCING_SHAPE_H
+#define TEST_RT_SHAPE_INSTANCING_SHAPE_H
 #include <TestLib/RTMaterial.h>
 #include <TestLib/RTShape.h>
 #include <TestLib/RTProperties.h>
@@ -7,11 +7,11 @@
 #include <string>
 namespace test
 {
-	class RTSphereReader;
-	class RTSphere : public RTShape
+	class RTInstancingShapeReader;
+	class RTInstancingShape : public RTShape
 	{
 	public:
-		RTSphere()noexcept;
+		RTInstancingShape()noexcept;
 		virtual auto GetTypeName()   const noexcept -> RTString override;
 		virtual auto GetPluginName() const noexcept -> RTString override;
 		virtual auto GetID()         const noexcept -> RTString override;
@@ -21,26 +21,25 @@ namespace test
 		virtual auto GetFlipNormals()const noexcept -> RTBool   override;
 		virtual auto GetTransforms() const noexcept -> RTMat4x4 override;
 		virtual void SetID(const std::string& id)noexcept override;
-        auto GetCenter () const noexcept -> RTPoint;
-        auto GetRadius () const noexcept -> RTFloat;
-        void SetCenter(const RTPoint& center)noexcept;
-        void SetRadius(const RTFloat& radius)noexcept;
-		void SetFlipNormals(const RTBool  & val)noexcept ;
-		auto SetTransforms(const RTMat4x4& mat)noexcept ;
-		virtual ~RTSphere() noexcept {}
+        auto GetBaseShape () const noexcept    -> RTShapePtr;
+        void SetBaseShape (const RTShapePtr   & shp)noexcept;
+		void SetFlipNormals(const RTBool& val)noexcept;
+		auto SetTransforms(const RTMat4x4& mat)noexcept;
+		virtual ~RTInstancingShape() noexcept {}
 	private:
-		friend class RTSphereReader;
+		friend class RTInstancingShapeReader;
         RTMaterialPtr m_Material;
+        RTShapePtr    m_BaseShape;
 		RTProperties  m_Properties;
 	};
 
-	class RTSphereReader : public RTShapeReader
+	class RTInstancingShapeReader : public RTShapeReader
 	{
 	public:
-		RTSphereReader(const std::shared_ptr< RTMaterialCache>& matCache)noexcept;
+		RTInstancingShapeReader(const std::shared_ptr< RTShapeCache>& shpCache,const std::shared_ptr< RTMaterialCache>& matCache)noexcept;
 		virtual auto GetPluginName()const noexcept -> RTString override;
 		virtual auto LoadJsonFromData(const nlohmann::json& json)noexcept -> RTShapePtr override;
-		virtual ~RTSphereReader()noexcept;
+		virtual ~RTInstancingShapeReader()noexcept;
 	private:
 		struct Impl;
 		std::unique_ptr<Impl> m_Impl;

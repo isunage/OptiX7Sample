@@ -14,6 +14,9 @@ bool test::RTTextureCache::AddTexture(const RTTexturePtr& texture) noexcept
 	if (!texture->GetProperties().HasString("ID")) {
 		return false;
 	}
+	if (texture->GetProperties().GetString("ID") == "") {
+		return false;
+	}
 	m_Textures[texture->GetProperties().GetString("ID")] = texture;
 	return true;
 }

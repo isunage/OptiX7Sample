@@ -13,6 +13,10 @@ bool test::RTMaterialCache::AddMaterial(const RTMaterialPtr& material) noexcept
 	if (!material) { return false; }
 	if (!material->GetProperties().HasString("ID")) {
 		return false;
+
+	}
+	if (material->GetProperties().GetString("ID") == "") {
+		return false;
 	}
 	m_Materials[material->GetProperties().GetString("ID")] = material;
 	return true;

@@ -1,0 +1,6 @@
+#ifndef TEST_RT_ACCELERATION_STRUCTURE_H
+#define TEST_RT_ACCELERATION_STRUCTURE_H
+namespace test
+{
+}
+#endif

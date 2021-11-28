@@ -1,8 +1,35 @@
 #include "RTObjMesh.h"
+
+namespace test {
+    namespace internal {
+        struct RTObjMeshInternalSharedResource
+        {
+            std::vector<float3> positions;
+            std::vector<float3> normals;
+            std::vector<float2> texCoords;
+        };
+        struct RTObjMeshInternalUniqueResource
+        {
+            std::vector<uint3>  triIndices;
+            RTMaterialPtr       material;
+        };
+        class RTObjMeshInternalResourceGroup
+        {
+            std::shared_ptr< RTObjMeshInternalSharedResource>             sharedResource;
+            std::unordered_map<RTString, RTObjMeshInternalUniqueResource> uniqueResources;
+        };
+    }
+}
+
 struct test::RTObjMesh::Impl {
-    RTMaterialPtr m_Material;
-    RTProperties  m_Properties;
+    using SharedResourcePtr = std::shared_ptr<internal::RTObjMeshInternalSharedResource>;
+    using UniqueResourcePtr = std::shared_ptr<internal::RTObjMeshInternalUniqueResource>;
+    RTMaterialPtr     m_Material;
+    RTProperties      m_Properties;
+    SharedResourcePtr m_SharedResource;
+    UniqueResourcePtr m_UniqueResource;
 };
+
 test::RTObjMesh::RTObjMesh() noexcept : RTShape()
 {
     m_Impl = std::make_unique<RTObjMesh::Impl>();
@@ -37,6 +64,7 @@ auto test::RTObjMesh::GetProperties() const noexcept -> const RTProperties &
 auto test::RTObjMesh::GetJsonAsData() const noexcept -> nlohmann::json 
 {
     nlohmann::json data;
+    data = GetProperties().GetJsonAsData();
     data["Type"] = GetTypeName();
     data["Plugin"] = GetPluginName();
     if (GetMaterial()) {
@@ -49,7 +77,6 @@ auto test::RTObjMesh::GetJsonAsData() const noexcept -> nlohmann::json
             }
         }
     }
-    data["Properties"] = GetProperties().GetJsonData();
     return data;
 }
 
@@ -179,7 +206,7 @@ auto test::RTObjMtl::GetJsonAsData() const noexcept -> nlohmann::json
     nlohmann::json data;
     data["Type"] = GetTypeName();
     data["Plugin"] = GetPluginName();
-    data["Properties"] = GetProperties().GetJsonData();
+    data["Properties"] = GetProperties().GetJsonAsData();
     return data;
 }
 
@@ -277,7 +304,9 @@ test::RTObjMtl::~RTObjMtl() noexcept
 }
 
 struct test::RTObjMeshReader::Impl {
-    std::weak_ptr<RTMaterialCache> matCache;
+    using ResourceGroupPtr = std::shared_ptr<internal::RTObjMeshInternalResourceGroup>;
+    std::unordered_map<std::string, ResourceGroupPtr> resourceGroups;
+    std::weak_ptr<RTMaterialCache>                    matCache;
 };
 
 test::RTObjMeshReader::RTObjMeshReader(const std::shared_ptr<RTMaterialCache>& matCache) noexcept
@@ -301,23 +330,15 @@ auto test::RTObjMeshReader::LoadJsonFromData(const nlohmann::json& json) noexcep
         return nullptr;
     }
 
-    if (!json.contains("Properties") || !json["Properties"].is_object()) {
-        return nullptr;
-    }
-
-    auto& propertiesJson = json["Properties"];
     auto box = std::make_shared<test::RTObjMesh>();
-    if (!box->m_Impl->m_Properties.LoadMat4x4("Transforms", propertiesJson)) {
+    if (!box->m_Impl->m_Properties.LoadMat4x4("Transforms" , json)) {
         return nullptr;
     }
 
-    if (!box->m_Impl->m_Properties.LoadString("Filename", propertiesJson)) {
+    if (!box->m_Impl->m_Properties.LoadString("Filename"   , json)) {
         return nullptr;
     }
-    if (!box->m_Impl->m_Properties.LoadString("Meshname", propertiesJson)) {
-        return nullptr;
-    }
-    if (!box->m_Impl->m_Properties.LoadString("SubMeshname", propertiesJson)) {
+    if (!box->m_Impl->m_Properties.LoadString("Meshname"   , json)) {
         return nullptr;
     }
 
@@ -329,6 +350,17 @@ auto test::RTObjMeshReader::LoadJsonFromData(const nlohmann::json& json) noexcep
         }
         box->m_Impl->m_Material = material;
     }
+    bool useSingleMesh = false;
+    if (!box->m_Impl->m_Properties.LoadString("SubMeshname", json)) {
+        //この場合複数のMaterialを含む可能性があるMesh全体を一つのShapeとして扱うことを意味する
+        //Shapeごとに一つのMaterialを持つことを補償するため、外部定義のMaterialを含むことが必須
+        useSingleMesh  = true;
+        if (!box->m_Impl->m_Material) {
+            return nullptr;
+        }
+    }
+
+
     return box;
 }
 

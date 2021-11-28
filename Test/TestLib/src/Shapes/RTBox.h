@@ -19,8 +19,8 @@ namespace test
 		virtual auto GetJsonAsData() const noexcept ->       nlohmann::json override;
         virtual auto GetMaterial()   const noexcept -> RTMaterialPtr override;
 		virtual void SetID(const std::string& id)noexcept override;
-		auto GetFlipNormals() const noexcept -> RTBool   ;
-        auto GetTransforms() const noexcept -> RTMat4x4 ;
+		virtual auto GetFlipNormals() const noexcept -> RTBool   override;
+		virtual auto GetTransforms() const noexcept  -> RTMat4x4 override;
 		void SetFlipNormals(const RTBool  & val)noexcept ;
 		auto SetTransforms(const RTMat4x4& mat)noexcept ;
 		virtual ~RTBox() noexcept {}

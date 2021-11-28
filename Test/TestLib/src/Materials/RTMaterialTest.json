@@ -1,44 +1,33 @@
 {
-    "DeltaDielectic0" : {
-        "Type"  : "Material",
-        "Plugin": "DeltaDielectric",
-        "Properties":{
-            "ID"            : "DeltaDielectic0",
-            "Reflectance"   : {
-                "Type"      : "Texture",
-                "Plugin"    : "Color",
-                "Properties": {
-                  "Color"   :  [0.5,0.3,0.1]
-                }
-            },
-            "Transmittance": [ 1, 1, 1 ],
-            "IOR": 1.0
-          }
+  "DeltaDielectic0": {
+    "Type": "Material",
+    "Plugin": "DeltaDielectric",
+    "Reflectance": {
+      "Type": "Texture",
+      "Plugin": "Color",
+      "Color": [ 0.5, 0.3, 0.1 ]
     },
-    "DeltaReflection0" : {
-        "Type"  : "Material",
-        "Plugin": "DeltaReflection",
-        "Properties":{
-            "ID"    : "DeltaReflection0",
-            "Reflectance"  : [1,1,1]
-        }
-    },
-    "Diffuse0" : {
-        "Type"  : "Material",
-        "Plugin": "Diffuse",
-        "Properties":{
-            "ID"           : "Diffuse0",
-            "Reflectance"  : [1,1,1]
-        }
-    },
-    "Phong0" : {
-        "Type"  : "Material",
-        "Plugin": "Phong",
-        "Properties":{
-            "ID"                  : "Phong0",
-            "SpecularReflectance" : [1.0,1.0,1.0],
-            "DiffuseReflectance"  : [1.0,1.0,1.0],
-            "SpecularExponent"    : 20.0
-        }
-    }
+    "Transmittance": [ 1, 1, 1 ],
+    "IOR": 1.0
+  },
+  "DeltaReflection0": {
+    "Type": "Material",
+    "Plugin": "DeltaReflection",
+
+    "Reflectance": [ 1, 1, 1 ]
+  },
+  "Diffuse0": {
+    "Type": "Material",
+    "Plugin": "Diffuse",
+
+    "Reflectance": [ 1, 1, 1 ]
+  },
+  "Phong0": {
+    "Type": "Material",
+    "Plugin": "Phong",
+
+    "SpecularReflectance": [ 1.0, 1.0, 1.0 ],
+    "DiffuseReflectance": [ 1.0, 1.0, 1.0 ],
+    "SpecularExponent": 20.0
+  }
 }

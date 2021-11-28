@@ -18,12 +18,12 @@ namespace test
 		virtual auto GetProperties() const noexcept -> const RTProperties & override;
 		virtual auto GetJsonAsData() const noexcept ->       nlohmann::json override;
         virtual auto GetMaterial()   const noexcept -> RTMaterialPtr        override;
+		virtual auto GetFlipNormals() const noexcept-> RTBool   override;
+		virtual auto GetTransforms() const noexcept -> RTMat4x4 override;
 		virtual void SetID(const std::string& id)noexcept override;
         auto GetFilename()    const noexcept -> RTString  ;
         auto GetMeshname()    const noexcept -> RTString  ;
         auto GetSubMeshname() const noexcept -> RTString  ;
-		auto GetFlipNormals() const noexcept -> RTBool    ;
-        auto GetTransforms()  const noexcept -> RTMat4x4  ;
         auto SetFilename(const RTString& filename)noexcept;
         auto SetMeshname(const RTString& meshname)noexcept;
         auto SetSubMeshname(const RTString& submeshname)noexcept;

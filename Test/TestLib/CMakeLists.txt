@@ -4,12 +4,21 @@ add_library(TestLib
     ${CMAKE_CURRENT_SOURCE_DIR}/include/TestLib/RTProperties.h
     # SceneComponent
     ${CMAKE_CURRENT_SOURCE_DIR}/include/TestLib/RTShape.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/TestLib/RTSceneGraph.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/TestLib/RTMaterial.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/TestLib/RTTexture.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/TestLib/RTCamera.h
-    
+
     ${CMAKE_CURRENT_SOURCE_DIR}/src/RTScene.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/RTProperties.cpp
+    # SceneGraph
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/RTSceneGraph.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/SceneGraphs/RTInstancingGraph.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/SceneGraphs/RTInstancingGraph.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/SceneGraphs/RTGraphArray.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/SceneGraphs/RTGraphArray.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/SceneGraphs/RTShapeArray.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/SceneGraphs/RTShapeArray.cpp
     # Shapes
     ${CMAKE_CURRENT_SOURCE_DIR}/src/RTShape.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/Shapes/RTObjMesh.h
@@ -18,6 +27,8 @@ add_library(TestLib
     ${CMAKE_CURRENT_SOURCE_DIR}/src/Shapes/RTBox.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/Shapes/RTSphere.h
     ${CMAKE_CURRENT_SOURCE_DIR}/src/Shapes/RTSphere.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/Shapes/RTInstancingShape.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/Shapes/RTInstancingShape.cpp
     # Materials
     ${CMAKE_CURRENT_SOURCE_DIR}/src/RTMaterial.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/Materials/RTDiffuse.h

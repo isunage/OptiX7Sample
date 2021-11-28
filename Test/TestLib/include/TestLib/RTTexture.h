@@ -11,7 +11,7 @@ namespace test {
     public:
         RTTexture()noexcept :RTInterface() {}
         virtual auto GetID()const noexcept -> std::string = 0;
-        virtual void SetID(const std::string&)noexcept = 0;
+        virtual void SetID(const std::string&)noexcept    = 0;
         virtual ~RTTexture()noexcept       {}
     };
     using RTTexturePtr    = std::shared_ptr<RTTexture>;

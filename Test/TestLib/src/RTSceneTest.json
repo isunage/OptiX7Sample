@@ -1,166 +1,371 @@
 {
-    "Camera"   : {
-        "Type"  : "Camera",
+    "Camera"      : {
+        "Aspect": 1.0,
+        "Eye": [
+            0.0,
+            0.0,
+            0.0
+        ],
+        "FovY": 40.0,
+        "LookAt": [
+            0.0,
+            0.0,
+            1.0
+        ],
         "Plugin": "Pinhole",
-        "Properties" : {
-            "Eye"    : [0,0,0],
-            "LookAt" : [0,0,1],
-            "Vup"    : [0,1,0],
-            "FovY"   : 40.0,
-            "Aspect" : 1.0
-        }
+        "Type": "Camera",
+        "Vup": [
+            0.0,
+            1.0,
+            0.0
+        ]
     },
-    "Textures" : {
-        "Color0" : {
-            "Type"         : "Texture",
-            "Plugin"       : "Color",
-            "Properties"   : {
-                "Color"    : [0.1,0.9,0.5]
-            }
-        },
-        "Image0" : {
-            "Type"         : "Texture",
-            "Plugin"       : "Image",
-            "Properties"   : {
-                "Filename" : "Sample.png",
-                "MagFilter": "Nearest",
-                "MinFilter": "Nearest",
-                "WarpModeS": "ClampToEdge",
-                "WarpModeT": "ClampToEdge"
-            }
-        },
-        "Check0" : {
-            "Type"         : "Texture",
-            "Plugin"       : "Check",
-            "Properties"   : {
-                "Texture0" : [1.0,1.0,1.0],
-                "Texture1" : [1.0,3.0,2.0],
-                "Frequency": 19.0
-            }
-        },
-        "Check1" : {
-            "Type"         : "Texture",
-            "Plugin"       : "Check",
-            "Properties"   : {
-                "Texture0" : [1.0,1.0,1.0],
-                "Texture1" : "Image0",
-                "Frequency": 19.0
-            }
-        },
-        "Check2" : {
-            "Type"         : "Texture",
-            "Plugin"       : "Check",
-            "Properties"   : {
-                "Texture0" : [1.0,1.0,1.0],
-                "Texture1" : {
-                    "Type"       : "Texture",
-                    "Plugin"     : "Color",
-                    "Properties" : {
-                        "Color"  : [1.0,1.0,1.0]
-                    }
-                },
-                "Frequency": 19.0
-            }
-        }
-    },
-    "Materials": {
-        "DeltaDielectic0"  : {
-            "Type"  : "Material",
+    "Materials"   : {
+        "DeltaDielectic0" : {
+            "IOR": 1.0,
             "Plugin": "DeltaDielectric",
-            "Properties":{
-                "Reflectance"   : {
-                    "Type"      : "Texture",
-                    "Plugin"    : "Color",
-                    "Properties": {
-                      "Color"   :  [0.5,0.3,0.1]
-                    }
-                },
-                "Transmittance": [ 1, 1, 1 ],
-                "IOR": 1.0
-              }
+            "Reflectance": {
+                "Color": [
+                    0.5,
+                    0.30000001192092896,
+                    0.10000000149011612
+                ],
+                "Plugin": "Color",
+                "Type": "Texture"
+            },
+            "Transmittance": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "Type": "Material"
         },
-        "DeltaReflection0" : {
-            "Type"  : "Material",
+        "DeltaReflection0": {
             "Plugin": "DeltaReflection",
-            "Properties":{
-                "Reflectance"  : [1,1,1]
-            }
+            "Reflectance": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "Type": "Material"
         },
-        "Diffuse0" : {
-            "Type"  : "Material",
+        "Diffuse0": {
             "Plugin": "Diffuse",
-            "Properties":{
-                "Reflectance"  : [1,1,1]
-            }
+            "Reflectance": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "Type": "Material"
         },
-        "Phong0"   : {
-            "Type"  : "Material",
+        "Phong0": {
+            "DiffuseReflectance": [
+                1.0,
+                1.0,
+                1.0
+            ],
             "Plugin": "Phong",
-            "Properties":{
-                "SpecularReflectance" : [1.0,1.0,1.0],
-                "DiffuseReflectance"  : [1.0,1.0,1.0],
-                "SpecularExponent"    : 20.0
-            }
+            "SpecularExponent": 20.0,
+            "SpecularReflectance": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "Type": "Material"
         }
     },
-    "Shapes"   : {
-        "Box0"    : {
-            "Type"       : "Shape",
-            "Plugin"     : "Box",
-            "Material"   : "DeltaDielectic0",
-            "Properties" : {
-                "Transforms"  : 
-                [   
-                    1,0,0,0,
-                    0,1,0,0,
-                    0,0,1,0,
-                    0,0,0,1
-                ],
-                "FlipNormals"  : false
-            }
+    "SceneGraphs" : {
+        "BLAS0"      : {
+            "Plugin": "ShapeArray",
+            "Shapes": [
+                "Box0",
+                "Sphere0"
+            ],
+            "Transforms": [
+                2.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                2.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                2.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                2.0
+            ],
+            "Type": "SceneGraph"
         },
-        "Sphere0" : {
-            "Type"       : "Shape",
-            "Plugin"     : "Sphere",
-            "Material"   :  {
-                "Type"  : "Material",
-                "Plugin": "Phong",
-                "Properties":{
-                    "SpecularReflectance" : "Image0",
-                    "DiffuseReflectance"  : "Check0",
-                    "SpecularExponent"    : "Color0"
+        "BLAS1"      : {
+            "Plugin": "ShapeArray",
+            "Shapes": [
+                "ObjMesh0",
+                "Instancing0",
+                {
+                    "BaseShape": "ObjMesh0",
+                    "FlipNormals": false,
+                    "Material": "Diffuse0",
+                    "Plugin": "Instancing",
+                    "Transforms": [
+                        2.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        2.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        2.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        2.0
+                    ],
+                    "Type": "Shape"
                 }
-            },
-            "Properties" : {
-                "Center" : [0,0,0],
-                "Radius" : 1.0,
-                "Transforms"  : 
-                [   
-                    1,0,0,0,
-                    0,1,0,0,
-                    0,0,1,0,
-                    0,0,0,1
-                ],
-                "FlipNormals"  : false
-            }
+            ],
+            "Transforms": [
+                2.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                2.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                2.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                2.0
+            ],
+            "Type": "SceneGraph"
+        },
+        "Instancing0": {
+            "BaseGraph": "BLAS0",
+            "Materials": [
+                "Diffuse0",
+                "Phong0",
+                "DeltaReflection0"
+            ],
+            "Plugin": "Instancing",
+            "Transforms": [
+                2.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                2.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                2.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                2.0
+            ],
+            "Type": "SceneGraph"
+        },
+        "TopLevel"   : {
+            "Graphs": [
+                "BLAS0",
+                "BLAS1",
+                "Instancing0"
+            ],
+            "Plugin": "GraphArray",
+            "Type": "SceneGraph"
+        }
+    },
+    "Shapes"      : {
+        "Box0": {
+            "FlipNormals": false,
+            "Material": "DeltaDielectic0",
+            "Plugin": "Box",
+            "Transforms": [
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "Type": "Shape"
+        },
+        "Instancing0": {
+            "BaseShape": "ObjMesh0",
+            "FlipNormals": false,
+            "Material": "Diffuse0",
+            "Plugin": "Instancing",
+            "Transforms": [
+                2.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                2.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                2.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                2.0
+            ],
+            "Type": "Shape"
         },
         "ObjMesh0": {
-            "Type"       : "Shape",
-            "Plugin"     : "ObjMesh",
-            "Material"   : "DeltaDielectic0",
-            "Properties" : {
-                "Filename"    : "CornellBox-Water.obj",
-                "Meshname"    : "leftSphere",
-                "SubMeshname" : "leftSphere",
-                "Transforms"  : 
-                [   
-                    1,0,0,0,
-                    0,1,0,0,
-                    0,0,1,0,
-                    0,0,0,1
-                ],
-                "FlipNormals"  : false
-            }
+            "Filename": "CornellBox-Water.obj",
+            "Meshname": "leftSphere",
+            "Plugin": "ObjMesh",
+            "SubMeshname": "leftSphere",
+            "Transforms": [
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "Type": "Shape"
+        },
+        "Sphere0": {
+            "Center": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "FlipNormals": false,
+            "Material": {
+                "DiffuseReflectance": "Check0",
+                "Plugin": "Phong",
+                "SpecularExponent": "Color0",
+                "SpecularReflectance": "Image0",
+                "Type": "Material"
+            },
+            "Plugin": "Sphere",
+            "Radius": 1.0,
+            "Transforms": [
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "Type": "Shape"
         }
-    }
+    },
+    "Textures"    : {
+        "Check0": {
+            "Frequency": 19.0,
+            "Plugin": "Check",
+            "Texture0": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "Texture1": [
+                1.0,
+                3.0,
+                2.0
+            ],
+            "Type": "Texture"
+        },
+        "Check1": {
+            "Frequency": 19.0,
+            "Plugin": "Check",
+            "Texture0": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "Texture1": "Image0",
+            "Type": "Texture"
+        },
+        "Check2": {
+            "Frequency": 19.0,
+            "Plugin": "Check",
+            "Texture0": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "Texture1": {
+                "Color": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "Plugin": "Color",
+                "Type": "Texture"
+            },
+            "Type": "Texture"
+        },
+        "Color0": {
+            "Color": [
+                0.10000000149011612,
+                0.8999999761581421,
+                0.5
+            ],
+            "Plugin": "Color",
+            "Type": "Texture"
+        },
+        "Image0": {
+            "Filename" : "Sample.png",
+            "MagFilter": "Nearest",
+            "MinFilter": "Nearest",
+            "Plugin"   : "Image",
+            "Type"     : "Texture",
+            "WarpModeS": "ClampToEdge",
+            "WarpModeT": "ClampToEdge"
+        }
+    },
+    "World": "TopLevel"
 }

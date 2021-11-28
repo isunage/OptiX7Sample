@@ -21,9 +21,9 @@ auto test::RTBlendTexture::GetProperties() const noexcept -> const RTProperties&
 }
 auto test::RTBlendTexture::GetJsonAsData() const noexcept ->       nlohmann::json {
 	nlohmann::json data;
-	data["Type"] = GetTypeName();
-	data["Plugin"] = GetPluginName();
-	data["Properties"] = GetProperties().GetJsonData();
+	data               = GetProperties().GetJsonAsData();
+	data["Type"]       = GetTypeName();
+	data["Plugin"]     = GetPluginName();
 	return data;
 }
 void test::RTBlendTexture::SetID(const std::string& id) noexcept
@@ -106,24 +106,20 @@ auto test::RTBlendTextureReader::LoadJsonFromData(const nlohmann::json& json)noe
 	if (!json.contains("Plugin") || !json["Plugin"].is_string() || json["Plugin"].get<std::string>() != "Blend") {
 		return nullptr;
 	}
-	if (!json.contains("Properties") || !json["Properties"].is_object()) {
-		return nullptr;
-	}
-	auto& propertiesJson = json["Properties"];
 	auto blend = std::make_shared<test::RTBlendTexture>();
-	if (!blend->m_Properties.LoadColor  ("Texture0", propertiesJson)&&
-		!blend->m_Properties.LoadTexture("Texture0", propertiesJson, m_Impl->texCache.lock())) {
+	if (!blend->m_Properties.LoadColor  ("Texture0", json)&&
+		!blend->m_Properties.LoadTexture("Texture0", json, m_Impl->texCache.lock())) {
 		return nullptr;
 	}
-	if (!blend->m_Properties.LoadColor  ("Texture1", propertiesJson) &&
-		!blend->m_Properties.LoadTexture("Texture1", propertiesJson, m_Impl->texCache.lock())) {
+	if (!blend->m_Properties.LoadColor  ("Texture1", json) &&
+		!blend->m_Properties.LoadTexture("Texture1", json, m_Impl->texCache.lock())) {
 		return nullptr;
 	}
 
-	if (!blend->m_Properties.LoadString("BlendMode" , propertiesJson)) {
+	if (!blend->m_Properties.LoadString("BlendMode", json)) {
 		return nullptr;
 	}
-	// if (check->m_Properties.LoadString("ID", propertiesJson)) {
+	// if (check->m_Properties.LoadString("ID", json)) {
 	// 	m_Impl->texCache.lock()->AddTexture(check);
 	// }
 	return blend;

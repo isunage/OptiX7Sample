@@ -2,6 +2,16 @@
 #include <iostream>
 #include <tuple>
 #include <queue>
+auto test::RTScene::GetCamera() const noexcept -> const RTCameraPtr&
+{
+	// TODO: return ステートメントをここに挿入します
+	return m_Camera;
+}
+auto test::RTScene::GetWorld() const noexcept -> const RTSceneGraphPtr&
+{
+	// TODO: return ステートメントをここに挿入します
+	return m_World;
+}
 auto test::RTScene::GetJsonAsString() const noexcept -> std::string
 {
 	return GetJsonAsData().dump();
@@ -19,6 +29,15 @@ auto test::RTScene::GetJsonAsData() const noexcept -> nlohmann::json
 	for (auto& [name, value] : m_Shapes) {
 		data["Shapes"][name]    = value->GetJsonAsData();
 	}
+	for (auto& [name, value] : m_SceneGraphs) {
+		data["SceneGraphs"][name] = value->GetJsonAsData();
+	}
+	if (m_World->GetID() == "") {
+		data["World"] = m_World->GetJsonAsData();
+	}
+	else {
+		data["World"] = m_World->GetID();
+	}
 	return data;
 }
 
@@ -28,6 +47,7 @@ test::RTSceneReader::RTSceneReader() noexcept
 	m_TexCache = test::GetDefaultTextureCache();
 	m_MatCache = test::GetDefaultMaterialCache(m_TexCache);
 	m_ShpCache = test::GetDefaultShapeCache(m_MatCache);
+	m_GphCache = test::GetDefaultSceneGraphCache(m_ShpCache, m_MatCache);
 }
 
 auto test::RTSceneReader::LoadJsonFromData(const nlohmann::json& json) noexcept -> RTScenePtr
@@ -35,11 +55,13 @@ auto test::RTSceneReader::LoadJsonFromData(const nlohmann::json& json) noexcept 
 	auto scene = std::make_shared<RTScene>();
 	if (!json.is_object()) {
 		return nullptr;
-	} 
-	if (!json.contains("Camera")    || 
-		!json.contains("Textures")  || !json["Textures" ].is_object() ||
-		!json.contains("Materials") || !json["Materials"].is_object() ||
-		!json.contains("Shapes")    || !json["Shapes"   ].is_object() ) {
+	}   
+	if (!json.contains("Camera")      || 
+		!json.contains("Textures")    || !json["Textures"   ].is_object() ||
+		!json.contains("Materials")   || !json["Materials"  ].is_object() ||
+		!json.contains("Shapes")      || !json["Shapes"     ].is_object() ||
+		!json.contains("SceneGraphs") || !json["SceneGraphs"].is_object() ||
+		!json.contains("World")) {
 		return nullptr;
 	}
 	{
@@ -130,11 +152,47 @@ auto test::RTSceneReader::LoadJsonFromData(const nlohmann::json& json) noexcept 
 				if (shape->GetID() == "")
 				{
 					shape->SetID(std::get<0>(top));
+					m_ShpCache->AddShape(shape);
 				}
 				scene->m_Shapes[shape->GetID()] = shape;
 			}
 			++i;
 		}
+	}
+	{
+		auto& gphsJson = json["SceneGraphs"];
+		std::queue<std::tuple<std::string, nlohmann::json>> jsonStack;
+		for (auto& gphJson : gphsJson.items()) {
+			jsonStack.push({ gphJson.key(),gphJson.value() });
+		}
+		size_t i = 0;
+		while (!jsonStack.empty()) {
+			if (i > 255) { return nullptr; }
+			auto top = jsonStack.front();
+			jsonStack.pop();
+			auto graph = m_GphCache->LoadJsonFromData(std::get<1>(top));
+			std::cout << std::get<0>(top) << (graph ? "  : SUCC" : ": FAIL") << std::endl;
+			if (!graph) {
+				jsonStack.push(top);
+			}
+			else {
+				if (graph->GetID() == "")
+				{
+					graph->SetID(std::get<0>(top));
+					m_GphCache->AddSceneGraph(graph);
+				}
+				scene->m_SceneGraphs[graph->GetID()] = graph;
+			}
+			++i;
+		}
+	}
+	{
+		auto& wldJson = json["World"];
+		auto world = m_GphCache->LoadJsonFromData(wldJson);
+		if (!world) {
+			return nullptr;
+		}
+		scene->m_World = world;
 	}
 	return scene;
 }

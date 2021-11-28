@@ -11,8 +11,8 @@ namespace test{
     {
     public:
         RTMaterial()noexcept:RTInterface(){}
-        virtual auto GetID()        const noexcept -> std::string = 0;
-        virtual void SetID(const std::string&)noexcept = 0;
+        virtual auto GetID()const noexcept -> std::string = 0;
+        virtual void SetID(const std::string&)noexcept    = 0;
         virtual ~RTMaterial()noexcept {}
     };
     using RTMaterialPtr = std::shared_ptr<RTMaterial>;

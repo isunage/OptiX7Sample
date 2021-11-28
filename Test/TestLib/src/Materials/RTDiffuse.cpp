@@ -30,9 +30,9 @@ auto test::RTDiffuse::GetProperties() const noexcept -> const RTProperties &
 auto test::RTDiffuse::GetJsonAsData() const noexcept -> nlohmann::json 
 {
 	nlohmann::json data;
+    data = GetProperties().GetJsonAsData();
 	data["Type"] = GetTypeName();
 	data["Plugin"] = GetPluginName();
-	data["Properties"] = GetProperties().GetJsonData();
 	return data;
 }
 
@@ -95,16 +95,12 @@ auto test::RTDiffuseReader::LoadJsonFromData(const nlohmann::json& json) noexcep
     if (!json.contains("Plugin") || !json["Plugin"].is_string() || json["Plugin"].get<std::string>() != "Diffuse") {
         return nullptr;
     }
-    if (!json.contains("Properties") || !json["Properties"].is_object()) {
-        return nullptr;
-    }
 
-    auto& propertiesJson = json["Properties"];
     auto diffuse = std::make_shared<test::RTDiffuse>();
 
-    if (!diffuse->m_Properties.LoadFloat("Reflectance", propertiesJson) &&
-        !diffuse->m_Properties.LoadColor("Reflectance", propertiesJson) &&
-        !diffuse->m_Properties.LoadTexture("Reflectance", propertiesJson, m_Impl->texCache.lock())) {
+    if (!diffuse->m_Properties.LoadFloat("Reflectance", json) &&
+        !diffuse->m_Properties.LoadColor("Reflectance", json) &&
+        !diffuse->m_Properties.LoadTexture("Reflectance", json, m_Impl->texCache.lock())) {
         return nullptr;
     }
     return diffuse;

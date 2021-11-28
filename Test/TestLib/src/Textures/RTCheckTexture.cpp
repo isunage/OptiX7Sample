@@ -21,9 +21,9 @@ auto test::RTCheckTexture::GetProperties() const noexcept -> const RTProperties&
 }
 auto test::RTCheckTexture::GetJsonAsData() const noexcept ->       nlohmann::json {
 	nlohmann::json data;
+	data = GetProperties().GetJsonAsData();
 	data["Type"] = GetTypeName();
 	data["Plugin"] = GetPluginName();
-	data["Properties"] = GetProperties().GetJsonData();
 	return data;
 }
 auto test::RTCheckTexture::GetTexture0()const noexcept -> std::variant<RTColor, RTTexturePtr> {
@@ -97,23 +97,20 @@ auto test::RTCheckTextureReader::LoadJsonFromData(const nlohmann::json& json)noe
 	if (!json.contains("Plugin") || !json["Plugin"].is_string() || json["Plugin"].get<std::string>() != "Check") {
 		return nullptr;
 	}
-	if (!json.contains("Properties") || !json["Properties"].is_object()) {
-		return nullptr;
-	}
-	auto& propertiesJson = json["Properties"];
+
 	auto check = std::make_shared<test::RTCheckTexture>();
-	if (!check->m_Properties.LoadColor  ("Texture0", propertiesJson)&&
-		!check->m_Properties.LoadTexture("Texture0", propertiesJson, m_Impl->texCache.lock())) {
+	if (!check->m_Properties.LoadColor  ("Texture0", json)&&
+		!check->m_Properties.LoadTexture("Texture0", json, m_Impl->texCache.lock())) {
 		return nullptr;
 	}
-	if (!check->m_Properties.LoadColor  ("Texture1", propertiesJson) &&
-		!check->m_Properties.LoadTexture("Texture1", propertiesJson, m_Impl->texCache.lock())) {
+	if (!check->m_Properties.LoadColor  ("Texture1", json) &&
+		!check->m_Properties.LoadTexture("Texture1", json, m_Impl->texCache.lock())) {
 		return nullptr;
 	}
-	if (!check->m_Properties.LoadFloat("Frequency" , propertiesJson)) {
+	if (!check->m_Properties.LoadFloat("Frequency" , json)) {
 		return nullptr;
 	}
-	// if (check->m_Properties.LoadString("ID", propertiesJson)) {
+	// if (check->m_Properties.LoadString("ID", json)) {
 	// 	m_Impl->texCache.lock()->AddTexture(check);
 	// }
 	return check;
