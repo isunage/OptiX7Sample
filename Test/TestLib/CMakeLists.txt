@@ -1,9 +1,11 @@
 add_library(TestLib 
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/TestLib/RTContext.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/TestLib/RTApplication.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/TestLib/RTFramebuffer.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/TestLib/RTTracer.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/TestLib/RTGui.h
 
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/RTContext.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/RTApplication.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/RTFramebuffer.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/RTTracer.cpp

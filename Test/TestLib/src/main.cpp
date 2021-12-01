@@ -1,5 +1,6 @@
 #include <TestLib/RTApplication.h>
 #include <TestLib/RTFramebuffer.h>
+#include <TestLib/RTContext.h>
 #include <TestLib/RTGui.h>
 #include <RTLib/ext/RectRenderer.h>
 #include <TestLibConfig.h>
@@ -19,20 +20,33 @@ private:
 			:test::RTGuiWindow(title, ImGuiWindowFlags_MenuBar), 
 			m_FpsValues    { fpsValues     },
 			m_Framebuffer  { framebuffer   },
-			m_ObjFilePathes{ objFilePathes }{}
-		virtual void DrawGui()override {
-			if (ImGui::BeginMenuBar()) {
-				if (ImGui::BeginMenu("File")) {
-					if (ImGui::MenuItem("Open..")) {
-						/* Do stuff */
-						ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".obj", TEST_TESTLIB_DATA_PATH"\\");
-					}
-					if (ImGui::MenuItem("Save" )) { /* Do stuff */ }
-					if (ImGui::MenuItem("Close")) { /* Do stuff */ }
-					ImGui::EndMenu();
-				}
-				// open Dialog Simple
-				// display
+			m_ObjFilePathes{ objFilePathes }{
+			//MenuBar
+			auto menuBar = this->AddGuiMenuBar();
+			//FileMenu
+			auto fileMenu = menuBar->AddGuiMenu("File");
+			//Open
+			auto openMenuItem = std::make_shared<test::RTGuiMenuItem>("Open..");
+			openMenuItem->SetUserPointer(this);
+			openMenuItem->SetClickCallback([](test::RTGuiMenuItem*)->void {
+					ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".obj", TEST_TESTLIB_DATA_PATH"\\");
+			});
+			fileMenu->SetGuiMenuItem(openMenuItem);
+			//Save
+			auto saveMenuItem = std::make_shared<test::RTGuiMenuItem>("Save");
+			saveMenuItem->SetUserPointer(this);
+			fileMenu->SetGuiMenuItem(saveMenuItem);
+			//Close
+			auto closeMenuItem = std::make_shared<test::RTGuiMenuItem>("Close");
+			closeMenuItem->SetUserPointer(this);
+			closeMenuItem->SetClickCallback([](test::RTGuiMenuItem* item) ->void {
+				//TODO
+				auto ptr = reinterpret_cast<MainGuiWindow*>(item->GetUserPointer());
+				ptr->SetActive(false);
+			});
+			fileMenu->SetGuiMenuItem(closeMenuItem);
+			this->SetDrawCallback([](RTGuiWindow* window) {
+				auto* this_ptr = static_cast<MainGuiWindow*>(window);
 				if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey"))
 				{
 					// action if OK
@@ -41,47 +55,41 @@ private:
 						std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
 						std::string filePath     = ImGuiFileDialog::Instance()->GetCurrentPath();
 						// action
-						m_ObjFilePathes.push_back(std::filesystem::relative(filePathName));
+						this_ptr->m_ObjFilePathes.push_back(std::filesystem::relative(filePathName));
 					}
 					// close
 					ImGuiFileDialog::Instance()->Close();
 				}
-				ImGui::EndMenuBar();
-
-				if(!m_ObjFilePathes.empty()){
-					auto objFilePathStrs  = std::vector<std::string>();
+				if (!this_ptr->m_ObjFilePathes.empty()) {
+					auto objFilePathStrs = std::vector<std::string>();
 					auto objFilePathCstrs = std::vector<const char*>();
-					objFilePathStrs.reserve(m_ObjFilePathes.size());
-					objFilePathCstrs.reserve(m_ObjFilePathes.size());
-					for (auto& objFilePath : m_ObjFilePathes)
+					objFilePathStrs.reserve(this_ptr->m_ObjFilePathes.size());
+					objFilePathCstrs.reserve(this_ptr->m_ObjFilePathes.size());
+					for (auto& objFilePath : this_ptr->m_ObjFilePathes)
 					{
 						auto c_str = objFilePath.c_str();
-						 objFilePathStrs.push_back(objFilePath.string());
+						objFilePathStrs.push_back(objFilePath.string());
 						objFilePathCstrs.push_back(objFilePathStrs.back().c_str());
 					}
 					static int listbox_item_current = 0;
 					ImGui::ListBox("listbox\n(single select)", &listbox_item_current, objFilePathCstrs.data(), objFilePathCstrs.size(), 4);
 				}
 				// Edit a color (stored as ~4 floats)
-				ImGui::ColorEdit4("Color", m_Color);
+				ImGui::ColorEdit4("Color", this_ptr->m_Color);
 				// Plot some values
-				ImGui::PlotLines("Fps", m_FpsValues.data(), m_FpsValues.size());
+				ImGui::PlotLines("Fps(line)", this_ptr->m_FpsValues.data(), this_ptr->m_FpsValues.size());
+				//Text
+				ImGui::Text("Fps: %f", this_ptr->m_FpsValues.back());
 				// Display contents in a scrolling region
 				ImGui::TextColored(ImVec4(1, 1, 0, 1), "Important Stuff");
-				ImGui::BeginChild("Scrolling");
-				for (auto& path : m_ObjFilePathes) {
-					auto pathString = path.string();
-					ImGui::Text("%s", pathString.data());
-				}
-				ImGui::EndChild();
-			}
+			});
 		}
 		virtual ~MainGuiWindow()noexcept {}
 	private:
 		std::vector<float>&				       m_FpsValues;
 		std::vector<std::filesystem::path>&    m_ObjFilePathes;
 		float                                  m_Color[4]    = { 0.0f,0.0f,0.0f,0.0f };
-		std::shared_ptr < test::RTFrameBuffer> m_Framebuffer = nullptr;
+		std::shared_ptr<test::RTFrameBuffer>   m_Framebuffer = nullptr;
 		bool                                   m_ShowImage   = false;
 	};
 public:
@@ -102,6 +110,7 @@ public:
 	// RTApplication ‚ð‰î‚µ‚ÄŒp³‚³‚ê‚Ü‚µ‚½
 	virtual void Initialize() override
 	{
+		this->InitContext();
 		this->InitWindow();
 		this->InitRenderer();
 		this->InitFramebuffer();
@@ -127,31 +136,22 @@ public:
 		this->FreeFramebuffer();
 		this->FreeRenderer();
 		this->FreeWindow();
+		this->FreeContext();
 	}
 	virtual ~TestLibTestApplication() {}
 private:
+	void InitContext() {
+		m_Context = std::make_shared<test::RTContext>(4, 5);
+	}
+	void FreeContext() {
+		m_Context.reset();
+	}
 	void InitWindow()
 	{
-		if (!glfwInit()) {
-			throw std::runtime_error("Failed To Initialize GLFW!");
-		}
-		glfwWindowHint(GLFW_VERSION_MAJOR, 3);
-		glfwWindowHint(GLFW_VERSION_MINOR, 3);
-		glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
-		glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-		glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
-		glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-		glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
-		m_Window = glfwCreateWindow(m_Width, m_Height, m_Title.c_str(), nullptr, nullptr);
-		glfwMakeContextCurrent(m_Window);
-		if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
-		{
-			throw std::runtime_error("Failed To Initialize GLAD!");
-		}
+		m_Window = m_Context->NewWindow(m_Width, m_Height, m_Title.c_str());
 	}
 	void FreeWindow() {
 		glfwDestroyWindow(m_Window);
-		glfwTerminate();
 		m_Window = nullptr;
 	}
 	void InitFramebuffer() {
@@ -185,11 +185,11 @@ private:
 		guiWindow1->SetNextSize(ImVec2(500, 500), ImGuiCond_Once);
 
 		auto guiWindow2 = std::make_shared<test::RTGuiWindow>("Frame2");
-		guiWindow2->SetNextPos(ImVec2(500, 500), ImGuiCond_Once);
+		guiWindow2->SetNextPos( ImVec2(500, 500), ImGuiCond_Once);
 		guiWindow2->SetNextSize(ImVec2(500, 500), ImGuiCond_Once);
-		
-		m_Gui->AddGuiWindow(guiWindow1);
-		m_Gui->AddGuiWindow(guiWindow2);
+
+		m_Gui->SetGuiWindow(guiWindow1);
+		m_Gui->SetGuiWindow(guiWindow2);
 	}
 	void FreeGui() {
 		m_Gui->CleanUp();
@@ -211,6 +211,7 @@ private:
 	int                                       m_Width;
 	int                                       m_Height;
 	std::string	                              m_Title;
+	std::shared_ptr<test::RTContext>          m_Context;
 	GLFWwindow*							      m_Window;
 	unsigned long long                        m_SampleOfAll;
 	float                                     m_CurFrameTime;
