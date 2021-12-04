@@ -1,7 +1,7 @@
 #include <Test17Config.h>
 #include <cuda/RayTrace.h>
-#include <RTLib/Optix.h>
-#include <RTLib/Utils.h>
+#include <RTLib/core/Optix.h>
+#include <RTLib/ext/Utils.h>
 #include <RTLib/ext/RectRenderer.h>
 #include <RTLib/ext/Resources/CUDA.h>
 #include <GLFW/glfw3.h>

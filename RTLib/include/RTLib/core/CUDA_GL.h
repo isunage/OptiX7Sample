@@ -1,7 +1,7 @@
 #ifndef RTLIB_CUDA_GL_H
 #define RTLIB_CUDA_GL_H
-#include "GL.h"
-#include "CUDA.h"
+#include <RTLib/core/GL.h>
+#include <RTLib/core/CUDA.h>
 #include <cuda_gl_interop.h>
 namespace rtlib{
     //GL Interop Buffer

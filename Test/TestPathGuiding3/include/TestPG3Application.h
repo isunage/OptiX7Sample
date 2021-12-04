@@ -6,10 +6,10 @@
 #include <RTAssets.h>
 #include <RTPathGuidingUtils.h>
 #include <TestPGConfig.h>
-#include <RTLib/GL.h>
-#include <RTLib/CUDA.h>
-#include <RTLib/CUDA_GL.h>
-#include <RTLib/Optix.h>
+#include <RTLib/core/GL.h>
+#include <RTLib/core/CUDA.h>
+#include <RTLib/core/CUDA_GL.h>
+#include <RTLib/core/Optix.h>
 #include <RTLib/ext/Camera.h>
 #include <RTLib/ext/RectRenderer.h>
 #include <RTLib/ext/TraversalHandle.h>
@@ -226,7 +226,7 @@ private:
 	//OPTIX
 	std::shared_ptr<rtlib::OPXContext>   m_Context          = nullptr;
 	//FrameBuffer
-	std::unique_ptr<test::RTFrameBuffer> m_FrameBuffer      = nullptr;
+	std::unique_ptr<test::RTFramebuffer> m_FrameBuffer      = nullptr;
 	rtlib::CUDABuffer<float3>            m_AccumBuffer      = {};
 	//Assets
 	test::RTTextureAssetManager          m_TextureAssets    = {};

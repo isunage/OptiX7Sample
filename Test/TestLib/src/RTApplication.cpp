@@ -5,7 +5,7 @@ int test::RTApplication::Run(int argc, const char** argv)
     this->SetArgs(argc, argv);
     this->Initialize();
     this->MainLoop();
-    this->Terminate();
+    this->CleanUp();
     this->SetArgs(0, nullptr);
     return 0;
 }

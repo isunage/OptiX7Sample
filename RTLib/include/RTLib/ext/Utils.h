@@ -1,6 +1,6 @@
 #ifndef RTLIB_UTILS_H
 #define RTLIB_UTILS_H
-#include "VectorFunction.h"
+#include <RTLib/math/VectorFunction.h>
 #include <vector>
 namespace rtlib{
     namespace utils {
@@ -118,9 +118,9 @@ namespace rtlib{
                     for (uint32_t j = 0; j < 2; ++j) {
                         uint32_t index[3] = {};
                         //x...y...z
-                        uint32_t iX = (i + 1) % 3;//x�ɑΉ�
-                        uint32_t iY = (i + 2) % 3;//y�ɑΉ�
-                        uint32_t iZ = (i + 3) % 3;//z�ɑΉ�
+                        uint32_t iX = (i + 1) % 3;//x�ɑΉ�
+                        uint32_t iY = (i + 2) % 3;//y�ɑΉ�
+                        uint32_t iZ = (i + 3) % 3;//z�ɑΉ�
                         index[iX] = 0;
                         index[iY] = 0;
                         index[iZ] = j;

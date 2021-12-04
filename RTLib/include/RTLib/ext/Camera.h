@@ -3,7 +3,7 @@
 #include <tuple>
 #include <cmath>
 #include <iostream>
-#include "../VectorFunction.h"
+#include <RTLib/math/VectorFunction.h>
 namespace rtlib
 {
     namespace ext
@@ -65,11 +65,11 @@ namespace rtlib
         struct CameraController
         {
         private:
-            inline static constexpr float defaultYaw = -90.0f;
-            inline static constexpr float defaultPitch = 0.0f;
-            inline static constexpr float defaultSpeed = 1.0f;
+            inline static constexpr float defaultYaw         = -90.0f;
+            inline static constexpr float defaultPitch       = 0.0f;
+            inline static constexpr float defaultSpeed       = 1.0f;
             inline static constexpr float defaultSensitivity = 0.025f;
-            inline static constexpr float defaultZoom = 45.0f;
+            inline static constexpr float defaultZoom        = 45.0f;
 
         private:
             float3 m_Position;
@@ -173,7 +173,6 @@ namespace rtlib
             {
                 m_MovementSpeed = speed;
             }
-
         private:
             // Calculates the front vector from the Camera's (updated) Euler Angles
             void UpdateCameraVectors() noexcept

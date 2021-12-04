@@ -1,8 +1,8 @@
 #ifndef PATH_GUIDING_H
 #define PATH_GUIDING_H
-#include <RTLib/Math.h>
-#include <RTLib/Random.h>
-#include <RTLib/VectorFunction.h>
+#include <RTLib/math/Math.h>
+#include <RTLib/math/Random.h>
+#include <RTLib/math/VectorFunction.h>
 #include <PathGuidingConfig.h>
 #ifndef __CUDA_ARCH__
 #include <fstream>

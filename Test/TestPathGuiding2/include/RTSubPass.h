@@ -1,8 +1,8 @@
 #ifndef TEST_RT_SUBPASS_H
 #define TEST_RT_SUBPASS_H
 #include "RTRecordBuffer.h"
-#include <RTLib/Optix.h>
-#include <RTLib/CUDA.h>
+#include <RTLib/core/Optix.h>
+#include <RTLib/core/CUDA.h>
 #include <cassert>
 namespace test{
     template<typename RayG_t, typename Miss_t, typename HitG_t, typename Params_t>

@@ -1,6 +1,6 @@
 #ifndef RT_TRACER_H
 #define RT_TRACER_H
-#include <RTLib/CUDA.h>
+#include <RTLib/core/CUDA.h>
 namespace test{
     struct RTTraceConfig
     {

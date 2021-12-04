@@ -1,7 +1,7 @@
 #include "../include/TestPG4Application.h"
 #include "../include/RTUtils.h"
-#include <RTLib/Optix.h>
-#include <RTLib/Utils.h>
+#include <RTLib/core/Optix.h>
+#include <RTLib/ext/Utils.h>
 #include <RTLib/ext/Resources/CUDA.h>
 #include <nlohmann/json.hpp>
 #include <fstream>
@@ -2065,7 +2065,7 @@ void TestPG4Application::InitFrameResources()
 	m_DebugTexture->setParameteri(GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE, false);
 	//Frame
 	m_AccumBuffer = rtlib::CUDABuffer<float3>(std::vector<float3>(m_FbWidth*m_FbHeight));
-	m_FrameBuffer = std::make_unique<test::RTFrameBuffer>(m_FbWidth, m_FbHeight);
+	m_FrameBuffer = std::make_unique<test::RTFramebuffer>(m_FbWidth, m_FbHeight);
 	m_FrameBuffer->AddCUGLBuffer("Default");
 	m_FrameBuffer->GetCUGLBuffer("Default").upload(
 		std::vector<uchar4>(m_FbWidth * m_FbHeight, make_uchar4(0, 0, 0, 255))
@@ -2626,14 +2626,14 @@ void TestPG4Application::Update()
 		m_FrameBuffer->Resize(m_FbWidth, m_FbHeight);
 		m_RenderTexture->reset();
 		m_RenderTexture->allocate({(size_t)m_FbWidth, (size_t)m_FbHeight});
-		m_RenderTexture->setParameteri(GL_TEXTURE_MAG_FILTER, GL_LINEAR, false);
-		m_RenderTexture->setParameteri(GL_TEXTURE_MIN_FILTER, GL_LINEAR, false);
+		m_RenderTexture->setParameteri(GL_TEXTURE_MAG_FILTER, GL_LINEAR   , false);
+		m_RenderTexture->setParameteri(GL_TEXTURE_MIN_FILTER, GL_LINEAR   , false);
 		m_RenderTexture->setParameteri(GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE, false);
 		m_RenderTexture->setParameteri(GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE, false);
 		m_DebugTexture->reset();
 		m_DebugTexture->allocate({(size_t)m_FbWidth, (size_t)m_FbHeight});
-		m_DebugTexture->setParameteri(GL_TEXTURE_MAG_FILTER, GL_LINEAR, false);
-		m_DebugTexture->setParameteri(GL_TEXTURE_MIN_FILTER, GL_LINEAR, false);
+		m_DebugTexture->setParameteri(GL_TEXTURE_MAG_FILTER, GL_LINEAR   , false);
+		m_DebugTexture->setParameteri(GL_TEXTURE_MIN_FILTER, GL_LINEAR   , false);
 		m_DebugTexture->setParameteri(GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE, false);
 		m_DebugTexture->setParameteri(GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE, false);
 	}

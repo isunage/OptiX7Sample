@@ -1,7 +1,7 @@
 #include <Test15Config.h>
 #include <cuda/RayTrace.h>
-#include <RTLib/Optix.h>
-#include <RTLib/Utils.h>
+#include <RTLib/core/Optix.h>
+#include <RTLib/ext/Utils.h>
 #include <GLFW/glfw3.h>
 #include <stb_image.h>
 #include <stb_image_write.h>

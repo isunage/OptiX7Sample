@@ -1,8 +1,8 @@
 #ifndef RTLIB_VECTOR_FUNCTION_H
 #define RTLIB_VECTOR_FUNCTION_H
 #include <cuda_runtime.h>
-#include "Preprocessors.h"
-#include "Math.h"
+#include <RTLib/core/Preprocessors.h>
+#include <RTLib/math/Math.h>
 #if defined(__cplusplus) && !defined(__CUDA_ARCH__)
 #include <cmath>
 #endif

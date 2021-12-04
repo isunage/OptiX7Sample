@@ -1,7 +1,7 @@
 #ifndef RTLIB_EXT_RESOURCES_CUDA_H
 #define RTLIB_EXT_RESOURCES_CUDA_H
-#include "../Resources.h"
-#include "../../CUDA.h"
+#include <RTLib/ext/Resources.h>
+#include <RTLib/core/CUDA.h>
 namespace rtlib
 {
     namespace ext

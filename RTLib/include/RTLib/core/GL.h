@@ -4,8 +4,8 @@
 #include <string>
 #include <vector>
 #include <array>
-#include "Preprocessors.h"
-#include "PixelFormat.h"
+#include <RTLib/core/Preprocessors.h>
+#include <RTLib/core/PixelFormat.h>
 namespace rtlib{
     //GL Buffer
     template<typename T>

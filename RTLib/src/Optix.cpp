@@ -1,4 +1,4 @@
-#include "../include/RTLib/Optix.h"
+#include <RTLib/core/Optix.h>
 #include <optix_function_table_definition.h>
 namespace rtlib{
     namespace internal{

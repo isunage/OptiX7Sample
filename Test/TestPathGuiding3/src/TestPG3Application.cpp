@@ -1,7 +1,7 @@
 #include "../include/TestPG3Application.h"
 #include "../include/RTUtils.h"
-#include <RTLib/Optix.h>
-#include <RTLib/Utils.h>
+#include <RTLib/core/Optix.h>
+#include <RTLib/ext/Utils.h>
 #include <RTLib/ext/Resources/CUDA.h>
 #include <nlohmann/json.hpp>
 #include <string>
@@ -2087,7 +2087,7 @@ void TestPG3Application::InitFrameResources()
 
 	m_AccumBuffer = rtlib::CUDABuffer<float3>(std::vector<float3>(m_FbWidth*m_FbHeight));
 
-	m_FrameBuffer = std::make_unique<test::RTFrameBuffer>(m_FbWidth, m_FbHeight);
+	m_FrameBuffer = std::make_unique<test::RTFramebuffer>(m_FbWidth, m_FbHeight);
 	m_FrameBuffer->AddCUGLBuffer("Default");
 	m_FrameBuffer->GetCUGLBuffer("Default").upload(
 		std::vector<uchar4>(m_FbWidth * m_FbHeight, make_uchar4(0, 0, 0, 255)));

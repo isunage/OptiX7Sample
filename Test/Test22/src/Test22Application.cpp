@@ -1,6 +1,6 @@
 #include "../include/Test22Application.h"
-#include <RTLib/Optix.h>
-#include <RTLib/Utils.h>
+#include <RTLib/core/Optix.h>
+#include <RTLib/ext/Utils.h>
 #include <RTLib/ext/Resources/CUDA.h>
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <stb_image_write.h>

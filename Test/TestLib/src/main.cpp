@@ -2,6 +2,7 @@
 #include <TestLib/RTFramebuffer.h>
 #include <TestLib/RTContext.h>
 #include <TestLib/RTGui.h>
+#include <RTLib/ext/TraversalHandle2.h>
 #include <RTLib/ext/RectRenderer.h>
 #include <TestLibConfig.h>
 #include <GLFW/glfw3.h>
@@ -16,7 +17,7 @@ private:
 	class MainGuiWindow : public test::RTGuiWindow
 	{
 	public:
-		MainGuiWindow(std::string title, std::shared_ptr<test::RTFrameBuffer> framebuffer, std::vector<float>& fpsValues, std::vector<std::filesystem::path>& objFilePathes)
+		MainGuiWindow(std::string title, std::shared_ptr<test::RTFramebuffer> framebuffer, std::vector<float>& fpsValues, std::vector<std::filesystem::path>& objFilePathes)
 			:test::RTGuiWindow(title, ImGuiWindowFlags_MenuBar), 
 			m_FpsValues    { fpsValues     },
 			m_Framebuffer  { framebuffer   },
@@ -89,7 +90,7 @@ private:
 		std::vector<float>&				       m_FpsValues;
 		std::vector<std::filesystem::path>&    m_ObjFilePathes;
 		float                                  m_Color[4]    = { 0.0f,0.0f,0.0f,0.0f };
-		std::shared_ptr<test::RTFrameBuffer>   m_Framebuffer = nullptr;
+		std::shared_ptr<test::RTFramebuffer>   m_Framebuffer = nullptr;
 		bool                                   m_ShowImage   = false;
 	};
 public:
@@ -123,14 +124,14 @@ public:
 		{
 			glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 			glClear(GL_COLOR_BUFFER_BIT);
-			m_Renderer->draw(m_Framebuffer->GetGLTexture("Default").getID());
+			m_Renderer->draw(m_Framebuffer->GetComponent<test::RTGLTextureFBComponent<uchar4>>("Default")->GetHandle().getID());
 			m_Gui->DrawFrame();
 			Update();
 			glfwPollEvents();
 			glfwSwapBuffers(m_Window);
 		}
 	}
-	virtual void Terminate() override
+	virtual void CleanUp() override
 	{
 		this->FreeGui();
 		this->FreeFramebuffer();
@@ -156,9 +157,9 @@ private:
 	}
 	void InitFramebuffer() {
 		std::vector<uchar4> pixels(m_Width * m_Height, make_uchar4(255, 255, 0, 255));
-		m_Framebuffer = std::make_shared<test::RTFrameBuffer>(m_Width, m_Height);
-		m_Framebuffer->AddGLTexture("Default");
-		m_Framebuffer->GetGLTexture("Default").upload(
+		m_Framebuffer = std::make_shared<test::RTFramebuffer>(m_Width, m_Height);
+		m_Framebuffer->AddComponent<test::RTGLTextureFBComponent<uchar4>>("Default");
+		m_Framebuffer->GetComponent<test::RTGLTextureFBComponent<uchar4>>("Default")->GetHandle().upload(
 			0, pixels.data(), 0, 0, m_Width, m_Height
 		);
 	}
@@ -218,12 +219,15 @@ private:
 	float                                     m_DelFrameTime;
 	std::vector<std::filesystem::path>        m_ObjFilePathes;
 	std::vector<float>                        m_FpsValues;
-	std::shared_ptr<test::RTFrameBuffer>      m_Framebuffer;
+	std::shared_ptr<test::RTFramebuffer>      m_Framebuffer;
 	std::unique_ptr<rtlib::ext::RectRenderer> m_Renderer;
 	std::unique_ptr<test::RTGui>              m_Gui;
 };
 int main(int argc, const char** argv)
 {
+	auto buildInput = rtlib::ext::BuildInputTriangles::New();
+	auto geometryAS = rtlib::ext::GeometryAccelerationStructure::New("GAS");
+	geometryAS->AddBuildInput(geometryAS, buildInput);
 	auto app = std::shared_ptr<test::RTApplication>(new TestLibTestApplication(1024, 1024, "TestLibTest"));
 	return app->Run(argc,argv);
 }

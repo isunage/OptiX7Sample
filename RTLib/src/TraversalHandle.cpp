@@ -1,5 +1,5 @@
-#include "../include/RTLib/ext/TraversalHandle.h"
-#include "../include/RTLib/ext/Resources/CUDA.h"
+#include <RTLib/ext/TraversalHandle.h>
+#include <RTLib/ext/Resources/CUDA.h>
 
 void rtlib::ext::GASHandle::Build(const rtlib::OPXContext* context, const OptixAccelBuildOptions& accelOptions) {
     auto buildInputs = std::vector<OptixBuildInput>(this->meshes.size());

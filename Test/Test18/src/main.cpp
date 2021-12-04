@@ -1,9 +1,9 @@
 #include <Test18Config.h>
-#include <RTLib/GL.h>
-#include <RTLib/CUDA.h>
-#include <RTLib/CUDA_GL.h>
+#include <RTLib/core/GL.h>
+#include <RTLib/core/CUDA.h>
+#include <RTLib/core/CUDA_GL.h>
 #include <RTLib/ext/Camera.h>
-#include <RTLib/Utils.h>
+#include <RTLib/ext/Utils.h>
 #include <RTLib/ext/RectRenderer.h>
 #include <RTLib/ext/Resources/CUDA.h>
 #include <RTLib/ext/TraversalHandle.h>

@@ -24,17 +24,18 @@ set(RTLIB_NVCC_OPTIONS -arch compute_${RTLIB_CUDA_SM_VERSION} -use_fast_math -li
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/include/RTLib/Config.h.in ${CMAKE_CURRENT_BINARY_DIR}/RTLib/Config.h @ONLY)
 ##add library
 add_library(RTLib STATIC 
-${CMAKE_CURRENT_SOURCE_DIR}/include/RTLib/Optix.h
-${CMAKE_CURRENT_SOURCE_DIR}/include/RTLib/GL.h
-${CMAKE_CURRENT_SOURCE_DIR}/include/RTLib/CUDA.h
-${CMAKE_CURRENT_SOURCE_DIR}/include/RTLib/CUDA_GL.h
-${CMAKE_CURRENT_SOURCE_DIR}/include/RTLib/Exceptions.h
-${CMAKE_CURRENT_SOURCE_DIR}/include/RTLib/Random.h
-${CMAKE_CURRENT_SOURCE_DIR}/include/RTLib/Math.h
-${CMAKE_CURRENT_SOURCE_DIR}/include/RTLib/VectorFunction.h
-${CMAKE_CURRENT_SOURCE_DIR}/include/RTLib/PixelFormat.h
-${CMAKE_CURRENT_SOURCE_DIR}/include/RTLib/TypeTraits.h
-${CMAKE_CURRENT_SOURCE_DIR}/include/RTLib/Utils.h
+${CMAKE_CURRENT_SOURCE_DIR}/include/RTLib/core/Optix.h
+${CMAKE_CURRENT_SOURCE_DIR}/include/RTLib/core/CUDA.h
+${CMAKE_CURRENT_SOURCE_DIR}/include/RTLib/core/CUDA_GL.h
+${CMAKE_CURRENT_SOURCE_DIR}/include/RTLib/core/GL.h
+${CMAKE_CURRENT_SOURCE_DIR}/include/RTLib/core/Exceptions.h
+${CMAKE_CURRENT_SOURCE_DIR}/include/RTLib/core/PixelFormat.h
+${CMAKE_CURRENT_SOURCE_DIR}/include/RTLib/core/TypeTraits.h
+${CMAKE_CURRENT_SOURCE_DIR}/include/RTLib/math/Math.h
+${CMAKE_CURRENT_SOURCE_DIR}/include/RTLib/math/Random.h
+${CMAKE_CURRENT_SOURCE_DIR}/include/RTLib/math/Matrix.h
+${CMAKE_CURRENT_SOURCE_DIR}/include/RTLib/math/VectorFunction.h
+${CMAKE_CURRENT_SOURCE_DIR}/include/RTLib/ext/Utils.h
 ${CMAKE_CURRENT_SOURCE_DIR}/include/RTLib/ext/Camera.h
 ${CMAKE_CURRENT_SOURCE_DIR}/include/RTLib/ext/Mesh.h
 ${CMAKE_CURRENT_SOURCE_DIR}/include/RTLib/ext/Resources.h
@@ -44,6 +45,7 @@ ${CMAKE_CURRENT_SOURCE_DIR}/include/RTLib/ext/SBTLayout.h
 ${CMAKE_CURRENT_SOURCE_DIR}/include/RTLib/ext/SBTHandle.h
 ${CMAKE_CURRENT_SOURCE_DIR}/include/RTLib/ext/VariableMap.h
 ${CMAKE_CURRENT_SOURCE_DIR}/include/RTLib/ext/TraversalHandle.h
+${CMAKE_CURRENT_SOURCE_DIR}/include/RTLib/ext/TraversalHandle2.h
 
 ${CMAKE_CURRENT_SOURCE_DIR}/src/Optix.cpp 
 ${CMAKE_CURRENT_SOURCE_DIR}/src/Exceptions.cpp
@@ -52,13 +54,17 @@ ${CMAKE_CURRENT_SOURCE_DIR}/src/Mesh.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/src/SBTLayout.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/src/SBTHandle.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/src/TraversalHandle.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/src/TraversalHandle2.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/src/RectRenderer.cpp
 )
 ##include directories
 target_include_directories(RTLib PUBLIC ${RTLIB_INCLUDE_DIR} ${CMAKE_CURRENT_BINARY_DIR})
 ##link libraries
 target_link_libraries(RTLib PUBLIC CUDA::cudart CUDA::nvrtc glad glm::glm stb glfw tinyobjloader tinyexr_lib OptiX::OptiX imgui imgui-glfw range-v3 nlohmann_json)
-
+#compile definitions
+if (WIN32)
+  target_compile_definitions(RTLib PUBLIC -D_CRT_SECURE_NO_WARNINGS)
+endif()
 set(RTLIB_OPTIX_INCLUDE_DIR ${RTLIB_OPTIX_INCLUDE_DIR} PARENT_SCOPE)
 set(RTLIB_INCLUDE_DIR       ${RTLIB_INCLUDE_DIR}       PARENT_SCOPE)
 set(RTLIB_NVCC_OPTIONS      ${RTLIB_NVCC_OPTIONS}      PARENT_SCOPE)

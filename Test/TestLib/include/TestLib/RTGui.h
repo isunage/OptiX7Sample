@@ -43,7 +43,7 @@ namespace test{
         void SetGuiWindow(std::shared_ptr<RTGuiWindow> guiWindow);
         void PopGuiWindow();
         auto GetGuiWindow(size_t idx)const->std::shared_ptr<RTGuiWindow>;
-        virtual ~RTGui()noexcept{}
+        virtual ~RTGui()noexcept;
     private:
         void BeginFrame();
         void EndFrame();

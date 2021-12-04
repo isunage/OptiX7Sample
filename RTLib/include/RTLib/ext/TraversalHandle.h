@@ -1,7 +1,8 @@
 #ifndef RTLIB_EXT_TRAVERSAL_HANDLE_H
 #define RTLIB_EXT_TRAVERSAL_HANDLE_H
-#include "../Optix.h"
-#include "Mesh.h"
+#include <variant>
+#include <RTLib/core/Optix.h>
+#include <RTLib/ext/Mesh.h>
 namespace rtlib{
     namespace ext {
         enum class InstanceType
@@ -38,9 +39,9 @@ namespace rtlib{
             //GetSbtCount
             auto GetSbtCount()const noexcept -> size_t;
         };
-        using  GASHandlePtr = std::shared_ptr<GASHandle>;
+        using  GASHandlePtr   = std::shared_ptr<GASHandle>;
         struct IASHandle;
-        using  IASHandlePtr = std::shared_ptr<IASHandle>;
+        using  IASHandlePtr   = std::shared_ptr<IASHandle>;
         struct Instance {
             InstanceType               type          = InstanceType::GAS;
             OptixInstance              instance      = {};
@@ -90,7 +91,7 @@ namespace rtlib{
             //Get SbtCount
             auto GetSbtCount()const noexcept -> size_t;
         };
-        using  IASHandlePtr = std::shared_ptr<IASHandle>;
+        using  IASHandlePtr   = std::shared_ptr<IASHandle>;
     }
 }
 #endif

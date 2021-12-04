@@ -1,11 +1,11 @@
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <RTLib/ext/Camera.h>
-#include <RTLib/Optix.h>
+#include <RTLib/core/Optix.h>
 #include <RTLib/Config.h>
-#include <RTLib/VectorFunction.h>
-#include <RTLib/Exceptions.h>
-#include <RTLib/Utils.h>
+#include <RTLib/math/VectorFunction.h>
+#include <RTLib/core/Exceptions.h>
+#include <RTLib/ext/Utils.h>
 #include <Test7Config.h>
 #include <GLFW/glfw3.h>
 #include <stb_image.h>

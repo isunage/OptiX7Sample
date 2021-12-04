@@ -2,9 +2,9 @@
 #define RAY_TRACE_H
 #include <cuda_runtime.h>
 #include <optix.h>
-#include <RTLib/Math.h>
-#include <RTLib/Random.h>
-#include <RTLib/VectorFunction.h>
+#include <RTLib/math/Math.h>
+#include <RTLib/math/Random.h>
+#include <RTLib/math/VectorFunction.h>
 enum RayType   {
     RAY_TYPE_RADIANCE = 0,
     RAY_TYPE_OCCLUSION,

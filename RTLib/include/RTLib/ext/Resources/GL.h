@@ -1,7 +1,7 @@
 #ifndef RTLIB_EXT_RESOURCES_GL_H
 #define RTLIB_EXT_RESOURCES_GL_H
-#include "../Resources.h"
-#include "../../GL.h"
+#include <RTLib/ext/Resources.h>
+#include <RTLib/core/GL.h>
 namespace rtlib
 {
     namespace ext
@@ -22,6 +22,7 @@ namespace rtlib
                     }
                     m_GpuData.allocate(sizeInBytes / sizeof(T));
                     m_GpuData.upload((const T *)cpuData, sizeInBytes / sizeof(T));
+                    m_GpuData.unbind();
                 }
                 virtual void Allocate(size_t sizeInBytes) override
                 {
@@ -30,6 +31,7 @@ namespace rtlib
                         m_GpuData.reset();
                     }
                     m_GpuData.allocate(sizeInBytes / sizeof(T));
+                    m_GpuData.unbind();
                 }
                 virtual bool Resize(size_t sizeInBytes) override
                 {
@@ -37,7 +39,9 @@ namespace rtlib
                     {
                         return false;
                     }
-                    return m_GpuData.resize(sizeInBytes / sizeof(T));
+                    bool status =  m_GpuData.resize(sizeInBytes / sizeof(T));
+                    m_GpuData.unbind();
+                    return status;
                 }
                 virtual void Upload(const void *cpuData, size_t sizeInBytes) override
                 {
@@ -46,6 +50,7 @@ namespace rtlib
                         return;
                     }
                     m_GpuData.upload((const T *)cpuData, sizeInBytes / sizeof(T));
+                    m_GpuData.unbind();
                 }
                 virtual void Reset() override
                 {

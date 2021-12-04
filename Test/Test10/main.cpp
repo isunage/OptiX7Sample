@@ -7,11 +7,11 @@
 #include <cuda.h>
 #include <cuda_runtime.h>
 #include <RTLib/ext/Camera.h>
-#include <RTLib/Optix.h>
+#include <RTLib/core/Optix.h>
 #include <RTLib/Config.h>
-#include <RTLib/VectorFunction.h>
-#include <RTLib/Exceptions.h>
-#include <RTLib/Utils.h>
+#include <RTLib/math/VectorFunction.h>
+#include <RTLib/core/Exceptions.h>
+#include <RTLib/ext/Utils.h>
 #include <Test10Config.h>
 #include <tiny_obj_loader.h>
 #include <iostream>

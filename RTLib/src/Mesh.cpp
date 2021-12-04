@@ -1,4 +1,4 @@
-#include "../include/RTLib/ext/Mesh.h"
+#include <RTLib/ext/Mesh.h>
 
 void rtlib::ext::MeshGroup::SetSharedResource(const MeshSharedResourcePtr& res) noexcept
 {

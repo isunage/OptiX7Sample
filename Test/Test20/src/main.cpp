@@ -1,10 +1,10 @@
 #include <Test20Config.h>
-#include <RTLib/GL.h>
-#include <RTLib/CUDA.h>
-#include <RTLib/CUDA_GL.h>
+#include <RTLib/core/GL.h>
+#include <RTLib/core/CUDA.h>
+#include <RTLib/core/CUDA_GL.h>
 #include <RTLib/ext/Camera.h>
-#include <RTLib/Utils.h>
-#include <RTLib/VectorFunction.h>
+#include <RTLib/ext/Utils.h>
+#include <RTLib/math/VectorFunction.h>
 #include <RTLib/ext/RectRenderer.h>
 #include <RTLib/ext/Resources/CUDA.h>
 #include <cuda/RayTrace.h>
@@ -324,11 +324,11 @@ public:
 		}
 		m_GLTexture = rtlib::GLTexture2D<uchar4>();
 		{
-			m_GLTexture.allocate({ (size_t)m_FbWidth, (size_t)m_FbHeight });
-			m_GLTexture.setParameteri(GL_TEXTURE_MAG_FILTER, GL_LINEAR, false);
-			m_GLTexture.setParameteri(GL_TEXTURE_MIN_FILTER, GL_LINEAR, false);
-			m_GLTexture.setParameteri(GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE, false);
-			m_GLTexture.setParameteri(GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE, false);
+			m_GLTexture.allocate({ (size_t)m_Width, (size_t)m_Height },false);
+			m_GLTexture.setParameteri(GL_TEXTURE_MAG_FILTER, GL_LINEAR, false,false);
+			m_GLTexture.setParameteri(GL_TEXTURE_MIN_FILTER, GL_LINEAR, false,false);
+			m_GLTexture.setParameteri(GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE, false,false);
+			m_GLTexture.setParameteri(GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE, false,false);
 		}
 	}
 	void InitStoreResources() {

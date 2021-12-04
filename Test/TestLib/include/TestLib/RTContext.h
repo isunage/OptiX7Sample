@@ -1,6 +1,6 @@
-#ifndef TEST_RT_CONTEXT_H
+﻿#ifndef TEST_RT_CONTEXT_H
 #define TEST_RT_CONTEXT_H
-#include <RTLib/Optix.h>
+#include <RTLib/core/Optix.h>
 #include <cuda.h>
 #include <cuda_runtime.h>
 #include <GLFW/glfw3.h>

@@ -1,6 +1,6 @@
 #ifndef RTLIB_EXT_RECT_RENDERER_H
 #define RTLIB_EXT_RECT_RENDERER_H
-#include "../GL.h"
+#include <RTLib/core/GL.h>
 #include <array>
 #include <string_view>
 namespace rtlib{
@@ -35,7 +35,11 @@ namespace rtlib{
 				m_RectVBO.reset();
 				m_Program.destroy();
 			}
-            ~RectRenderer(){}
+            ~RectRenderer(){
+                if (m_RectVAO != 0) {
+                    reset();
+                }
+            }
         private:
             void initProgram();
             void initRectMesh();

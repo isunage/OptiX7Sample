@@ -1,5 +1,5 @@
-#ifndef RTLIB_H
-#define RTLIB_H
+#ifndef RTLIB_MATH_H
+#define RTLIB_MATH_H
 #include <cuda_runtime.h>
 #if defined(__cplusplus) && !defined(__CUDA_ARCH__)
 #include <bitset>
@@ -7,7 +7,7 @@
 #include <cmath>
 #include <cstdlib>
 #endif
-#include "Preprocessors.h"
+#include <RTLib/core/Preprocessors.h>
 #ifndef RTLIB_M_PI
 #define RTLIB_M_PI  3.14159265358979323846264338327950288
 #endif

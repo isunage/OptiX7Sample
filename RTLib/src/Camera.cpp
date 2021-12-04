@@ -1,4 +1,4 @@
-#include "../include/RTLib/ext/Camera.h"
+#include <RTLib/ext/Camera.h>
 void rtlib::ext::Camera::getUVW(float3& u,float3& v,float3& w)const noexcept{
     w = m_LookAt - m_Eye;
     //front

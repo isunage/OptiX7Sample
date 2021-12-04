@@ -7,9 +7,9 @@
 #include <string>
 #include <algorithm>
 #include <vector>
-#include "Preprocessors.h"
-#include "PixelFormat.h"
-#include "Exceptions.h"
+#include <RTLib/core/Preprocessors.h>
+#include <RTLib/core/PixelFormat.h>
+#include <RTLib/core/Exceptions.h>
 namespace rtlib{
     /*****Buffers*********/
     //CUDA Buffer

@@ -1,9 +1,9 @@
 #ifndef TEST17_SCENE_BUILDER_H
 #define TEST17_SCENE_BUILDER_H
 #include <tiny_obj_loader.h>
-#include <RTLib/Optix.h>
-#include <RTLib/CUDA.h>
-#include <RTLib/VectorFunction.h>
+#include <RTLib/core/Optix.h>
+#include <RTLib/core/CUDA.h>
+#include <RTLib/math/VectorFunction.h>
 #include <RTLib/ext/Mesh.h>
 #include <RTLib/ext/TraversalHandle.h>
 #include <RTLib/ext/VariableMap.h>

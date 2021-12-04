@@ -10,10 +10,10 @@
 #include <utility>
 #include <memory>
 #include <iterator>
-#include "Exceptions.h"
-#include "GL.h"
-#include "CUDA.h"
-#include "CUDA_GL.h"
+#include <RTLib/core/Exceptions.h>
+#include <RTLib/core/GL.h>
+#include <RTLib/core/CUDA.h>
+#include <RTLib/core/CUDA_GL.h>
 //HOST CLASS AND FUNCTION(OpenGL,CUDA,Optix)
 namespace rtlib{
     //SBT

@@ -1,9 +1,9 @@
 #ifndef TEST15_SCENE_BUILDER_H
 #define TEST15_SCENE_BUILDER_H
 #include <tiny_obj_loader.h>
-#include <RTLib/Optix.h>
-#include <RTLib/CUDA.h>
-#include <RTLib/VectorFunction.h>
+#include <RTLib/core/Optix.h>
+#include <RTLib/core/CUDA.h>
+#include <RTLib/math/VectorFunction.h>
 #include <string>
 #include <vector>
 #include <array>

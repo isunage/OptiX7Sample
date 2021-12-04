@@ -1,4 +1,4 @@
-#include "../include/RTLib/Exceptions.h"
+#include <RTLib/core/Exceptions.h>
 #include <sstream>
 namespace rtlib{
     std::string OptixException::getMessage(OptixResult        result, 

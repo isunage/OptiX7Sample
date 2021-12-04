@@ -1,7 +1,7 @@
 #ifndef RT_ASSETS_H
 #define RT_ASSETS_H
-#include <RTLib/CUDA.h>
-#include <RTLib/VectorFunction.h>
+#include <RTLib/core/CUDA.h>
+#include <RTLib/math/VectorFunction.h>
 #include <RTLib/ext/VariableMap.h>
 #include <RTLib/ext/Mesh.h>
 #include <memory>

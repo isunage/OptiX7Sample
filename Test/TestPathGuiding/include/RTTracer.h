@@ -2,8 +2,8 @@
 #define TEST_RT_TRACER_H
 #include "RTPipeline.h"
 #include <cuda/RayTrace.h>
-#include <RTLib/Optix.h>
-#include <RTLib/CUDA.h>
+#include <RTLib/core/Optix.h>
+#include <RTLib/core/CUDA.h>
 #include <RTLib/ext/TraversalHandle.h>
 #include <RTLib/ext/VariableMap.h>
 namespace test {

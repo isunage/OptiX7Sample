@@ -2,10 +2,10 @@
 #define RAY_TRACE_H
 #include <cuda_runtime.h>
 #include <optix.h>
-#include <RTLib/Math.h>
-#include <RTLib/Random.h>
-#include <RTLib/VectorFunction.h>
-#include <RTLib/Math.h>
+#include <RTLib/math/Math.h>
+#include <RTLib/math/Random.h>
+#include <RTLib/math/VectorFunction.h>
+#include <RTLib/math/Math.h>
 #define RAY_TRACE_ENABLE_SAMPLE 1
 //#define TEST_SKIP_TEXTURE_SAMPLE
 //#define   TEST11_SHOW_EMISSON_COLOR

@@ -1,19 +1,19 @@
 #ifndef RT_FRAME_BUFFER_H
 #define RT_FRAME_BUFFER_H
-#include <RTLib/CUDA.h>
-#include <RTLib/CUDA_GL.h>
+#include <RTLib/core/CUDA.h>
+#include <RTLib/core/CUDA_GL.h>
 #include <unordered_map>
 #include <string>
 #include <memory>
 namespace test {
-    class RTFrameBuffer {
+    class RTFramebuffer {
     public:
-        RTFrameBuffer() {}
-        RTFrameBuffer(int fbWidth, int fbHeight) :m_FbWidth{ fbWidth }, m_FbHeight{fbHeight} {}
-        RTFrameBuffer(RTFrameBuffer&& fb)   = default;
-        RTFrameBuffer(const RTFrameBuffer&) = delete;
-        RTFrameBuffer& operator=(RTFrameBuffer&& fb)   = default;
-        RTFrameBuffer& operator=(const RTFrameBuffer&) = delete;
+        RTFramebuffer() {}
+        RTFramebuffer(int fbWidth, int fbHeight) :m_FbWidth{ fbWidth }, m_FbHeight{fbHeight} {}
+        RTFramebuffer(RTFramebuffer&& fb)   = default;
+        RTFramebuffer(const RTFramebuffer&) = delete;
+        RTFramebuffer& operator=(RTFramebuffer&& fb)   = default;
+        RTFramebuffer& operator=(const RTFramebuffer&) = delete;
         bool Resize(int fbWidth, int fbHeight) {
             if (m_FbWidth == fbWidth && m_FbHeight == fbHeight) {
                 return false;
@@ -55,7 +55,7 @@ namespace test {
         auto GetCUGLBuffer(const std::string& key)const -> const rtlib::GLInteropBuffer<uchar4>& {
             return m_CUGLBuffers.at(key);
         }
-        ~RTFrameBuffer()noexcept {}
+        ~RTFramebuffer()noexcept {}
     private:
         std::unordered_map<std::string, rtlib::CUDABuffer<uchar4>>      m_CUDABuffers  = {};
         std::unordered_map<std::string, rtlib::GLInteropBuffer<uchar4>> m_CUGLBuffers  = {};

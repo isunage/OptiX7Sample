@@ -36,6 +36,7 @@ void test::RTGui::DrawFrame()
 }
 
 void test::RTGui::BeginFrame() {
+
 	ImGui_ImplOpenGL3_NewFrame();
 	ImGui_ImplGlfw_NewFrame();
 	ImGui::NewFrame();
@@ -59,7 +60,10 @@ void test::RTGui::EndFrame() {
 }
 
 void test::RTGui::CleanUp() {
-
+	m_StyleColors.clear();
+	m_GuiMainMenuBar.reset();
+	m_GuiWindows.clear();
+	m_Window = nullptr;
 }
 
 bool test::RTGui::HasGuiMainMenuBar() const noexcept
@@ -92,6 +96,13 @@ void test::RTGui::PopGuiWindow()
 auto test::RTGui::GetGuiWindow(size_t idx) const -> std::shared_ptr<RTGuiWindow>
 {
 	return m_GuiWindows.at(idx);
+}
+
+test::RTGui::~RTGui() noexcept
+{
+	if (m_Window) {
+		this->CleanUp();
+	}
 }
 
 

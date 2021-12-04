@@ -1,4 +1,4 @@
-#include "../include/RTLib/ext/RectRenderer.h"
+#include <RTLib/ext/RectRenderer.h>
 #include <iostream>
 
 void rtlib::ext::RectRenderer::initProgram()

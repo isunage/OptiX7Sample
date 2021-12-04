@@ -1,7 +1,7 @@
 #ifndef TEST_RT_RECORD_BUFFER_H
 #define TEST_RT_RECORD_BUFFER_H
-#include <RTLib/Optix.h>
-#include <RTLib/CUDA.h>
+#include <RTLib/core/Optix.h>
+#include <RTLib/core/CUDA.h>
 #include <cassert>
 namespace test{
     template<typename Data_t>

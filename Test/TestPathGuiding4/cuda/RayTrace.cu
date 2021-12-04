@@ -135,16 +135,23 @@ extern "C" __global__ void __raygen__def(){
         prd.done            = false;
         prd.seed            = seed;
         int depth = 0;
+        if (depth >= params.maxTraceDepth) {
+            prd.done = true;
+        }
+        float t_min = 0.01f;
+        float t_max = 10.0f;
+        depth++;
         for (;;) {
             if (depth >= params.maxTraceDepth) {
                 prd.done = true;
             }
-            traceRadiance(params.gasHandle, rayOrigin, rayDirection, 0.01f, 1e16f, &prd);
+            traceRadiance(params.gasHandle, rayOrigin, rayDirection, t_min, t_max, &prd);
             result += prd.emitted;
             result += prd.radiance * prd.attenuation2;
             if (prd.done || isnan(rayDirection.x) || isnan(rayDirection.y) || isnan(rayDirection.z)) {
                 break;
             }
+            t_max = 1e16f;
             depth++;
         }
         seed = prd.seed;
