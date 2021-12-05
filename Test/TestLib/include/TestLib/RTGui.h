@@ -5,6 +5,7 @@
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
+#include <ImGuiFileDialog.h>
 #include <unordered_map>
 #include <stdexcept>
 #include <variant>
@@ -91,7 +92,7 @@ namespace test{
         static void DefaultDrawCallback(RTGuiWindow*) {}
         bool                      m_IsActive = true;
         std::string               m_Title = "";
-        std::optional<WindowArgs> m_WindowArgs = std::nullopt;
+        WindowArgs                m_WindowArgs = {};
         std::optional<PosArgs>    m_NextPosArgs = std::nullopt;
         std::optional<SizeArgs>   m_NextSizeArgs = std::nullopt;
         void* m_UserPointer = nullptr;
@@ -165,7 +166,26 @@ namespace test{
         void* m_UserPointer = nullptr;
         ClickCallback m_ClickCallback = DefaultClickCallback;
         std::vector<std::shared_ptr<RTGuiSubObject>> m_SubObjects = {};
-
+    };
+    class RTGuiOpenWindowMenuItem : public test::RTGuiMenuItem
+    {
+    public:
+        RTGuiOpenWindowMenuItem(const std::shared_ptr<test::RTGuiWindow>& gWindow, const std::string& name = "Open")noexcept
+            :RTGuiMenuItem(name), m_GuiWindow{gWindow}{}
+        virtual void OnClick()final;
+        virtual ~RTGuiOpenWindowMenuItem()noexcept {}
+    private:
+        std::weak_ptr<test::RTGuiWindow> m_GuiWindow;
+    };
+    class RTGuiCloseWindowMenuItem : public test::RTGuiMenuItem
+    {
+    public:
+        RTGuiCloseWindowMenuItem(const std::shared_ptr<test::RTGuiWindow>& gWindow, const std::string& name = "Close")noexcept
+            :RTGuiMenuItem(name), m_GuiWindow{ gWindow }{}
+        virtual void OnClick()final;
+        virtual ~RTGuiCloseWindowMenuItem()noexcept {}
+    private:
+        std::weak_ptr<test::RTGuiWindow> m_GuiWindow;
     };
     class RTGuiSubObject {
     public:

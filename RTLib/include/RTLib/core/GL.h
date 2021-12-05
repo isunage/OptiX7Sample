@@ -592,6 +592,13 @@ namespace rtlib{
         GLint getUniformLocation(const std::string& name)const noexcept {
             return glGetUniformLocation(m_ID, name.data());
         }
+        GLint getUniformBlockIndex(const std::string& name)const noexcept {
+            return glGetUniformBlockIndex(m_ID, name.data());
+        }
+
+        void  setUniformBlockBinding(GLint blockIdx, GLint binding)const noexcept {
+            return glUniformBlockBinding(m_ID, blockIdx, binding);
+        }
         ~GLProgram()noexcept {
             this->destroy();
         }

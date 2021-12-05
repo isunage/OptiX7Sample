@@ -2608,6 +2608,7 @@ void TestPG4Application::PollEvents()
 			m_CameraController.ProcessMouseMovement(-m_DelCursorPos.x, m_DelCursorPos.y);
 			m_UpdateCamera = true;
 		}
+
 	}
 	else
 	{

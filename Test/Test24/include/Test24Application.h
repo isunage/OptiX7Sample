@@ -5,18 +5,20 @@
 #include <TestLib/RTFrameBuffer.h>
 #include <TestLib/RTTracer.h>
 #include <TestLib/RTGui.h>
+#include <TestLib/RTAssets.h>
 #include <RTLib/core/GL.h>
 #include <RTLib/ext/RectRenderer.h>
 #include <RTLib/ext/Camera.h>
 class Test24Application : public test::RTApplication
 {
 private:
-    using TracerMap   = std::unordered_map < std::string, std::shared_ptr<test::RTTracer>>;
-    using ContextPtr  = std::shared_ptr<test::RTContext>;
+    using TracerMap = std::unordered_map<std::string, std::shared_ptr<test::RTTracer>>;
+    using ContextPtr = std::shared_ptr<test::RTContext>;
     using RendererPtr = std::unique_ptr<rtlib::ext::RectRenderer>;
     using FramebufferPtr = std::shared_ptr<test::RTFramebuffer>;
     using CameraControllerPtr = std::shared_ptr<rtlib::ext::CameraController>;
     using GuiPtr = std::shared_ptr<test::RTGui>;
+    using ObjModelAssetManagerPtr = std::shared_ptr<test::RTObjModelAssetManager>;
 private:
     Test24Application(int fbWidth, int fbHeight, std::string name) noexcept;
 public:
@@ -28,9 +30,10 @@ public:
     virtual ~Test24Application() noexcept {}
 private:
     void Launch();
+    void BegFrame();
     void Render();
     void Update();
-    //
+    void EndFrame();
     void InitBase();
     void FreeBase();
     void InitGui();
@@ -39,13 +42,18 @@ private:
     void FreeScene();
     void InitTracers();
     void FreeTracers();
-
+    void PrepareLoop();
     void RenderGui();
-    void RenderFrame(const std::string& name);
-    static void FramebufferSizeCallback(GLFWwindow* window, int fbWidth, int fbHeight);
+    void RenderFrame(const std::string &name);
+    static void FramebufferSizeCallback(GLFWwindow *window, int fbWidth, int fbHeight);
+    static void CursorPosCallback(GLFWwindow *window, double xpos, double ypos);
+    static void ScrollCallback(GLFWwindow *window, double xoff, double yoff);
 private:
-    void CopyRtFrame(const std::string& name);
-    void CopyDgFrame(const std::string& name);
+    void CopyRtFrame(const std::string &name);
+    void CopyDgFrame(const std::string &name);
+    void ResizeFrame();
+    void UpdateCamera();
+    void UpdateFrameTime();
 private:
     ContextPtr m_Context;
     RendererPtr m_Renderer;
@@ -54,9 +62,19 @@ private:
     CameraControllerPtr m_CameraController;
     GLFWwindow *m_Window;
     TracerMap m_Tracers;
+    ObjModelAssetManagerPtr m_ObjModelManager;
     int m_FbWidth;
     int m_FbHeight;
     float m_FovY;
-    bool  m_IsResized;
+    bool m_IsResized;
+    bool m_UpdateCamera;
+    float m_CurFrameTime;
+    float m_DelFrameTime;
+    std::array<float, 2> m_CurCursorPos;
+    std::array<float, 2> m_DelCursorPos;
+    std::array<float, 2> m_ScrollOffsets;
+    std::vector<std::string> m_PublicFrameNames;
+    std::string m_CurMainFrameName;
+    std::string m_CurTraceName;
 };
 #endif

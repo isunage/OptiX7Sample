@@ -119,7 +119,9 @@ void test::RTGui::SetStyleColor(ImGuiCol idx, const ImVec4& col)
 	m_StyleColors[idx] = col;
 }
 
-test::RTGuiWindow::RTGuiWindow(std::string title) noexcept :m_Title{ title } {}
+test::RTGuiWindow::RTGuiWindow(std::string title) noexcept :m_Title{ title } {
+	m_WindowArgs = { &m_IsActive,0 };
+}
 test::RTGuiWindow::RTGuiWindow(std::string title, ImGuiWindowFlags flags) :RTGuiWindow(title) {
 	m_WindowArgs = { &m_IsActive,flags };
 }
@@ -136,7 +138,7 @@ void test::RTGuiWindow::SetNextPos(const ImVec2& pos, ImGuiCond cond, const ImVe
 
 void test::RTGuiWindow::SetNextSize(const ImVec2& size, ImGuiCond cond)
 {
-	m_NextSizeArgs = { size, cond };
+	m_NextSizeArgs = { size, cond    };
 }
 
 void test::RTGuiWindow::SetUserPointer(void* data) noexcept
@@ -164,21 +166,19 @@ void test::RTGuiWindow::DrawFrame()
 		ImGui::SetNextWindowSize(m_NextSizeArgs.value().size, m_NextPosArgs.value().cond);
 	}
 	if (m_IsActive) {
-		if (m_WindowArgs.has_value()) {
-			ImGui::Begin(m_Title.c_str(), m_WindowArgs.value().p_open, m_WindowArgs.value().flags);
+		bool isOpen = false;
+		if (ImGui::Begin(m_Title.c_str(), m_WindowArgs.p_open, m_WindowArgs.flags)) {
+			if (HasGuiMenuBar()) {
+				m_GuiMenuBar->DrawFrame();
+			}
+			//Callback->Derive->Subobject
+			m_DrawCallback(this);
+			DrawGui();
+			for (auto& subobject : m_SubObjects) {
+				subobject->DrawFrame();
+			}
 		}
-		else {
-			ImGui::Begin(m_Title.c_str());
-		}
-		if (HasGuiMenuBar()) {
-			m_GuiMenuBar->DrawFrame();
-		}
-		//Callback->Derive->Subobject
-		m_DrawCallback(this);
-		DrawGui();
-		for (auto& subobject : m_SubObjects) {
-			subobject->DrawFrame();
-		}
+		//注意: ImGui::Endはレガシーなため成功失敗にかかわらず呼び出す
 		ImGui::End();
 	}
 }
@@ -190,11 +190,7 @@ bool test::RTGuiWindow::HasGuiMenuBar() const noexcept
 
 auto test::RTGuiWindow::AddGuiMenuBar() -> std::shared_ptr<RTGuiMenuBar>
 {
-	if (!m_WindowArgs) {
-		m_WindowArgs         = WindowArgs{};
-		m_WindowArgs->p_open = &m_IsActive;
-	}
-	m_WindowArgs->flags |= ImGuiWindowFlags_MenuBar;
+	m_WindowArgs.flags |= ImGuiWindowFlags_MenuBar;
 	m_GuiMenuBar = std::make_shared<RTGuiMenuBar>();
 	return m_GuiMenuBar;
 }
@@ -405,4 +401,19 @@ void test::RTGuiMenuBar::DrawFrame()
 
 test::RTGuiMenuBar::~RTGuiMenuBar() noexcept
 {
+}
+
+void test::RTGuiOpenWindowMenuItem::OnClick() {
+	auto guiWindow = m_GuiWindow.lock();
+	if (guiWindow) {
+		guiWindow->SetActive(true);
+	}
+}
+
+void test::RTGuiCloseWindowMenuItem::OnClick()
+{
+	auto guiWindow = m_GuiWindow.lock();
+	if (guiWindow) {
+		guiWindow->SetActive(false);
+	}
 }

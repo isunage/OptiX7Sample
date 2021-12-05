@@ -6,6 +6,7 @@
 #include <unordered_map>
 #include <string>
 #include <cassert>
+#include <typeinfo>
 namespace test {
     //大丈夫
     class RTFramebufferComponent
@@ -14,7 +15,7 @@ namespace test {
         virtual void Initialize(int fbWidth, int fbHeight) = 0;
         virtual bool Resize(int fbWidth, int fbHeight) = 0;
         virtual void CleanUp() = 0;
-        virtual auto GetIDString()const noexcept -> std::string_view = 0;
+        virtual auto GetIDString()const noexcept -> std::string = 0;
         virtual ~RTFramebufferComponent() {}
     };
     class RTFramebuffer {
@@ -25,6 +26,8 @@ namespace test {
         RTFramebuffer(const RTFramebuffer&) = delete;
         RTFramebuffer& operator=(RTFramebuffer&& fb) = default;
         RTFramebuffer& operator=(const RTFramebuffer&) = delete;
+        auto GetWidth()const noexcept->int { return m_FbWidth; }
+        auto GetHeight()const noexcept->int { return m_FbHeight; }
 
         bool Resize(int fbWidth, int fbHeight) {
             if (m_FbWidth == fbWidth && m_FbHeight == fbHeight) {
@@ -45,7 +48,6 @@ namespace test {
             m_FbWidth  = 0;
             m_FbHeight = 0;
         }
-
         template<typename S,typename ...Args, bool Cond = std::is_base_of_v<RTFramebufferComponent, S>>
         void AddComponent(const std::string& key, Args&&... args)
         {
@@ -114,7 +116,7 @@ namespace test {
             m_WarpTMode = warpTMode;
         }
 
-        virtual auto GetIDString()const noexcept -> std::string_view {
+        virtual auto GetIDString()const noexcept -> std::string override {
             return IDString();
         }
         virtual void Initialize(int fbWidth, int fbHeight) override {
@@ -130,6 +132,9 @@ namespace test {
         virtual bool Resize(int fbWidth, int fbHeight) override
         {
             if (fbWidth != m_FbWidth || fbHeight != m_FbHeight) {
+
+                m_FbWidth = fbWidth;
+                m_FbHeight = fbHeight;
                 m_Handle.reset();
                 m_Handle.allocate({ (size_t)m_FbWidth,(size_t)m_FbHeight,nullptr }, GL_TEXTURE_2D, false);
                 m_Handle.setParameteri(GL_TEXTURE_MAG_FILTER, m_MagFilter, false);
@@ -137,8 +142,6 @@ namespace test {
                 m_Handle.setParameteri(GL_TEXTURE_WRAP_S, m_WarpSMode, false);
                 m_Handle.setParameteri(GL_TEXTURE_WRAP_T, m_WarpTMode, false);
                 m_Handle.unbind();
-                m_FbWidth  = fbWidth;
-                m_FbHeight = fbHeight;
                 return true;
             }
             return false;
@@ -152,9 +155,9 @@ namespace test {
         auto         GetHandle() noexcept -> rtlib::GLTexture2D<T>& {
             return m_Handle;
         }
-        static auto  IDString()   noexcept -> std::string_view
+        static auto  IDString()   noexcept -> std::string
         {
-            return "GLTextureFBComponent";
+            return "GLTextureFBComponent<" + std::string(typeid(T).name()) + ">";
         }
 
         virtual ~RTGLTextureFBComponent()noexcept {}
@@ -174,7 +177,7 @@ namespace test {
     public:
         RTCUDABufferFBComponent() noexcept :RTFramebufferComponent() {}
 
-        virtual auto GetIDString()const noexcept -> std::string_view {
+        virtual auto GetIDString()const noexcept -> std::string override {
             return IDString();
         }
         virtual void Initialize(int fbWidth, int fbHeight) override {
@@ -191,9 +194,9 @@ namespace test {
         auto GetHandle() noexcept -> rtlib::CUDABuffer<T>& {
             return m_Handle;
         }
-        static auto  IDString()    noexcept -> std::string_view
+        static auto  IDString()    noexcept -> std::string
         {
-            return "CUDABufferFBComponent";
+            return "CUDABufferFBComponent<" + std::string(typeid(T).name()) + ">";
         }
 
         virtual ~RTCUDABufferFBComponent()noexcept {}
@@ -207,7 +210,7 @@ namespace test {
     public:
         RTCUGLBufferFBComponent() noexcept:RTFramebufferComponent() {}
 
-        virtual auto GetIDString()const noexcept -> std::string_view {
+        virtual auto GetIDString()const noexcept -> std::string override {
             return IDString();
         }
         virtual void Initialize(int fbWidth, int fbHeight) override {
@@ -225,9 +228,9 @@ namespace test {
         auto GetHandle() noexcept ->  rtlib::GLInteropBuffer<T>& {
             return m_Handle;
         }
-        static auto  IDString()    noexcept -> std::string_view
+        static auto  IDString() noexcept -> std::string
         {
-            return "CUGLBufferFBComponent";
+            return "CUGLBufferFBComponent<"+ std::string(typeid(T).name()) +">";
         }
 
         virtual ~RTCUGLBufferFBComponent()noexcept {}

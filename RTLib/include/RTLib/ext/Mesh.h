@@ -51,7 +51,7 @@ namespace rtlib{
             MeshSharedResourcePtr    m_SharedResource = {};
             MeshUniqueResourcePtr    m_UniqueResource = {};
         };
-        using  MeshPtr      = std::shared_ptr<Mesh>;
+        using  MeshPtr = std::shared_ptr<Mesh>;
         class  MeshGroup {
         public:
             MeshGroup()noexcept {}

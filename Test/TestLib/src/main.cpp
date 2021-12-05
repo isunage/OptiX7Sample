@@ -62,7 +62,7 @@ private:
 					ImGuiFileDialog::Instance()->Close();
 				}
 				if (!this_ptr->m_ObjFilePathes.empty()) {
-					auto objFilePathStrs = std::vector<std::string>();
+					auto objFilePathStrs  = std::vector<std::string>();
 					auto objFilePathCstrs = std::vector<const char*>();
 					objFilePathStrs.reserve(this_ptr->m_ObjFilePathes.size());
 					objFilePathCstrs.reserve(this_ptr->m_ObjFilePathes.size());
@@ -108,7 +108,7 @@ public:
 		m_Framebuffer  = nullptr;
 		m_FpsValues    = std::vector<float>(5, 0.0f);
 	}
-	// RTApplication ‚ð‰î‚µ‚ÄŒp³‚³‚ê‚Ü‚µ‚½
+	// RTApplication ï¿½ï¿½ï¿½î‚µï¿½ÄŒpï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ü‚ï¿½ï¿½ï¿½
 	virtual void Initialize() override
 	{
 		this->InitContext();

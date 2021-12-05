@@ -139,7 +139,7 @@ extern "C" __global__ void __raygen__def(){
             prd.done = true;
         }
         float t_min = 0.01f;
-        float t_max = 10.0f;
+        float t_max = 1e16f;
         depth++;
         for (;;) {
             if (depth >= params.maxTraceDepth) {

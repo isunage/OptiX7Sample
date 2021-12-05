@@ -107,9 +107,14 @@ namespace rtlib{
             return false;
         }
         void allocate(size_t count) {
-            this->m_Handle.allocate(count);
-            std::cout << "ALLOCATED!\n";
-            this->registerResource();
+            if (count > 0) {
+                this->m_Handle.allocate(count);
+                std::cout << "ALLOCATED!\n";
+                this->registerResource();
+            }
+            else {
+                std::cout << "ALLOCATION FAILED(COUNT=0)!\n";
+            }
         }
         [[nodiscard]] T* map() {
             RTLIB_CUDA_CHECK(cudaGraphicsMapResources(1, &m_GraphicsResource, m_Stream));

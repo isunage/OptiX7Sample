@@ -1180,7 +1180,7 @@ void Test22Application::InitFrameResources()
 	m_DebugTexture->setParameteri(GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE, false);
 	m_DebugTexture->setParameteri(GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE, false);
 
-	m_FrameBuffer = std::make_unique<test::RTFrameBuffer>(m_FbWidth, m_FbHeight);
+	m_FrameBuffer = std::make_unique<test::RTFramebuffer>(m_FbWidth, m_FbHeight);
 	m_FrameBuffer->AddCUGLBuffer("Default");
 	m_FrameBuffer->GetCUGLBuffer("Default").upload(
 		std::vector<uchar4>(m_FbWidth * m_FbHeight, make_uchar4(0, 0, 0, 255)));

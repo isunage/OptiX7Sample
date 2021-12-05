@@ -108,6 +108,15 @@ namespace rtlib
             {
                 return Camera(m_Position, m_Position + m_Front, m_Up, fovY, aspect);
             }
+            auto GetCamera(float aspect)const noexcept->Camera {
+                return GetCamera(m_Zoom, aspect);
+            }
+            auto GetZoom()const noexcept ->float {
+                return m_Zoom;
+            }
+            void SetZoom(float zoom) noexcept {
+                m_Zoom = zoom;
+            }
             void ProcessKeyboard(CameraMovement mode, float deltaTime) noexcept
             {
                 float velocity = m_MovementSpeed * deltaTime;
@@ -118,6 +127,7 @@ namespace rtlib
                 if (mode == CameraMovement::eBackward)
                 {
                     m_Position -= m_Front * velocity;
+
                 }
                 if (mode == CameraMovement::eLeft)
                 {
@@ -135,6 +145,7 @@ namespace rtlib
                 {
                     m_Position -= m_Up * velocity;
                 }
+
             }
             void ProcessMouseMovement(float xoffset, float yoffset, bool constrainPitch = true) noexcept
             {
