@@ -13,7 +13,8 @@
 #include <memory>
 #include <string>
 #include <optional>
-namespace test{
+namespace test
+{
     //Gui->Window,MainMenuBar
     //Window->MenuBar, SubObject
     //MainMenuBar->Menu
@@ -23,6 +24,7 @@ namespace test{
     class RTGui;
     class RTGuiMainMenuBar;
     class RTGuiWindow;
+    class RTGuiFileDialog;
     class RTGuiMenuBar;
     class RTGuiMenu;
     class RTGuiMenuItem;
@@ -30,85 +32,163 @@ namespace test{
     class RTGui
     {
     public:
-        RTGui(GLFWwindow* window)noexcept;
-        void SetStyleColor(ImGuiCol idx, const ImU32   col);
-        void SetStyleColor(ImGuiCol idx, const ImVec4& col);
-		void Initialize();
+        RTGui(GLFWwindow *window) noexcept;
+        void SetStyleColor(ImGuiCol idx, const ImU32 col);
+        void SetStyleColor(ImGuiCol idx, const ImVec4 &col);
+        void Initialize();
         void DrawFrame();
-		void CleanUp();
+        void CleanUp();
         //MainMenuBar
-        bool HasGuiMainMenuBar()const noexcept;
-        auto AddGuiMainMenuBar()->std::shared_ptr<RTGuiMainMenuBar>;
-        auto GetGuiMainMenuBar()const -> std::shared_ptr<RTGuiMainMenuBar>;
+        bool HasGuiMainMenuBar() const noexcept;
+        auto AddGuiMainMenuBar() -> std::shared_ptr<RTGuiMainMenuBar>;
+        auto GetGuiMainMenuBar() const -> std::shared_ptr<RTGuiMainMenuBar>;
         //GuiWindow
         void SetGuiWindow(std::shared_ptr<RTGuiWindow> guiWindow);
         void PopGuiWindow();
-        auto GetGuiWindow(size_t idx)const->std::shared_ptr<RTGuiWindow>;
-        virtual ~RTGui()noexcept;
+        auto GetGuiWindow(size_t idx) const -> std::shared_ptr<RTGuiWindow>;
+        //GuiFileDialog
+        void SetGuiFileDialog(std::shared_ptr<RTGuiFileDialog> guiFileDialog);
+        void PopGuiFileDialog();
+        auto GetGuiFileDialog(size_t idx) const->std::shared_ptr<RTGuiFileDialog>;
+        ~RTGui() noexcept;
     private:
         void BeginFrame();
         void EndFrame();
-        std::unordered_map<ImGuiCol, std::variant<ImU32,ImVec4>> m_StyleColors    = {};
-        std::shared_ptr<RTGuiMainMenuBar>                        m_GuiMainMenuBar = {};
-        std::vector<std::shared_ptr<RTGuiWindow>>                m_GuiWindows     = {};
-        GLFWwindow*                                              m_Window         = nullptr;
+        std::unordered_map<ImGuiCol, std::variant<ImU32, ImVec4>> m_StyleColors = {};
+        std::shared_ptr<RTGuiMainMenuBar> m_GuiMainMenuBar = {};
+        std::vector<std::shared_ptr<RTGuiWindow>> m_GuiWindows = {};
+        std::vector<std::shared_ptr<RTGuiFileDialog>> m_GuiFileDialogs = {};
+        GLFWwindow *m_Window = nullptr;
+    };
+    class RTGuiFileDialog
+    {
+    public:
+        using Callback = void (*)(RTGuiFileDialog*);
+        explicit RTGuiFileDialog(const std::string& title, const char* filter, const std::string& filePath);
+        virtual void OnOk() {}
+        virtual void OnOpen() {}
+        virtual void OnClose() {}
+        
+        auto GetFilePathName() noexcept -> std::string;
+        auto GetCurrentPath() noexcept -> std::string;
+
+        void SetOkCallback(Callback okCallback) noexcept;
+        void SetOpenCallback(Callback closeCallback) noexcept;
+        void SetCloseCallback(Callback closeCallback) noexcept;
+
+        void SetUserPointer(void* ptr) noexcept;
+        auto GetUserPointer() const noexcept -> void*;
+
+        void DrawFrame() ;
+        void Open()
+        {
+            m_Instance.OpenDialog("Default", m_Title, m_Filters.c_str(), m_FilePath);
+        }
+        void Close()
+        {
+
+            if (m_CloseCallback)
+            {
+                m_CloseCallback(this);
+            }
+            OnClose();
+            m_Instance.Close();
+        }
+        bool IsOk() const noexcept
+        {
+            return m_Instance.IsOk();
+        }
+        bool IsOpen() const noexcept
+        {
+            return m_Instance.IsOpened();
+        }
+        virtual ~RTGuiFileDialog() noexcept;
+    private:
+        bool Display()
+        {
+            return m_Instance.Display("Default");
+        }
+        void Ok()
+        {
+            if (m_OkCallback)
+            {
+                m_OkCallback(this);
+            }
+            OnOk();
+        }
+    private:
+        ImGuiFileDialog m_Instance;
+        std::string m_Title;
+        std::string m_Filters;
+        std::string m_FilePath;
+        void* m_UserPointer = nullptr;
+        Callback m_OkCallback = nullptr;
+        Callback m_OpenCallback = nullptr;
+        Callback m_CloseCallback = nullptr;
     };
     class RTGuiWindow
     {
     private:
-        struct WindowArgs {
-            bool* p_open;
+        struct WindowArgs
+        {
+            bool *p_open;
             ImGuiWindowFlags flags;
         };
-        struct PosArgs {
-            ImVec2    pos;
+        struct PosArgs
+        {
+            ImVec2 pos;
             ImGuiCond cond;
-            ImVec2    pivot;
+            ImVec2 pivot;
         };
-        struct SizeArgs {
-            ImVec2    size;
+        struct SizeArgs
+        {
+            ImVec2 size;
             ImGuiCond cond;
         };
+
     public:
-        using DrawCallback = void(*)(RTGuiWindow*);
-        RTGuiWindow(std::string title = "")noexcept;
+        using DrawCallback = void (*)(RTGuiWindow *);
+        RTGuiWindow(std::string title = "") noexcept;
         RTGuiWindow(std::string title, ImGuiWindowFlags flags);
-        bool IsActive()const noexcept { return m_IsActive; }
+        bool IsActive() const noexcept { return m_IsActive; }
         void SetActive(bool isActive) { m_IsActive = isActive; }
-        void SetTitle(const std::string& title);
-        void SetNextPos(const ImVec2& pos, ImGuiCond cond = 0, const ImVec2& pivot = ImVec2(0, 0));
-        void SetNextSize(const ImVec2& size, ImGuiCond cond = 0);
-        void SetUserPointer(void* data)noexcept;
-        auto GetUserPointer()const noexcept -> void*;
-        void SetDrawCallback(DrawCallback callback)noexcept;
+        void SetTitle(const std::string &title);
+        void SetNextPos(const ImVec2 &pos, ImGuiCond cond = 0, const ImVec2 &pivot = ImVec2(0, 0));
+        void SetNextSize(const ImVec2 &size, ImGuiCond cond = 0);
+        void SetUserPointer(void *data) noexcept;
+        auto GetUserPointer() const noexcept -> void *;
+        void SetDrawCallback(DrawCallback callback) noexcept;
         void DrawFrame();
-        bool HasGuiMenuBar()const noexcept;
-        auto AddGuiMenuBar()->std::shared_ptr<RTGuiMenuBar>;
-        auto GetGuiMenuBar()const->std::shared_ptr<RTGuiMenuBar>;
-        void AddSubObject(const std::shared_ptr<RTGuiSubObject>& subobject);
+        bool HasGuiMenuBar() const noexcept;
+        auto AddGuiMenuBar() -> std::shared_ptr<RTGuiMenuBar>;
+        auto GetGuiMenuBar() const -> std::shared_ptr<RTGuiMenuBar>;
+        void SetSubObject(const std::shared_ptr<RTGuiSubObject> &subobject);
+        void PopSubObject();
+        auto GetSubObject(size_t idx) const->std::shared_ptr<RTGuiSubObject>;
         virtual void DrawGui();
-        virtual ~RTGuiWindow()noexcept;
+        virtual ~RTGuiWindow() noexcept;
+
     private:
-        static void DefaultDrawCallback(RTGuiWindow*) {}
-        bool                      m_IsActive = true;
-        std::string               m_Title = "";
-        WindowArgs                m_WindowArgs = {};
-        std::optional<PosArgs>    m_NextPosArgs = std::nullopt;
-        std::optional<SizeArgs>   m_NextSizeArgs = std::nullopt;
-        void* m_UserPointer = nullptr;
-        DrawCallback              m_DrawCallback = DefaultDrawCallback;
-        std::shared_ptr<RTGuiMenuBar>  m_GuiMenuBar = {};
+        static void DefaultDrawCallback(RTGuiWindow *) {}
+        bool m_IsActive = true;
+        std::string m_Title = "";
+        WindowArgs m_WindowArgs = {};
+        std::optional<PosArgs> m_NextPosArgs = std::nullopt;
+        std::optional<SizeArgs> m_NextSizeArgs = std::nullopt;
+        void *m_UserPointer = nullptr;
+        DrawCallback m_DrawCallback = DefaultDrawCallback;
+        std::shared_ptr<RTGuiMenuBar> m_GuiMenuBar = {};
         std::vector<std::shared_ptr<RTGuiSubObject>> m_SubObjects = {};
     };
     class RTGuiMainMenuBar
     {
     public:
-           RTGuiMainMenuBar()noexcept;
-           auto AddGuiMenu(const std::string& name)->std::shared_ptr<RTGuiMenu>;
-           void PopGuiMenu();
-           auto GetGuiMenu( size_t idx)const->std::shared_ptr<RTGuiMenu>;
-           void DrawFrame();
-          ~RTGuiMainMenuBar()noexcept;
+        RTGuiMainMenuBar() noexcept;
+        auto AddGuiMenu(const std::string &name) -> std::shared_ptr<RTGuiMenu>;
+        void PopGuiMenu();
+        auto GetGuiMenu(size_t idx) const -> std::shared_ptr<RTGuiMenu>;
+        void DrawFrame();
+        ~RTGuiMainMenuBar() noexcept;
     private:
         friend class RTGui;
         std::vector<std::shared_ptr<RTGuiMenu>> m_GuiMenus;
@@ -116,83 +196,92 @@ namespace test{
     class RTGuiMenuBar
     {
     public:
-        RTGuiMenuBar()noexcept;
-        auto AddGuiMenu(const std::string& name)->std::shared_ptr<RTGuiMenu>;
+        RTGuiMenuBar() noexcept;
+        auto AddGuiMenu(const std::string &name) -> std::shared_ptr<RTGuiMenu>;
         void PopGuiMenu();
-        auto GetGuiMenu(size_t idx)const->std::shared_ptr<RTGuiMenu>;
+        auto GetGuiMenu(size_t idx) const -> std::shared_ptr<RTGuiMenu>;
         void DrawFrame();
-        ~RTGuiMenuBar()noexcept;
+        ~RTGuiMenuBar() noexcept;
+
     private:
         friend class RTGuiWindow;
-        std::vector<std::shared_ptr< RTGuiMenu>> m_GuiMenus;
+        std::vector<std::shared_ptr<RTGuiMenu>> m_GuiMenus;
     };
-    class RTGuiMenu {
+    class RTGuiMenu
+    {
     private:
-         using RTGuiMenuItemOrMenuPtr = std::variant < std::shared_ptr<RTGuiMenuItem>, std::shared_ptr<RTGuiMenu>>;
+        using RTGuiMenuItemOrMenuPtr = std::variant<std::shared_ptr<RTGuiMenuItem>, std::shared_ptr<RTGuiMenu>>;
     public:
-        RTGuiMenu(const std::string& name, bool isEnable = true)noexcept;
-        void SetEnable(bool isEnable)noexcept;
+        RTGuiMenu(const std::string &name, bool isEnable = true) noexcept;
+        void SetEnable(bool isEnable) noexcept;
         void SetGuiMenuItem(std::shared_ptr<RTGuiMenuItem> guiMenuItem);
-        auto AddGuiMenu(const std::string& name)->std::shared_ptr<RTGuiMenu>;
+        auto AddGuiMenu(const std::string &name) -> std::shared_ptr<RTGuiMenu>;
         void PopGuiChild();
-        auto GetGuiGuiMenuItem(size_t idx)const ->std::shared_ptr<RTGuiMenuItem>;
-        auto GetGuiMenu(size_t idx)const->std::shared_ptr<RTGuiMenu>;
+        auto GetGuiGuiMenuItem(size_t idx) const -> std::shared_ptr<RTGuiMenuItem>;
+        auto GetGuiMenu(size_t idx) const -> std::shared_ptr<RTGuiMenu>;
+        void SetSubObject(const std::shared_ptr<RTGuiSubObject>& subobject);
+        void PopSubObject();
+        auto GetSubObject(size_t idx) const->std::shared_ptr<RTGuiSubObject>;
         void DrawFrame();
-        ~RTGuiMenu()noexcept;
+        ~RTGuiMenu() noexcept;
     private:
         friend class RTGuiMenuBar;
         friend class RTGuiMainMenuBar;
-        std::string                         m_Name;
-        bool                                m_Enable;
+        std::string m_Name;
+        bool m_Enable;
         std::vector<RTGuiMenuItemOrMenuPtr> m_GuiChilds = {};
+        std::vector<std::shared_ptr<RTGuiSubObject>> m_SubObjects = {};
     };
     class RTGuiMenuItem
     {
     public:
-        using ClickCallback = void(*)(RTGuiMenuItem*);
-        RTGuiMenuItem(const std::string& name, bool isEnable = true)noexcept;
-        void SetEnable(bool isEnable)noexcept;
-        void SetUserPointer(void* data)noexcept;
-        auto GetUserPointer()const noexcept -> void*;
-        void SetClickCallback(ClickCallback callback)noexcept;
+        using ClickCallback = void (*)(RTGuiMenuItem *);
+        RTGuiMenuItem(const std::string &name, bool isEnable = true) noexcept;
+        void SetEnable(bool isEnable) noexcept;
+        void SetUserPointer(void *data) noexcept;
+        auto GetUserPointer() const noexcept -> void *;
+        void SetClickCallback(ClickCallback callback) noexcept;
         void DrawFrame();
-        void AddSubObject(const std::shared_ptr<RTGuiSubObject>& subobject);
+        void AddSubObject(const std::shared_ptr<RTGuiSubObject> &subobject);
         virtual void OnClick();
-        virtual ~RTGuiMenuItem()noexcept;
+        virtual ~RTGuiMenuItem() noexcept;
+
     private:
-        static void DefaultClickCallback(RTGuiMenuItem*) {}
-        std::string                         m_Name;
-        bool                                m_Enable;
-        void* m_UserPointer = nullptr;
+        static void DefaultClickCallback(RTGuiMenuItem *) {}
+        std::string m_Name;
+        bool m_Enable;
+        void *m_UserPointer = nullptr;
         ClickCallback m_ClickCallback = DefaultClickCallback;
         std::vector<std::shared_ptr<RTGuiSubObject>> m_SubObjects = {};
     };
     class RTGuiOpenWindowMenuItem : public test::RTGuiMenuItem
     {
     public:
-        RTGuiOpenWindowMenuItem(const std::shared_ptr<test::RTGuiWindow>& gWindow, const std::string& name = "Open")noexcept
-            :RTGuiMenuItem(name), m_GuiWindow{gWindow}{}
-        virtual void OnClick()final;
-        virtual ~RTGuiOpenWindowMenuItem()noexcept {}
+        RTGuiOpenWindowMenuItem(const std::shared_ptr<test::RTGuiWindow> &gWindow, const std::string &name = "Open") noexcept
+            : RTGuiMenuItem(name), m_GuiWindow{gWindow} {}
+        virtual void OnClick() final;
+        virtual ~RTGuiOpenWindowMenuItem() noexcept {}
+
     private:
         std::weak_ptr<test::RTGuiWindow> m_GuiWindow;
     };
     class RTGuiCloseWindowMenuItem : public test::RTGuiMenuItem
     {
     public:
-        RTGuiCloseWindowMenuItem(const std::shared_ptr<test::RTGuiWindow>& gWindow, const std::string& name = "Close")noexcept
-            :RTGuiMenuItem(name), m_GuiWindow{ gWindow }{}
-        virtual void OnClick()final;
-        virtual ~RTGuiCloseWindowMenuItem()noexcept {}
+        RTGuiCloseWindowMenuItem(const std::shared_ptr<test::RTGuiWindow> &gWindow, const std::string &name = "Close") noexcept
+            : RTGuiMenuItem(name), m_GuiWindow{gWindow} {}
+        virtual void OnClick() final;
+        virtual ~RTGuiCloseWindowMenuItem() noexcept {}
+
     private:
         std::weak_ptr<test::RTGuiWindow> m_GuiWindow;
     };
-    class RTGuiSubObject {
+    class RTGuiSubObject
+    {
     public:
-        RTGuiSubObject()noexcept {}
+        RTGuiSubObject() noexcept {}
         virtual void DrawFrame() = 0;
-        virtual ~RTGuiSubObject()noexcept {}
+        virtual ~RTGuiSubObject() noexcept {}
     };
-
 }
 #endif

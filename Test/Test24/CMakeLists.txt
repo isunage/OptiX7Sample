@@ -10,7 +10,9 @@ configure_file(
 add_executable(
     Test24
     ${CMAKE_CURRENT_SOURCE_DIR}/include/Test24Application.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/Test24Gui.h
     ${CMAKE_CURRENT_SOURCE_DIR}/src/Test24Application.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/Test24Gui.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Test24Config.h.in
     ${CMAKE_CURRENT_BINARY_DIR}/Test24Config.h

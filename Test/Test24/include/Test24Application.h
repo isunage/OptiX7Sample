@@ -12,12 +12,13 @@
 class Test24Application : public test::RTApplication
 {
 private:
-    using TracerMap = std::unordered_map<std::string, std::shared_ptr<test::RTTracer>>;
-    using ContextPtr = std::shared_ptr<test::RTContext>;
-    using RendererPtr = std::unique_ptr<rtlib::ext::RectRenderer>;
-    using FramebufferPtr = std::shared_ptr<test::RTFramebuffer>;
-    using CameraControllerPtr = std::shared_ptr<rtlib::ext::CameraController>;
-    using GuiPtr = std::shared_ptr<test::RTGui>;
+    using TracerMap               = std::unordered_map<std::string, std::shared_ptr<test::RTTracer>>;
+    using ContextPtr              = std::shared_ptr<test::RTContext>;
+    using RendererPtr             = std::unique_ptr<rtlib::ext::RectRenderer>;
+    using FramebufferPtr          = std::shared_ptr<test::RTFramebuffer>;
+    using GuiDelegatePtr          = std::unique_ptr<test::RTAppGuiDelegate>;
+    using CameraControllerPtr     = std::shared_ptr<rtlib::ext::CameraController>;
+    using GuiPtr                  = std::shared_ptr<test::RTGui>;
     using ObjModelAssetManagerPtr = std::shared_ptr<test::RTObjModelAssetManager>;
 private:
     Test24Application(int fbWidth, int fbHeight, std::string name) noexcept;
@@ -58,8 +59,8 @@ private:
     ContextPtr m_Context;
     RendererPtr m_Renderer;
     FramebufferPtr m_Framebuffer;
-    GuiPtr m_Gui;
     CameraControllerPtr m_CameraController;
+    GuiDelegatePtr m_GuiDelegate;
     GLFWwindow *m_Window;
     TracerMap m_Tracers;
     ObjModelAssetManagerPtr m_ObjModelManager;
@@ -70,11 +71,13 @@ private:
     bool m_UpdateCamera;
     float m_CurFrameTime;
     float m_DelFrameTime;
+    //TODO Inputの分離
     std::array<float, 2> m_CurCursorPos;
     std::array<float, 2> m_DelCursorPos;
     std::array<float, 2> m_ScrollOffsets;
-    std::vector<std::string> m_PublicFrameNames;
+    std::vector<std::string> m_FramePublicNames;
+    std::vector<std::string> m_TracePublicNames;
     std::string m_CurMainFrameName;
-    std::string m_CurTraceName;
+    std::string m_CurMainTraceName;
 };
 #endif

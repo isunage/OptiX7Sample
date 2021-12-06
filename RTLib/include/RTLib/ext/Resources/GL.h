@@ -20,6 +20,8 @@ namespace rtlib
                     {
                         m_GpuData.reset();
                     }
+                    m_GpuData.setTarget(GL_ARRAY_BUFFER);
+                    m_GpuData.setUsage( GL_STATIC_DRAW);
                     m_GpuData.allocate(sizeInBytes / sizeof(T));
                     m_GpuData.upload((const T *)cpuData, sizeInBytes / sizeof(T));
                     m_GpuData.unbind();

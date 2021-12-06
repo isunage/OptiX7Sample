@@ -32,6 +32,9 @@ void test::RTGui::DrawFrame()
 	for (auto& guiWindow : m_GuiWindows) {
 		guiWindow->DrawFrame();
 	}
+	for (auto& guiFileDialog:m_GuiFileDialogs) {
+		guiFileDialog->DrawFrame();
+	}
 	EndFrame();
 }
 
@@ -96,6 +99,21 @@ void test::RTGui::PopGuiWindow()
 auto test::RTGui::GetGuiWindow(size_t idx) const -> std::shared_ptr<RTGuiWindow>
 {
 	return m_GuiWindows.at(idx);
+}
+
+void test::RTGui::SetGuiFileDialog(std::shared_ptr<RTGuiFileDialog> guiFileDialog)
+{
+	m_GuiFileDialogs.push_back(guiFileDialog);
+}
+
+void test::RTGui::PopGuiFileDialog()
+{
+	m_GuiFileDialogs.pop_back();
+}
+
+auto test::RTGui::GetGuiFileDialog(size_t idx) const -> std::shared_ptr<RTGuiFileDialog>
+{
+	return m_GuiFileDialogs.at(idx);
 }
 
 test::RTGui::~RTGui() noexcept
@@ -200,9 +218,19 @@ auto test::RTGuiWindow::GetGuiMenuBar() const -> std::shared_ptr<RTGuiMenuBar>
 	return m_GuiMenuBar;
 }
 
-void test::RTGuiWindow::AddSubObject(const std::shared_ptr<RTGuiSubObject>& subobject)
+void test::RTGuiWindow::SetSubObject(const std::shared_ptr<RTGuiSubObject>& subobject)
 {
 	m_SubObjects.push_back(subobject);
+}
+
+void test::RTGuiWindow::PopSubObject()
+{
+	m_SubObjects.pop_back();
+}
+
+auto test::RTGuiWindow::GetSubObject(size_t idx) const -> std::shared_ptr<RTGuiSubObject>
+{
+	return m_SubObjects.at(idx);
 }
 
 void test::RTGuiWindow::DrawGui() {}
@@ -297,6 +325,21 @@ auto test::RTGuiMenu::GetGuiMenu(size_t idx) const -> std::shared_ptr<RTGuiMenu>
 	}
 }
 
+void test::RTGuiMenu::SetSubObject(const std::shared_ptr<RTGuiSubObject>& subobject)
+{
+	m_SubObjects.push_back(subobject);
+}
+
+void test::RTGuiMenu::PopSubObject()
+{
+	m_SubObjects.pop_back();
+}
+
+auto test::RTGuiMenu::GetSubObject(size_t idx) const -> std::shared_ptr<RTGuiSubObject>
+{
+	return m_SubObjects.at(idx);
+}
+
 void test::RTGuiMenu::DrawFrame()
 {
 
@@ -310,6 +353,9 @@ void test::RTGuiMenu::DrawFrame()
 			else {
 				std::get<1>(menuItem)->DrawFrame();
 			}
+		}
+		for (auto& subObject : m_SubObjects) {
+			subObject->DrawFrame();
 		}
 		ImGui::EndMenu();
 	}
@@ -417,3 +463,61 @@ void test::RTGuiCloseWindowMenuItem::OnClick()
 		guiWindow->SetActive(false);
 	}
 }
+
+test::RTGuiFileDialog::RTGuiFileDialog(const std::string& title, const char* filters, const std::string& filePath)
+{
+	m_Instance = ImGuiFileDialog();
+	m_Title = title;
+	m_Filters = filters;
+	m_FilePath = filePath;
+}
+
+void test::RTGuiFileDialog::DrawFrame() {
+	if (Display())
+	{
+		if (IsOk())
+		{
+			Ok();
+		}
+
+		Close();
+	}
+}
+
+void test::RTGuiFileDialog::SetUserPointer(void* ptr) noexcept
+{
+	m_UserPointer = ptr;
+}
+
+auto test::RTGuiFileDialog::GetUserPointer() const noexcept -> void*
+{
+	return m_UserPointer;
+}
+
+auto test::RTGuiFileDialog::GetFilePathName() noexcept -> std::string
+{
+	return m_Instance.GetFilePathName();
+}
+
+auto test::RTGuiFileDialog::GetCurrentPath() noexcept -> std::string
+{
+	return m_Instance.GetCurrentPath();
+}
+
+void test::RTGuiFileDialog::SetOkCallback(Callback okCallback) noexcept
+{
+	m_OkCallback = okCallback;
+}
+
+void test::RTGuiFileDialog::SetOpenCallback(Callback openCallback) noexcept
+{
+	m_OpenCallback = openCallback;
+}
+
+void test::RTGuiFileDialog::SetCloseCallback(Callback closeCallback) noexcept
+{
+	m_CloseCallback = closeCallback;
+}
+
+test::RTGuiFileDialog::~RTGuiFileDialog() noexcept {}
+

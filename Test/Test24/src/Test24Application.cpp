@@ -1,4 +1,5 @@
 #include "..\include\Test24Application.h"
+#include <Test24Gui.h>
 #include <TestGLTracer.h>
 #include <Test24Config.h>
 Test24Application::Test24Application(int fbWidth, int fbHeight, std::string name) noexcept : test::RTApplication(name)
@@ -17,8 +18,10 @@ Test24Application::Test24Application(int fbWidth, int fbHeight, std::string name
     m_CurCursorPos[1]  = 0.0f;
     m_ScrollOffsets[0] = 0.0f;
     m_ScrollOffsets[1] = 0.0f;
-    m_CurTraceName     = "";
-    m_PublicFrameNames = {};
+    m_CurMainFrameName = "";
+    m_CurMainTraceName = "";
+    m_FramePublicNames = {};
+    m_TracePublicNames = {};
 }
 
 auto Test24Application::New(int fbWidth, int fbHeight, std::string name) noexcept -> std::shared_ptr<test::RTApplication>
@@ -83,15 +86,35 @@ void Test24Application::InitBase()
     m_Framebuffer->AddComponent<test::RTGLTextureFBComponent<uchar4>>( "RTexture");
     m_Framebuffer->AddComponent<test::RTGLTextureFBComponent<uchar4>>( "DTexture");
     m_Framebuffer->AddComponent<test::RTGLTextureFBComponent<uchar4>>( "PTexture", GL_NEAREST, GL_NEAREST, GL_CLAMP_TO_EDGE, GL_CLAMP_TO_EDGE);
+    //Public Frames
+    m_FramePublicNames.clear();
+    m_FramePublicNames.push_back("RTexture");
+    m_FramePublicNames.push_back("DTexture");
+    m_FramePublicNames.push_back("PTexture");
+    m_FramePublicNames.push_back("RFrame");
+    m_FramePublicNames.push_back("DNormal");
+    m_FramePublicNames.push_back("DTexCoord");
+    m_FramePublicNames.push_back("DDistance");
+    m_FramePublicNames.push_back("DDiffuse");
+    m_FramePublicNames.push_back("DSpecular");
+    m_FramePublicNames.push_back("DTransmit");
+    m_FramePublicNames.push_back("DShinness");
+    m_FramePublicNames.push_back("DIOR");
+    m_CurMainFrameName = "RTexture";
     //Renderer
     m_Renderer = std::make_unique<rtlib::ext::RectRenderer>();
     m_Renderer->init();
     std::cout << m_Framebuffer->GetComponent<test::RTGLTextureFBComponent<uchar4>>("RTexture")->GetIDString() << std::endl;
+    //ObjAssetManager
+    m_ObjModelManager = std::make_shared<test::RTObjModelAssetManager>();
+    //Depth Enable
+    glEnable(GL_DEPTH_TEST);
+    glDepthFunc(GL_LESS);
 }
 
 void Test24Application::FreeBase()
 {
-    m_Gui.reset();
+    m_ObjModelManager.reset();
     m_Renderer.reset();
     m_Framebuffer.reset();
     if (m_Window)
@@ -105,114 +128,24 @@ void Test24Application::FreeBase()
 void Test24Application::InitGui()
 {
     // Gui
-    m_Gui = std::make_shared<test::RTGui>(m_Window);
-    m_Gui->Initialize();
+    m_GuiDelegate = std::make_unique<Test24GuiDelegate>(m_Window, m_Framebuffer,m_ObjModelManager, m_FramePublicNames, m_TracePublicNames, m_CurMainFrameName, m_CurMainTraceName);
+    m_GuiDelegate->Initialize();
     glfwSetScrollCallback(m_Window, ScrollCallback);
-    // MainMenuBar
-    auto mainMenuBar = m_Gui->AddGuiMainMenuBar();
-    auto fileMenu = mainMenuBar->AddGuiMenu("File");
-    {
-        auto mdlMenu      = fileMenu->AddGuiMenu("Model");
-        auto mdlGuiWindow = std::make_shared<test::RTGuiWindow>("Model", ImGuiWindowFlags_MenuBar);
-        {
-            mdlGuiWindow->SetActive(false);
-            mdlGuiWindow->SetDrawCallback([](test::RTGuiWindow* wnd) {
-                if (ImGui::Button("Open")) {
-                    ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".obj", TEST_TEST24_DATA_PATH"\\");
-                }
-                ImGui::SameLine();
-                if (ImGui::Button("Close")) {
-                    ImGuiFileDialog::Instance()->Close();
-                }
-                if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey"))
-                {
-                    // action if OK
-                    if (ImGuiFileDialog::Instance()->IsOk())
-                    {
-                        std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
-                        std::string filePath     = ImGuiFileDialog::Instance()->GetCurrentPath ();
-                    }
-                    // close
-                    ImGuiFileDialog::Instance()->Close();
-                }
-            });
-        }
-        mdlMenu->SetGuiMenuItem(std::make_shared<test::RTGuiOpenWindowMenuItem>( mdlGuiWindow));
-        mdlMenu->SetGuiMenuItem(std::make_shared<test::RTGuiCloseWindowMenuItem>(mdlGuiWindow));
-        m_Gui->SetGuiWindow(mdlGuiWindow);
-    }
-    // ConfigMenu
-    auto cnfgMenu = mainMenuBar->AddGuiMenu("Config");
-    {
-
-        auto fmbfItem = cnfgMenu->AddGuiMenu("Frame");
-        // MainFrameConfig
-        class MainFrameConfigGuiWindow : public test::RTGuiWindow
-        {
-        public:
-            explicit MainFrameConfigGuiWindow(std::string& frameName)noexcept :
-                test::RTGuiWindow("MainFrameConfig", ImGuiWindowFlags_MenuBar), curFrameName{ frameName }, curFrameIdx{ 0 }{
-                //PUBLIC Texture
-                frameNames.push_back("RTexture");
-                frameNames.push_back("DTexture");
-                frameNames.push_back("PTexture");
-                //PUBLIC Frame
-                frameNames.push_back("RFrame");
-                frameNames.push_back("DNormal");
-                frameNames.push_back("DTexCoord");
-                frameNames.push_back("DDistance");
-                frameNames.push_back("DDiffuse");
-                frameNames.push_back("DSpecular");
-                frameNames.push_back("DTransmit");
-                frameNames.push_back("DShinness");
-                frameNames.push_back("DIOR");
-                //FrameName
-                curFrameName = frameNames[curFrameIdx];
-            }
-            virtual void DrawGui()override {
-                int val = curFrameIdx;
-                for (auto i = 0; i < frameNames.size(); ++i)
-                {
-                    if (ImGui::RadioButton(frameNames[i].c_str(), &val, i)) {
-                        curFrameIdx = i;
-                    }
-                    if (i % 4 == 3) {
-                        ImGui::NewLine();
-                    }
-                    else {
-                        ImGui::SameLine();
-                    }
-                }
-                curFrameName = frameNames[curFrameIdx];
-            }
-            virtual ~MainFrameConfigGuiWindow() noexcept {}
-        private:
-            std::vector<std::string> frameNames;
-            std::string& curFrameName;
-            size_t       curFrameIdx;
-        };
-        auto mainFmCnfgWindow = std::make_shared<MainFrameConfigGuiWindow>(m_CurMainFrameName);
-        mainFmCnfgWindow->SetActive(false);   //Default: Invisible
-        m_Gui->SetGuiWindow(mainFmCnfgWindow);
-        fmbfItem->SetGuiMenuItem(std::make_shared<test::RTGuiOpenWindowMenuItem>(mainFmCnfgWindow));
-        fmbfItem->SetGuiMenuItem(std::make_shared<test::RTGuiCloseWindowMenuItem>(mainFmCnfgWindow));
-    }
-    
 }
 
 void Test24Application::FreeGui()
 {
-    m_Gui.reset();
+    m_GuiDelegate->CleanUp();
+    m_GuiDelegate.reset();
 }
 
 void Test24Application::RenderGui()
 {
-    m_Gui->DrawFrame();
+    m_GuiDelegate->DrawFrame();
 }
 
 void Test24Application::InitScene()
 {
-    m_ObjModelManager  = std::make_shared<test::RTObjModelAssetManager>();
     if (m_ObjModelManager->LoadAsset("CornellBox-Water", TEST_TEST24_DATA_PATH"/Models/CornellBox/CornellBox-Water.obj")) {
 
     }
@@ -224,13 +157,22 @@ void Test24Application::InitScene()
 
 void Test24Application::FreeScene()
 {
-    m_ObjModelManager.reset();
 }
 
 void Test24Application::InitTracers()
 {
-    m_Tracers["TestGL"] = std::make_shared<Test24TestGLTracer>(m_FbWidth, m_FbHeight, m_Window, m_Framebuffer, m_CameraController,m_IsResized,m_UpdateCamera);
+
+    m_Tracers["TestGL"] = std::make_shared<Test24TestGLTracer>(m_FbWidth, m_FbHeight, m_Window,m_ObjModelManager,m_Framebuffer, m_CameraController,m_IsResized,m_UpdateCamera);
     m_Tracers["TestGL"]->Initialize();
+
+    m_TracePublicNames.clear();
+    m_TracePublicNames.reserve(m_Tracers.size());
+    for (auto& [name, tracer] : m_Tracers)
+    {
+        m_TracePublicNames.push_back(name);
+    }
+
+    m_CurMainTraceName = m_TracePublicNames.front();
 }
 
 void Test24Application::FreeTracers()
@@ -287,7 +229,7 @@ void Test24Application::Launch()
 void Test24Application::BegFrame()
 {
     glFlush();
-    glClear(GL_COLOR_BUFFER_BIT);
+    glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
     glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
 }
 
@@ -460,8 +402,8 @@ void Test24Application::UpdateCamera()
 
 void Test24Application::UpdateFrameTime()
 {
-    float newTime = glfwGetTime();
-    float delTime = newTime - m_CurFrameTime;
+    float newTime  = glfwGetTime();
+    float delTime  = newTime - m_CurFrameTime;
     m_CurFrameTime = newTime;
     m_DelFrameTime = delTime;
 }
