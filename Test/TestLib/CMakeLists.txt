@@ -3,6 +3,7 @@ add_library(TestLib
     ${CMAKE_CURRENT_SOURCE_DIR}/include/TestLib/RTApplication.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/TestLib/RTFramebuffer.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/TestLib/RTTracer.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/TestLib/RTScene.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/TestLib/RTGui.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/TestLib/RTUtils.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/TestLib/RTAssets.h
@@ -10,6 +11,7 @@ add_library(TestLib
     ${CMAKE_CURRENT_SOURCE_DIR}/src/RTContext.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/RTApplication.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/RTFramebuffer.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/RTScene.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/RTTracer.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/RTGui.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/RTUtils.cpp

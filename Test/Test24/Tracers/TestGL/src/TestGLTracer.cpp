@@ -2,8 +2,8 @@
 #include <RTLib/ext/Resources/GL.h>
 #include <glm/glm.hpp>
 #include <glm/gtx/transform.hpp>
-Test24TestGLTracer::Test24TestGLTracer(int fbWidth, int fbHeight, GLFWwindow *window, const std::shared_ptr<test::RTObjModelAssetManager>& objModelManager, const std::shared_ptr<test::RTFramebuffer> &framebuffer, const std::shared_ptr<rtlib::ext::CameraController> &cameraController,
-    bool& isResizedFrame, bool& updateCamera) noexcept:m_IsResizedFrame{isResizedFrame},m_UpdateCamera{updateCamera}
+Test24TestGLTracer::Test24TestGLTracer(int fbWidth, int fbHeight, GLFWwindow *window, const std::shared_ptr<test::RTObjModelAssetManager>& objModelManager, const std::shared_ptr<test::RTFramebuffer> &framebuffer, const std::shared_ptr<rtlib::ext::CameraController> &cameraController, const std::string& objModelName,
+    bool& isResizedFrame, bool& updateCamera) noexcept :m_IsResizedFrame{ isResizedFrame }, m_UpdateCamera{ updateCamera }, m_NewObjModelName{objModelName}
 {
     m_FbWidth = fbWidth;
     m_FbHeight = fbHeight;
@@ -15,7 +15,7 @@ Test24TestGLTracer::Test24TestGLTracer(int fbWidth, int fbHeight, GLFWwindow *wi
     m_DSTextureGL = 0;
     m_ZNear = 0.01f;
     m_ZFar = 3000.f;
-    m_UpdateObjModel = false;
+    m_UpdateObjModel  = false;
 }
 
 void Test24TestGLTracer::Initialize()
@@ -42,10 +42,16 @@ void Test24TestGLTracer::Launch(int fbWidth, int fbHeight, void *pUserData)
     glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
     glViewport(0, 0, fbWidth, fbHeight );
     if (!m_ObjModelManager->GetAssets().empty()) {
-        if (!m_ObjModelManager->HasAsset(m_ObjModelName))
+        if (!m_ObjModelManager->HasAsset(m_CurObjModelName))
         {
             std::cout << "Update" << std::endl;
             m_UpdateObjModel = true;
+        }
+        else {
+            if (m_CurObjModelName != m_NewObjModelName) {
+                std::cout << "Update" << std::endl;
+                m_UpdateObjModel = true;
+            }
         }
     }
     else {
@@ -91,7 +97,7 @@ void Test24TestGLTracer::InitProgramGL()
         "out vec2 uv;\n"
         "void main(){\n"
         "   vec4 pos   = viewProj * model * vec4(position,1.0f);\n"
-        "   gl_Position= vec4(pos.x,1.0f-pos.y,pos.z,pos.w);\n"
+        "   gl_Position= vec4(pos.x, pos.y,pos.z,pos.w);\n"
         "   uv = texCoord;\n"
         "}\n";
     constexpr std::string_view fsSource =
@@ -204,9 +210,11 @@ void Test24TestGLTracer::UpdateVertexArray()
         }
         m_ObjModel = {};
         if (!m_ObjModelManager->GetAssets().empty()) {
-            auto front = m_ObjModelManager->GetAssets().begin();
-            m_ObjModelName = front->first;
-            m_ObjModel = front->second;
+            if (!m_ObjModelManager->HasAsset(m_NewObjModelName)) {
+                return;
+            }
+            m_CurObjModelName = m_NewObjModelName;
+            m_ObjModel        = m_ObjModelManager->GetAsset(m_CurObjModelName);
             if (m_ObjModel.meshGroup) {
                 auto sharedResource = m_ObjModel.meshGroup->GetSharedResource();
                 if (!sharedResource->vertexBuffer.HasGpuComponent("GLBuffer")) {

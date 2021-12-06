@@ -4,10 +4,12 @@
 class ObjModelConfigGuiWindow : public test::RTGuiWindow
 {
 public:
-    ObjModelConfigGuiWindow(const std::shared_ptr<test::RTFramebuffer>& framebuffer_, const std::shared_ptr<test::RTObjModelAssetManager>& objModelManager_) :
+    ObjModelConfigGuiWindow(const std::shared_ptr<test::RTFramebuffer>& framebuffer_, const std::shared_ptr<test::RTObjModelAssetManager>& objModelManager_, std::unordered_set<std::string>& launchTracerSet_, std::string& objModelname) :
         test::RTGuiWindow("ObjModelConfig", ImGuiWindowFlags_MenuBar),
         framebuffer{framebuffer_},
-        objModelManager{ objModelManager_ }{
+        objModelManager{ objModelManager_ },
+        launchTracerSet{ launchTracerSet_ }, 
+        curObjModelName{objModelname}{
         objFileDialog = std::make_unique<test::RTGuiFileDialog>("Choose ObjFile", ".obj", TEST_TEST24_DATA_PATH);
         objFileDialog->SetUserPointer(this);
         objFileDialog->SetOkCallback([](test::RTGuiFileDialog* fileDialog) {
@@ -21,47 +23,62 @@ public:
             return;
         }
         GLuint pTex = framebuffer->GetComponent<test::RTGLTextureFBComponent<uchar4>>("PTexture")->GetHandle().getID();
-        ImGui::Image(((void*)((intptr_t)pTex)), ImVec2(framebuffer->GetWidth()/4, framebuffer->GetHeight()/4));
-        for (auto& [name, asset] : objModelManager->GetAssets())
+        ImGui::Image(((void*)((intptr_t)pTex)), ImVec2(framebuffer->GetWidth()/4, framebuffer->GetHeight()/4),ImVec2(0,1),ImVec2(1,0));
         {
-            
-            if (ImGui::Button("Remove")) {
-                m_RemoveNames.push_back(name);
+            size_t i = 0;
+            int v_selected = 0;
+            std::string newObjModelName = curObjModelName;
+            for (auto& [name, asset] : objModelManager->GetAssets())
+            {
+                std::string removeLabel = "Remove###" + std::to_string(i);
+                std::string selectLabel = "Select###" + std::to_string(i);
+                if (ImGui::RadioButton(name.c_str(),name==curObjModelName)) {
+                    newObjModelName = name;
+                }
+                ImGui::SameLine();
+                if (ImGui::Button(removeLabel.c_str())) {
+                    m_RemoveNameSet.insert(name);
+                }
+                ImGui::NewLine();
+                ++i;
             }
-            ImGui::SameLine();
-            ImGui::Text("%s", name.c_str());
-            ImGui::NewLine();
+            curObjModelName = newObjModelName;
         }
+        
         if (ImGui::Button("Add")) {
             if (!objFileDialog->IsOpen()) {
                 objFileDialog->Open();
             }
-            
         }
         objFileDialog->DrawFrame();
 
         if (!m_LoadFilePath.empty()) {
             std::filesystem::path filename = std::filesystem::path(m_LoadFilePath).filename();
-
             objModelManager->LoadAsset(filename.string(), m_LoadFilePath);
+            curObjModelName = filename.string();
             std::cout << "End!\n";
         }
-        for (auto& name : m_RemoveNames) {
+        for (auto& name : m_RemoveNameSet) {
             objModelManager->FreeAsset(name);
         }
-        m_RemoveNames.clear();
+        if (!objModelManager->HasAsset(curObjModelName)&&!objModelManager->GetAssets().empty()) {
+            curObjModelName = objModelManager->GetAssets().begin()->first;
+        }
+        m_RemoveNameSet.clear();
         m_LoadFilePath = "";
+        launchTracerSet.insert("TestGL");
     }
     virtual ~ObjModelConfigGuiWindow()noexcept {}
 private:
+    std::string& curObjModelName;
     std::shared_ptr<test::RTFramebuffer> framebuffer;
     std::shared_ptr<test::RTObjModelAssetManager> objModelManager;
     std::unique_ptr<test::RTGuiFileDialog> objFileDialog;
+    std::unordered_set<std::string>& launchTracerSet;
 public:
-    std::vector<std::string> m_RemoveNames;
+    std::unordered_set<std::string> m_RemoveNameSet;
     std::string m_LoadFilePath;
 };
-
 class MainTraceConfigGuiWindow : public test::RTGuiWindow
 {
 public:
@@ -110,7 +127,6 @@ private:
     size_t       curTraceIdx;
     bool isFirst;
 };
-
 class MainFrameConfigGuiWindow : public test::RTGuiWindow
 {
 public:
@@ -154,8 +170,49 @@ private:
     size_t       curFrameIdx;
     bool isFirst;
 };
+class    CameraConfigGuiWindow :public test::RTGuiWindow{
+public:
 
-void Test24GuiDelegate::Initialize()
+    explicit CameraConfigGuiWindow(const std::shared_ptr<test::RTFramebuffer>& framebuffer_, const std::shared_ptr<rtlib::ext::CameraController>& cameraController_,  bool& updateCamera_)noexcept :
+        test::RTGuiWindow("CameraConfig", ImGuiWindowFlags_MenuBar), cameraController{ cameraController_ }, updateCamera{ updateCamera_ }, framebuffer{framebuffer_}{}
+    virtual void DrawGui()override {
+        auto camera = cameraController->GetCamera((float)framebuffer->GetWidth() / (float)framebuffer->GetHeight());
+        auto eye = camera.getEye();
+        auto atv = camera.getLookAt();
+        auto vup = camera.getVup();
+        {
+            float arr_eye [3]= { eye.x,eye.y,eye.z };
+            if (ImGui::InputFloat3("Eye", arr_eye)) {
+                camera.setEye(make_float3(arr_eye[0],arr_eye[1],arr_eye[2]));
+                updateCamera = true;
+            }
+            float arr_atv[3] = { atv.x,atv.y,atv.z };
+            if (ImGui::InputFloat3("At", arr_atv)) {
+                camera.setLookAt(make_float3(arr_atv[0], arr_atv[1], arr_atv[2]));
+                updateCamera = true;
+            }
+            float arr_vup[3] = { vup.x,vup.y,vup.z };
+            if (ImGui::InputFloat3("vup", arr_vup)) {
+                camera.setLookAt(make_float3(arr_vup[0], arr_vup[1], arr_vup[2]));
+                updateCamera = true;
+            }
+            float zoom = cameraController->GetZoom();
+            if (ImGui::InputFloat("zoom", &zoom)) {
+                cameraController->SetZoom(zoom);
+                updateCamera = true;
+            }
+        }
+        if (updateCamera) {
+            cameraController->SetCamera(camera);
+        }
+    }
+    virtual ~CameraConfigGuiWindow() noexcept {}
+private:
+    std::shared_ptr<test::RTFramebuffer> framebuffer;
+    std::shared_ptr<rtlib::ext::CameraController> cameraController;
+    bool& updateCamera;
+};
+void  Test24GuiDelegate::Initialize()
 {
     m_Gui->Initialize();
     // MainMenuBar
@@ -205,8 +262,17 @@ void Test24GuiDelegate::Initialize()
             trcrItem->SetGuiMenuItem(std::make_shared<test::RTGuiCloseWindowMenuItem>(mainTcCnfgWindow));
         }
         {
+            auto cmrItem = cnfgMenu->AddGuiMenu("Camera");
+            auto cmrCnfgWindow = std::make_shared<CameraConfigGuiWindow>(m_Framebuffer, m_CameraController, m_UpdateCamera);
+            cmrCnfgWindow->SetActive(false);   //Default: Invisible
+            m_Gui->SetGuiWindow(cmrCnfgWindow);
+            cmrItem->SetGuiMenuItem(std::make_shared<test::RTGuiOpenWindowMenuItem>(cmrCnfgWindow));
+            cmrItem->SetGuiMenuItem(std::make_shared<test::RTGuiCloseWindowMenuItem>(cmrCnfgWindow));
+        }
+        {
             auto mdlItem = cnfgMenu->AddGuiMenu("Model");
-            auto mdlCnfgWindow = std::make_shared<ObjModelConfigGuiWindow>(m_Framebuffer,m_ObjModelAssetManager);
+            
+            auto mdlCnfgWindow = std::make_shared<ObjModelConfigGuiWindow>(m_Framebuffer, m_ObjModelAssetManager, m_LaunchTracerSet, m_CurObjModelName);
             mdlCnfgWindow->SetActive(false);   //Default: Invisible
             m_Gui->SetGuiWindow(mdlCnfgWindow);
             mdlItem->SetGuiMenuItem(std::make_shared<test::RTGuiOpenWindowMenuItem>(mdlCnfgWindow));
@@ -214,26 +280,22 @@ void Test24GuiDelegate::Initialize()
         }
     }
 }
-
-void Test24GuiDelegate::CleanUp()
+void  Test24GuiDelegate::CleanUp()
 {
     m_Gui->CleanUp();
     m_Gui.reset();
     m_Window = nullptr;
 }
-
-auto Test24GuiDelegate::GetGui() const -> std::shared_ptr<test::RTGui>
+auto  Test24GuiDelegate::GetGui() const -> std::shared_ptr<test::RTGui>
 {
 	return std::shared_ptr<test::RTGui>();
 }
-
 Test24GuiDelegate::~Test24GuiDelegate() {
     if (m_Window) {
         CleanUp();
     }
 }
-
-void Test24GuiDelegate::DrawFrame()
+void  Test24GuiDelegate::DrawFrame()
 {
     m_Gui->DrawFrame();
 }

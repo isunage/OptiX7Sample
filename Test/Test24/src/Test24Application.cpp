@@ -20,6 +20,7 @@ Test24Application::Test24Application(int fbWidth, int fbHeight, std::string name
     m_ScrollOffsets[1] = 0.0f;
     m_CurMainFrameName = "";
     m_CurMainTraceName = "";
+    m_CurObjModelName  = "";
     m_FramePublicNames = {};
     m_TracePublicNames = {};
 }
@@ -107,6 +108,10 @@ void Test24Application::InitBase()
     std::cout << m_Framebuffer->GetComponent<test::RTGLTextureFBComponent<uchar4>>("RTexture")->GetIDString() << std::endl;
     //ObjAssetManager
     m_ObjModelManager = std::make_shared<test::RTObjModelAssetManager>();
+    m_CameraController = std::make_shared<rtlib::ext::CameraController>(float3{ 0.0f, 1.0f, 5.0f });
+    m_CameraController->SetMouseSensitivity(0.125f);
+    m_CameraController->SetMovementSpeed(10.f);
+    m_CameraController->SetZoom(40.0f);
     //Depth Enable
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LESS);
@@ -114,6 +119,7 @@ void Test24Application::InitBase()
 
 void Test24Application::FreeBase()
 {
+    m_CameraController.reset();
     m_ObjModelManager.reset();
     m_Renderer.reset();
     m_Framebuffer.reset();
@@ -128,7 +134,7 @@ void Test24Application::FreeBase()
 void Test24Application::InitGui()
 {
     // Gui
-    m_GuiDelegate = std::make_unique<Test24GuiDelegate>(m_Window, m_Framebuffer,m_ObjModelManager, m_FramePublicNames, m_TracePublicNames, m_CurMainFrameName, m_CurMainTraceName);
+    m_GuiDelegate = std::make_unique<Test24GuiDelegate>(m_Window,m_CameraController, m_Framebuffer,m_ObjModelManager, m_FramePublicNames, m_TracePublicNames, m_LaunchTracerSet, m_CurMainFrameName, m_CurMainTraceName, m_CurObjModelName,m_UpdateCamera);
     m_GuiDelegate->Initialize();
     glfwSetScrollCallback(m_Window, ScrollCallback);
 }
@@ -147,12 +153,8 @@ void Test24Application::RenderGui()
 void Test24Application::InitScene()
 {
     if (m_ObjModelManager->LoadAsset("CornellBox-Water", TEST_TEST24_DATA_PATH"/Models/CornellBox/CornellBox-Water.obj")) {
-
+        m_CurObjModelName = "CornellBox-Water";
     }
-    m_CameraController = std::make_shared<rtlib::ext::CameraController>(float3{0.0f, 1.0f, 5.0f });
-    m_CameraController->SetMouseSensitivity(0.125f);
-    m_CameraController->SetMovementSpeed(10.f);
-    m_CameraController->SetZoom(40.0f);
 }
 
 void Test24Application::FreeScene()
@@ -162,7 +164,7 @@ void Test24Application::FreeScene()
 void Test24Application::InitTracers()
 {
 
-    m_Tracers["TestGL"] = std::make_shared<Test24TestGLTracer>(m_FbWidth, m_FbHeight, m_Window,m_ObjModelManager,m_Framebuffer, m_CameraController,m_IsResized,m_UpdateCamera);
+    m_Tracers["TestGL"] = std::make_shared<Test24TestGLTracer>(m_FbWidth, m_FbHeight, m_Window,m_ObjModelManager,m_Framebuffer, m_CameraController, m_CurObjModelName,m_IsResized,m_UpdateCamera);
     m_Tracers["TestGL"]->Initialize();
 
     m_TracePublicNames.clear();
@@ -223,7 +225,13 @@ void Test24Application::RenderFrame(const std::string &name)
 
 void Test24Application::Launch()
 {
-    m_Tracers["TestGL"]->Launch(m_FbWidth, m_FbHeight, nullptr);
+
+    for (auto& name : m_LaunchTracerSet) {
+        void* launchParams = nullptr;
+
+        m_Tracers[name]->Launch(m_FbWidth, m_FbHeight, launchParams);
+    }
+    m_LaunchTracerSet.clear();
 }
 
 void Test24Application::BegFrame()

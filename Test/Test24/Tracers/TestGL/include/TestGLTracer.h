@@ -17,8 +17,9 @@ public:
 	Test24TestGLTracer(
 		int fbWidth, int fbHeight, GLFWwindow* window, 
 		const std::shared_ptr<test::RTObjModelAssetManager>& objModelManager,
-		const std::shared_ptr<test::RTFramebuffer>& framebuffer, 
+		const std::shared_ptr<test::RTFramebuffer>& framebuffer,
 		const std::shared_ptr < rtlib::ext::CameraController >& cameraController ,
+		const std::string& objModelName,
 		bool& isResizedFrame, bool& updateCamera
 	)noexcept;
 	// RTTracer を介して継承されました
@@ -48,7 +49,8 @@ private:
 	std::shared_ptr< test::RTFramebuffer>	      m_Framebuffer;
 	std::unique_ptr<rtlib::GLProgram>			  m_GLProgram;
 	test::RTObjModel                              m_ObjModel;
-	std::string                                   m_ObjModelName;
+	std::string                                   m_CurObjModelName;
+	const std::string&                            m_NewObjModelName;
 	std::unique_ptr<rtlib::GLBuffer<float3>>      m_VertexBuffer;
 	std::unique_ptr<rtlib::GLBuffer<float2>>      m_TexCrdBuffer;
 	std::unique_ptr<rtlib::GLBuffer<uint32_t>>    m_IndexBuffer;

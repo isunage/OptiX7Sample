@@ -67,17 +67,23 @@ private:
     int m_FbWidth;
     int m_FbHeight;
     float m_FovY;
-    bool m_IsResized;
-    bool m_UpdateCamera;
     float m_CurFrameTime;
     float m_DelFrameTime;
+    //Flag
+    bool m_IsResized;
+    bool m_UpdateCamera;
     //TODO Inputの分離
     std::array<float, 2> m_CurCursorPos;
     std::array<float, 2> m_DelCursorPos;
     std::array<float, 2> m_ScrollOffsets;
+    //表示系
     std::vector<std::string> m_FramePublicNames;
-    std::vector<std::string> m_TracePublicNames;
     std::string m_CurMainFrameName;
+    //Tracer
+    std::vector<std::string> m_TracePublicNames;
     std::string m_CurMainTraceName;
+    std::unordered_set<std::string> m_LaunchTracerSet;
+    //ObjModel
+    std::string m_CurObjModelName;
 };
 #endif
