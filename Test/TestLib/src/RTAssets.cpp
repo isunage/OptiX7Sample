@@ -10,7 +10,7 @@
 
 bool test::RTTextureAssetManager::LoadAsset(const std::string& keyName, const std::string& texPath)
 {
-    if (m_Textures.count(keyName)!=0) {
+    if (m_Textures.count(keyName)>0) {
         return true;
     }
     int texWidth, texHeight, texComp;

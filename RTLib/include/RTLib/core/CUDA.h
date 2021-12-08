@@ -234,6 +234,7 @@ namespace rtlib{
                 this->Reset();
             }
             catch (rtlib::CUDAException& err) {
+
                 std::cerr << "~CUDAUploadBuffer() Catch Error!\n";
                 std::cerr << err.what() << std::endl;
             }

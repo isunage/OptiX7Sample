@@ -32,12 +32,22 @@ public:
             {
                 std::string removeLabel = "Remove###" + std::to_string(i);
                 std::string selectLabel = "Select###" + std::to_string(i);
+                std::string   openLabel =   "Open###" + std::to_string(i);
+                std::string  closeLabel =  "Close###" + std::to_string(i);
                 if (ImGui::RadioButton(name.c_str(),name==curObjModelName)) {
                     newObjModelName = name;
                 }
                 ImGui::SameLine();
                 if (ImGui::Button(removeLabel.c_str())) {
                     m_RemoveNameSet.insert(name);
+                }
+                ImGui::SameLine();
+                if (ImGui::Button( openLabel.c_str())) {
+                    
+                }
+                ImGui::SameLine();
+                if (ImGui::Button(closeLabel.c_str())) {
+
                 }
                 ImGui::NewLine();
                 ++i;
@@ -71,10 +81,10 @@ public:
     virtual ~ObjModelConfigGuiWindow()noexcept {}
 private:
     std::string& curObjModelName;
-    std::shared_ptr<test::RTFramebuffer> framebuffer;
+    std::shared_ptr<test::RTFramebuffer>          framebuffer;
     std::shared_ptr<test::RTObjModelAssetManager> objModelManager;
-    std::unique_ptr<test::RTGuiFileDialog> objFileDialog;
-    std::unordered_set<std::string>& launchTracerSet;
+    std::unique_ptr<test::RTGuiFileDialog>        objFileDialog;
+    std::unordered_set<std::string>&              launchTracerSet;
 public:
     std::unordered_set<std::string> m_RemoveNameSet;
     std::string m_LoadFilePath;

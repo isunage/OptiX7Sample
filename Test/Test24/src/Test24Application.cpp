@@ -1,7 +1,9 @@
 #include "..\include\Test24Application.h"
 #include <Test24Gui.h>
 #include <TestGLTracer.h>
+#include <DebugOPXTracer.h>
 #include <Test24Config.h>
+#include <filesystem>
 Test24Application::Test24Application(int fbWidth, int fbHeight, std::string name) noexcept : test::RTApplication(name)
 {
     m_FbWidth          = fbWidth;
@@ -10,6 +12,7 @@ Test24Application::Test24Application(int fbWidth, int fbHeight, std::string name
     m_FovY             = 0.0f;
     m_IsResized        = false;
     m_UpdateCamera     = false;
+    m_NumRayType       = TEST_TEST24_NUM_RAY_TYPE;
     m_CurFrameTime     = 0.0f;
     m_DelFrameTime     = 0.0f;
     m_DelCursorPos[0]  = 0.0f;
@@ -81,8 +84,10 @@ void Test24Application::InitBase()
     m_Framebuffer->AddComponent<test::RTCUGLBufferFBComponent<uchar4>>("DDiffuse");
     m_Framebuffer->AddComponent<test::RTCUGLBufferFBComponent<uchar4>>("DSpecular");
     m_Framebuffer->AddComponent<test::RTCUGLBufferFBComponent<uchar4>>("DTransmit");
+    m_Framebuffer->AddComponent<test::RTCUGLBufferFBComponent<uchar4>>("DEmission");
     m_Framebuffer->AddComponent<test::RTCUGLBufferFBComponent<uchar4>>("DShinness");
     m_Framebuffer->AddComponent<test::RTCUGLBufferFBComponent<uchar4>>("DIOR");
+    m_Framebuffer->AddComponent<test::RTCUGLBufferFBComponent<uchar4>>("DSTreeCol");
     //Texture
     m_Framebuffer->AddComponent<test::RTGLTextureFBComponent<uchar4>>( "RTexture");
     m_Framebuffer->AddComponent<test::RTGLTextureFBComponent<uchar4>>( "DTexture");
@@ -108,6 +113,7 @@ void Test24Application::InitBase()
     std::cout << m_Framebuffer->GetComponent<test::RTGLTextureFBComponent<uchar4>>("RTexture")->GetIDString() << std::endl;
     //ObjAssetManager
     m_ObjModelManager = std::make_shared<test::RTObjModelAssetManager>();
+    m_TextureManager  = std::make_shared<test::RTTextureAssetManager>();
     m_CameraController = std::make_shared<rtlib::ext::CameraController>(float3{ 0.0f, 1.0f, 5.0f });
     m_CameraController->SetMouseSensitivity(0.125f);
     m_CameraController->SetMovementSpeed(10.f);
@@ -119,8 +125,9 @@ void Test24Application::InitBase()
 
 void Test24Application::FreeBase()
 {
+    m_TextureManager  .reset();
     m_CameraController.reset();
-    m_ObjModelManager.reset();
+    m_ObjModelManager .reset();
     m_Renderer.reset();
     m_Framebuffer.reset();
     if (m_Window)
@@ -155,10 +162,165 @@ void Test24Application::InitScene()
     if (m_ObjModelManager->LoadAsset("CornellBox-Water", TEST_TEST24_DATA_PATH"/Models/CornellBox/CornellBox-Water.obj")) {
         m_CurObjModelName = "CornellBox-Water";
     }
+    {
+        size_t materialSize = 0;
+        for (auto& [name, objModel] : m_ObjModelManager->GetAssets())
+        {
+            materialSize += objModel.materials.size();
+        }
+        m_Materials.resize(materialSize + 1);
+        size_t materialOffset = 0;
+        for (auto& [name, objModel] : m_ObjModelManager->GetAssets())
+        {
+            auto& materials = objModel.materials;
+            std::copy(std::begin(materials), std::end(materials), m_Materials.begin() + materialOffset);
+            materialOffset += materials.size();
+        }
+    }
+    {
+        auto smpTexPath = std::filesystem::canonical(std::filesystem::path(TEST_TEST24_DATA_PATH "/Textures/white.png"));
+        if (!m_TextureManager->LoadAsset("", smpTexPath.string()))
+        {
+            throw std::runtime_error("Failed To Load White Texture!");
+        }
+        for (auto& [name, objModel] : m_ObjModelManager->GetAssets())
+        {
+            for (auto& material : objModel.materials)
+            {
+                auto diffTexPath = material.GetString("diffTex");
+                auto specTexPath = material.GetString("specTex");
+                auto emitTexPath = material.GetString("emitTex");
+                auto shinTexPath = material.GetString("shinTex");
+                if (diffTexPath != "")
+                {
+                    if (!m_TextureManager->LoadAsset(diffTexPath, diffTexPath))
+                    {
+                        std::cout << "DiffTex \"" << diffTexPath << "\" Not Found!\n";
+                        material.SetString("diffTex", "");
+                    }
+                }
+                if (specTexPath != "")
+                {
+                    if (!m_TextureManager->LoadAsset(specTexPath, specTexPath))
+                    {
+                        std::cout << "SpecTex \"" << specTexPath << "\" Not Found!\n";
+                        material.SetString("specTex", "");
+                    }
+                }
+                if (emitTexPath != "")
+                {
+                    if (!m_TextureManager->LoadAsset(emitTexPath, emitTexPath))
+                    {
+                        std::cout << "EmitTex \"" << emitTexPath << "\" Not Found!\n";
+                        material.SetString("emitTex", "");
+                    }
+                    else {
+                        if (material.GetFloat3("emitCol")[0] == 0.0f &&
+                            material.GetFloat3("emitCol")[1] == 0.0f &&
+                            material.GetFloat3("emitCol")[2] == 0.0f) {
+                            material.SetFloat3("emitCol", { 1.0f,1.0f,1.0f });
+                        }
+                    }
+
+                }
+                if (shinTexPath != "")
+                {
+                    if (!m_TextureManager->LoadAsset(shinTexPath, shinTexPath))
+                    {
+                        std::cout << "ShinTex \"" << shinTexPath << "\" Not Found!\n";
+                        material.SetString("shinTex", "");
+                    }
+                }
+            }
+        }
+    }
+
+    m_GASHandles["World"] = std::make_shared<rtlib::ext::GASHandle>();
+    m_GASHandles["Light"] = std::make_shared<rtlib::ext::GASHandle>();
+    {
+        OptixAccelBuildOptions accelBuildOptions = {};
+        accelBuildOptions.buildFlags = OPTIX_BUILD_FLAG_ALLOW_COMPACTION | OPTIX_BUILD_FLAG_PREFER_FAST_TRACE;
+        accelBuildOptions.operation = OPTIX_BUILD_OPERATION_BUILD;
+
+        {
+            size_t materialOffset = 0;
+            for (auto& [name, objModel] : m_ObjModelManager->GetAssets())
+            {
+                if (!objModel.meshGroup->GetSharedResource()->vertexBuffer.HasGpuComponent("CUDA"))
+                {
+                    objModel.meshGroup->GetSharedResource()->vertexBuffer.AddGpuComponent<rtlib::ext::resources::CUDABufferComponent<float3>>("CUDA");
+                }
+                if (!objModel.meshGroup->GetSharedResource()->normalBuffer.HasGpuComponent("CUDA"))
+                {
+                    objModel.meshGroup->GetSharedResource()->normalBuffer.AddGpuComponent<rtlib::ext::resources::CUDABufferComponent<float3>>("CUDA");
+                }
+                if (!objModel.meshGroup->GetSharedResource()->texCrdBuffer.HasGpuComponent("CUDA"))
+                {
+                    objModel.meshGroup->GetSharedResource()->texCrdBuffer.AddGpuComponent<rtlib::ext::resources::CUDABufferComponent<float2>>("CUDA");
+                }
+                for (auto& [name, meshUniqueResource] : objModel.meshGroup->GetUniqueResources())
+                {
+                    if (!meshUniqueResource->matIndBuffer.HasGpuComponent("CUDA"))
+                    {
+                        meshUniqueResource->matIndBuffer.AddGpuComponent<rtlib::ext::resources::CUDABufferComponent<uint32_t>>("CUDA");
+                    }
+                    if (!meshUniqueResource->triIndBuffer.HasGpuComponent("CUDA"))
+                    {
+                        meshUniqueResource->triIndBuffer.AddGpuComponent<rtlib::ext::resources::CUDABufferComponent<uint3>>("CUDA");
+                    }
+
+                    auto mesh = rtlib::ext::Mesh::New();
+                    mesh->SetUniqueResource(meshUniqueResource);
+                    mesh->SetSharedResource(objModel.meshGroup->GetSharedResource());
+
+                    for (auto& matIdx : mesh->GetUniqueResource()->materials)
+                    {
+                        matIdx += materialOffset;
+                    }
+                    if (mesh->GetUniqueResource()->variables.GetBool("hasLight"))
+                    {
+                        m_GASHandles["Light"]->AddMesh(mesh);
+                    }
+                    else
+                    {
+                        m_GASHandles["World"]->AddMesh(mesh);
+                    }
+                }
+                materialOffset += objModel.materials.size();
+            }
+        }
+        m_GASHandles["World"]->Build(m_Context->GetOPX7Handle().get(), accelBuildOptions);
+        m_GASHandles["Light"]->Build(m_Context->GetOPX7Handle().get(), accelBuildOptions);
+    }
+    m_IASHandles["TopLevel"] = std::make_shared<rtlib::ext::IASHandle>();
+    {
+        OptixAccelBuildOptions accelOptions = {};
+        accelOptions.buildFlags = OPTIX_BUILD_FLAG_ALLOW_COMPACTION | OPTIX_BUILD_FLAG_PREFER_FAST_TRACE;
+        accelOptions.operation = OPTIX_BUILD_OPERATION_BUILD;
+        //World
+        auto worldInstance = rtlib::ext::Instance();
+        worldInstance.Init(m_GASHandles["World"]);
+        worldInstance.SetSbtOffset(0);
+        //Light
+        auto lightInstance = rtlib::ext::Instance();
+        lightInstance.Init(m_GASHandles["Light"]);
+        lightInstance.SetSbtOffset(worldInstance.GetSbtCount() * TEST_TEST24_NUM_RAY_TYPE);
+        //InstanceSet
+        auto instanceSet = std::make_shared<rtlib::ext::InstanceSet>();
+        instanceSet->SetInstance(worldInstance);
+        instanceSet->SetInstance(lightInstance);
+        instanceSet->Upload();
+        //AddInstanceSet
+        m_IASHandles["TopLevel"]->AddInstanceSet(instanceSet);
+        //Build
+        m_IASHandles["TopLevel"]->Build(m_Context->GetOPX7Handle().get(), accelOptions);
+    }
 }
 
 void Test24Application::FreeScene()
 {
+    m_GASHandles.clear();
+    m_IASHandles.clear();
 }
 
 void Test24Application::InitTracers()
@@ -166,7 +328,8 @@ void Test24Application::InitTracers()
 
     m_Tracers["TestGL"] = std::make_shared<Test24TestGLTracer>(m_FbWidth, m_FbHeight, m_Window,m_ObjModelManager,m_Framebuffer, m_CameraController, m_CurObjModelName,m_IsResized,m_UpdateCamera);
     m_Tracers["TestGL"]->Initialize();
-
+    m_Tracers["DebugOPX"] = std::make_shared<Test24DebugOPXTracer>(m_Context, m_Framebuffer, m_CameraController, m_TextureManager, m_IASHandles["TopLevel"], m_Materials, m_BgLightColor, m_IsResized, m_UpdateCamera, m_UpdateLight);
+    m_Tracers["DebugOPX"]->Initialize();
     m_TracePublicNames.clear();
     m_TracePublicNames.reserve(m_Tracers.size());
     for (auto& [name, tracer] : m_Tracers)
@@ -225,11 +388,17 @@ void Test24Application::RenderFrame(const std::string &name)
 
 void Test24Application::Launch()
 {
-
+    m_LaunchTracerSet.insert(m_CurMainTraceName);
     for (auto& name : m_LaunchTracerSet) {
-        void* launchParams = nullptr;
-
-        m_Tracers[name]->Launch(m_FbWidth, m_FbHeight, launchParams);
+        if (name == "DebugOPX") {
+            Test24DebugOPXTracer::UserData userData = {};
+            userData.isSync = true;
+            userData.stream = nullptr;
+            m_Tracers[name]->Launch(m_FbWidth, m_FbHeight, &userData);
+        }
+        if (name == "TestGL") {
+            m_Tracers[name]->Launch(m_FbWidth, m_FbHeight, nullptr);
+        }
     }
     m_LaunchTracerSet.clear();
 }

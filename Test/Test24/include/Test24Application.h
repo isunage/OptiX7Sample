@@ -7,19 +7,25 @@
 #include <TestLib/RTGui.h>
 #include <TestLib/RTAssets.h>
 #include <RTLib/core/GL.h>
+#include <RTLib/core/Optix.h>
+#include <RTLib/ext/TraversalHandle.h>
+#include <RTLib/ext/Mesh.h>
 #include <RTLib/ext/RectRenderer.h>
 #include <RTLib/ext/Camera.h>
 class Test24Application : public test::RTApplication
 {
 private:
-    using TracerMap               = std::unordered_map<std::string, std::shared_ptr<test::RTTracer>>;
-    using ContextPtr              = std::shared_ptr<test::RTContext>;
-    using RendererPtr             = std::unique_ptr<rtlib::ext::RectRenderer>;
-    using FramebufferPtr          = std::shared_ptr<test::RTFramebuffer>;
-    using GuiDelegatePtr          = std::unique_ptr<test::RTAppGuiDelegate>;
-    using CameraControllerPtr     = std::shared_ptr<rtlib::ext::CameraController>;
-    using GuiPtr                  = std::shared_ptr<test::RTGui>;
+    using TracerMap = std::unordered_map<std::string, std::shared_ptr<test::RTTracer>>;
+    using ContextPtr = std::shared_ptr<test::RTContext>;
+    using RendererPtr= std::unique_ptr<rtlib::ext::RectRenderer>;
+    using FramebufferPtr = std::shared_ptr<test::RTFramebuffer>;
+    using GuiDelegatePtr = std::unique_ptr<test::RTAppGuiDelegate>;
+    using CameraControllerPtr = std::shared_ptr<rtlib::ext::CameraController>;
+    using GuiPtr = std::shared_ptr<test::RTGui>;
     using ObjModelAssetManagerPtr = std::shared_ptr<test::RTObjModelAssetManager>;
+    using TextureAssetManagerPtr = std::shared_ptr<test::RTTextureAssetManager>;
+    using GeometryASMap = std::unordered_map<std::string, rtlib::ext::GASHandlePtr>;
+    using InstanceASMap = std::unordered_map<std::string, rtlib::ext::IASHandlePtr>;
 private:
     Test24Application(int fbWidth, int fbHeight, std::string name) noexcept;
 public:
@@ -64,6 +70,12 @@ private:
     GLFWwindow *m_Window;
     TracerMap m_Tracers;
     ObjModelAssetManagerPtr m_ObjModelManager;
+    TextureAssetManagerPtr m_TextureManager;
+    std::vector<rtlib::ext::VariableMap> m_Materials;
+    GeometryASMap m_GASHandles = {};
+    InstanceASMap m_IASHandles = {};
+    float3 m_BgLightColor = {};
+    unsigned int m_NumRayType;
     int m_FbWidth;
     int m_FbHeight;
     float m_FovY;
@@ -72,6 +84,7 @@ private:
     //Flag
     bool m_IsResized;
     bool m_UpdateCamera;
+    bool m_UpdateLight ;
     //TODO Inputの分離
     std::array<float, 2> m_CurCursorPos;
     std::array<float, 2> m_DelCursorPos;

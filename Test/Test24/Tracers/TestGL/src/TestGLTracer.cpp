@@ -308,8 +308,7 @@ void Test24TestGLTracer::InitUniforms()
 {
     Uniforms uniforms = {};
     {
-        glm::mat4 model = glm::mat4(1.0f) / 2.0f;
-        model[3][3] = 1;
+        glm::mat4 model = glm::mat4(1.0f) ;
         std::memcpy(uniforms.model.data(), &model, sizeof(model));
         auto camera = m_CameraController->GetCamera(static_cast<float>(m_FbWidth) / static_cast<float>(m_FbHeight));
         auto eye    = camera.getEye();
@@ -341,8 +340,7 @@ void Test24TestGLTracer::UpdateUniforms()
     float aspect = static_cast<float>(m_FbWidth) / static_cast<float>(m_FbHeight);
     Uniforms uniforms = {};
     if (aspect > 0.0f) {
-        glm::mat4 model = glm::mat4(1.0f) / 2.0f;
-        model[3][3] = 1;
+        glm::mat4 model = glm::mat4(1.0f);
         std::memcpy(uniforms.model.data(), &model, sizeof(model));
         auto camera = m_CameraController->GetCamera(aspect);
         auto eye = camera.getEye();

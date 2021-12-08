@@ -1,5 +1,5 @@
 add_subdirectory(Tracers)
-
+set(TEST_TEST24_NUM_RAY_TYPE 2)
 set(TEST_TEST24_DATA_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../../Data")
 
 configure_file(
@@ -19,4 +19,4 @@ add_executable(
 )
 
 target_include_directories(Test24 PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include ${CMAKE_CURRENT_BINARY_DIR})
-target_link_libraries(Test24 TestLib Test24_Tracer_TestGL)
+target_link_libraries(Test24 TestLib Test24_Tracer_TestGL Test24_Tracer_DebugOPX)

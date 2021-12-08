@@ -1457,7 +1457,7 @@ private:
 	float        m_RatioForBudget = 0.10f;
 };
 // DebugTracer
-class TestPG4DebugTracer : public test::RTTracer
+class DebugOPXTracer : public test::RTTracer
 {
 public:
 	struct UserData
@@ -1482,7 +1482,7 @@ private:
 	using HGProgramGroupMap = std::unordered_map<std::string, rtlib::OPXHitgroupPG>;
 
 public:
-	TestPG4DebugTracer(TestPG4Application *app)
+	DebugOPXTracer(TestPG4Application *app)
 	{
 		m_ParentApp = app;
 	}
@@ -1547,7 +1547,7 @@ public:
 			RTLIB_CUDA_CHECK(cudaMemcpy(m_MSRecordBuffers.gpuHandle.getDevicePtr() + RAY_TYPE_RADIANCE, &m_MSRecordBuffers.cpuHandle[RAY_TYPE_RADIANCE], sizeof(MissRecord), cudaMemcpyHostToDevice));
 		}
 	}
-	virtual ~TestPG4DebugTracer() {}
+	virtual ~DebugOPXTracer() {}
 
 private:
 	void InitPipeline()
@@ -2098,7 +2098,7 @@ void TestPG4Application::InitTracers()
 	m_GuideNEEActor->Initialize();
 	//Debug
 	m_DebugActor = std::shared_ptr<test::RTTracer>(
-		new TestPG4DebugTracer(this));
+		new DebugOPXTracer(this));
 	m_DebugActor->Initialize();
 }
 // Loop: Prepare
@@ -2119,7 +2119,7 @@ void TestPG4Application::Trace()
 	if (m_LaunchDebug)
 	{
 		//TestPG4
-		TestPG4DebugTracer::UserData userData = {};
+		DebugOPXTracer::UserData userData = {};
 		userData.diffuseBuffer  = m_FrameBuffer->GetCUGLBuffer("Diffuse").map();
 		userData.specularBuffer = m_FrameBuffer->GetCUGLBuffer("Specular").map();
 		userData.emissionBuffer = m_FrameBuffer->GetCUGLBuffer("Emission").map();
