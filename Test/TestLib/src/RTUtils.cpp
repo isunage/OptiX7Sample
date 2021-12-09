@@ -13,17 +13,22 @@ auto test::LoadImgFromPathAsUcharData(const std::string& filePath, int& width, i
 		std::string pathString = path.string();
 		auto pixels = stbi_load(pathString.c_str(), &t_w, &t_h, &t_c, requestComp);
 		if (pixels) {
-			auto img = std::unique_ptr<unsigned char[]>(new unsigned char[t_w * t_h * t_c]);
-			std::memcpy(img.get(), pixels, sizeof(unsigned char) * t_w * t_h * t_c);
+			int r_c = requestComp ? requestComp : t_c;
+			auto img = std::unique_ptr<unsigned char[]>(new unsigned char[t_w * t_h * r_c]);
+			std::memcpy(img.get(), pixels, sizeof(unsigned char) * t_w * t_h * r_c);
 			width    = t_w;
 			height   = t_h;
 			comp     = t_c;
+			stbi_image_free(pixels);
 			return std::move(img);
 		}
 		else
 		{
 			return nullptr;
 		}
+	}
+	else {
+		return nullptr;
 	}
 }
 
@@ -41,11 +46,15 @@ auto test::LoadImgFromPathAsFloatData(const std::string& filePath, int& width, i
 			width    = t_w;
 			height   = t_h;
 			comp     = t_c;
+			stbi_image_free(pixels);
 			return std::move(img);
 		}
 		else
 		{
 			return nullptr;
 		}
+	}
+	else {
+		return nullptr;
 	}
 }

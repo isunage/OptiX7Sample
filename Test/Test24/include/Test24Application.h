@@ -79,16 +79,19 @@ private:
     int m_FbWidth;
     int m_FbHeight;
     float m_FovY;
-    float m_CurFrameTime;
-    float m_DelFrameTime;
-    //Flag
-    bool m_IsResized;
-    bool m_UpdateCamera;
-    bool m_UpdateLight ;
+    unsigned int m_MaxTraceDepth;
     //TODO Inputの分離
     std::array<float, 2> m_CurCursorPos;
     std::array<float, 2> m_DelCursorPos;
     std::array<float, 2> m_ScrollOffsets;
+    float m_CurFrameTime;
+    float m_DelFrameTime;
+    //Flag
+    bool m_FlushFrame  ;
+    bool m_IsResized   ;
+    bool m_UpdateCamera;
+    bool m_UpdateLight ;
+    bool m_ChangeTrace ;
     //表示系
     std::vector<std::string> m_FramePublicNames;
     std::string m_CurMainFrameName;

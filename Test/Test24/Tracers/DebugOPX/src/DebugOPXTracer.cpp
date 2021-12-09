@@ -24,9 +24,9 @@ struct Test24DebugOPXTracer::Impl
 		rtlib::ext::IASHandlePtr TopLevelAS,
 		const std::vector<rtlib::ext::VariableMap>& Materials,
 		const float3& BgLightColor,
-		bool& ResizedFrame,
-		bool& UpdateCamera,
-		bool& UpdateBgLight) :m_Context{ Context }, m_Framebuffer{ Framebuffer }, m_CameraController{ CameraController }, m_TextureManager{ TextureManager }, m_Materials{ Materials }, m_TopLevelAS{TopLevelAS}, m_BgLightColor{ BgLightColor }, m_ResizedFrame{ ResizedFrame }, m_UpdateCamera{ UpdateCamera }, m_UpdateBgLight{ UpdateBgLight }
+		const bool& ResizedFrame,
+		const bool& UpdateCamera,
+		const bool& UpdateBgLight) :m_Context{ Context }, m_Framebuffer{ Framebuffer }, m_CameraController{ CameraController }, m_TextureManager{ TextureManager }, m_Materials{ Materials }, m_TopLevelAS{TopLevelAS}, m_BgLightColor{ BgLightColor }, m_ResizedFrame{ ResizedFrame }, m_UpdateCamera{ UpdateCamera }, m_UpdateBgLight{ UpdateBgLight }
 	{
 	}
 	~Impl() {
@@ -38,9 +38,9 @@ struct Test24DebugOPXTracer::Impl
 	rtlib::ext::IASHandlePtr m_TopLevelAS;
 	const std::vector<rtlib::ext::VariableMap>& m_Materials;
 	const float3& m_BgLightColor;
-	bool& m_ResizedFrame;
-	bool& m_UpdateCamera;
-	bool& m_UpdateBgLight;
+	const bool& m_ResizedFrame;
+	const bool& m_UpdateCamera;
+	const bool& m_UpdateBgLight;
 
 	unsigned int m_LightHgRecIndex = 0;
 	rtlib::ext::Camera m_Camera = {};
@@ -58,7 +58,7 @@ struct Test24DebugOPXTracer::Impl
 
 Test24DebugOPXTracer::Test24DebugOPXTracer(
 	ContextPtr Context, FramebufferPtr Framebuffer, CameraControllerPtr CameraController, TextureAssetManager TextureManager,
-	rtlib::ext::IASHandlePtr TopLevelAS, const std::vector<rtlib::ext::VariableMap>& Materials, const float3& BgLightColor, bool& ResizedFrame, bool& UpdateCamera, bool& UpdateBgLight)
+	rtlib::ext::IASHandlePtr TopLevelAS, const std::vector<rtlib::ext::VariableMap>& Materials, const float3& BgLightColor, const  bool& ResizedFrame, const bool& UpdateCamera, const bool& UpdateBgLight)
 {
 	m_Impl = std::make_unique<Test24DebugOPXTracer::Impl>(
 		Context,Framebuffer,CameraController,TextureManager,TopLevelAS,Materials,BgLightColor, ResizedFrame, UpdateCamera,UpdateBgLight

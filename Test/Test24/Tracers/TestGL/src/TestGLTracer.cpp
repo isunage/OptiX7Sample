@@ -3,7 +3,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtx/transform.hpp>
 Test24TestGLTracer::Test24TestGLTracer(int fbWidth, int fbHeight, GLFWwindow *window, const std::shared_ptr<test::RTObjModelAssetManager>& objModelManager, const std::shared_ptr<test::RTFramebuffer> &framebuffer, const std::shared_ptr<rtlib::ext::CameraController> &cameraController, const std::string& objModelName,
-    bool& isResizedFrame, bool& updateCamera) noexcept :m_IsResizedFrame{ isResizedFrame }, m_UpdateCamera{ updateCamera }, m_NewObjModelName{objModelName}
+    const bool& isResizedFrame, const  bool& updateCamera) noexcept :m_IsResizedFrame{ isResizedFrame }, m_UpdateCamera{ updateCamera }, m_NewObjModelName{objModelName}
 {
     m_FbWidth = fbWidth;
     m_FbHeight = fbHeight;

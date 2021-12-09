@@ -21,17 +21,19 @@ bool test::RTTextureAssetManager::LoadAsset(const std::string& keyName, const st
             return false;
         }
         pixels = std::vector<uchar4>(texWidth * texHeight);
+        
         for (auto h = 0; h < texHeight; ++h) {
             auto srcData = img.get() + 4 * texWidth * (texHeight - 1 - h);
             auto dstData = pixels.data() + texWidth * h;
             std::memcpy(dstData, srcData, 4 * texWidth);
         }
+        
     }
 
     this->m_Textures[keyName] = rtlib::ext::CustomImage2D<uchar4>(texWidth, texHeight, pixels);
     return true;
 }
-auto  test::RTTextureAssetManager::GetAsset(const std::string& keyName)const -> const rtlib::ext::CustomImage2D<uchar4>& {
+auto test::RTTextureAssetManager::GetAsset(const std::string& keyName)const -> const rtlib::ext::CustomImage2D<uchar4>& {
     return m_Textures.at(keyName);
 }
 auto  test::RTTextureAssetManager::GetAsset(const std::string& keyName)->rtlib::ext::CustomImage2D<uchar4>& {

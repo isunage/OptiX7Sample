@@ -37,9 +37,9 @@ public:
                    rtlib::ext::IASHandlePtr TopLevelAS,
                    const std::vector<rtlib::ext::VariableMap> &Materials,
                    const float3 &BgLightColor,
-                   bool &ResizedFrame,
-                   bool &UpdateCamera,
-                   bool &UpdateBgLight);
+                   const bool &ResizedFrame,
+                   const bool &UpdateCamera,
+                   const bool &UpdateBgLight);
     // RTTracer ����Čp������܂���
     virtual void Initialize() override;
     virtual void Launch(int width, int height, void *userData) override;

@@ -13,25 +13,40 @@ public:
 		const std::shared_ptr<rtlib::ext::CameraController>& cameraController,
 		const std::shared_ptr<test::RTFramebuffer>& framebuffer,
 		const std::shared_ptr<test::RTObjModelAssetManager>& objModelAssetManager,
-		const std::vector<std::string>& framePublicNames,
-		const std::vector<std::string>& tracePublicNames,
+		const std::shared_ptr<test::RTTextureAssetManager>& textureManager,
+		const std::array<float, 2>& curCursorPos,
+		const std::array<float, 2>& delCursorPos,
+		const std::array<float, 2>& scrollOffsets,
+		const float& curFrameTime,
+		const float& delFrameTime,
+		const std::vector<std::string> & framePublicNames,
+		const std::vector<std::string> & tracePublicNames,
 		std::unordered_set<std::string>& launchTracerSet,
+		float3&      bgLightColor,
 		std::string& curMainFrameName,
 		std::string& curMainTraceName,
 		std::string& curObjModelName,
-		bool& updateCamera)
-		:
+		bool& updateCamera,
+		bool& updateBgLight):
+		m_CurCursorPos {curCursorPos},
+		m_DelCursorPos{ delCursorPos },
+		m_ScrollOffsets{ scrollOffsets },
+		m_CurFrameTime{ curFrameTime },
+		m_DelFrameTime{ delFrameTime },
 		m_Window{ window }, 
 		m_Framebuffer{framebuffer},
 		m_CameraController{ cameraController },
 		m_ObjModelAssetManager{objModelAssetManager}, 
+		m_TextureManager{textureManager},
+		m_BgLightColor{bgLightColor},
 		m_FramePublicNames{ framePublicNames }, 
 		m_TracePublicNames{ tracePublicNames }, 
 		m_CurMainFrameName{ curMainFrameName }, 
-		m_CurObjModelName{  curObjModelName  },
+		m_CurObjModelName {  curObjModelName },
 		m_CurMainTraceName{ curMainTraceName }, 
 		m_LaunchTracerSet { launchTracerSet  },
 		m_UpdateCamera{updateCamera},
+		m_UpdateBgLight{ updateBgLight },
 		m_Gui{ std::make_shared<test::RTGui>(window) }
 	{}
 	// RTAppGuiDelegate を介して継承されました
@@ -46,6 +61,13 @@ private:
 	std::shared_ptr<rtlib::ext::CameraController> m_CameraController;
 	std::shared_ptr<test::RTFramebuffer> m_Framebuffer;
 	std::shared_ptr<test::RTObjModelAssetManager> m_ObjModelAssetManager;
+	std::shared_ptr<test::RTTextureAssetManager> m_TextureManager;
+	float3&                          m_BgLightColor;
+	const std::array<float, 2>& m_CurCursorPos;
+	const std::array<float, 2>& m_DelCursorPos;
+	const std::array<float, 2>& m_ScrollOffsets;
+	const float& m_CurFrameTime;
+	const float& m_DelFrameTime;
 	const std::vector<std::string>&  m_FramePublicNames;
 	const std::vector<std::string>&  m_TracePublicNames;
 	std::unordered_set<std::string>& m_LaunchTracerSet;
@@ -53,5 +75,6 @@ private:
 	std::string& m_CurMainFrameName;
 	std::string& m_CurMainTraceName;
 	bool& m_UpdateCamera;
+	bool& m_UpdateBgLight;
 };
 #endif

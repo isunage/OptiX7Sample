@@ -11,12 +11,13 @@
 //#define RAY_GUIDING_SAMPLE_BY_COSINE_SPHERE
 //#define TEST_SKIP_TEXTURE_SAMPLE
 //#define TEST11_SHOW_EMISSON_COLOR
-enum RayType   {
+#define RAY_TRACE_ENABLE_SAMPLE 1
+enum   RayType {
     RAY_TYPE_RADIANCE  = 0,
     RAY_TYPE_OCCLUSION = 1,
     RAY_TYPE_COUNT     = 2,  
 };
-enum MaterialType {
+enum   MaterialType {
     MATERIAL_TYPE_DIFFUSE  = 0,
     MATERIAL_TYPE_SPECULAR,
     MATERIAL_TYPE_REFRACTION,

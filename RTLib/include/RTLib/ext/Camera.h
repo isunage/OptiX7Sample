@@ -176,10 +176,12 @@ namespace rtlib
                 if (next_zoom >= 45.0f)
                     m_Zoom = 45.0f;
             }
+            auto GetMouseSensitivity()const noexcept -> float { return m_MouseSensitivity; }
             void SetMouseSensitivity(float sensitivity) noexcept
             {
                 m_MouseSensitivity = sensitivity;
             }
+            auto GetMovementSpeed()const noexcept -> float { return m_MovementSpeed; }
             void SetMovementSpeed(float speed) noexcept
             {
                 m_MovementSpeed = speed;

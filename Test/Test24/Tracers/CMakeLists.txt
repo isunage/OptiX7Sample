@@ -1,2 +1,4 @@
 add_subdirectory(TestGL)
 add_subdirectory(DebugOPX)
+add_subdirectory(NEEOPX)
+add_subdirectory(PathOPX)

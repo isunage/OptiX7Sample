@@ -20,7 +20,8 @@ public:
 		const std::shared_ptr<test::RTFramebuffer>& framebuffer,
 		const std::shared_ptr < rtlib::ext::CameraController >& cameraController ,
 		const std::string& objModelName,
-		bool& isResizedFrame, bool& updateCamera
+		const bool& isResizedFrame, 
+		const bool& updateCamera
 	)noexcept;
 	// RTTracer を介して継承されました
 	virtual void Initialize() override;
@@ -61,8 +62,8 @@ private:
 	GLint                                         m_UniformLoc;
 	float                                         m_ZNear;
 	float                                         m_ZFar;
-	bool&                                         m_UpdateCamera;
-	bool&                                         m_IsResizedFrame;
+	const bool&                                   m_UpdateCamera;
+	const bool&                                   m_IsResizedFrame;
 	bool                                          m_UpdateObjModel;
 };
 #endif

@@ -2,6 +2,8 @@
 #include <Test24Gui.h>
 #include <TestGLTracer.h>
 #include <DebugOPXTracer.h>
+#include <PathOPXTracer.h>
+#include <NEEOPXTracer.h>
 #include <Test24Config.h>
 #include <filesystem>
 Test24Application::Test24Application(int fbWidth, int fbHeight, std::string name) noexcept : test::RTApplication(name)
@@ -12,7 +14,11 @@ Test24Application::Test24Application(int fbWidth, int fbHeight, std::string name
     m_FovY             = 0.0f;
     m_IsResized        = false;
     m_UpdateCamera     = false;
+    m_UpdateLight      = false;
+    m_FlushFrame       = false;
+    m_ChangeTrace      = false;
     m_NumRayType       = TEST_TEST24_NUM_RAY_TYPE;
+    m_MaxTraceDepth    = 2;
     m_CurFrameTime     = 0.0f;
     m_DelFrameTime     = 0.0f;
     m_DelCursorPos[0]  = 0.0f;
@@ -41,7 +47,7 @@ void Test24Application::Initialize()
     InitTracers();
 }
 
-void Test24Application::MainLoop()
+void Test24Application::MainLoop()      
 {
     while (!glfwWindowShouldClose(m_Window))
     {
@@ -53,7 +59,7 @@ void Test24Application::MainLoop()
     }
 }
 
-void Test24Application::CleanUp()
+void Test24Application::CleanUp()      
 {
     FreeTracers();
     FreeScene();
@@ -61,7 +67,7 @@ void Test24Application::CleanUp()
     FreeBase();
 }
 
-void Test24Application::InitBase()
+void Test24Application::InitBase()   
 {
     m_Context = std::shared_ptr<test::RTContext>(new test::RTContext(4, 5));
     m_Window = m_Context->NewWindow(m_FbWidth, m_FbHeight, GetName().c_str());
@@ -75,7 +81,7 @@ void Test24Application::InitBase()
     m_Framebuffer->AddComponent<test::RTCUDABufferFBComponent<float2>>("GTexCoord");
     m_Framebuffer->AddComponent<test::RTCUDABufferFBComponent<float>>( "GDepth");
     //Render
-    m_Framebuffer->AddComponent<test::RTCUDABufferFBComponent<float4>>("RAccum");
+    m_Framebuffer->AddComponent<test::RTCUDABufferFBComponent<float3>>("RAccum");
     m_Framebuffer->AddComponent<test::RTCUGLBufferFBComponent<uchar4>>("RFrame");
     //Debug
     m_Framebuffer->AddComponent<test::RTCUGLBufferFBComponent<uchar4>>("DNormal");
@@ -106,7 +112,7 @@ void Test24Application::InitBase()
     m_FramePublicNames.push_back("DTransmit");
     m_FramePublicNames.push_back("DShinness");
     m_FramePublicNames.push_back("DIOR");
-    m_CurMainFrameName = "RTexture";
+    m_CurMainFrameName = "RFrame";
     //Renderer
     m_Renderer = std::make_unique<rtlib::ext::RectRenderer>();
     m_Renderer->init();
@@ -123,7 +129,7 @@ void Test24Application::InitBase()
     glDepthFunc(GL_LESS);
 }
 
-void Test24Application::FreeBase()
+void Test24Application::FreeBase()  
 {
     m_TextureManager  .reset();
     m_CameraController.reset();
@@ -141,7 +147,7 @@ void Test24Application::FreeBase()
 void Test24Application::InitGui()
 {
     // Gui
-    m_GuiDelegate = std::make_unique<Test24GuiDelegate>(m_Window,m_CameraController, m_Framebuffer,m_ObjModelManager, m_FramePublicNames, m_TracePublicNames, m_LaunchTracerSet, m_CurMainFrameName, m_CurMainTraceName, m_CurObjModelName,m_UpdateCamera);
+    m_GuiDelegate = std::make_unique<Test24GuiDelegate>(m_Window,m_CameraController, m_Framebuffer,m_ObjModelManager,m_TextureManager, m_CurCursorPos,m_DelCursorPos,m_ScrollOffsets,m_CurFrameTime,m_DelFrameTime,m_FramePublicNames, m_TracePublicNames, m_LaunchTracerSet, m_BgLightColor, m_CurMainFrameName, m_CurMainTraceName, m_CurObjModelName,m_UpdateCamera,m_UpdateLight);
     m_GuiDelegate->Initialize();
     glfwSetScrollCallback(m_Window, ScrollCallback);
 }
@@ -326,10 +332,63 @@ void Test24Application::FreeScene()
 void Test24Application::InitTracers()
 {
 
-    m_Tracers["TestGL"] = std::make_shared<Test24TestGLTracer>(m_FbWidth, m_FbHeight, m_Window,m_ObjModelManager,m_Framebuffer, m_CameraController, m_CurObjModelName,m_IsResized,m_UpdateCamera);
+    m_Tracers["TestGL"] = std::make_shared<Test24TestGLTracer>(
+        m_FbWidth, 
+        m_FbHeight, 
+        m_Window,
+        m_ObjModelManager,
+        m_Framebuffer, 
+        m_CameraController, 
+        m_CurObjModelName,
+        m_IsResized,
+        m_UpdateCamera
+    );
     m_Tracers["TestGL"]->Initialize();
-    m_Tracers["DebugOPX"] = std::make_shared<Test24DebugOPXTracer>(m_Context, m_Framebuffer, m_CameraController, m_TextureManager, m_IASHandles["TopLevel"], m_Materials, m_BgLightColor, m_IsResized, m_UpdateCamera, m_UpdateLight);
+    m_Tracers["DebugOPX"] = std::make_shared<Test24DebugOPXTracer>(
+        m_Context, 
+        m_Framebuffer, 
+        m_CameraController, 
+        m_TextureManager, 
+        m_IASHandles["TopLevel"], 
+        m_Materials, 
+        m_BgLightColor, 
+        m_IsResized, 
+        m_UpdateCamera, 
+        m_UpdateLight
+    );
     m_Tracers["DebugOPX"]->Initialize();
+    m_Tracers["PathOPX"]  = std::make_shared<Test24PathOPXTracer>( 
+        m_Context, 
+        m_Framebuffer, 
+        m_CameraController, 
+        m_TextureManager, 
+        m_IASHandles["TopLevel"], 
+        m_Materials, 
+        m_BgLightColor, 
+        m_FlushFrame, 
+        m_IsResized, 
+        m_ChangeTrace,
+        m_UpdateCamera, 
+        m_UpdateLight, 
+        m_MaxTraceDepth
+    );
+    m_Tracers["PathOPX"]->Initialize();
+    m_Tracers["NEEOPX"] = std::make_shared<Test24NEEOPXTracer>(
+        m_Context,
+        m_Framebuffer,
+        m_CameraController,
+        m_TextureManager,
+        m_IASHandles["TopLevel"],
+        m_Materials,
+        m_BgLightColor,
+        m_FlushFrame,
+        m_IsResized,
+        m_ChangeTrace,
+        m_UpdateCamera,
+        m_UpdateLight,
+        m_MaxTraceDepth
+    );
+    m_Tracers["NEEOPX"]->Initialize();
     m_TracePublicNames.clear();
     m_TracePublicNames.reserve(m_Tracers.size());
     for (auto& [name, tracer] : m_Tracers)
@@ -390,6 +449,21 @@ void Test24Application::Launch()
 {
     m_LaunchTracerSet.insert(m_CurMainTraceName);
     for (auto& name : m_LaunchTracerSet) {
+        if (name == "PathOPX")
+        {
+            Test24PathOPXTracer::UserData  userData = {};
+            userData.samplePerLaunch = 1;
+            userData.isSync = true;
+            userData.stream = nullptr;
+            m_Tracers[name]->Launch(m_FbWidth, m_FbHeight, &userData);
+        }
+        if (name == "NEEOPX") {
+            Test24NEEOPXTracer::UserData userData = {};
+            userData.samplePerLaunch = 1;
+            userData.isSync = true;
+            userData.stream = nullptr;
+            m_Tracers[name]->Launch(m_FbWidth, m_FbHeight, &userData);
+        }
         if (name == "DebugOPX") {
             Test24DebugOPXTracer::UserData userData = {};
             userData.isSync = true;
@@ -420,12 +494,17 @@ void Test24Application::Update()
 {
     ResizeFrame();
     UpdateCamera();
+    if (m_IsResized|| m_UpdateCamera||m_UpdateLight) {
+        m_FlushFrame = true;
+    }
     for (auto &[name, tracer] : m_Tracers)
     {
         tracer->Update();
     }
     m_IsResized    = false;
     m_UpdateCamera = false;
+    m_FlushFrame   = false;
+    m_UpdateLight  = false;
     glfwPollEvents();
     UpdateFrameTime();
 }

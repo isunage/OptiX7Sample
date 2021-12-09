@@ -1,7 +1,7 @@
 #include <Test24Gui.h>
 #include <Test24Config.h>
 #include <filesystem>
-class ObjModelConfigGuiWindow : public test::RTGuiWindow
+class  ObjModelConfigGuiWindow : public test::RTGuiWindow
 {
 public:
     ObjModelConfigGuiWindow(const std::shared_ptr<test::RTFramebuffer>& framebuffer_, const std::shared_ptr<test::RTObjModelAssetManager>& objModelManager_, std::unordered_set<std::string>& launchTracerSet_, std::string& objModelname) :
@@ -54,14 +54,12 @@ public:
             }
             curObjModelName = newObjModelName;
         }
-        
         if (ImGui::Button("Add")) {
             if (!objFileDialog->IsOpen()) {
                 objFileDialog->Open();
             }
         }
         objFileDialog->DrawFrame();
-
         if (!m_LoadFilePath.empty()) {
             std::filesystem::path filename = std::filesystem::path(m_LoadFilePath).filename();
             objModelManager->LoadAsset(filename.string(), m_LoadFilePath);
@@ -187,9 +185,9 @@ public:
         test::RTGuiWindow("CameraConfig", ImGuiWindowFlags_MenuBar), cameraController{ cameraController_ }, updateCamera{ updateCamera_ }, framebuffer{framebuffer_}{}
     virtual void DrawGui()override {
         auto camera = cameraController->GetCamera((float)framebuffer->GetWidth() / (float)framebuffer->GetHeight());
-        auto eye = camera.getEye();
-        auto atv = camera.getLookAt();
-        auto vup = camera.getVup();
+        auto eye    = camera.getEye();
+        auto atv    = camera.getLookAt();
+        auto vup    = camera.getVup();
         {
             float arr_eye [3]= { eye.x,eye.y,eye.z };
             if (ImGui::InputFloat3("Eye", arr_eye)) {
@@ -211,6 +209,14 @@ public:
                 cameraController->SetZoom(zoom);
                 updateCamera = true;
             }
+            auto sense = cameraController->GetMouseSensitivity();
+            if (ImGui::InputFloat("sensitivity", &sense)) {
+                cameraController->SetMouseSensitivity(sense);
+            }
+            auto speed = cameraController->GetMovementSpeed();
+            if (ImGui::InputFloat("speed", &speed)) {
+                cameraController->SetMovementSpeed(speed);
+            }
         }
         if (updateCamera) {
             cameraController->SetCamera(camera);
@@ -222,15 +228,67 @@ private:
     std::shared_ptr<rtlib::ext::CameraController> cameraController;
     bool& updateCamera;
 };
+class     LightConfigGuiWindow: public test::RTGuiWindow {
+public:
+    LightConfigGuiWindow(
+        float3& bgLightColor,
+        bool&   updateBgLight)noexcept
+        :test::RTGuiWindow("LightConfig", ImGuiWindowFlags_MenuBar), m_BgLightColor{ bgLightColor }, m_UpdateBgLight{ updateBgLight } {}
+    virtual void DrawGui()override {
+        {
+            float arr_bg_light_color[3] = { m_BgLightColor.x,m_BgLightColor.y,m_BgLightColor.z };
+            if (ImGui::InputFloat3("BackGroundLight", arr_bg_light_color)) {
+                m_BgLightColor = make_float3(arr_bg_light_color[0], arr_bg_light_color[1], arr_bg_light_color[2]);
+                m_UpdateBgLight = true;
+            }
+        }
+    }
+    virtual ~LightConfigGuiWindow()noexcept {}
+private:
+    float3& m_BgLightColor;
+    bool&   m_UpdateBgLight;
+};
+class     InputConfigGuiWindow : public test::RTGuiWindow {
+public:
+    InputConfigGuiWindow(
+        const std::array<float, 2>& curCursorPos,
+        const std::array<float, 2>& delCursorPos,
+        const std::array<float, 2>& scrollOffsets,
+        const float& curFrameTime,
+        const float& delFrameTime)noexcept
+        :test::RTGuiWindow("InputConfig", ImGuiWindowFlags_MenuBar),
+        m_CurCursorPos{ curCursorPos },
+        m_DelCursorPos{ delCursorPos },
+        m_ScrollOffsets{ scrollOffsets },
+        m_CurFrameTime{ curFrameTime },
+        m_DelFrameTime{ delFrameTime } {}
+    virtual void DrawGui()override {
+        {
+            ImGui::Text("CurFrameRate :   %f fps", 1.0f/m_DelFrameTime);
+            ImGui::Text("CurFrameTime :   %f sec", m_CurFrameTime);
+            ImGui::Text("CurCursorPos : (%f, %f)", m_CurCursorPos[0],  m_CurCursorPos[1]);
+            ImGui::Text("DelCursorPos : (%f, %f)", m_DelCursorPos[0],  m_DelCursorPos[1]);
+            ImGui::Text("ScrollOffsets: (%f, %f)", m_ScrollOffsets[0], m_ScrollOffsets[1]);
+        }
+    }
+    virtual ~InputConfigGuiWindow()noexcept {}
+private:
+    const std::array<float, 2>& m_CurCursorPos;
+    const std::array<float, 2>& m_DelCursorPos;
+    const std::array<float, 2>& m_ScrollOffsets;
+    const float& m_CurFrameTime;
+    const float& m_DelFrameTime;
+};
 void  Test24GuiDelegate::Initialize()
 {
     m_Gui->Initialize();
     // MainMenuBar
     auto mainMenuBar = m_Gui->AddGuiMainMenuBar();
-    auto fileMenu = mainMenuBar->AddGuiMenu("File");
+    auto fileMenu    = mainMenuBar->AddGuiMenu("File");
     {
-        auto mdlMenu = fileMenu->AddGuiMenu("Model");
+        auto mdlMenu    = fileMenu->AddGuiMenu("Model");
         auto fileDialog = std::make_shared<test::RTGuiFileDialog>("Choose File", ".obj", TEST_TEST24_DATA_PATH"\\");
+        //Open
         auto openMenuItem = std::make_shared < test::RTGuiMenuItem>("Open");
         openMenuItem->SetUserPointer(fileDialog.get());
         openMenuItem->SetClickCallback([](test::RTGuiMenuItem* item) {
@@ -239,6 +297,7 @@ void  Test24GuiDelegate::Initialize()
                 fd->Open();
             }
             });
+        //Close
         auto clseMenuItem = std::make_shared < test::RTGuiMenuItem>("Close");
         clseMenuItem->SetUserPointer(fileDialog.get());
         clseMenuItem->SetClickCallback([](test::RTGuiMenuItem* item) {
@@ -252,7 +311,7 @@ void  Test24GuiDelegate::Initialize()
         m_Gui->SetGuiFileDialog(fileDialog);
     }
     // ConfigMenu
-    auto cnfgMenu = mainMenuBar->AddGuiMenu("Config");
+    auto cnfgMenu    = mainMenuBar->AddGuiMenu("Config");
     {
         {
             auto fmbfItem = cnfgMenu->AddGuiMenu("Frame");
@@ -272,12 +331,28 @@ void  Test24GuiDelegate::Initialize()
             trcrItem->SetGuiMenuItem(std::make_shared<test::RTGuiCloseWindowMenuItem>(mainTcCnfgWindow));
         }
         {
+            auto iptItem = cnfgMenu->AddGuiMenu("Input");
+            auto iptCnfgWindow = std::make_shared<InputConfigGuiWindow>(m_CurCursorPos,m_DelCursorPos,m_ScrollOffsets,m_CurFrameTime,m_DelFrameTime);
+            iptCnfgWindow->SetActive(false);   //Default: Invisible
+            m_Gui->SetGuiWindow(iptCnfgWindow);
+            iptItem->SetGuiMenuItem(std::make_shared<test::RTGuiOpenWindowMenuItem>(iptCnfgWindow));
+            iptItem->SetGuiMenuItem(std::make_shared<test::RTGuiCloseWindowMenuItem>(iptCnfgWindow));
+        }
+        {
             auto cmrItem = cnfgMenu->AddGuiMenu("Camera");
             auto cmrCnfgWindow = std::make_shared<CameraConfigGuiWindow>(m_Framebuffer, m_CameraController, m_UpdateCamera);
             cmrCnfgWindow->SetActive(false);   //Default: Invisible
             m_Gui->SetGuiWindow(cmrCnfgWindow);
             cmrItem->SetGuiMenuItem(std::make_shared<test::RTGuiOpenWindowMenuItem>(cmrCnfgWindow));
             cmrItem->SetGuiMenuItem(std::make_shared<test::RTGuiCloseWindowMenuItem>(cmrCnfgWindow));
+        }
+        {
+            auto lhtItem = cnfgMenu->AddGuiMenu("Light");
+            auto lhtCnfgWindow = std::make_shared<LightConfigGuiWindow>(m_BgLightColor, m_UpdateBgLight);
+            lhtCnfgWindow->SetActive(false);   //Default: Invisible
+            m_Gui->SetGuiWindow(lhtCnfgWindow);
+            lhtItem->SetGuiMenuItem(std::make_shared<test::RTGuiOpenWindowMenuItem>(lhtCnfgWindow));
+            lhtItem->SetGuiMenuItem(std::make_shared<test::RTGuiCloseWindowMenuItem>(lhtCnfgWindow));
         }
         {
             auto mdlItem = cnfgMenu->AddGuiMenu("Model");
