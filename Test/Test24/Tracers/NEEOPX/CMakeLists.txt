@@ -29,4 +29,4 @@ add_custom_command(TARGET Test24_Tracer_NEEOPX POST_BUILD COMMAND ${CMAKE_COMMAN
 rtlib_compile_ptx(Test24_Tracer_NEEOPX ${TEST_TEST24_NEE_OPX_CUDA_PATH}/RayTrace.cu   ${TEST_TEST24_NEE_OPX_CUDA_PATH} )
 
 target_include_directories(Test24_Tracer_NEEOPX PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_BINARY_DIR}/cuda)
-target_link_libraries(Test24_Tracer_NEEOPX PUBLIC  TestLib)
+target_link_libraries(Test24_Tracer_NEEOPX PUBLIC  TestLib Test24_Share)

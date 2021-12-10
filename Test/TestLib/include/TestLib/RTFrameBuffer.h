@@ -94,7 +94,7 @@ namespace test {
         int                                                                              m_FbHeight    = 0;
     };
     template<typename T>
-    class RTGLTextureFBComponent : public RTFramebufferComponent
+    class RTGLTextureFBComponent  : public RTFramebufferComponent
     {
     public:
         RTGLTextureFBComponent() noexcept :RTFramebufferComponent() {

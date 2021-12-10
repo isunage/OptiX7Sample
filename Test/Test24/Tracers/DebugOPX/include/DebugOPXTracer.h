@@ -13,6 +13,7 @@
 #include <RTLib/ext/Resources.h>
 #include <RTLib/ext/Resources/GL.h>
 #include <RTLib/ext/Resources/CUDA.h>
+#include <Test24Event.h>
 #include <memory>
 // DebugTracer
 class Test24DebugOPXTracer : public test::RTTracer
@@ -37,9 +38,7 @@ public:
                    rtlib::ext::IASHandlePtr TopLevelAS,
                    const std::vector<rtlib::ext::VariableMap> &Materials,
                    const float3 &BgLightColor,
-                   const bool &ResizedFrame,
-                   const bool &UpdateCamera,
-                   const bool &UpdateBgLight);
+                   const unsigned int &eventFlags);
     // RTTracer ����Čp������܂���
     virtual void Initialize() override;
     virtual void Launch(int width, int height, void *userData) override;

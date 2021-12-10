@@ -37,11 +37,7 @@ struct Test24NEEOPXTracer::Impl {
 		rtlib::ext::IASHandlePtr topLevelAS,
 		const std::vector<rtlib::ext::VariableMap>& materials,
 		const float3& bgLightColor,
-		const bool& flushFrame,
-		const bool& resizedFrame,
-		const bool& changeTrace,
-		const bool& updateCamera,
-		const bool& updateBgLight,
+		const unsigned int& eventFlags,
 		const unsigned int& maxTraceDepth
 	) :
 		m_Context{ context },
@@ -51,11 +47,7 @@ struct Test24NEEOPXTracer::Impl {
 		m_TopLevelAS{ topLevelAS },
 		m_Materials{ materials },
 		m_BgLightColor{ bgLightColor },
-		m_FlushFrame{ flushFrame },
-		m_ResizedFrame{ resizedFrame },
-		m_ChangeTrace{ changeTrace },
-		m_UpdateCamera{ updateCamera },
-		m_UpdateBgLight{ updateBgLight },
+		m_EventFlags{ eventFlags },
 		m_MaxTraceDepth{ maxTraceDepth }{}
 	~Impl() {}
 
@@ -74,11 +66,7 @@ struct Test24NEEOPXTracer::Impl {
 	rtlib::ext::IASHandlePtr m_TopLevelAS;
 	const std::vector<rtlib::ext::VariableMap>& m_Materials;
 	const float3& m_BgLightColor;
-	const bool& m_FlushFrame;
-	const bool& m_ResizedFrame;
-	const bool& m_ChangeTrace;
-	const bool& m_UpdateCamera;
-	const bool& m_UpdateBgLight;
+	const unsigned int& m_EventFlags;
 	const unsigned int& m_MaxTraceDepth;
 	rtlib::ext::Camera m_Camera = {};
 	OptixShaderBindingTable m_ShaderBindingTable = {};
@@ -98,18 +86,14 @@ struct Test24NEEOPXTracer::Impl {
 };
 
 Test24NEEOPXTracer::Test24NEEOPXTracer(
-	ContextPtr context,
-	FramebufferPtr framebuffer,
-	CameraControllerPtr cameraController,
-	TextureAssetManager textureManager,
-	rtlib::ext::IASHandlePtr topLevelAS,
+	ContextPtr                                  context,
+	FramebufferPtr                              framebuffer,
+	CameraControllerPtr                         cameraController,
+	TextureAssetManager                         textureManager,
+	rtlib::ext::IASHandlePtr                    topLevelAS,
 	const std::vector<rtlib::ext::VariableMap>& materials,
 	const float3& bgLightColor,
-	const bool& flushFrame,
-	const bool& resizedFrame,
-	const bool& changeTrace,
-	const bool& updateCamera,
-	const bool& updateBgLight,
+	const unsigned int& eventFlags,
 	const unsigned int& maxTraceDepth) {
 	m_Impl = std::make_unique<Test24NEEOPXTracer::Impl>(
 		context,
@@ -119,11 +103,7 @@ Test24NEEOPXTracer::Test24NEEOPXTracer(
 		topLevelAS,
 		materials,
 		bgLightColor,
-		flushFrame,
-		resizedFrame,
-		changeTrace,
-		updateCamera,
-		updateBgLight,
+		eventFlags,
 		maxTraceDepth);
 }
 
@@ -177,7 +157,7 @@ void Test24NEEOPXTracer::CleanUp()
 
 void Test24NEEOPXTracer::Update()
 {
-	if (this->m_Impl->m_ResizedFrame || this->m_Impl->m_UpdateCamera)
+	if ((this->m_Impl->m_EventFlags & TEST24_EVENT_FLAG_UPDATE_CAMERA) == TEST24_EVENT_FLAG_UPDATE_CAMERA)
 	{
 		float aspect = static_cast<float>(m_Impl->m_Framebuffer->GetWidth()) / static_cast<float>(m_Impl->m_Framebuffer->GetHeight());
 		this->m_Impl->m_Camera = this->m_Impl->m_CameraController->GetCamera(aspect);
@@ -188,16 +168,16 @@ void Test24NEEOPXTracer::Update()
 		this->m_Impl->m_RGRecordBuffer.cpuHandle[0].data.w = w;
 		this->m_Impl->m_RGRecordBuffer.Upload();
 	}
-	if (this->m_Impl->m_ResizedFrame || this->m_Impl->m_UpdateCamera || this->m_Impl->m_FlushFrame || this->m_Impl->m_ChangeTrace || this->m_Impl->m_UpdateBgLight)
+	if ((this->m_Impl->m_EventFlags & TEST24_EVENT_FLAG_FLUSH_FRAME) == TEST24_EVENT_FLAG_FLUSH_FRAME)
 	{
 		std::vector<float3> zeroAccumValues(this->m_Impl->m_Framebuffer->GetWidth() * this->m_Impl->m_Framebuffer->GetHeight(), make_float3(0.0f));
 		cudaMemcpy(m_Impl->m_Framebuffer->GetComponent<test::RTCUDABufferFBComponent<float3>>("RAccum")->GetHandle().getDevicePtr(), zeroAccumValues.data(), sizeof(float3) * this->m_Impl->m_Framebuffer->GetWidth() * this->m_Impl->m_Framebuffer->GetHeight(), cudaMemcpyHostToDevice);
 		this->m_Impl->m_Params.cpuHandle[0].maxTraceDepth = this->m_Impl->m_MaxTraceDepth;
-		this->m_Impl->m_Params.cpuHandle[0].samplePerALL = 0;
-		this->m_Impl->m_SamplePerAll = 0;
+		this->m_Impl->m_Params.cpuHandle[0].samplePerALL  = 0;
+		this->m_Impl->m_SamplePerAll                      = 0;
 	}
 	bool shouldRegen = ((this->m_Impl->m_SamplePerAll + this->m_Impl->m_Params.cpuHandle[0].samplePerLaunch) / 1024 != this->m_Impl->m_SamplePerAll / 1024);
-	if (this->m_Impl->m_ResizedFrame || shouldRegen)
+	if (((this->m_Impl->m_EventFlags & TEST24_EVENT_FLAG_RESIZE_FRAME) == TEST24_EVENT_FLAG_RESIZE_FRAME) || shouldRegen)
 	{
 		std::cout << "Regen!\n";
 		std::vector<unsigned int> seedData(this->m_Impl->m_Framebuffer->GetWidth() * this->m_Impl->m_Framebuffer->GetHeight());
@@ -207,7 +187,7 @@ void Test24NEEOPXTracer::Update()
 		this->m_Impl->m_SeedBuffer.resize(this->m_Impl->m_Framebuffer->GetWidth() * this->m_Impl->m_Framebuffer->GetHeight());
 		this->m_Impl->m_SeedBuffer.upload(seedData);
 	}
-	if (this->m_Impl->m_UpdateBgLight)
+	if ((this->m_Impl->m_EventFlags & TEST24_EVENT_FLAG_UPDATE_LIGHT) == TEST24_EVENT_FLAG_UPDATE_LIGHT)
 	{
 		auto lightColor = make_float4(this->m_Impl->m_BgLightColor, 1.0f);
 		this->m_Impl->m_MSRecordBuffers.cpuHandle[RAY_TYPE_RADIANCE].data.bgColor = lightColor;

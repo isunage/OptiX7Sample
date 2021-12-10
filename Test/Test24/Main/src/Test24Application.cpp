@@ -4,6 +4,7 @@
 #include <DebugOPXTracer.h>
 #include <PathOPXTracer.h>
 #include <NEEOPXTracer.h>
+#include <GuidePathOPXTracer.h>
 #include <Test24Config.h>
 #include <filesystem>
 Test24Application::Test24Application(int fbWidth, int fbHeight, std::string name) noexcept : test::RTApplication(name)
@@ -12,12 +13,9 @@ Test24Application::Test24Application(int fbWidth, int fbHeight, std::string name
     m_FbHeight         = fbHeight;
     m_Window           = nullptr;
     m_FovY             = 0.0f;
-    m_IsResized        = false;
-    m_UpdateCamera     = false;
-    m_UpdateLight      = false;
-    m_FlushFrame       = false;
-    m_ChangeTrace      = false;
+    m_EventFlags       = TEST24_EVENT_FLAG_NONE;
     m_NumRayType       = TEST_TEST24_NUM_RAY_TYPE;
+    m_SamplePerLaunch  = 1;
     m_MaxTraceDepth    = 2;
     m_CurFrameTime     = 0.0f;
     m_DelFrameTime     = 0.0f;
@@ -147,7 +145,27 @@ void Test24Application::FreeBase()
 void Test24Application::InitGui()
 {
     // Gui
-    m_GuiDelegate = std::make_unique<Test24GuiDelegate>(m_Window,m_CameraController, m_Framebuffer,m_ObjModelManager,m_TextureManager, m_CurCursorPos,m_DelCursorPos,m_ScrollOffsets,m_CurFrameTime,m_DelFrameTime,m_FramePublicNames, m_TracePublicNames, m_LaunchTracerSet, m_BgLightColor, m_CurMainFrameName, m_CurMainTraceName, m_CurObjModelName,m_UpdateCamera,m_UpdateLight);
+    m_GuiDelegate = std::make_unique<Test24GuiDelegate>(
+        m_Window,
+        m_CameraController, 
+        m_Framebuffer,
+        m_ObjModelManager,
+        m_TextureManager, 
+        m_CurCursorPos,
+        m_DelCursorPos,
+        m_ScrollOffsets,
+        m_CurFrameTime,
+        m_DelFrameTime,
+        m_FramePublicNames, 
+        m_TracePublicNames, 
+        m_LaunchTracerSet, 
+        m_BgLightColor, 
+        m_CurMainFrameName, 
+        m_CurMainTraceName, 
+        m_CurObjModelName,
+        m_MaxTraceDepth,
+        m_SamplePerLaunch,
+        m_EventFlags);
     m_GuiDelegate->Initialize();
     glfwSetScrollCallback(m_Window, ScrollCallback);
 }
@@ -339,9 +357,8 @@ void Test24Application::InitTracers()
         m_ObjModelManager,
         m_Framebuffer, 
         m_CameraController, 
-        m_CurObjModelName,
-        m_IsResized,
-        m_UpdateCamera
+        m_CurObjModelName, 
+        m_EventFlags
     );
     m_Tracers["TestGL"]->Initialize();
     m_Tracers["DebugOPX"] = std::make_shared<Test24DebugOPXTracer>(
@@ -352,24 +369,18 @@ void Test24Application::InitTracers()
         m_IASHandles["TopLevel"], 
         m_Materials, 
         m_BgLightColor, 
-        m_IsResized, 
-        m_UpdateCamera, 
-        m_UpdateLight
+        m_EventFlags
     );
     m_Tracers["DebugOPX"]->Initialize();
-    m_Tracers["PathOPX"]  = std::make_shared<Test24PathOPXTracer>( 
-        m_Context, 
-        m_Framebuffer, 
-        m_CameraController, 
-        m_TextureManager, 
-        m_IASHandles["TopLevel"], 
-        m_Materials, 
-        m_BgLightColor, 
-        m_FlushFrame, 
-        m_IsResized, 
-        m_ChangeTrace,
-        m_UpdateCamera, 
-        m_UpdateLight, 
+    m_Tracers["PathOPX"] = std::make_shared<Test24PathOPXTracer>(
+        m_Context,
+        m_Framebuffer,
+        m_CameraController,
+        m_TextureManager,
+        m_IASHandles["TopLevel"],
+        m_Materials,
+        m_BgLightColor,
+        m_EventFlags ,
         m_MaxTraceDepth
     );
     m_Tracers["PathOPX"]->Initialize();
@@ -380,15 +391,24 @@ void Test24Application::InitTracers()
         m_TextureManager,
         m_IASHandles["TopLevel"],
         m_Materials,
-        m_BgLightColor,
-        m_FlushFrame,
-        m_IsResized,
-        m_ChangeTrace,
-        m_UpdateCamera,
-        m_UpdateLight,
+        m_BgLightColor, 
+        m_EventFlags,
         m_MaxTraceDepth
     );
     m_Tracers["NEEOPX"]->Initialize();
+    m_Tracers["GuidePathOPX"] = std::make_shared<Test24GuidePathOPXTracer>(
+        m_Context,
+        m_Framebuffer,
+        m_CameraController,
+        m_TextureManager,
+        m_IASHandles["TopLevel"],
+        m_Materials,
+        m_BgLightColor,
+        m_EventFlags,
+        m_MaxTraceDepth
+    );
+    m_Tracers["GuidePathOPX"]->Initialize();
+
     m_TracePublicNames.clear();
     m_TracePublicNames.reserve(m_Tracers.size());
     for (auto& [name, tracer] : m_Tracers)
@@ -452,22 +472,22 @@ void Test24Application::Launch()
         if (name == "PathOPX")
         {
             Test24PathOPXTracer::UserData  userData = {};
-            userData.samplePerLaunch = 1;
-            userData.isSync = true;
-            userData.stream = nullptr;
+            userData.samplePerLaunch = m_SamplePerLaunch;
+            userData.isSync          = true;
+            userData.stream          = nullptr;
             m_Tracers[name]->Launch(m_FbWidth, m_FbHeight, &userData);
         }
         if (name == "NEEOPX") {
             Test24NEEOPXTracer::UserData userData = {};
-            userData.samplePerLaunch = 1;
-            userData.isSync = true;
-            userData.stream = nullptr;
+            userData.samplePerLaunch = m_SamplePerLaunch;
+            userData.isSync          = true;
+            userData.stream          = nullptr;
             m_Tracers[name]->Launch(m_FbWidth, m_FbHeight, &userData);
         }
         if (name == "DebugOPX") {
             Test24DebugOPXTracer::UserData userData = {};
-            userData.isSync = true;
-            userData.stream = nullptr;
+            userData.isSync          = true;
+            userData.stream          = nullptr;
             m_Tracers[name]->Launch(m_FbWidth, m_FbHeight, &userData);
         }
         if (name == "TestGL") {
@@ -494,17 +514,11 @@ void Test24Application::Update()
 {
     ResizeFrame();
     UpdateCamera();
-    if (m_IsResized|| m_UpdateCamera||m_UpdateLight) {
-        m_FlushFrame = true;
-    }
-    for (auto &[name, tracer] : m_Tracers)
+    for (auto& [name, tracer] : m_Tracers)
     {
         tracer->Update();
     }
-    m_IsResized    = false;
-    m_UpdateCamera = false;
-    m_FlushFrame   = false;
-    m_UpdateLight  = false;
+    m_EventFlags = TEST24_EVENT_FLAG_NONE;
     glfwPollEvents();
     UpdateFrameTime();
 }
@@ -524,7 +538,7 @@ void Test24Application::FramebufferSizeCallback(GLFWwindow *window, int fbWidth,
             glViewport(0, 0, fbWidth, fbHeight);
             this_ptr->m_FbWidth = fbWidth;
             this_ptr->m_FbHeight = fbHeight;
-            this_ptr->m_IsResized = true;
+            this_ptr->m_EventFlags|= TEST24_EVENT_FLAG_RESIZE_FRAME;
         }
     }
 }
@@ -587,7 +601,7 @@ void Test24Application::CopyDgFrame(const std::string &name)
 
 void Test24Application::ResizeFrame()
 {
-    if (m_IsResized)
+    if ((m_EventFlags&TEST24_EVENT_FLAG_RESIZE_FRAME)==TEST24_EVENT_FLAG_RESIZE_FRAME)
     {
         m_Framebuffer->Resize(m_FbWidth, m_FbHeight);
     }
@@ -601,55 +615,55 @@ void Test24Application::UpdateCamera()
         {
 
             m_CameraController->ProcessKeyboard(rtlib::ext::CameraMovement::eForward, m_DelFrameTime);
-            m_UpdateCamera = true;
+            m_EventFlags |= TEST24_EVENT_FLAG_UPDATE_CAMERA;
         }
         if (glfwGetKey(m_Window, GLFW_KEY_S) == GLFW_PRESS)
         {
             m_CameraController->ProcessKeyboard(rtlib::ext::CameraMovement::eBackward, m_DelFrameTime);
-            m_UpdateCamera = true;
+            m_EventFlags |= TEST24_EVENT_FLAG_UPDATE_CAMERA;
         }
         if (glfwGetKey(m_Window, GLFW_KEY_A) == GLFW_PRESS)
         {
             m_CameraController->ProcessKeyboard(rtlib::ext::CameraMovement::eLeft, m_DelFrameTime);
-            m_UpdateCamera = true;
+            m_EventFlags     |= TEST24_EVENT_FLAG_UPDATE_CAMERA;
         }
         if (glfwGetKey(m_Window, GLFW_KEY_D) == GLFW_PRESS)
         {
             m_CameraController->ProcessKeyboard(rtlib::ext::CameraMovement::eRight, m_DelFrameTime);
-            m_UpdateCamera = true;
+            m_EventFlags     |= TEST24_EVENT_FLAG_UPDATE_CAMERA;
         }
         if (glfwGetKey(m_Window, GLFW_KEY_LEFT) == GLFW_PRESS)
         {
             m_CameraController->ProcessKeyboard(rtlib::ext::CameraMovement::eLeft, m_DelFrameTime);
-            m_UpdateCamera = true;
+            m_EventFlags     |= TEST24_EVENT_FLAG_UPDATE_CAMERA;
         }
         if (glfwGetKey(m_Window, GLFW_KEY_RIGHT) == GLFW_PRESS)
         {
             m_CameraController->ProcessKeyboard(rtlib::ext::CameraMovement::eRight, m_DelFrameTime);
-            m_UpdateCamera = true;
+            m_EventFlags     |= TEST24_EVENT_FLAG_UPDATE_CAMERA;
         }
         if (glfwGetKey(m_Window, GLFW_KEY_UP) == GLFW_PRESS)
         {
             m_CameraController->ProcessKeyboard(rtlib::ext::CameraMovement::eUp, m_DelFrameTime);
-            m_UpdateCamera = true;
+            m_EventFlags     |= TEST24_EVENT_FLAG_UPDATE_CAMERA;
         }
         if (glfwGetKey(m_Window, GLFW_KEY_DOWN) == GLFW_PRESS)
         {
             m_CameraController->ProcessKeyboard(rtlib::ext::CameraMovement::eDown, m_DelFrameTime);
-            m_UpdateCamera = true;
+            m_EventFlags     |= TEST24_EVENT_FLAG_UPDATE_CAMERA;
         }
         if (glfwGetMouseButton(m_Window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
         {
             if (!ImGui::GetIO().WantCaptureMouse) {
                
                 m_CameraController->ProcessMouseMovement(-m_DelCursorPos[0], m_DelCursorPos[1]);
-                m_UpdateCamera = true;
+                m_EventFlags |= TEST24_EVENT_FLAG_UPDATE_CAMERA;
             }
         }
         if (m_ScrollOffsets[0] != 0.0f || m_ScrollOffsets[1] != 0.0f) {
             float yoff = m_ScrollOffsets[1];
             m_CameraController->ProcessMouseScroll(-m_ScrollOffsets[1]);
-            m_UpdateCamera = true;
+            m_EventFlags     |= TEST24_EVENT_FLAG_UPDATE_CAMERA;
         }
     }
     m_ScrollOffsets[0] = 0.0f;

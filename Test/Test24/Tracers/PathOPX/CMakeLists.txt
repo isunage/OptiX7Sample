@@ -29,4 +29,4 @@ add_custom_command(TARGET Test24_Tracer_PathOPX POST_BUILD COMMAND ${CMAKE_COMMA
 rtlib_compile_ptx(Test24_Tracer_PathOPX ${TEST_TEST24_PATH_OPX_CUDA_PATH}/RayTrace.cu   ${TEST_TEST24_PATH_OPX_CUDA_PATH} )
 
 target_include_directories(Test24_Tracer_PathOPX PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_BINARY_DIR}/cuda)
-target_link_libraries(Test24_Tracer_PathOPX PUBLIC  TestLib)
+target_link_libraries(Test24_Tracer_PathOPX PUBLIC  TestLib Test24_Share)

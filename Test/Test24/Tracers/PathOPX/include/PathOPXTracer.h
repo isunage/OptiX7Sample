@@ -14,6 +14,7 @@
 #include <RTLib/ext/Resources/GL.h>
 #include <RTLib/ext/Resources/CUDA.h>
 #include <Test24PathOPXConfig.h>
+#include <Test24Event.h>
 #include <memory>
 //SimpleTracer
 class Test24PathOPXTracer : public test::RTTracer
@@ -46,11 +47,7 @@ public:
 		rtlib::ext::IASHandlePtr topLevelAS,
 		const std::vector<rtlib::ext::VariableMap>& materials,
 		const float3& bgLightColor,
-		const bool& flushFrame,
-		const bool& resizedFrame,
-		const bool& changeTrace,
-		const bool& updateCamera,
-		const bool& updateBgLight,
+		const unsigned int& eventFlags,
 		const unsigned int& maxTraceDepth);
 	// RTTracer ����Čp������܂���
 	virtual void Initialize() override;

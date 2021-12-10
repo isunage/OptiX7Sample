@@ -5,15 +5,16 @@
 #include <TestLib/RTGui.h>
 #include <TestLib/RTFrameBuffer.h>
 #include <RTLib/ext/Camera.h>
+#include <Test24Event.h>
 class Test24GuiDelegate : public test::RTAppGuiDelegate
 {
 public:
 	Test24GuiDelegate(
 		GLFWwindow* window,
 		const std::shared_ptr<rtlib::ext::CameraController>& cameraController,
-		const std::shared_ptr<test::RTFramebuffer>& framebuffer,
+		const std::shared_ptr<test::RTFramebuffer>         & framebuffer,
 		const std::shared_ptr<test::RTObjModelAssetManager>& objModelAssetManager,
-		const std::shared_ptr<test::RTTextureAssetManager>& textureManager,
+		const std::shared_ptr<test::RTTextureAssetManager> & textureManager,
 		const std::array<float, 2>& curCursorPos,
 		const std::array<float, 2>& delCursorPos,
 		const std::array<float, 2>& scrollOffsets,
@@ -22,12 +23,13 @@ public:
 		const std::vector<std::string> & framePublicNames,
 		const std::vector<std::string> & tracePublicNames,
 		std::unordered_set<std::string>& launchTracerSet,
-		float3&      bgLightColor,
+		float3& bgLightColor,
 		std::string& curMainFrameName,
 		std::string& curMainTraceName,
-		std::string& curObjModelName,
-		bool& updateCamera,
-		bool& updateBgLight):
+		std::string& curObjModelName, 
+		unsigned int& maxTraceDepth,
+		unsigned int& samplePerLaunch,
+		unsigned int& eventFlags):
 		m_CurCursorPos {curCursorPos},
 		m_DelCursorPos{ delCursorPos },
 		m_ScrollOffsets{ scrollOffsets },
@@ -44,9 +46,10 @@ public:
 		m_CurMainFrameName{ curMainFrameName }, 
 		m_CurObjModelName {  curObjModelName },
 		m_CurMainTraceName{ curMainTraceName }, 
+		m_MaxTraceDepth{ maxTraceDepth },
+		m_SamplePerLaunch{samplePerLaunch},
 		m_LaunchTracerSet { launchTracerSet  },
-		m_UpdateCamera{updateCamera},
-		m_UpdateBgLight{ updateBgLight },
+		m_EventFlags{eventFlags},
 		m_Gui{ std::make_shared<test::RTGui>(window) }
 	{}
 	// RTAppGuiDelegate を介して継承されました
@@ -71,10 +74,11 @@ private:
 	const std::vector<std::string>&  m_FramePublicNames;
 	const std::vector<std::string>&  m_TracePublicNames;
 	std::unordered_set<std::string>& m_LaunchTracerSet;
-	std::string& m_CurObjModelName;
-	std::string& m_CurMainFrameName;
-	std::string& m_CurMainTraceName;
-	bool& m_UpdateCamera;
-	bool& m_UpdateBgLight;
+	std::string&  m_CurObjModelName;
+	std::string&  m_CurMainFrameName;
+	std::string&  m_CurMainTraceName;
+	unsigned int& m_MaxTraceDepth;
+	unsigned int& m_SamplePerLaunch;
+	unsigned int& m_EventFlags;
 };
 #endif

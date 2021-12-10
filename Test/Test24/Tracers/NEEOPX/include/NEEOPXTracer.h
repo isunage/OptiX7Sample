@@ -13,6 +13,7 @@
 #include <RTLib/ext/Resources.h>
 #include <RTLib/ext/Resources/GL.h>
 #include <RTLib/ext/Resources/CUDA.h>
+#include <Test24Event.h>
 #include <Test24NEEOPXConfig.h>
 #include <memory>
 //SimpleTracer
@@ -46,11 +47,7 @@ public:
 		rtlib::ext::IASHandlePtr topLevelAS,
 		const std::vector<rtlib::ext::VariableMap>& materials,
 		const float3& bgLightColor,
-		const bool& flushFrame,
-		const bool& resizedFrame,
-		const bool& changeTrace,
-		const bool& updateCamera,
-		const bool& updateBgLight,
+		const unsigned int& eventFlags,
 		const unsigned int& maxTraceDepth);
 	// RTTracer ����Čp������܂���
 	virtual void Initialize() override;
@@ -69,8 +66,6 @@ private:
 	void FreeShaderBindingTable();
 	void FreeLaunchParams();
 	void FreeFrameResources();
-
-
 private:
 	struct Impl;
 	std::unique_ptr<Impl> m_Impl;

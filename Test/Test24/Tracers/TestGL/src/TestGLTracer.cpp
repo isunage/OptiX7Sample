@@ -3,7 +3,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtx/transform.hpp>
 Test24TestGLTracer::Test24TestGLTracer(int fbWidth, int fbHeight, GLFWwindow *window, const std::shared_ptr<test::RTObjModelAssetManager>& objModelManager, const std::shared_ptr<test::RTFramebuffer> &framebuffer, const std::shared_ptr<rtlib::ext::CameraController> &cameraController, const std::string& objModelName,
-    const bool& isResizedFrame, const  bool& updateCamera) noexcept :m_IsResizedFrame{ isResizedFrame }, m_UpdateCamera{ updateCamera }, m_NewObjModelName{objModelName}
+    const unsigned int& eventFlags) noexcept :m_EventFlags{ eventFlags }, m_NewObjModelName{objModelName}
 {
     m_FbWidth = fbWidth;
     m_FbHeight = fbHeight;
@@ -293,7 +293,7 @@ void Test24TestGLTracer::FreeFramebufferGL()
 
 void Test24TestGLTracer::ResizeFrame()
 {
-    if (!m_IsResizedFrame) {
+    if ((m_EventFlags & TEST24_EVENT_FLAG_RESIZE_FRAME) != TEST24_EVENT_FLAG_RESIZE_FRAME) {
         return;
     }
     if (m_FbWidth != m_Framebuffer->GetWidth() || m_FbHeight != m_Framebuffer->GetHeight())
@@ -334,7 +334,7 @@ void Test24TestGLTracer::FreeUniforms()
 
 void Test24TestGLTracer::UpdateUniforms()
 {
-    if (!m_UpdateCamera&&!m_IsResizedFrame) {
+    if ((m_EventFlags&TEST24_EVENT_FLAG_UPDATE_CAMERA)!= TEST24_EVENT_FLAG_UPDATE_CAMERA) {
         return;
     }
     float aspect = static_cast<float>(m_FbWidth) / static_cast<float>(m_FbHeight);

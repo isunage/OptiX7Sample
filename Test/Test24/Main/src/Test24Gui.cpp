@@ -90,8 +90,8 @@ public:
 class MainTraceConfigGuiWindow : public test::RTGuiWindow
 {
 public:
-    explicit MainTraceConfigGuiWindow(const std::vector<std::string>& tracePublicNames, std::string& traceName)noexcept :
-        test::RTGuiWindow("MainTraceConfig", ImGuiWindowFlags_MenuBar), curTraceName{ traceName }, curTraceIdx{ 0 }, traceNames{ tracePublicNames }, isFirst{ true }{}
+    explicit MainTraceConfigGuiWindow(const std::vector<std::string>& tracePublicNames, std::string& traceName,unsigned int& maxTraceDepth_, unsigned int& samplePerLaunch_, unsigned int& eventFlags_)noexcept :
+        test::RTGuiWindow("MainTraceConfig", ImGuiWindowFlags_MenuBar), curTraceName{ traceName }, curTraceIdx{ 0 }, traceNames{ tracePublicNames }, isFirst{ true }, eventFlags{ eventFlags_ }, maxTraceDepth{ maxTraceDepth_ },samplePerLaunch{samplePerLaunch_}{}
     virtual void DrawGui()override {
         if (isFirst) {
             bool isFound = false;
@@ -108,32 +108,52 @@ public:
             }
             isFirst = false;
         }
-        int val = curTraceIdx;
-        for (auto i = 0; i < traceNames.size(); ++i)
         {
-            if (ImGui::RadioButton(traceNames[i].c_str(), &val, i)) {
-                curTraceIdx = i;
+            int val = maxTraceDepth;
+            if (ImGui::SliderInt("MaxTraceDepth", &val, 1, 100)) {
+                maxTraceDepth = val;
+                eventFlags |= TEST24_EVENT_FLAG_CHANGE_TRACE;
             }
-            if (curTraceIdx == i) {
-                ImGui::SameLine();
-                if (ImGui::Button("Open")) {
-
-                }
-                ImGui::SameLine();
-                if (ImGui::Button("Close")) {
-
-                }
-            }
-            ImGui::NewLine();
         }
-        curTraceName = traceNames[curTraceIdx];
+        {
+            int val = samplePerLaunch;
+            if (ImGui::SliderInt("SamplePerLaunch", &val, 1, 100)) {
+                samplePerLaunch = val;
+            }
+        }
+        {
+            int val = curTraceIdx;
+            for (auto i = 0; i < traceNames.size(); ++i)
+            {
+                if (ImGui::RadioButton(traceNames[i].c_str(), &val, i)) {}
+                if (val == i) {
+                    ImGui::SameLine();
+                    if (ImGui::Button("Open")) {
+
+                    }
+                    ImGui::SameLine();
+                    if (ImGui::Button("Close")) {
+
+                    }
+                }
+                ImGui::NewLine();
+            }
+            if (val != curTraceIdx) {
+                curTraceIdx = val;
+                eventFlags |= TEST24_EVENT_FLAG_CHANGE_TRACE;
+            }
+            curTraceName = traceNames[curTraceIdx];
+        }
     }
     virtual ~MainTraceConfigGuiWindow() noexcept {}
 private:
     const std::vector<std::string>& traceNames;
-    std::string& curTraceName;
-    size_t       curTraceIdx;
-    bool isFirst;
+    std::string&                    curTraceName;
+    unsigned int&                   maxTraceDepth;
+    unsigned int&                   samplePerLaunch;
+    size_t                          curTraceIdx;
+    unsigned int&                   eventFlags;
+    bool                            isFirst;
 };
 class MainFrameConfigGuiWindow : public test::RTGuiWindow
 {
@@ -176,13 +196,13 @@ private:
     const std::vector<std::string>& frameNames;
     std::string& curFrameName;
     size_t       curFrameIdx;
-    bool isFirst;
+    bool         isFirst;
 };
 class    CameraConfigGuiWindow :public test::RTGuiWindow{
 public:
 
-    explicit CameraConfigGuiWindow(const std::shared_ptr<test::RTFramebuffer>& framebuffer_, const std::shared_ptr<rtlib::ext::CameraController>& cameraController_,  bool& updateCamera_)noexcept :
-        test::RTGuiWindow("CameraConfig", ImGuiWindowFlags_MenuBar), cameraController{ cameraController_ }, updateCamera{ updateCamera_ }, framebuffer{framebuffer_}{}
+    explicit CameraConfigGuiWindow(const std::shared_ptr<test::RTFramebuffer>& framebuffer_, const std::shared_ptr<rtlib::ext::CameraController>& cameraController_, unsigned int& eventFlags_)noexcept :
+        test::RTGuiWindow("CameraConfig", ImGuiWindowFlags_MenuBar), cameraController{ cameraController_ }, eventFlags{ eventFlags_ }, framebuffer{framebuffer_}{}
     virtual void DrawGui()override {
         auto camera = cameraController->GetCamera((float)framebuffer->GetWidth() / (float)framebuffer->GetHeight());
         auto eye    = camera.getEye();
@@ -192,22 +212,22 @@ public:
             float arr_eye [3]= { eye.x,eye.y,eye.z };
             if (ImGui::InputFloat3("Eye", arr_eye)) {
                 camera.setEye(make_float3(arr_eye[0],arr_eye[1],arr_eye[2]));
-                updateCamera = true;
+                eventFlags  |= TEST24_EVENT_FLAG_UPDATE_CAMERA;
             }
             float arr_atv[3] = { atv.x,atv.y,atv.z };
             if (ImGui::InputFloat3("At", arr_atv)) {
                 camera.setLookAt(make_float3(arr_atv[0], arr_atv[1], arr_atv[2]));
-                updateCamera = true;
+                eventFlags |= TEST24_EVENT_FLAG_UPDATE_CAMERA;
             }
             float arr_vup[3] = { vup.x,vup.y,vup.z };
             if (ImGui::InputFloat3("vup", arr_vup)) {
                 camera.setLookAt(make_float3(arr_vup[0], arr_vup[1], arr_vup[2]));
-                updateCamera = true;
+                eventFlags |= TEST24_EVENT_FLAG_UPDATE_CAMERA;
             }
             float zoom = cameraController->GetZoom();
             if (ImGui::InputFloat("zoom", &zoom)) {
                 cameraController->SetZoom(zoom);
-                updateCamera = true;
+                eventFlags |= TEST24_EVENT_FLAG_UPDATE_CAMERA;
             }
             auto sense = cameraController->GetMouseSensitivity();
             if (ImGui::InputFloat("sensitivity", &sense)) {
@@ -218,7 +238,7 @@ public:
                 cameraController->SetMovementSpeed(speed);
             }
         }
-        if (updateCamera) {
+        if ((eventFlags& TEST24_EVENT_FLAG_UPDATE_CAMERA)== TEST24_EVENT_FLAG_UPDATE_CAMERA) {
             cameraController->SetCamera(camera);
         }
     }
@@ -226,27 +246,27 @@ public:
 private:
     std::shared_ptr<test::RTFramebuffer> framebuffer;
     std::shared_ptr<rtlib::ext::CameraController> cameraController;
-    bool& updateCamera;
+    unsigned int& eventFlags;
 };
 class     LightConfigGuiWindow: public test::RTGuiWindow {
 public:
     LightConfigGuiWindow(
         float3& bgLightColor,
-        bool&   updateBgLight)noexcept
-        :test::RTGuiWindow("LightConfig", ImGuiWindowFlags_MenuBar), m_BgLightColor{ bgLightColor }, m_UpdateBgLight{ updateBgLight } {}
+        unsigned int& eventFlags)noexcept
+        :test::RTGuiWindow("LightConfig", ImGuiWindowFlags_MenuBar), m_BgLightColor{ bgLightColor }, m_EventFlags{ eventFlags } {}
     virtual void DrawGui()override {
         {
             float arr_bg_light_color[3] = { m_BgLightColor.x,m_BgLightColor.y,m_BgLightColor.z };
             if (ImGui::InputFloat3("BackGroundLight", arr_bg_light_color)) {
                 m_BgLightColor = make_float3(arr_bg_light_color[0], arr_bg_light_color[1], arr_bg_light_color[2]);
-                m_UpdateBgLight = true;
+                m_EventFlags |= TEST24_EVENT_FLAG_UPDATE_LIGHT;
             }
         }
     }
     virtual ~LightConfigGuiWindow()noexcept {}
 private:
     float3& m_BgLightColor;
-    bool&   m_UpdateBgLight;
+    unsigned int&   m_EventFlags;
 };
 class     InputConfigGuiWindow : public test::RTGuiWindow {
 public:
@@ -324,7 +344,7 @@ void  Test24GuiDelegate::Initialize()
         }
         {
             auto trcrItem = cnfgMenu->AddGuiMenu("Tracer");
-            auto mainTcCnfgWindow = std::make_shared<MainTraceConfigGuiWindow>(m_TracePublicNames,m_CurMainTraceName);
+            auto mainTcCnfgWindow = std::make_shared<MainTraceConfigGuiWindow>(m_TracePublicNames,m_CurMainTraceName,m_MaxTraceDepth,m_SamplePerLaunch,m_EventFlags);
             mainTcCnfgWindow->SetActive(false);   //Default: Invisible
             m_Gui->SetGuiWindow(mainTcCnfgWindow);
             trcrItem->SetGuiMenuItem(std::make_shared<test::RTGuiOpenWindowMenuItem>(mainTcCnfgWindow));
@@ -340,7 +360,7 @@ void  Test24GuiDelegate::Initialize()
         }
         {
             auto cmrItem = cnfgMenu->AddGuiMenu("Camera");
-            auto cmrCnfgWindow = std::make_shared<CameraConfigGuiWindow>(m_Framebuffer, m_CameraController, m_UpdateCamera);
+            auto cmrCnfgWindow = std::make_shared<CameraConfigGuiWindow>(m_Framebuffer, m_CameraController, m_EventFlags);
             cmrCnfgWindow->SetActive(false);   //Default: Invisible
             m_Gui->SetGuiWindow(cmrCnfgWindow);
             cmrItem->SetGuiMenuItem(std::make_shared<test::RTGuiOpenWindowMenuItem>(cmrCnfgWindow));
@@ -348,10 +368,10 @@ void  Test24GuiDelegate::Initialize()
         }
         {
             auto lhtItem = cnfgMenu->AddGuiMenu("Light");
-            auto lhtCnfgWindow = std::make_shared<LightConfigGuiWindow>(m_BgLightColor, m_UpdateBgLight);
+            auto lhtCnfgWindow = std::make_shared<LightConfigGuiWindow>(m_BgLightColor, m_EventFlags);
             lhtCnfgWindow->SetActive(false);   //Default: Invisible
             m_Gui->SetGuiWindow(lhtCnfgWindow);
-            lhtItem->SetGuiMenuItem(std::make_shared<test::RTGuiOpenWindowMenuItem>(lhtCnfgWindow));
+            lhtItem->SetGuiMenuItem(std::make_shared<test::RTGuiOpenWindowMenuItem >(lhtCnfgWindow));
             lhtItem->SetGuiMenuItem(std::make_shared<test::RTGuiCloseWindowMenuItem>(lhtCnfgWindow));
         }
         {

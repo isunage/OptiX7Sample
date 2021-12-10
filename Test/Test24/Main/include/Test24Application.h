@@ -12,6 +12,7 @@
 #include <RTLib/ext/Mesh.h>
 #include <RTLib/ext/RectRenderer.h>
 #include <RTLib/ext/Camera.h>
+#include <Test24Event.h>
 class Test24Application : public test::RTApplication
 {
 private:
@@ -79,6 +80,7 @@ private:
     int m_FbWidth;
     int m_FbHeight;
     float m_FovY;
+    unsigned int m_SamplePerLaunch;
     unsigned int m_MaxTraceDepth;
     //TODO Inputの分離
     std::array<float, 2> m_CurCursorPos;
@@ -87,11 +89,9 @@ private:
     float m_CurFrameTime;
     float m_DelFrameTime;
     //Flag
-    bool m_FlushFrame  ;
-    bool m_IsResized   ;
-    bool m_UpdateCamera;
-    bool m_UpdateLight ;
-    bool m_ChangeTrace ;
+    unsigned int m_EventFlags;
+    //State
+    bool m_LockUpdate  ;
     //表示系
     std::vector<std::string> m_FramePublicNames;
     std::string m_CurMainFrameName;

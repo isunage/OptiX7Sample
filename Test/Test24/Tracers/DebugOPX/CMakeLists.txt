@@ -28,4 +28,4 @@ add_custom_command(TARGET Test24_Tracer_DebugOPX POST_BUILD COMMAND ${CMAKE_COMM
 rtlib_compile_ptx(Test24_Tracer_DebugOPX ${TEST_TEST24_DEBUG_OPX_CUDA_PATH}/RayDebug.cu   ${TEST_TEST24_DEBUG_OPX_CUDA_PATH} )
 
 target_include_directories(Test24_Tracer_DebugOPX PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_BINARY_DIR}/cuda)
-target_link_libraries(Test24_Tracer_DebugOPX PUBLIC  TestLib)
+target_link_libraries(Test24_Tracer_DebugOPX PUBLIC  TestLib Test24_Share)

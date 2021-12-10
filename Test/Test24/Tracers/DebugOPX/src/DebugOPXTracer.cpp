@@ -24,9 +24,7 @@ struct Test24DebugOPXTracer::Impl
 		rtlib::ext::IASHandlePtr TopLevelAS,
 		const std::vector<rtlib::ext::VariableMap>& Materials,
 		const float3& BgLightColor,
-		const bool& ResizedFrame,
-		const bool& UpdateCamera,
-		const bool& UpdateBgLight) :m_Context{ Context }, m_Framebuffer{ Framebuffer }, m_CameraController{ CameraController }, m_TextureManager{ TextureManager }, m_Materials{ Materials }, m_TopLevelAS{TopLevelAS}, m_BgLightColor{ BgLightColor }, m_ResizedFrame{ ResizedFrame }, m_UpdateCamera{ UpdateCamera }, m_UpdateBgLight{ UpdateBgLight }
+		const unsigned int& EventFlags) :m_Context{ Context }, m_Framebuffer{ Framebuffer }, m_CameraController{ CameraController }, m_TextureManager{ TextureManager }, m_Materials{ Materials }, m_TopLevelAS{TopLevelAS}, m_BgLightColor{ BgLightColor }, m_EventFlags{ EventFlags }
 	{
 	}
 	~Impl() {
@@ -38,9 +36,7 @@ struct Test24DebugOPXTracer::Impl
 	rtlib::ext::IASHandlePtr m_TopLevelAS;
 	const std::vector<rtlib::ext::VariableMap>& m_Materials;
 	const float3& m_BgLightColor;
-	const bool& m_ResizedFrame;
-	const bool& m_UpdateCamera;
-	const bool& m_UpdateBgLight;
+	const unsigned int& m_EventFlags;
 
 	unsigned int m_LightHgRecIndex = 0;
 	rtlib::ext::Camera m_Camera = {};
@@ -58,10 +54,10 @@ struct Test24DebugOPXTracer::Impl
 
 Test24DebugOPXTracer::Test24DebugOPXTracer(
 	ContextPtr Context, FramebufferPtr Framebuffer, CameraControllerPtr CameraController, TextureAssetManager TextureManager,
-	rtlib::ext::IASHandlePtr TopLevelAS, const std::vector<rtlib::ext::VariableMap>& Materials, const float3& BgLightColor, const  bool& ResizedFrame, const bool& UpdateCamera, const bool& UpdateBgLight)
+	rtlib::ext::IASHandlePtr TopLevelAS, const std::vector<rtlib::ext::VariableMap>& Materials, const float3& BgLightColor,const unsigned int& eventFlags)
 {
 	m_Impl = std::make_unique<Test24DebugOPXTracer::Impl>(
-		Context,Framebuffer,CameraController,TextureManager,TopLevelAS,Materials,BgLightColor, ResizedFrame, UpdateCamera,UpdateBgLight
+		Context,Framebuffer,CameraController,TextureManager,TopLevelAS,Materials,BgLightColor, eventFlags
 	);
 }
 
@@ -119,7 +115,7 @@ void Test24DebugOPXTracer::CleanUp()
 
 void Test24DebugOPXTracer::Update()
 {
-	if (this->m_Impl->m_UpdateCamera || this->m_Impl->m_ResizedFrame)
+	if ((this->m_Impl->m_EventFlags&TEST24_EVENT_FLAG_UPDATE_CAMERA)== TEST24_EVENT_FLAG_UPDATE_CAMERA)
 	{
 		float aspect  =(float) m_Impl->m_Framebuffer->GetWidth() / (float)m_Impl->m_Framebuffer->GetHeight();
 		this->m_Impl->m_Camera = this->m_Impl->m_CameraController->GetCamera(aspect);
@@ -132,7 +128,7 @@ void Test24DebugOPXTracer::Update()
 		this->m_Impl->m_RGRecordBuffer.Upload();
 		CUdeviceptr curRayGenPtr = (CUdeviceptr)this->m_Impl->m_RGRecordBuffer.gpuHandle.getDevicePtr();
 	}
-	if (this->m_Impl->m_UpdateBgLight)
+	if ((this->m_Impl->m_EventFlags & TEST24_EVENT_FLAG_UPDATE_LIGHT) == TEST24_EVENT_FLAG_UPDATE_LIGHT)
 	{
 		auto lightColor = make_float4(this->m_Impl->m_BgLightColor, 1.0f);
 		this->m_Impl->m_MSRecordBuffers.cpuHandle[RAY_TYPE_RADIANCE].data.bgColor = lightColor;

@@ -6,6 +6,7 @@
 #include <RTLib/core/GL.h>
 #include <RTLib/ext/Camera.h>
 #include <GLFW/glfw3.h>
+#include <Test24Event.h>
 class Test24TestGLTracer: public test::RTTracer
 {
 private:
@@ -20,8 +21,7 @@ public:
 		const std::shared_ptr<test::RTFramebuffer>& framebuffer,
 		const std::shared_ptr < rtlib::ext::CameraController >& cameraController ,
 		const std::string& objModelName,
-		const bool& isResizedFrame, 
-		const bool& updateCamera
+		const unsigned int& eventFlags
 	)noexcept;
 	// RTTracer を介して継承されました
 	virtual void Initialize() override;
@@ -62,8 +62,7 @@ private:
 	GLint                                         m_UniformLoc;
 	float                                         m_ZNear;
 	float                                         m_ZFar;
-	const bool&                                   m_UpdateCamera;
-	const bool&                                   m_IsResizedFrame;
+	const unsigned int &                          m_EventFlags;
 	bool                                          m_UpdateObjModel;
 };
 #endif

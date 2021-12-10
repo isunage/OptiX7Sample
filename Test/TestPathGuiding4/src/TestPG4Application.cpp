@@ -16,7 +16,7 @@ static auto SpecifyMaterialType(const rtlib::ext::VariableMap &material) -> std:
 	auto refrIndx = material.GetFloat1("refrIndx");
 	auto shinness = material.GetFloat1("shinness");
 	auto illum    = material.GetUInt32("illum");
-	if (illum == 7)
+	if  (illum   == 7)
 	{
 		return "Refraction";
 	}
@@ -668,7 +668,7 @@ private:
 	unsigned int m_SamplePerAll = 0;
 };
 // GuideTracer
-class TestPG4GuideTracer : public test::RTTracer
+class TestPG4GuidePathOXTracer : public test::RTTracer
 {
 public:
 	struct UserData
@@ -690,7 +690,7 @@ private:
 	using HGProgramGroupMap = std::unordered_map<std::string, rtlib::OPXHitgroupPG>;
 
 public:
-	TestPG4GuideTracer(TestPG4Application *app)
+	TestPG4GuidePathOXTracer(TestPG4Application *app)
 	{
 		m_ParentApp = app;
 	}
@@ -753,7 +753,7 @@ public:
 		}
 	}
 	virtual bool ShouldLock()const noexcept { return true; }
-	virtual ~TestPG4GuideTracer() {}
+	virtual ~TestPG4GuidePathOXTracer() {}
 
 private:
 	void InitFrameResources()
@@ -2090,7 +2090,7 @@ void TestPG4Application::InitTracers()
 	m_SimpleNEEActor->Initialize();
 	//Guide
 	m_GuideActor = std::shared_ptr<test::RTTracer>(
-		new TestPG4GuideTracer(this));
+		new TestPG4GuidePathOXTracer(this));
 	m_GuideActor->Initialize();
 	//Guide_NEE
 	m_GuideNEEActor = std::shared_ptr<test::RTTracer>(
@@ -2186,7 +2186,7 @@ void TestPG4Application::Trace()
 		{
 			if (!m_TraceNEE)
 			{
-				TestPG4GuideTracer::UserData userData = {};
+				TestPG4GuidePathOXTracer::UserData userData = {};
 				userData.frameBuffer       = frameBuffer;
 				userData.samplePerLaunch   = m_SamplePerLaunch;
 				userData.samplePerAll      = m_SamplePerALL;
