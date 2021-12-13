@@ -32,12 +32,11 @@ public:
 	using CameraControllerPtr = std::shared_ptr<rtlib::ext::CameraController>;
 	using TextureAssetManager = std::shared_ptr<test::RTTextureAssetManager>;
 private:
-	using Pipeline = rtlib::OPXPipeline;
-	using ModuleMap = std::unordered_map<std::string, rtlib::OPXModule>;
+	using Pipeline  = rtlib::OPXPipeline;
+	using ModuleMap =   std::unordered_map<std::string, rtlib::OPXModule>;
 	using RGProgramGroupMap = std::unordered_map<std::string, rtlib::OPXRaygenPG>;
 	using MSProgramGroupMap = std::unordered_map<std::string, rtlib::OPXMissPG>;
 	using HGProgramGroupMap = std::unordered_map<std::string, rtlib::OPXHitgroupPG>;
-
 public:
 	Test24PathOPXTracer(
 		ContextPtr context,

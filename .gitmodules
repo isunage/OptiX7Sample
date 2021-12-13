@@ -13,9 +13,6 @@
 [submodule "RTLib/thirdparty/glm"]
 	path = RTLib/thirdparty/glm
 	url = https://github.com/g-truc/glm
-[submodule "RTLib/thirdparty/imgui"]
-	path = RTLib/thirdparty/imgui
-	url = https://github.com/ocornut/imgui.git
 [submodule "RTLib/thirdparty/range-v3"]
 	path = RTLib/thirdparty/range-v3
 	url = https://github.com/ericniebler/range-v3
@@ -31,3 +28,6 @@
 [submodule "RTLib/thirdparty/boost"]
 	path = RTLib/thirdparty/boost
 	url = https://github.com/boostorg/boost
+[submodule "RTLib/thirdparty/imgui"]
+	path = RTLib/thirdparty/imgui
+	url = https://github.com/ocornut/imgui.git

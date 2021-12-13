@@ -7,21 +7,14 @@
 #include <RTLib/math/VectorFunction.h>
 #include <RTLib/math/Math.h>
 #include <RayTraceConfig.h>
-#define RAY_TRACE_ENABLE_SAMPLE 1
-//#define RAY_GUIDING_SAMPLE_BY_UNIFORM_SPHERE
-//#define RAY_GUIDING_SAMPLE_BY_COSINE_SPHERE
-//#define TEST_SKIP_TEXTURE_SAMPLE
-//#define TEST11_SHOW_EMISSON_COLOR
-namespace test24_debug
+namespace test24_restir
 {
-    enum RayType
-    {
+    enum   RayType {
         RAY_TYPE_RADIANCE = 0,
         RAY_TYPE_OCCLUSION = 1,
         RAY_TYPE_COUNT = 2,
     };
-    enum MaterialType
-    {
+    enum   MaterialType {
         MATERIAL_TYPE_DIFFUSE = 0,
         MATERIAL_TYPE_SPECULAR,
         MATERIAL_TYPE_REFRACTION,
@@ -29,48 +22,44 @@ namespace test24_debug
         MATERIAL_TYPE_OCCLUSION,
         MATERIAL_TYPE_COUNT
     };
-    struct RayDebugParams
-    {
-        uchar4 *diffuseBuffer; //8
-        uchar4 *specularBuffer;
-        uchar4 *transmitBuffer;
-        uchar4 *emissionBuffer;
-        uchar4 *texCoordBuffer;
-        uchar4 *normalBuffer;
-        uchar4 *depthBuffer;
-        uchar4 *sTreeColBuffer;
-        unsigned int width;
-        unsigned int height;
-        OptixTraversableHandle gasHandle;
-    };
-
-    struct RayGenData
+    struct PinholeCameraData
     {
         float3 u, v, w;
         float3 eye;
     };
-    struct MissData
+    struct RayFirstParams
     {
-        float4 bgColor;
+        unsigned int           width;
+        unsigned int           height;
+        OptixTraversableHandle gasHandle;
+        float3* curPossBuffer;
+        float3* curNormBuffer;
+        float2* curTexCBuffer;
+        float* curDistBuffer;
     };
-    struct HitgroupData
+    struct RayGenData
     {
-        float3 *vertices;
-        float3 *normals;
-        float2 *texCoords;
-        uint3 *indices;
-        float3 diffuse;
+        PinholeCameraData   pinhole[2];
+    };
+    struct MissData {
+        float4  bgColor;
+    };
+    struct HitgroupData {
+        float3* vertices;
+        float3* normals;
+        float2* texCoords;
+        uint3* indices;
+        float3              diffuse;
         cudaTextureObject_t diffuseTex;
-        float3 emission;
+        float3              emission;
         cudaTextureObject_t emissionTex;
-        float3 specular;
+        float3              specular;
         cudaTextureObject_t specularTex;
-        float3 transmit;
-        float shinness;
-        float refrInd;
+        float3              transmit;
+        float               shinness;
+        float               refrInd;
 #ifdef __CUDACC__
-        __forceinline__ __device__ float3 getDiffuseColor(const float2 &uv) const noexcept
-        {
+        __forceinline__ __device__ float3 getDiffuseColor(const float2& uv)const noexcept {
 #if !RAY_TRACE_ENABLE_SAMPLE
             return this->diffuse;
 #else
@@ -80,8 +69,7 @@ namespace test24_debug
             return diffColor;
 #endif
         }
-        __forceinline__ __device__ float3 getSpecularColor(const float2 &uv) const noexcept
-        {
+        __forceinline__ __device__ float3 getSpecularColor(const float2& uv)const noexcept {
 #if !RAY_TRACE_ENABLE_SAMPLE
             return this->specular;
 #else
@@ -91,8 +79,7 @@ namespace test24_debug
             return specColor;
 #endif
         }
-        __forceinline__ __device__ float3 getEmissionColor(const float2 &uv) const noexcept
-        {
+        __forceinline__ __device__ float3 getEmissionColor(const float2& uv)const noexcept {
 #if !RAY_TRACE_ENABLE_SAMPLE
             return this->emission;
 #else
@@ -104,6 +91,7 @@ namespace test24_debug
         }
 #endif
     };
-
 }
+
+
 #endif

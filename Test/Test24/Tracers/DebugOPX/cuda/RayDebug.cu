@@ -1,5 +1,6 @@
 #define __CUDACC__
 #include "RayTrace.h"
+using namespace test24_debug;
 struct RadiancePRD {
     float3        diffuse;
     float3        specular;

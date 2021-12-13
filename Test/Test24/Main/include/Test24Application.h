@@ -80,24 +80,24 @@ private:
     int m_FbWidth;
     int m_FbHeight;
     float m_FovY;
-    unsigned int m_SamplePerLaunch;
-    unsigned int m_MaxTraceDepth;
+    unsigned int         m_SamplePerAll;
+    unsigned int         m_SamplePerLaunch;
+    unsigned int         m_MaxTraceDepth;
     //TODO Inputの分離
     std::array<float, 2> m_CurCursorPos;
     std::array<float, 2> m_DelCursorPos;
     std::array<float, 2> m_ScrollOffsets;
-    float m_CurFrameTime;
-    float m_DelFrameTime;
-    //Flag
+    float                m_CurFrameTime;
+    float                m_DelFrameTime;
     unsigned int m_EventFlags;
     //State
     bool m_LockUpdate  ;
     //表示系
     std::vector<std::string> m_FramePublicNames;
-    std::string m_CurMainFrameName;
+    std::string              m_CurMainFrameName;
     //Tracer
     std::vector<std::string> m_TracePublicNames;
-    std::string m_CurMainTraceName;
+    std::string              m_CurMainTraceName;
     std::unordered_set<std::string> m_LaunchTracerSet;
     //ObjModel
     std::string m_CurObjModelName;

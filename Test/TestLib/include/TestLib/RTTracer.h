@@ -6,6 +6,7 @@ namespace test
 	class RTTracer
 	{
 	public:
+		RTTracer()noexcept {}
 		//   INIT
 		virtual void Initialize() = 0;
 		//CLEANUP

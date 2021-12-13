@@ -50,8 +50,8 @@ namespace rtlib{
     //                      ->*Instance->GAS->BI
     //class
     //Context->Pipeline->Module
-    //       ->RaygenProgramGroup(RG)
-    //       ->MissProgramGroup(MS)
+    //       ->  RaygenProgramGroup(RG)
+    //       ->    MissProgramGroup(MS)
     //       ->HitgroupProgramGroup(CH,AH,IS)
     //       ->DirectCallable,ContinueCallable
     class  OPXContext;
@@ -65,7 +65,7 @@ namespace rtlib{
     class  OPXExceptionPG;
     struct OPXProgramDesc;
     //Copy Move 禁止
-    class OPXContext{
+    class  OPXContext{
     public:
         friend class OPXPipeline;
         friend class OPXModule;
@@ -111,7 +111,7 @@ namespace rtlib{
                         const OptixBuildInput&        buildInput)const->AccelBuildOutput;
         auto buildAccel(const OptixAccelBuildOptions&       accelBuildOptions,
                         const std::vector<OptixBuildInput>& buildInputs)const->AccelBuildOutput;
-        ~OPXContext()noexcept{}
+        ~OPXContext()noexcept;
     private:
         auto getHandle()const->OptixDeviceContext;
     private:
@@ -119,7 +119,7 @@ namespace rtlib{
         std::shared_ptr<Impl> m_Impl;
     };
     //Copy禁止
-    class OPXPipeline{
+    class  OPXPipeline{
     public:
         friend class OPXContext;
         using CompileOptions = OptixPipelineCompileOptions;
@@ -134,18 +134,18 @@ namespace rtlib{
         OPXModule      createModule(const std::string& ptx, const OptixModuleCompileOptions& compileOptions);
         //ProgramGroup
         OPXRaygenPG    createRaygenPG(   const OPXProgramDesc& raygenDesc);
-        OPXMissPG      createMissPG(     const OPXProgramDesc& missDesc);
-        OPXHitgroupPG  createHitgroupPG( const OPXProgramDesc& chDesc,const OPXProgramDesc& ahDesc,const OPXProgramDesc& isDesc);
-        OPXCCallablePG createCCallablePG(const OPXProgramDesc& ccDesc);
-        OPXDCallablePG createDCallablePG(const OPXProgramDesc& dcDesc);
-        OPXExceptionPG createExceptionPG(const OPXProgramDesc& exDesc);
+        OPXMissPG      createMissPG(     const OPXProgramDesc& missDesc  );
+        OPXHitgroupPG  createHitgroupPG( const OPXProgramDesc& chDesc    ,const OPXProgramDesc& ahDesc,const OPXProgramDesc& isDesc);
+        OPXCCallablePG createCCallablePG(const OPXProgramDesc& ccDesc    );
+        OPXDCallablePG createDCallablePG(const OPXProgramDesc& dcDesc    );
+        OPXExceptionPG createExceptionPG(const OPXProgramDesc& exDesc    );
         //link
         void link(const LinkOptions& linkOptions);
         template<typename Params>
         void launch(CUstream stream,Params* d_Params,const OptixShaderBindingTable& sbt, unsigned int width, unsigned int height, unsigned int depth) {
             RTLIB_OPTIX_CHECK(optixLaunch(this->getHandle(),stream,reinterpret_cast<CUdeviceptr>(d_Params),sizeof(Params),&sbt,width,height,depth));
         }
-        ~OPXPipeline()noexcept{}
+        ~OPXPipeline()noexcept;
     private:
         auto getHandle()const->OptixPipeline;
     private:
@@ -167,7 +167,7 @@ namespace rtlib{
     public:
         OPXModule()noexcept;
         explicit operator bool()const noexcept;
-        ~OPXModule()noexcept{}
+        ~OPXModule()noexcept;
     private:
         class Impl;
         std::shared_ptr<Impl> m_Impl;
@@ -196,7 +196,7 @@ namespace rtlib{
             RTLIB_OPTIX_CHECK(optixSbtRecordPackHeader(this->getHandle(), record.header));
             return record;
         }
-        ~OPXRaygenPG()noexcept{}
+        ~OPXRaygenPG()noexcept;
     private:
         auto getHandle()const -> OptixProgramGroup;
     private:
@@ -223,7 +223,7 @@ namespace rtlib{
             RTLIB_OPTIX_CHECK(optixSbtRecordPackHeader(this->getHandle(), record.header));
             return record;
         }
-        ~OPXMissPG()noexcept{}
+        ~OPXMissPG()noexcept;
     private:
         auto getHandle()const -> OptixProgramGroup;
     private:
@@ -250,7 +250,7 @@ namespace rtlib{
             RTLIB_OPTIX_CHECK(optixSbtRecordPackHeader(this->getHandle(), record.header));
             return record;
         }
-        ~OPXHitgroupPG()noexcept{}
+        ~OPXHitgroupPG()noexcept;
     private:
         auto getHandle()const -> OptixProgramGroup;
     private:
@@ -276,7 +276,7 @@ namespace rtlib{
             RTLIB_OPTIX_CHECK(optixSbtRecordPackHeader(this->getHandle(), record.header));
             return record;
         }
-        ~OPXCCallablePG()noexcept{}
+        ~OPXCCallablePG()noexcept;
     private:
         auto getHandle()const -> OptixProgramGroup;
     private:
@@ -302,7 +302,7 @@ namespace rtlib{
             RTLIB_OPTIX_CHECK(optixSbtRecordPackHeader(this->getHandle(), record.header));
             return record;
         }
-        ~OPXDCallablePG()noexcept{}
+        ~OPXDCallablePG()noexcept;
     private:
         auto getHandle()const -> OptixProgramGroup;
     private:
@@ -328,7 +328,7 @@ namespace rtlib{
             RTLIB_OPTIX_CHECK(optixSbtRecordPackHeader(this->getHandle(), record.header));
             return record;
         }
-        ~OPXExceptionPG()noexcept{}
+        ~OPXExceptionPG()noexcept;
     private:
         auto getHandle()const -> OptixProgramGroup;
     private:

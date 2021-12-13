@@ -3,6 +3,7 @@
 #include <fstream>
 #include <random>
 using namespace std::string_literals;
+using namespace test24_path;
 inline auto SpecifyMaterialType(const rtlib::ext::VariableMap& material) -> std::string
 {
 	auto emitCol = material.GetFloat3As<float3>("emitCol");
@@ -49,7 +50,9 @@ struct Test24PathOPXTracer::Impl {
 		m_BgLightColor{ bgLightColor },
 		m_EventFlags{ eventFlags },
 		m_MaxTraceDepth{ maxTraceDepth }{}
-	~Impl() {}
+	~Impl() {
+	
+	}
 
 	auto GetMeshLightList()const noexcept -> MeshLightList
 	{
@@ -298,7 +301,7 @@ void Test24PathOPXTracer::Initialize()
 	auto tlas = this->m_Impl->m_TopLevelAS;
 	this->m_Impl->m_Camera = this->m_Impl->m_CameraController->GetCamera(aspect);
 	auto& materials = this->m_Impl->m_Materials;
-	this->m_Impl->m_RGRecordBuffer.cpuHandle.resize(1);
+	this->m_Impl->m_RGRecordBuffer.Alloc(1);
 	this->m_Impl->m_RGRecordBuffer.cpuHandle[0] = this->m_Impl->m_RGProgramGroups["Trace.Default"].getSBTRecord<RayGenData>();
 	this->m_Impl->m_RGRecordBuffer.cpuHandle[0].data.eye = this->m_Impl->m_Camera.getEye();
 	auto [u, v, w] = this->m_Impl->m_Camera.getUVW();
@@ -306,12 +309,12 @@ void Test24PathOPXTracer::Initialize()
 	this->m_Impl->m_RGRecordBuffer.cpuHandle[0].data.v = v;
 	this->m_Impl->m_RGRecordBuffer.cpuHandle[0].data.w = w;
 	this->m_Impl->m_RGRecordBuffer.Upload();
-	this->m_Impl->m_MSRecordBuffers.cpuHandle.resize(RAY_TYPE_COUNT);
+	this->m_Impl->m_MSRecordBuffers.Alloc(RAY_TYPE_COUNT);
 	this->m_Impl->m_MSRecordBuffers.cpuHandle[RAY_TYPE_RADIANCE] = this->m_Impl->m_MSProgramGroups["Trace.Radiance"].getSBTRecord<MissData>();
 	this->m_Impl->m_MSRecordBuffers.cpuHandle[RAY_TYPE_RADIANCE].data.bgColor = make_float4(this->m_Impl->m_BgLightColor, 1.0f);
 	this->m_Impl->m_MSRecordBuffers.cpuHandle[RAY_TYPE_OCCLUSION] = this->m_Impl->m_MSProgramGroups["Trace.Occluded"].getSBTRecord<MissData>();
 	this->m_Impl->m_MSRecordBuffers.Upload();
-	this->m_Impl->m_HGRecordBuffers.cpuHandle.resize(tlas->GetSbtCount() * RAY_TYPE_COUNT);
+	this->m_Impl->m_HGRecordBuffers.Alloc(tlas->GetSbtCount() * RAY_TYPE_COUNT);
 	{
 		size_t sbtOffset = 0;
 		for (auto& instanceSet : tlas->GetInstanceSets())
@@ -396,7 +399,7 @@ void Test24PathOPXTracer::Initialize()
  void Test24PathOPXTracer::InitLaunchParams()
 {
 	auto tlas = this->m_Impl->m_TopLevelAS;
-	this->m_Impl->m_Params.cpuHandle.resize(1);
+	this->m_Impl->m_Params.Alloc(1);
 	this->m_Impl->m_Params.cpuHandle[0].gasHandle = tlas->GetHandle();
 	this->m_Impl->m_Params.cpuHandle[0].width  = this->m_Impl->m_Framebuffer->GetWidth();
 	this->m_Impl->m_Params.cpuHandle[0].height = this->m_Impl->m_Framebuffer->GetHeight();
@@ -417,10 +420,9 @@ void Test24PathOPXTracer::Initialize()
 
  void Test24PathOPXTracer::FreePipeline()
 {
-	this->m_Impl->m_ShaderBindingTable = {};
-	this->m_Impl->m_RGRecordBuffer .Reset();
-	this->m_Impl->m_MSRecordBuffers.Reset();
-	this->m_Impl->m_HGRecordBuffers.Reset();
+	 this->m_Impl->m_RGProgramGroups = {};
+	 this->m_Impl->m_HGProgramGroups = {};
+	 this->m_Impl->m_MSProgramGroups = {};
 }
 
  void Test24PathOPXTracer::FreeShaderBindingTable()

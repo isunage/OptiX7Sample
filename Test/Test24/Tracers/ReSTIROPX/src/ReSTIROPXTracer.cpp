@@ -1,20 +1,20 @@
-#include "..\include\DebugOPXTracer.h"
-#include <Test24DebugOPXConfig.h>
+#include "..\include\ReSTIROPXTracer.h"
+#include <Test24ReSTIROPXConfig.h>
 #include <RayTrace.h>
 #include <unordered_map>
 #include <fstream>
-using namespace test24_debug;
+using namespace test24_restir;
 using RayGRecord = rtlib::SBTRecord<RayGenData>;
 using MissRecord = rtlib::SBTRecord<MissData>;
 using HitGRecord = rtlib::SBTRecord<HitgroupData>;
-using Pipeline   = rtlib::OPXPipeline;
-using ModuleMap  = std::unordered_map<std::string, rtlib::OPXModule>;
+using Pipeline = rtlib::OPXPipeline;
+using ModuleMap = std::unordered_map<std::string, rtlib::OPXModule>;
 using RGProgramGroupMap = std::unordered_map<std::string, rtlib::OPXRaygenPG>;
 using MSProgramGroupMap = std::unordered_map<std::string, rtlib::OPXMissPG>;
 using HGProgramGroupMap = std::unordered_map<std::string, rtlib::OPXHitgroupPG>;
 
 // RTTracer ����Čp������܂���
-struct Test24DebugOPXTracer::Impl
+struct Test24ReSTIROPXTracer::Impl
 {
 	Impl(
 		ContextPtr Context,
@@ -24,8 +24,7 @@ struct Test24DebugOPXTracer::Impl
 		rtlib::ext::IASHandlePtr TopLevelAS,
 		const std::vector<rtlib::ext::VariableMap>& Materials,
 		const float3& BgLightColor,
-		const unsigned int& EventFlags) 
-		:m_Context{ Context }, m_Framebuffer{ Framebuffer }, m_CameraController{ CameraController }, m_TextureManager{ TextureManager }, m_Materials{ Materials }, m_TopLevelAS{TopLevelAS}, m_BgLightColor{ BgLightColor }, m_EventFlags{ EventFlags }
+		const unsigned int& EventFlags) :m_Context{ Context }, m_Framebuffer{ Framebuffer }, m_CameraController{ CameraController }, m_TextureManager{ TextureManager }, m_Materials{ Materials }, m_TopLevelAS{ TopLevelAS }, m_BgLightColor{ BgLightColor }, m_EventFlags{ EventFlags }
 	{
 	}
 	~Impl() {
@@ -47,29 +46,29 @@ struct Test24DebugOPXTracer::Impl
 	MSProgramGroupMap m_MSProgramGroups = {};
 	HGProgramGroupMap m_HGProgramGroups = {};
 	OptixShaderBindingTable m_ShaderBindingTable = {};
-	rtlib::CUDAUploadBuffer<RayGRecord> m_RGRecordBuffer = {};
-	rtlib::CUDAUploadBuffer<MissRecord> m_MSRecordBuffers = {};
-	rtlib::CUDAUploadBuffer<HitGRecord> m_HGRecordBuffers = {};
-	rtlib::CUDAUploadBuffer<RayDebugParams> m_Params = {};
+	rtlib::CUDAUploadBuffer<RayGRecord>     m_RGRecordBuffer = {};
+	rtlib::CUDAUploadBuffer<MissRecord>     m_MSRecordBuffers = {};
+	rtlib::CUDAUploadBuffer<HitGRecord>     m_HGRecordBuffers = {};
+	rtlib::CUDAUploadBuffer<RayFirstParams> m_Params = {};
 };
 
-Test24DebugOPXTracer::Test24DebugOPXTracer(
+Test24ReSTIROPXTracer::Test24ReSTIROPXTracer(
 	ContextPtr Context, FramebufferPtr Framebuffer, CameraControllerPtr CameraController, TextureAssetManager TextureManager,
-	rtlib::ext::IASHandlePtr TopLevelAS, const std::vector<rtlib::ext::VariableMap>& Materials, const float3& BgLightColor,const unsigned int& eventFlags)
+	rtlib::ext::IASHandlePtr TopLevelAS, const std::vector<rtlib::ext::VariableMap>& Materials, const float3& BgLightColor, const unsigned int& eventFlags)
 {
-	m_Impl = std::make_unique<Test24DebugOPXTracer::Impl>(
-		Context,Framebuffer,CameraController,TextureManager,TopLevelAS,Materials,BgLightColor, eventFlags
-	);
+	m_Impl = std::make_unique<Test24ReSTIROPXTracer::Impl>(
+		Context, Framebuffer, CameraController, TextureManager, TopLevelAS, Materials, BgLightColor, eventFlags
+		);
 }
 
-void Test24DebugOPXTracer::Initialize()
+void Test24ReSTIROPXTracer::Initialize()
 {
 	this->InitPipeline();
 	this->InitShaderBindingTable();
-	this->InitLaunchParams();
+	//this->InitLaunchParams();
 }
 
-void Test24DebugOPXTracer::Launch(int width, int height, void* userData)
+void Test24ReSTIROPXTracer::Launch(int width, int height, void* userData)
 {
 	UserData* pUserData = (UserData*)userData;
 	if (!pUserData)
@@ -79,53 +78,42 @@ void Test24DebugOPXTracer::Launch(int width, int height, void* userData)
 	if (width != m_Impl->m_Framebuffer->GetWidth() || height != m_Impl->m_Framebuffer->GetHeight()) {
 		return;
 	}
-	this->m_Impl->m_Params.cpuHandle[0].width          = width;
-	this->m_Impl->m_Params.cpuHandle[0].height         = height;
-	this->m_Impl->m_Params.cpuHandle[0].diffuseBuffer  = m_Impl->m_Framebuffer->GetComponent<test::RTCUGLBufferFBComponent<uchar4>>("DDiffuse")->GetHandle().map();
-	this->m_Impl->m_Params.cpuHandle[0].specularBuffer = m_Impl->m_Framebuffer->GetComponent<test::RTCUGLBufferFBComponent<uchar4>>("DSpecular")->GetHandle().map();
-	this->m_Impl->m_Params.cpuHandle[0].emissionBuffer = m_Impl->m_Framebuffer->GetComponent<test::RTCUGLBufferFBComponent<uchar4>>("DEmission")->GetHandle().map();
-	this->m_Impl->m_Params.cpuHandle[0].transmitBuffer = m_Impl->m_Framebuffer->GetComponent<test::RTCUGLBufferFBComponent<uchar4>>("DTransmit")->GetHandle().map();
-	this->m_Impl->m_Params.cpuHandle[0].normalBuffer   = m_Impl->m_Framebuffer->GetComponent<test::RTCUGLBufferFBComponent<uchar4>>("DNormal")->GetHandle().map();
-	this->m_Impl->m_Params.cpuHandle[0].depthBuffer    = m_Impl->m_Framebuffer->GetComponent<test::RTCUGLBufferFBComponent<uchar4>>("DDistance")->GetHandle().map();
-	this->m_Impl->m_Params.cpuHandle[0].texCoordBuffer = m_Impl->m_Framebuffer->GetComponent<test::RTCUGLBufferFBComponent<uchar4>>("DTexCoord")->GetHandle().map();
+	this->m_Impl->m_Params.cpuHandle[0].width = width;
+	this->m_Impl->m_Params.cpuHandle[0].height = height;
+	this->m_Impl->m_Params.cpuHandle[0].curPossBuffer = m_Impl->m_Framebuffer->GetComponent<test::RTCUDABufferFBComponent<float3>>("GPosition")->GetHandle().getDevicePtr();
+	this->m_Impl->m_Params.cpuHandle[0].curNormBuffer = m_Impl->m_Framebuffer->GetComponent<test::RTCUDABufferFBComponent<float3>>("GNormal")->GetHandle()  .getDevicePtr();
+	this->m_Impl->m_Params.cpuHandle[0].curTexCBuffer = m_Impl->m_Framebuffer->GetComponent<test::RTCUDABufferFBComponent<float2>>("GTexCoord")->GetHandle().getDevicePtr();
+	this->m_Impl->m_Params.cpuHandle[0].curDistBuffer = m_Impl->m_Framebuffer->GetComponent<test::RTCUDABufferFBComponent<float >>("GDepth")->GetHandle().getDevicePtr();
 	//TODO
-	this->m_Impl->m_Params.cpuHandle[0].sTreeColBuffer = m_Impl->m_Framebuffer->GetComponent<test::RTCUGLBufferFBComponent<uchar4>>("DSTreeCol")->GetHandle().map();
-	cudaMemcpyAsync(this->m_Impl->m_Params.gpuHandle.getDevicePtr(), &this->m_Impl->m_Params.cpuHandle[0], sizeof(RayDebugParams), cudaMemcpyHostToDevice, pUserData->stream);
+	cudaMemcpyAsync(this->m_Impl->m_Params.gpuHandle.getDevicePtr(), &this->m_Impl->m_Params.cpuHandle[0], sizeof(RayFirstParams), cudaMemcpyHostToDevice, pUserData->stream);
 	this->m_Impl->m_Pipeline.launch(pUserData->stream, this->m_Impl->m_Params.gpuHandle.getDevicePtr(), this->m_Impl->m_ShaderBindingTable, width, height, 1);
 	if (pUserData->isSync)
 	{
 		RTLIB_CU_CHECK(cuStreamSynchronize(pUserData->stream));
 	}
-	m_Impl->m_Framebuffer->GetComponent<test::RTCUGLBufferFBComponent<uchar4>>("DDiffuse")->GetHandle().unmap();
-	m_Impl->m_Framebuffer->GetComponent<test::RTCUGLBufferFBComponent<uchar4>>("DSpecular")->GetHandle().unmap();
-	m_Impl->m_Framebuffer->GetComponent<test::RTCUGLBufferFBComponent<uchar4>>("DEmission")->GetHandle().unmap();
-	m_Impl->m_Framebuffer->GetComponent<test::RTCUGLBufferFBComponent<uchar4>>("DTransmit")->GetHandle().unmap();
-	m_Impl->m_Framebuffer->GetComponent<test::RTCUGLBufferFBComponent<uchar4>>("DNormal")->GetHandle().unmap();
-	m_Impl->m_Framebuffer->GetComponent<test::RTCUGLBufferFBComponent<uchar4>>("DDistance")->GetHandle().unmap();
-	m_Impl->m_Framebuffer->GetComponent<test::RTCUGLBufferFBComponent<uchar4>>("DTexCoord")->GetHandle().unmap();
-	m_Impl->m_Framebuffer->GetComponent<test::RTCUGLBufferFBComponent<uchar4>>("DSTreeCol")->GetHandle().unmap();
 }
 
-void Test24DebugOPXTracer::CleanUp()
+void Test24ReSTIROPXTracer::CleanUp()
 {
-	this->FreePipeline();
 	this->FreeShaderBindingTable();
+	this->FreePipeline();
 	this->FreeLaunchParams();
 	this->m_Impl->m_LightHgRecIndex = 0;
 }
 
-void Test24DebugOPXTracer::Update()
+void Test24ReSTIROPXTracer::Update()
 {
-	if ((this->m_Impl->m_EventFlags&TEST24_EVENT_FLAG_UPDATE_CAMERA)== TEST24_EVENT_FLAG_UPDATE_CAMERA)
+	if ((this->m_Impl->m_EventFlags & TEST24_EVENT_FLAG_UPDATE_CAMERA) == TEST24_EVENT_FLAG_UPDATE_CAMERA)
 	{
-		float aspect  =(float) m_Impl->m_Framebuffer->GetWidth() / (float)m_Impl->m_Framebuffer->GetHeight();
+		float aspect   = (float)m_Impl->m_Framebuffer->GetWidth() / (float)m_Impl->m_Framebuffer->GetHeight();
 		this->m_Impl->m_Camera = this->m_Impl->m_CameraController->GetCamera(aspect);
-		this->m_Impl->m_RGRecordBuffer.cpuHandle[0].data.eye = this->m_Impl->m_Camera.getEye();
+		this->m_Impl->m_RGRecordBuffer.cpuHandle[0].data.pinhole[1] = this->m_Impl->m_RGRecordBuffer.cpuHandle[0].data.pinhole[0];
+		this->m_Impl->m_RGRecordBuffer.cpuHandle[0].data.pinhole[0].eye = this->m_Impl->m_Camera.getEye();
 		auto [u, v, w] = this->m_Impl->m_Camera.getUVW();
 		CUdeviceptr prvRayGenPtr = (CUdeviceptr)this->m_Impl->m_RGRecordBuffer.gpuHandle.getDevicePtr();
-		this->m_Impl->m_RGRecordBuffer.cpuHandle[0].data.u = u;
-		this->m_Impl->m_RGRecordBuffer.cpuHandle[0].data.v = v;
-		this->m_Impl->m_RGRecordBuffer.cpuHandle[0].data.w = w;
+		this->m_Impl->m_RGRecordBuffer.cpuHandle[0].data.pinhole[0].u = u;
+		this->m_Impl->m_RGRecordBuffer.cpuHandle[0].data.pinhole[0].v = v;
+		this->m_Impl->m_RGRecordBuffer.cpuHandle[0].data.pinhole[0].w = w;
 		this->m_Impl->m_RGRecordBuffer.Upload();
 		CUdeviceptr curRayGenPtr = (CUdeviceptr)this->m_Impl->m_RGRecordBuffer.gpuHandle.getDevicePtr();
 	}
@@ -137,15 +125,15 @@ void Test24DebugOPXTracer::Update()
 	}
 }
 
-Test24DebugOPXTracer::~Test24DebugOPXTracer() {}
+Test24ReSTIROPXTracer::~Test24ReSTIROPXTracer() {}
 
-void Test24DebugOPXTracer::InitPipeline()
+void Test24ReSTIROPXTracer::InitPipeline()
 {
-	auto rayDebugPtxFile = std::ifstream(TEST_TEST24_DEBUG_OPX_CUDA_PATH "/RayDebug.ptx", std::ios::binary);
-	if (!rayDebugPtxFile.is_open())
-		throw std::runtime_error("Failed To Load RayDebug.ptx!");
-	auto rayDebugPtxData = std::string((std::istreambuf_iterator<char>(rayDebugPtxFile)), (std::istreambuf_iterator<char>()));
-	rayDebugPtxFile.close();
+	auto rayReSTIRPtxFile = std::ifstream(TEST_TEST24_RESTIR_OPX_CUDA_PATH "/RayFirst.ptx", std::ios::binary);
+	if (!rayReSTIRPtxFile.is_open())
+		throw std::runtime_error("Failed To Load RayFirst.ptx!");
+	auto rayReSTIRPtxData = std::string((std::istreambuf_iterator<char>(rayReSTIRPtxFile)), (std::istreambuf_iterator<char>()));
+	rayReSTIRPtxFile.close();
 
 	auto debugCompileOptions = OptixPipelineCompileOptions{};
 	{
@@ -177,30 +165,30 @@ void Test24DebugOPXTracer::InitPipeline()
 		debugModuleOptions.maxRegisterCount = OPTIX_COMPILE_DEFAULT_MAX_REGISTER_COUNT;
 	}
 	this->m_Impl->m_Pipeline = this->m_Impl->m_Context->GetOPX7Handle()->createPipeline(debugCompileOptions);
-	this->m_Impl->m_Modules["RayDebug"] = this->m_Impl->m_Pipeline.createModule(rayDebugPtxData, debugModuleOptions);
-	this->m_Impl->m_RGProgramGroups["Debug.Default"] = this->m_Impl->m_Pipeline.createRaygenPG({ this->m_Impl->m_Modules["RayDebug"], "__raygen__debug" });
-	this->m_Impl->m_MSProgramGroups["Debug.Default"] = this->m_Impl->m_Pipeline.createMissPG({ this->m_Impl->m_Modules["RayDebug"], "__miss__debug" });
-	this->m_Impl->m_HGProgramGroups["Debug.Default"] = this->m_Impl->m_Pipeline.createHitgroupPG({ this->m_Impl->m_Modules["RayDebug"], "__closesthit__debug" }, {}, {});
+	this->m_Impl->m_Modules["RayFirst"] = this->m_Impl->m_Pipeline.createModule(rayReSTIRPtxData, debugModuleOptions);
+	this->m_Impl->m_RGProgramGroups["First.Default"] = this->m_Impl->m_Pipeline.createRaygenPG({   this->m_Impl->m_Modules["RayFirst"], "__raygen__first" });
+	this->m_Impl->m_MSProgramGroups["First.Default"] = this->m_Impl->m_Pipeline.createMissPG({     this->m_Impl->m_Modules["RayFirst"], "__miss__first" });
+	this->m_Impl->m_HGProgramGroups["First.Default"] = this->m_Impl->m_Pipeline.createHitgroupPG({ this->m_Impl->m_Modules["RayFirst"], "__closesthit__first" }, {}, {});
 	this->m_Impl->m_Pipeline.link(debugLinkOptions);
 }
 
-void Test24DebugOPXTracer::InitShaderBindingTable()
+void Test24ReSTIROPXTracer::InitShaderBindingTable()
 {
 	auto tlas = this->m_Impl->m_TopLevelAS;
 	auto camera = this->m_Impl->m_Camera;
 	auto& materials = this->m_Impl->m_Materials;
-	this->m_Impl->m_RGRecordBuffer.Alloc(1);
-	this->m_Impl->m_RGRecordBuffer.cpuHandle[0] = this->m_Impl->m_RGProgramGroups["Debug.Default"].getSBTRecord<RayGenData>();
-	this->m_Impl->m_RGRecordBuffer.cpuHandle[0].data.eye = camera.getEye();
+	this->m_Impl->m_RGRecordBuffer.Alloc(RAY_TYPE_COUNT);
+	this->m_Impl->m_RGRecordBuffer.cpuHandle[0] = this->m_Impl->m_RGProgramGroups["First.Default"].getSBTRecord<RayGenData>();
+	this->m_Impl->m_RGRecordBuffer.cpuHandle[0].data.pinhole[0].eye = camera.getEye();
 	auto [u, v, w] = camera.getUVW();
-	this->m_Impl->m_RGRecordBuffer.cpuHandle[0].data.u = u;
-	this->m_Impl->m_RGRecordBuffer.cpuHandle[0].data.v = v;
-	this->m_Impl->m_RGRecordBuffer.cpuHandle[0].data.w = w;
+	this->m_Impl->m_RGRecordBuffer.cpuHandle[0].data.pinhole[0].u   = u;
+	this->m_Impl->m_RGRecordBuffer.cpuHandle[0].data.pinhole[0].v   = v;
+	this->m_Impl->m_RGRecordBuffer.cpuHandle[0].data.pinhole[0].w   = w;
 	this->m_Impl->m_RGRecordBuffer.Upload();
 	this->m_Impl->m_MSRecordBuffers.Alloc(RAY_TYPE_COUNT);
-	this->m_Impl->m_MSRecordBuffers.cpuHandle[RAY_TYPE_RADIANCE] = this->m_Impl->m_MSProgramGroups["Debug.Default"].getSBTRecord<MissData>();
+	this->m_Impl->m_MSRecordBuffers.cpuHandle[RAY_TYPE_RADIANCE] = this->m_Impl->m_MSProgramGroups["First.Default"].getSBTRecord<MissData>();
 	this->m_Impl->m_MSRecordBuffers.cpuHandle[RAY_TYPE_RADIANCE].data.bgColor = make_float4(this->m_Impl->m_BgLightColor, 1.0f);
-	this->m_Impl->m_MSRecordBuffers.cpuHandle[RAY_TYPE_OCCLUSION] = this->m_Impl->m_MSProgramGroups["Debug.Default"].getSBTRecord<MissData>();
+	this->m_Impl->m_MSRecordBuffers.cpuHandle[RAY_TYPE_OCCLUSION] = this->m_Impl->m_MSProgramGroups["First.Default"].getSBTRecord<MissData>();
 	this->m_Impl->m_MSRecordBuffers.Upload();
 	this->m_Impl->m_HGRecordBuffers.Alloc(tlas->GetSbtCount() * RAY_TYPE_COUNT);
 	{
@@ -226,7 +214,7 @@ void Test24DebugOPXTracer::InitShaderBindingTable()
 					auto cudaVertexBuffer = mesh->GetSharedResource()->vertexBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float3>>("CUDA");
 					auto cudaNormalBuffer = mesh->GetSharedResource()->normalBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float3>>("CUDA");
 					auto cudaTexCrdBuffer = mesh->GetSharedResource()->texCrdBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float2>>("CUDA");
-					auto cudaTriIndBuffer = mesh->GetUniqueResource()->triIndBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<uint3>>( "CUDA");
+					auto cudaTriIndBuffer = mesh->GetUniqueResource()->triIndBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<uint3>>("CUDA");
 					for (size_t i = 0; i < mesh->GetUniqueResource()->materials.size(); ++i)
 					{
 						auto materialId = mesh->GetUniqueResource()->materials[i];
@@ -242,26 +230,26 @@ void Test24DebugOPXTracer::InitShaderBindingTable()
 							if (!this->m_Impl->m_TextureManager->GetAsset(material.GetString("emitTex")).HasGpuComponent("CUDATexture")) {
 								this->m_Impl->m_TextureManager->GetAsset(material.GetString("emitTex")).AddGpuComponent<rtlib::ext::resources::CUDATextureImage2DComponent<uchar4>>("CUDATexture");
 							}
-							radianceHgData.vertices  = cudaVertexBuffer->GetHandle().getDevicePtr();
-							radianceHgData.normals   = cudaNormalBuffer->GetHandle().getDevicePtr();
+							radianceHgData.vertices = cudaVertexBuffer->GetHandle().getDevicePtr();
+							radianceHgData.normals = cudaNormalBuffer->GetHandle().getDevicePtr();
 							radianceHgData.texCoords = cudaTexCrdBuffer->GetHandle().getDevicePtr();
-							radianceHgData.indices   = cudaTriIndBuffer->GetHandle().getDevicePtr();
-							radianceHgData.diffuseTex  = this->m_Impl->m_TextureManager->GetAsset(material.GetString("diffTex")).GetGpuComponent<rtlib::ext::resources::CUDATextureImage2DComponent<uchar4>>("CUDATexture")->GetHandle().getHandle();
+							radianceHgData.indices = cudaTriIndBuffer->GetHandle().getDevicePtr();
+							radianceHgData.diffuseTex = this->m_Impl->m_TextureManager->GetAsset(material.GetString("diffTex")).GetGpuComponent<rtlib::ext::resources::CUDATextureImage2DComponent<uchar4>>("CUDATexture")->GetHandle().getHandle();
 							radianceHgData.specularTex = this->m_Impl->m_TextureManager->GetAsset(material.GetString("specTex")).GetGpuComponent<rtlib::ext::resources::CUDATextureImage2DComponent<uchar4>>("CUDATexture")->GetHandle().getHandle();
 							radianceHgData.emissionTex = this->m_Impl->m_TextureManager->GetAsset(material.GetString("emitTex")).GetGpuComponent<rtlib::ext::resources::CUDATextureImage2DComponent<uchar4>>("CUDATexture")->GetHandle().getHandle();
-							radianceHgData.diffuse  = material.GetFloat3As<float3>("diffCol");
+							radianceHgData.diffuse = material.GetFloat3As<float3>("diffCol");
 							radianceHgData.specular = material.GetFloat3As<float3>("specCol");
 							radianceHgData.emission = material.GetFloat3As<float3>("emitCol");
 							radianceHgData.shinness = material.GetFloat1("shinness");
 							radianceHgData.transmit = material.GetFloat3As<float3>("tranCol");
-							radianceHgData.refrInd  = material.GetFloat1("refrIndx");
+							radianceHgData.refrInd = material.GetFloat1("refrIndx");
 						}
 						if (material.GetString("name") == "light")
 						{
 							this->m_Impl->m_LightHgRecIndex = RAY_TYPE_COUNT * sbtOffset + RAY_TYPE_COUNT * i + RAY_TYPE_RADIANCE;
 						}
-						this->m_Impl->m_HGRecordBuffers.cpuHandle[RAY_TYPE_COUNT * sbtOffset + RAY_TYPE_COUNT * i + RAY_TYPE_RADIANCE] = this->m_Impl->m_HGProgramGroups["Debug.Default"].getSBTRecord<HitgroupData>(radianceHgData);
-						this->m_Impl->m_HGRecordBuffers.cpuHandle[RAY_TYPE_COUNT * sbtOffset + RAY_TYPE_COUNT * i + RAY_TYPE_OCCLUSION] = this->m_Impl->m_HGProgramGroups["Debug.Default"].getSBTRecord<HitgroupData>({});
+						this->m_Impl->m_HGRecordBuffers.cpuHandle[RAY_TYPE_COUNT * sbtOffset + RAY_TYPE_COUNT * i + RAY_TYPE_RADIANCE] = this->m_Impl->m_HGProgramGroups["First.Default"].getSBTRecord<HitgroupData>(radianceHgData);
+						this->m_Impl->m_HGRecordBuffers.cpuHandle[RAY_TYPE_COUNT * sbtOffset + RAY_TYPE_COUNT * i + RAY_TYPE_OCCLUSION] = this->m_Impl->m_HGProgramGroups["First.Default"].getSBTRecord<HitgroupData>({});
 					}
 					sbtOffset += mesh->GetUniqueResource()->materials.size();
 				}
@@ -278,40 +266,37 @@ void Test24DebugOPXTracer::InitShaderBindingTable()
 	this->m_Impl->m_ShaderBindingTable.hitgroupRecordStrideInBytes = sizeof(HitGRecord);
 }
 
-void Test24DebugOPXTracer::InitLaunchParams()
+void Test24ReSTIROPXTracer::InitLaunchParams()
 {
 	auto tlas = this->m_Impl->m_TopLevelAS;
 	this->m_Impl->m_Params.Alloc(1);
 	this->m_Impl->m_Params.cpuHandle[0].gasHandle = tlas->GetHandle();
-	this->m_Impl->m_Params.cpuHandle[0].width  = this->m_Impl->m_Framebuffer->GetWidth();
+	this->m_Impl->m_Params.cpuHandle[0].width = this->m_Impl->m_Framebuffer->GetWidth();
 	this->m_Impl->m_Params.cpuHandle[0].height = this->m_Impl->m_Framebuffer->GetHeight();
-	this->m_Impl->m_Params.cpuHandle[0].diffuseBuffer = nullptr;
-	this->m_Impl->m_Params.cpuHandle[0].specularBuffer = nullptr;
-	this->m_Impl->m_Params.cpuHandle[0].emissionBuffer = nullptr;
-	this->m_Impl->m_Params.cpuHandle[0].transmitBuffer = nullptr;
-	this->m_Impl->m_Params.cpuHandle[0].normalBuffer = nullptr;
-	this->m_Impl->m_Params.cpuHandle[0].depthBuffer = nullptr;
-	this->m_Impl->m_Params.cpuHandle[0].texCoordBuffer = nullptr;
-	this->m_Impl->m_Params.cpuHandle[0].sTreeColBuffer = nullptr;
+	this->m_Impl->m_Params.cpuHandle[0].curPossBuffer = m_Impl->m_Framebuffer->GetComponent<test::RTCUDABufferFBComponent<float3>>("GPosition")->GetHandle().getDevicePtr();
+	this->m_Impl->m_Params.cpuHandle[0].curNormBuffer = m_Impl->m_Framebuffer->GetComponent<test::RTCUDABufferFBComponent<float3>>("GNormal"  )->GetHandle().getDevicePtr();
+	this->m_Impl->m_Params.cpuHandle[0].curTexCBuffer = m_Impl->m_Framebuffer->GetComponent<test::RTCUDABufferFBComponent<float2>>("GTexCoord")->GetHandle().getDevicePtr();
+	this->m_Impl->m_Params.cpuHandle[0].curDistBuffer = m_Impl->m_Framebuffer->GetComponent<test::RTCUDABufferFBComponent<float >>("GDepth")->GetHandle().getDevicePtr();
 	this->m_Impl->m_Params.Upload();
 }
 
-void Test24DebugOPXTracer::FreePipeline()
+void Test24ReSTIROPXTracer::FreePipeline()
 {
 	this->m_Impl->m_RGProgramGroups.clear();
 	this->m_Impl->m_HGProgramGroups.clear();
 	this->m_Impl->m_MSProgramGroups.clear();
 }
 
-void Test24DebugOPXTracer::FreeShaderBindingTable()
+void Test24ReSTIROPXTracer::FreeShaderBindingTable()
 {
 	this->m_Impl->m_ShaderBindingTable = {};
-	this->m_Impl->m_RGRecordBuffer.Reset();
+	this->m_Impl->m_RGRecordBuffer .Reset();
 	this->m_Impl->m_MSRecordBuffers.Reset();
 	this->m_Impl->m_HGRecordBuffers.Reset();
 }
 
-void Test24DebugOPXTracer::FreeLaunchParams()
+void Test24ReSTIROPXTracer::FreeLaunchParams()
 {
 	this->m_Impl->m_Params.Reset();
 }
+

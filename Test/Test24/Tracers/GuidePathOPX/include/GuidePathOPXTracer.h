@@ -62,6 +62,8 @@ public:
 private:
     void InitLight();
     void FreeLight();
+    void InitSTree();
+    void FreeSTree();
     void InitSdTree();
     void FreeSdTree();
     void InitFrameResources();
@@ -72,9 +74,9 @@ private:
     void FreeShaderBindingTable();
     void InitLaunchParams();
     void FreeLaunchParams();
-    void OnLaunchBegin(  int width, int height,  UserData* config);
-    void OnLaunchExecute(int width, int height,  UserData* config);
-    void OnLaunchEnd(    int width, int height,  UserData* config);
+    void OnLaunchBegin(int width, int height, UserData* pUserData);
+    void OnLaunchExecute(int width, int height, UserData* pUserData);
+    void OnLaunchEnd(int width, int height, UserData* pUserData);
 private:
     struct Impl;
     std::unique_ptr<Impl> m_Impl;

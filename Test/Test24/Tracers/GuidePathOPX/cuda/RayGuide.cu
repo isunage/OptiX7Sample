@@ -1,6 +1,7 @@
 #define __CUDACC__
 #include "RayTrace.h"
 #include "PathGuiding.h"
+using namespace test24_guide_path;
 struct RadiancePRD {
     DTreeWrapper* dTree;
     float3        dTreeVoxelSize;
@@ -166,7 +167,6 @@ extern "C" __global__ void __raygen__def() {
     params.seedBuffer[params.width * idx.y + idx.x] = seed;
 }
 extern "C" __global__ void __raygen__pg_def() {
-
     const uint3 idx = optixGetLaunchIndex();
     const uint3 dim = optixGetLaunchDimensions();
     auto* rgData = reinterpret_cast<RayGenData*>(optixGetSbtDataPointer());
@@ -175,7 +175,7 @@ extern "C" __global__ void __raygen__pg_def() {
     const float3 w = rgData->w;
     unsigned int seed = params.seedBuffer[params.width * idx.y + idx.x];
     float3 result = make_float3(0.0f, 0.0f, 0.0f);
-    size_t i = params.samplePerLaunch;
+    size_t i = 1;
     TraceVertex vertices[RAY_TRACE_MAX_VERTEX_COUNT] = {};
     do {
         rtlib::Xorshift32 xor32(seed);
@@ -236,6 +236,7 @@ extern "C" __global__ void __raygen__pg_def() {
         seed = prd.seed;
     } while(--i);
     {
+
         const float3 prevAccumColor = params.accumBuffer[params.width * idx.y + idx.x];
         const float3 accumColor     = prevAccumColor + result;
         float3 frameColor           = accumColor / (static_cast<float>(params.samplePerALL + params.samplePerLaunch));
@@ -474,7 +475,6 @@ extern "C" __global__ void __closesthit__radiance_for_diffuse_nee() {
     prd->seed = xor32.m_seed;
 }
 extern "C" __global__ void __closesthit__radiance_for_diffuse_pg_def() {
-
     auto* hgData = reinterpret_cast<HitgroupData*>(optixGetSbtDataPointer());
     const float3 rayDirection = optixGetWorldRayDirection();
     const int    primitiveID = optixGetPrimitiveIndex();
@@ -499,7 +499,9 @@ extern "C" __global__ void __closesthit__radiance_for_diffuse_pg_def() {
     const auto position = optixGetWorldRayOrigin() + distance * rayDirection;
     auto  dTreeVoxelSize= make_float3(0.0f);
     const auto dTree    = params.sdTree.GetDTreeWrapper(position, dTreeVoxelSize);
-
+    if (!dTree) {
+        printf("dTree is Null\n");
+    }
     float3 newDirection1= make_float3(0.0f);
     float3 newDirection2= make_float3(0.0f);
     float  cosine1      = 0.0f;
@@ -520,17 +522,17 @@ extern "C" __global__ void __closesthit__radiance_for_diffuse_pg_def() {
         newDirection1 = dTree->Sample(xor32);
         cosine1 = rtlib::dot(normal, newDirection1);
 
-        //if (isnan(newDirection1.x) || isnan(newDirection1.y) || isnan(newDirection1.z)) {
-        //    printf("newDirection1 is nan: new Direction1 = (%f, %f, %f) normal = (%f, %f, %f) n0 = (%f, %f, %f)\n", newDirection1.x, newDirection1.y, newDirection1.z, normal.x, normal.y, normal.z, n0.x, n0.y, n0.z);
-        //}
+        if (isnan(newDirection1.x) || isnan(newDirection1.y) || isnan(newDirection1.z)) {
+            printf("newDirection1 is nan: new Direction1 = (%f, %f, %f) normal = (%f, %f, %f) n0 = (%f, %f, %f)\n", newDirection1.x, newDirection1.y, newDirection1.z, normal.x, normal.y, normal.z, n0.x, n0.y, n0.z);
+        }
     }
     {
         newDirection2 = sampleCosinePDF(normal,xor32);
         cosine2 = rtlib::dot(normal, newDirection2);
-        //if (isnan(newDirection2.x) || isnan(newDirection2.y) || isnan(newDirection2.z))
-        //{
-        //   printf("newDirection2 is nan!\n");
-        //}
+        if (isnan(newDirection2.x) || isnan(newDirection2.y) || isnan(newDirection2.z))
+        {
+           printf("newDirection2 is nan!\n");
+        }
     }
 
     const float rnd          = rtlib::random_float1(xor32);
@@ -995,6 +997,7 @@ extern "C" __global__ void __closesthit__occluded() {
 }
 //phong
 extern "C" __global__ void __closesthit__radiance_for_phong_def() {
+    
     auto* hgData = reinterpret_cast<HitgroupData*>(optixGetSbtDataPointer());
     const float3 rayDirection = optixGetWorldRayDirection();
     const int    primitiveID = optixGetPrimitiveIndex();

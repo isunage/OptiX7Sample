@@ -5,6 +5,7 @@
 #include <PathOPXTracer.h>
 #include <NEEOPXTracer.h>
 #include <GuidePathOPXTracer.h>
+#include <ReSTIROPXTracer.h>
 #include <Test24Config.h>
 #include <filesystem>
 Test24Application::Test24Application(int fbWidth, int fbHeight, std::string name) noexcept : test::RTApplication(name)
@@ -15,6 +16,7 @@ Test24Application::Test24Application(int fbWidth, int fbHeight, std::string name
     m_FovY             = 0.0f;
     m_EventFlags       = TEST24_EVENT_FLAG_NONE;
     m_NumRayType       = TEST_TEST24_NUM_RAY_TYPE;
+    m_SamplePerAll     = 0;
     m_SamplePerLaunch  = 1;
     m_MaxTraceDepth    = 2;
     m_CurFrameTime     = 0.0f;
@@ -28,6 +30,7 @@ Test24Application::Test24Application(int fbWidth, int fbHeight, std::string name
     m_CurMainFrameName = "";
     m_CurMainTraceName = "";
     m_CurObjModelName  = "";
+    m_Tracers          = {};
     m_FramePublicNames = {};
     m_TracePublicNames = {};
 }
@@ -144,7 +147,7 @@ void Test24Application::FreeBase()
 
 void Test24Application::InitGui()
 {
-    // Gui
+     //Gui
     m_GuiDelegate = std::make_unique<Test24GuiDelegate>(
         m_Window,
         m_CameraController, 
@@ -164,6 +167,7 @@ void Test24Application::InitGui()
         m_CurMainTraceName, 
         m_CurObjModelName,
         m_MaxTraceDepth,
+        m_SamplePerAll,
         m_SamplePerLaunch,
         m_EventFlags);
     m_GuiDelegate->Initialize();
@@ -349,7 +353,7 @@ void Test24Application::FreeScene()
 
 void Test24Application::InitTracers()
 {
-
+    m_Tracers.reserve(7);
     m_Tracers["TestGL"] = std::make_shared<Test24TestGLTracer>(
         m_FbWidth, 
         m_FbHeight, 
@@ -372,7 +376,7 @@ void Test24Application::InitTracers()
         m_EventFlags
     );
     m_Tracers["DebugOPX"]->Initialize();
-    m_Tracers["PathOPX"] = std::make_shared<Test24PathOPXTracer>(
+    m_Tracers.insert({ "PathOPX", std::make_shared<Test24PathOPXTracer>(
         m_Context,
         m_Framebuffer,
         m_CameraController,
@@ -382,9 +386,21 @@ void Test24Application::InitTracers()
         m_BgLightColor,
         m_EventFlags ,
         m_MaxTraceDepth
-    );
+    ) });
     m_Tracers["PathOPX"]->Initialize();
-    m_Tracers["NEEOPX"] = std::make_shared<Test24NEEOPXTracer>(
+    m_Tracers[std::string("GuidePathOPX")]=std::make_shared<Test24GuidePathOPXTracer>(
+        m_Context,
+        m_Framebuffer,
+        m_CameraController,
+        m_TextureManager,
+        m_IASHandles["TopLevel"],
+        m_Materials,
+        m_BgLightColor,
+        m_EventFlags,
+        m_MaxTraceDepth
+    );
+    m_Tracers[std::string("GuidePathOPX")]->Initialize();
+    m_Tracers[std::string("NEEOPX")] = std::make_shared<Test24NEEOPXTracer>(
         m_Context,
         m_Framebuffer,
         m_CameraController,
@@ -395,8 +411,8 @@ void Test24Application::InitTracers()
         m_EventFlags,
         m_MaxTraceDepth
     );
-    m_Tracers["NEEOPX"]->Initialize();
-    m_Tracers["GuidePathOPX"] = std::make_shared<Test24GuidePathOPXTracer>(
+    m_Tracers[std::string("NEEOPX")]->Initialize();
+    m_Tracers[std::string("ReSTIROPX")] = std::make_shared<Test24ReSTIROPXTracer>(
         m_Context,
         m_Framebuffer,
         m_CameraController,
@@ -404,11 +420,9 @@ void Test24Application::InitTracers()
         m_IASHandles["TopLevel"],
         m_Materials,
         m_BgLightColor,
-        m_EventFlags,
-        m_MaxTraceDepth
+        m_EventFlags
     );
-    m_Tracers["GuidePathOPX"]->Initialize();
-
+    m_Tracers[std::string("ReSTIROPX")]->Initialize();
     m_TracePublicNames.clear();
     m_TracePublicNames.reserve(m_Tracers.size());
     for (auto& [name, tracer] : m_Tracers)
@@ -426,6 +440,7 @@ void Test24Application::FreeTracers()
         tracer->CleanUp();
     }
     m_Tracers.clear();
+
 }
 
 void Test24Application::PrepareLoop()
@@ -476,18 +491,37 @@ void Test24Application::Launch()
             userData.isSync          = true;
             userData.stream          = nullptr;
             m_Tracers[name]->Launch(m_FbWidth, m_FbHeight, &userData);
+            m_SamplePerAll           = userData.samplePerAll;
+        }
+        if (name == "GuidePathOPX")
+        {
+            Test24GuidePathOPXTracer::UserData  userData = {};
+            userData.samplePerLaunch     = m_SamplePerLaunch;
+            userData.samplePerAll        = m_SamplePerAll;
+            userData.sampleForBudget     = 100;
+            userData.iterationForBuilt   = 0;
+            userData.isSync              = true;
+            userData.stream              = nullptr;
+            m_Tracers[name]->Launch(m_FbWidth, m_FbHeight, &userData);
+            m_SamplePerAll              += m_SamplePerLaunch;
+            if (m_SamplePerAll >= userData.sampleForBudget) {
+                m_CurMainTraceName       = "PathOPX";
+                m_SamplePerAll           = 0;
+                m_EventFlags |= TEST24_EVENT_FLAG_CHANGE_TRACE;
+            }
         }
         if (name == "NEEOPX") {
             Test24NEEOPXTracer::UserData userData = {};
-            userData.samplePerLaunch = m_SamplePerLaunch;
-            userData.isSync          = true;
-            userData.stream          = nullptr;
+            userData.samplePerLaunch    = m_SamplePerLaunch;
+            userData.isSync             = true;
+            userData.stream             = nullptr;
             m_Tracers[name]->Launch(m_FbWidth, m_FbHeight, &userData);
+            m_SamplePerAll              = userData.samplePerAll;
         }
         if (name == "DebugOPX") {
             Test24DebugOPXTracer::UserData userData = {};
-            userData.isSync          = true;
-            userData.stream          = nullptr;
+            userData.isSync            = true;
+            userData.stream            = nullptr;
             m_Tracers[name]->Launch(m_FbWidth, m_FbHeight, &userData);
         }
         if (name == "TestGL") {
@@ -569,7 +603,8 @@ void Test24Application::ScrollCallback(GLFWwindow* window, double xoff, double y
     if (!app) {
         return;
     }
-    if (!ImGui::GetIO().WantCaptureMouse) {
+    if (!ImGui::GetIO().WantCaptureMouse) 
+    {
         app->m_ScrollOffsets[0] += xoff;
         app->m_ScrollOffsets[1] += yoff;
     }
@@ -601,9 +636,10 @@ void Test24Application::CopyDgFrame(const std::string &name)
 
 void Test24Application::ResizeFrame()
 {
-    if ((m_EventFlags&TEST24_EVENT_FLAG_RESIZE_FRAME)==TEST24_EVENT_FLAG_RESIZE_FRAME)
+    if ((m_EventFlags&TEST24_EVENT_FLAG_RESIZE_FRAME  )==TEST24_EVENT_FLAG_RESIZE_FRAME)
     {
         m_Framebuffer->Resize(m_FbWidth, m_FbHeight);
+        m_SamplePerAll = 0;
     }
 }
 
@@ -654,7 +690,8 @@ void Test24Application::UpdateCamera()
         }
         if (glfwGetMouseButton(m_Window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
         {
-            if (!ImGui::GetIO().WantCaptureMouse) {
+            if (!ImGui::GetIO().WantCaptureMouse)
+            {
                
                 m_CameraController->ProcessMouseMovement(-m_DelCursorPos[0], m_DelCursorPos[1]);
                 m_EventFlags |= TEST24_EVENT_FLAG_UPDATE_CAMERA;

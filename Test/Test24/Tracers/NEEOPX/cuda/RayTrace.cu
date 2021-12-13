@@ -1,5 +1,6 @@
 #define __CUDACC__
 #include "RayTrace.h"
+using namespace test24_nee;
 struct RadiancePRD {
     float3        emitted;
     float3        radiance;

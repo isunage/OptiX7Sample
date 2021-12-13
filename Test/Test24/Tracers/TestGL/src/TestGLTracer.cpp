@@ -44,19 +44,17 @@ void Test24TestGLTracer::Launch(int fbWidth, int fbHeight, void *pUserData)
     if (!m_ObjModelManager->GetAssets().empty()) {
         if (!m_ObjModelManager->HasAsset(m_CurObjModelName))
         {
-            std::cout << "Update" << std::endl;
-            m_UpdateObjModel = true;
         }
         else {
             if (m_CurObjModelName != m_NewObjModelName) {
-                std::cout << "Update" << std::endl;
+                std::cout << "Update2" << std::endl;
                 m_UpdateObjModel = true;
             }
         }
     }
     else {
         if (m_ObjModel.meshGroup) {
-            std::cout << "Update" << std::endl;
+            std::cout << "Update3" << std::endl;
             m_UpdateObjModel = true;
         }
     }
@@ -199,9 +197,13 @@ void Test24TestGLTracer::FreeVertexArray()
 
 void Test24TestGLTracer::UpdateVertexArray()
 {
+    auto& meshGroup = m_ObjModel.meshGroup;
+    if (!meshGroup) {
+        return;
+    }
     if (m_UpdateObjModel) {
-        if (m_ObjModel.meshGroup) {
-            for (auto& [name, uniqueRes] : m_ObjModel.meshGroup->GetUniqueResources())
+        if (meshGroup) {
+            for (auto& [name, uniqueRes] : meshGroup->GetUniqueResources())
             {
                 GLuint vertexArrayGL =  uniqueRes->variables.GetUInt32("VertexArrayGL");
                 glDeleteVertexArrays(1, &vertexArrayGL);
@@ -215,8 +217,8 @@ void Test24TestGLTracer::UpdateVertexArray()
             }
             m_CurObjModelName = m_NewObjModelName;
             m_ObjModel        = m_ObjModelManager->GetAsset(m_CurObjModelName);
-            if (m_ObjModel.meshGroup) {
-                auto sharedResource = m_ObjModel.meshGroup->GetSharedResource();
+            if (meshGroup) {
+                auto sharedResource = meshGroup->GetSharedResource();
                 if (!sharedResource->vertexBuffer.HasGpuComponent("GLBuffer")) {
                     sharedResource->vertexBuffer.AddGpuComponent<rtlib::ext::resources::GLBufferComponent<float3>>("GLBuffer");
                 }
@@ -226,7 +228,7 @@ void Test24TestGLTracer::UpdateVertexArray()
                 if (!sharedResource->normalBuffer.HasGpuComponent("GLBuffer")) {
                     sharedResource->normalBuffer.AddGpuComponent<rtlib::ext::resources::GLBufferComponent<float3>>("GLBuffer");
                 }
-                for (auto& [name, uniqueRes] : m_ObjModel.meshGroup->GetUniqueResources()) {
+                for (auto& [name, uniqueRes] : meshGroup->GetUniqueResources()) {
                     if (!uniqueRes->triIndBuffer.HasGpuComponent("GLBuffer")) {
                         uniqueRes->triIndBuffer.AddGpuComponent<rtlib::ext::resources::GLBufferComponent<uint3>>("GLBuffer");
                     }

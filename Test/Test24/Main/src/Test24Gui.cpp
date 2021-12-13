@@ -93,9 +93,9 @@ public:
     explicit MainTraceConfigGuiWindow(const std::vector<std::string>& tracePublicNames, std::string& traceName,unsigned int& maxTraceDepth_, unsigned int& samplePerLaunch_, unsigned int& eventFlags_)noexcept :
         test::RTGuiWindow("MainTraceConfig", ImGuiWindowFlags_MenuBar), curTraceName{ traceName }, curTraceIdx{ 0 }, traceNames{ tracePublicNames }, isFirst{ true }, eventFlags{ eventFlags_ }, maxTraceDepth{ maxTraceDepth_ },samplePerLaunch{samplePerLaunch_}{}
     virtual void DrawGui()override {
-        if (isFirst) {
+        if (isFirst||(traceNames[curTraceIdx]!=curTraceName)) {
             bool isFound = false;
-            for (auto i = 0; i < traceNames.size(); ++i)
+            for (auto i  = 0; i < traceNames.size(); ++i)
             {
                 if (traceNames[i] == curTraceName) {
                     curTraceIdx = i;
@@ -275,15 +275,21 @@ public:
         const std::array<float, 2>& delCursorPos,
         const std::array<float, 2>& scrollOffsets,
         const float& curFrameTime,
-        const float& delFrameTime)noexcept
+        const float& delFrameTime,
+        const unsigned int& samplePerAll,
+        const unsigned int& samplePerLaunch)noexcept
         :test::RTGuiWindow("InputConfig", ImGuiWindowFlags_MenuBar),
         m_CurCursorPos{ curCursorPos },
         m_DelCursorPos{ delCursorPos },
         m_ScrollOffsets{ scrollOffsets },
         m_CurFrameTime{ curFrameTime },
-        m_DelFrameTime{ delFrameTime } {}
+        m_DelFrameTime{ delFrameTime },
+        m_SamplePerAll{ samplePerAll },
+        m_SamplePerLaunch{ samplePerLaunch }{}
     virtual void DrawGui()override {
         {
+            ImGui::Text("SamplePerAll   : %d spp", m_SamplePerAll);
+            ImGui::Text("SamplePerLaunch: %d spp", m_SamplePerLaunch);
             ImGui::Text("CurFrameRate :   %f fps", 1.0f/m_DelFrameTime);
             ImGui::Text("CurFrameTime :   %f sec", m_CurFrameTime);
             ImGui::Text("CurCursorPos : (%f, %f)", m_CurCursorPos[0],  m_CurCursorPos[1]);
@@ -293,6 +299,8 @@ public:
     }
     virtual ~InputConfigGuiWindow()noexcept {}
 private:
+    const unsigned int&         m_SamplePerAll;
+    const unsigned int&         m_SamplePerLaunch;
     const std::array<float, 2>& m_CurCursorPos;
     const std::array<float, 2>& m_DelCursorPos;
     const std::array<float, 2>& m_ScrollOffsets;
@@ -347,12 +355,12 @@ void  Test24GuiDelegate::Initialize()
             auto mainTcCnfgWindow = std::make_shared<MainTraceConfigGuiWindow>(m_TracePublicNames,m_CurMainTraceName,m_MaxTraceDepth,m_SamplePerLaunch,m_EventFlags);
             mainTcCnfgWindow->SetActive(false);   //Default: Invisible
             m_Gui->SetGuiWindow(mainTcCnfgWindow);
-            trcrItem->SetGuiMenuItem(std::make_shared<test::RTGuiOpenWindowMenuItem>(mainTcCnfgWindow));
+            trcrItem->SetGuiMenuItem(std::make_shared<test:: RTGuiOpenWindowMenuItem>(mainTcCnfgWindow));
             trcrItem->SetGuiMenuItem(std::make_shared<test::RTGuiCloseWindowMenuItem>(mainTcCnfgWindow));
         }
         {
             auto iptItem = cnfgMenu->AddGuiMenu("Input");
-            auto iptCnfgWindow = std::make_shared<InputConfigGuiWindow>(m_CurCursorPos,m_DelCursorPos,m_ScrollOffsets,m_CurFrameTime,m_DelFrameTime);
+            auto iptCnfgWindow = std::make_shared<InputConfigGuiWindow>(m_CurCursorPos,m_DelCursorPos,m_ScrollOffsets,m_CurFrameTime,m_DelFrameTime,m_SamplePerAll, m_SamplePerLaunch);
             iptCnfgWindow->SetActive(false);   //Default: Invisible
             m_Gui->SetGuiWindow(iptCnfgWindow);
             iptItem->SetGuiMenuItem(std::make_shared<test::RTGuiOpenWindowMenuItem>(iptCnfgWindow));

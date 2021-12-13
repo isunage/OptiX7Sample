@@ -668,7 +668,7 @@ private:
 	unsigned int m_SamplePerAll = 0;
 };
 // GuideTracer
-class TestPG4GuidePathOXTracer : public test::RTTracer
+class TestPG4GuidePathTracer : public test::RTTracer
 {
 public:
 	struct UserData
@@ -690,7 +690,7 @@ private:
 	using HGProgramGroupMap = std::unordered_map<std::string, rtlib::OPXHitgroupPG>;
 
 public:
-	TestPG4GuidePathOXTracer(TestPG4Application *app)
+	TestPG4GuidePathTracer(TestPG4Application *app)
 	{
 		m_ParentApp = app;
 	}
@@ -753,7 +753,7 @@ public:
 		}
 	}
 	virtual bool ShouldLock()const noexcept { return true; }
-	virtual ~TestPG4GuidePathOXTracer() {}
+	virtual ~TestPG4GuidePathTracer() {}
 
 private:
 	void InitFrameResources()
@@ -2090,7 +2090,7 @@ void TestPG4Application::InitTracers()
 	m_SimpleNEEActor->Initialize();
 	//Guide
 	m_GuideActor = std::shared_ptr<test::RTTracer>(
-		new TestPG4GuidePathOXTracer(this));
+		new TestPG4GuidePathTracer(this));
 	m_GuideActor->Initialize();
 	//Guide_NEE
 	m_GuideNEEActor = std::shared_ptr<test::RTTracer>(
@@ -2186,7 +2186,7 @@ void TestPG4Application::Trace()
 		{
 			if (!m_TraceNEE)
 			{
-				TestPG4GuidePathOXTracer::UserData userData = {};
+				TestPG4GuidePathTracer::UserData userData = {};
 				userData.frameBuffer       = frameBuffer;
 				userData.samplePerLaunch   = m_SamplePerLaunch;
 				userData.samplePerAll      = m_SamplePerALL;
@@ -2194,7 +2194,7 @@ void TestPG4Application::Trace()
 				userData.iterationForBuilt = 0;
 				traceConfig.pUserData      = &userData;
 				m_GuideActor->Launch(traceConfig);
-				m_SamplePerALL = userData.samplePerAll;
+				m_SamplePerALL             = userData.samplePerAll;
 				curActor = m_GuideActor;
 			}
 			else

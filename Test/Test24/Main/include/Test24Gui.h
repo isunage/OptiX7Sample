@@ -28,6 +28,7 @@ public:
 		std::string& curMainTraceName,
 		std::string& curObjModelName, 
 		unsigned int& maxTraceDepth,
+		const unsigned int& samplePerAll,
 		unsigned int& samplePerLaunch,
 		unsigned int& eventFlags):
 		m_CurCursorPos {curCursorPos},
@@ -47,6 +48,7 @@ public:
 		m_CurObjModelName {  curObjModelName },
 		m_CurMainTraceName{ curMainTraceName }, 
 		m_MaxTraceDepth{ maxTraceDepth },
+		m_SamplePerAll{ samplePerAll },
 		m_SamplePerLaunch{samplePerLaunch},
 		m_LaunchTracerSet { launchTracerSet  },
 		m_EventFlags{eventFlags},
@@ -60,12 +62,12 @@ public:
 	virtual ~Test24GuiDelegate();
 private:
 	GLFWwindow* m_Window = nullptr;
-	std::shared_ptr<test::RTGui> m_Gui = nullptr;
+	std::shared_ptr<test::RTGui>                  m_Gui = nullptr;
 	std::shared_ptr<rtlib::ext::CameraController> m_CameraController;
-	std::shared_ptr<test::RTFramebuffer> m_Framebuffer;
+	std::shared_ptr<test::RTFramebuffer>          m_Framebuffer;
 	std::shared_ptr<test::RTObjModelAssetManager> m_ObjModelAssetManager;
-	std::shared_ptr<test::RTTextureAssetManager> m_TextureManager;
-	float3&                          m_BgLightColor;
+	std::shared_ptr<test::RTTextureAssetManager>  m_TextureManager;
+	float3&                     m_BgLightColor;
 	const std::array<float, 2>& m_CurCursorPos;
 	const std::array<float, 2>& m_DelCursorPos;
 	const std::array<float, 2>& m_ScrollOffsets;
@@ -78,6 +80,7 @@ private:
 	std::string&  m_CurMainFrameName;
 	std::string&  m_CurMainTraceName;
 	unsigned int& m_MaxTraceDepth;
+	const unsigned int& m_SamplePerAll;
 	unsigned int& m_SamplePerLaunch;
 	unsigned int& m_EventFlags;
 };

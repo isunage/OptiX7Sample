@@ -137,8 +137,8 @@ namespace rtlib{
             buffer.m_DevicePtr = nullptr;
             buffer.m_Count     = 0;
         }
-        CUDABuffer& operator=(const CUDABuffer&)noexcept = delete;
-        CUDABuffer& operator=(CUDABuffer&& buffer){
+        CUDABuffer& operator=(const CUDABuffer&  )noexcept = delete;
+        CUDABuffer& operator=(CUDABuffer&& buffer)noexcept{
             if(this!=&buffer){  
                 this->reset();
                 this->m_DevicePtr = buffer.m_DevicePtr;
@@ -201,9 +201,10 @@ namespace rtlib{
     };
     template<typename T>
     struct CUDAUploadBuffer {
-        std::vector<T>       cpuHandle   = {};
-        rtlib::CUDABuffer<T> gpuHandle   = {};
+        std::vector<T>       cpuHandle;
+        rtlib::CUDABuffer<T> gpuHandle;
     public:
+        CUDAUploadBuffer():cpuHandle(),gpuHandle() {}
         void Alloc() {
             if (!cpuHandle.empty()) {
                 return;
@@ -211,6 +212,7 @@ namespace rtlib{
             if (gpuHandle.getDevicePtr()) {
                 gpuHandle.reset();
             }
+            cpuHandle.resize(1);
             gpuHandle.allocate(cpuHandle.size());
         }
         void Alloc(size_t count){
@@ -230,14 +232,7 @@ namespace rtlib{
         }
         //destructor
         ~CUDAUploadBuffer()noexcept {
-            try {
-                this->Reset();
-            }
-            catch (rtlib::CUDAException& err) {
-
-                std::cerr << "~CUDAUploadBuffer() Catch Error!\n";
-                std::cerr << err.what() << std::endl;
-            }
+            
         }
     };
     template<typename T>
