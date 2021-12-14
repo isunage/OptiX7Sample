@@ -1,6 +1,7 @@
 #define __CUDACC__
 #include "RayTrace.h"
 #include "PathGuiding.h"
+using namespace test24_nee_guide;
 struct RadiancePRD {
     DTreeWrapper* dTree;
     float3        dTreeVoxelSize;
@@ -145,7 +146,7 @@ extern "C" __global__ void __raygen__def() {
                 isfinite(prd.throughPut.x) && isfinite(prd.throughPut.y) && isfinite(prd.throughPut.z) &&
                 (prd.throughPut.x >= 0.0f && prd.throughPut.y >= 0.0f && prd.throughPut.z >= 0.0f));
             bool isValidDirection  = (!isnan(rayDirection.x) && !isnan(rayDirection.y) && !isnan(rayDirection.z));
-            if (prd.done || depth >= params.maxTraceDepth || !isValidThroughPut || !isValidDirection) {
+            if (prd.done || depth >= params.maxTraceDepth-1 || !isValidThroughPut || !isValidDirection) {
                 break;
             }
             depth++;
@@ -223,7 +224,7 @@ extern "C" __global__ void __raygen__pg_def() {
                                     isfinite(prd.throughPut.x) && isfinite(prd.throughPut.y) && isfinite(prd.throughPut.z) &&
                                             (prd.throughPut.x >= 0.0f && prd.throughPut.y >= 0.0f && prd.throughPut.z >= 0.0f));
             bool isValidDirection  = (!isnan(rayDirection.x) && !isnan(rayDirection.y) && !isnan(rayDirection.z));
-            if (prd.done || depth >= params.maxTraceDepth || !isValidThroughPut || !isValidDirection) {
+            if (prd.done || depth >= params.maxTraceDepth - 1 || !isValidThroughPut || !isValidDirection) {
                 break;
             }
             depth++;
@@ -281,7 +282,7 @@ extern "C" __global__ void __raygen__pg_nee() {
         prd.seed = seed;
         int depth = 0;
         for (;;) {
-            if (depth >= params.maxTraceDepth) {
+            if (depth >= params.maxTraceDepth-1) {
                 prd.done = true;
             }
             traceRadiance(params.gasHandle, rayOrigin, rayDirection, 0.01f, 1e16f, &prd);

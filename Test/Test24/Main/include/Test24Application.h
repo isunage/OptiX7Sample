@@ -12,6 +12,7 @@
 #include <RTLib/ext/Mesh.h>
 #include <RTLib/ext/RectRenderer.h>
 #include <RTLib/ext/Camera.h>
+#include <RTLib/ext/VariableMap.h>
 #include <Test24Event.h>
 class Test24Application : public test::RTApplication
 {
@@ -80,18 +81,16 @@ private:
     int m_FbWidth;
     int m_FbHeight;
     float m_FovY;
-    unsigned int         m_SamplePerAll;
-    unsigned int         m_SamplePerLaunch;
-    unsigned int         m_MaxTraceDepth;
+    unsigned int             m_SamplePerAll;
+    unsigned int             m_SamplePerLaunch;
+    unsigned int             m_MaxTraceDepth;
     //TODO Inputの分離
-    std::array<float, 2> m_CurCursorPos;
-    std::array<float, 2> m_DelCursorPos;
-    std::array<float, 2> m_ScrollOffsets;
-    float                m_CurFrameTime;
-    float                m_DelFrameTime;
-    unsigned int m_EventFlags;
-    //State
-    bool m_LockUpdate  ;
+    std::array<float, 2>     m_CurCursorPos;
+    std::array<float, 2>     m_DelCursorPos;
+    std::array<float, 2>     m_ScrollOffsets;
+    float                    m_CurFrameTime;
+    float                    m_DelFrameTime;
+    unsigned int             m_EventFlags;
     //表示系
     std::vector<std::string> m_FramePublicNames;
     std::string              m_CurMainFrameName;

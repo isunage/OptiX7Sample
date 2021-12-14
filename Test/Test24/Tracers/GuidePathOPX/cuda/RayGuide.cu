@@ -146,7 +146,7 @@ extern "C" __global__ void __raygen__def() {
                 isfinite(prd.throughPut.x) && isfinite(prd.throughPut.y) && isfinite(prd.throughPut.z) &&
                 (prd.throughPut.x >= 0.0f && prd.throughPut.y >= 0.0f && prd.throughPut.z >= 0.0f));
             bool isValidDirection  = (!isnan(rayDirection.x) && !isnan(rayDirection.y) && !isnan(rayDirection.z));
-            if (prd.done || depth >= params.maxTraceDepth || !isValidThroughPut || !isValidDirection) {
+            if (prd.done || depth >= params.maxTraceDepth-1 || !isValidThroughPut || !isValidDirection) {
                 break;
             }
             depth++;
@@ -223,7 +223,7 @@ extern "C" __global__ void __raygen__pg_def() {
                                     isfinite(prd.throughPut.x) && isfinite(prd.throughPut.y) && isfinite(prd.throughPut.z) &&
                                             (prd.throughPut.x >= 0.0f && prd.throughPut.y >= 0.0f && prd.throughPut.z >= 0.0f));
             bool isValidDirection  = (!isnan(rayDirection.x) && !isnan(rayDirection.y) && !isnan(rayDirection.z));
-            if (prd.done || depth >= params.maxTraceDepth || !isValidThroughPut || !isValidDirection) {
+            if (prd.done || depth >= params.maxTraceDepth-1 || !isValidThroughPut || !isValidDirection) {
                 break;
             }
             depth++;

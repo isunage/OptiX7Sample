@@ -5,6 +5,7 @@
 #include <PathOPXTracer.h>
 #include <NEEOPXTracer.h>
 #include <GuidePathOPXTracer.h>
+#include < GuideNEEOPXTracer.h>
 #include <ReSTIROPXTracer.h>
 #include <Test24Config.h>
 #include <filesystem>
@@ -376,7 +377,7 @@ void Test24Application::InitTracers()
         m_EventFlags
     );
     m_Tracers["DebugOPX"]->Initialize();
-    m_Tracers.insert({ "PathOPX", std::make_shared<Test24PathOPXTracer>(
+    m_Tracers["PathOPX"] = std::make_shared<Test24PathOPXTracer>(
         m_Context,
         m_Framebuffer,
         m_CameraController,
@@ -384,9 +385,9 @@ void Test24Application::InitTracers()
         m_IASHandles["TopLevel"],
         m_Materials,
         m_BgLightColor,
-        m_EventFlags ,
+        m_EventFlags,
         m_MaxTraceDepth
-    ) });
+        );
     m_Tracers["PathOPX"]->Initialize();
     m_Tracers[std::string("GuidePathOPX")]=std::make_shared<Test24GuidePathOPXTracer>(
         m_Context,
@@ -400,7 +401,19 @@ void Test24Application::InitTracers()
         m_MaxTraceDepth
     );
     m_Tracers[std::string("GuidePathOPX")]->Initialize();
-    m_Tracers[std::string("NEEOPX")] = std::make_shared<Test24NEEOPXTracer>(
+    m_Tracers[std::string("GuideNEEOPX")] = std::make_shared<Test24GuideNEEOPXTracer>(
+        m_Context,
+        m_Framebuffer,
+        m_CameraController,
+        m_TextureManager,
+        m_IASHandles["TopLevel"],
+        m_Materials,
+        m_BgLightColor,
+        m_EventFlags,
+        m_MaxTraceDepth
+        );
+    m_Tracers[std::string("GuideNEEOPX")]->Initialize();
+    m_Tracers[std::string("NEEOPX")]     = std::make_shared<Test24NEEOPXTracer>(
         m_Context,
         m_Framebuffer,
         m_CameraController,
@@ -493,23 +506,6 @@ void Test24Application::Launch()
             m_Tracers[name]->Launch(m_FbWidth, m_FbHeight, &userData);
             m_SamplePerAll           = userData.samplePerAll;
         }
-        if (name == "GuidePathOPX")
-        {
-            Test24GuidePathOPXTracer::UserData  userData = {};
-            userData.samplePerLaunch     = m_SamplePerLaunch;
-            userData.samplePerAll        = m_SamplePerAll;
-            userData.sampleForBudget     = 100;
-            userData.iterationForBuilt   = 0;
-            userData.isSync              = true;
-            userData.stream              = nullptr;
-            m_Tracers[name]->Launch(m_FbWidth, m_FbHeight, &userData);
-            m_SamplePerAll              += m_SamplePerLaunch;
-            if (m_SamplePerAll >= userData.sampleForBudget) {
-                m_CurMainTraceName       = "PathOPX";
-                m_SamplePerAll           = 0;
-                m_EventFlags |= TEST24_EVENT_FLAG_CHANGE_TRACE;
-            }
-        }
         if (name == "NEEOPX") {
             Test24NEEOPXTracer::UserData userData = {};
             userData.samplePerLaunch    = m_SamplePerLaunch;
@@ -517,6 +513,42 @@ void Test24Application::Launch()
             userData.stream             = nullptr;
             m_Tracers[name]->Launch(m_FbWidth, m_FbHeight, &userData);
             m_SamplePerAll              = userData.samplePerAll;
+        }
+        if (name == "GuidePathOPX")
+        {
+            //‚È‚º‚©SDTree‚ÌAccumulation‚ªi‚Ü‚È‚¢
+            Test24GuidePathOPXTracer::UserData  userData = {};
+            userData.samplePerLaunch = m_SamplePerLaunch;
+            userData.samplePerAll = m_SamplePerAll;
+            userData.sampleForBudget = 4096;
+            userData.iterationForBuilt = 0;
+            userData.isSync = true;
+            userData.stream = nullptr;
+            m_Tracers[name]->Launch(m_FbWidth, m_FbHeight, &userData);
+            m_SamplePerAll += m_SamplePerLaunch;
+            if (m_SamplePerAll >= userData.sampleForBudget) {
+                m_CurMainTraceName = "PathOPX";
+                m_SamplePerAll = 0;
+                m_EventFlags |= TEST24_EVENT_FLAG_CHANGE_TRACE;
+            }
+        }
+        if (name == "GuideNEEOPX")
+        {
+            //‚È‚º‚©SDTree‚ÌAccumulation‚ªi‚Ü‚È‚¢
+            Test24GuideNEEOPXTracer::UserData  userData = {};
+            userData.samplePerLaunch = m_SamplePerLaunch;
+            userData.samplePerAll = m_SamplePerAll;
+            userData.sampleForBudget = 4096;
+            userData.iterationForBuilt = 0;
+            userData.isSync = true;
+            userData.stream = nullptr;
+            m_Tracers[name]->Launch(m_FbWidth, m_FbHeight, &userData);
+            m_SamplePerAll += m_SamplePerLaunch;
+            if (m_SamplePerAll >= userData.sampleForBudget) {
+                m_CurMainTraceName = "PathOPX";
+                m_SamplePerAll = 0;
+                m_EventFlags |= TEST24_EVENT_FLAG_CHANGE_TRACE;
+            }
         }
         if (name == "DebugOPX") {
             Test24DebugOPXTracer::UserData userData = {};
@@ -570,8 +602,8 @@ void Test24Application::FramebufferSizeCallback(GLFWwindow *window, int fbWidth,
         if (this_ptr->m_FbWidth != fbWidth || this_ptr->m_FbHeight != fbHeight)
         {
             glViewport(0, 0, fbWidth, fbHeight);
-            this_ptr->m_FbWidth = fbWidth;
-            this_ptr->m_FbHeight = fbHeight;
+            this_ptr->m_FbWidth    = fbWidth;
+            this_ptr->m_FbHeight   = fbHeight;
             this_ptr->m_EventFlags|= TEST24_EVENT_FLAG_RESIZE_FRAME;
         }
     }
@@ -639,6 +671,9 @@ void Test24Application::ResizeFrame()
     if ((m_EventFlags&TEST24_EVENT_FLAG_RESIZE_FRAME  )==TEST24_EVENT_FLAG_RESIZE_FRAME)
     {
         m_Framebuffer->Resize(m_FbWidth, m_FbHeight);
+    }
+    if ((m_EventFlags & TEST24_EVENT_FLAG_FLUSH_FRAME) == TEST24_EVENT_FLAG_FLUSH_FRAME)
+    {
         m_SamplePerAll = 0;
     }
 }

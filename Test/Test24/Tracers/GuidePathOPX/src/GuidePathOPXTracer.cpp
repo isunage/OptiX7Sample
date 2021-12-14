@@ -94,14 +94,14 @@ struct Test24GuidePathOPXTracer::Impl {
 	rtlib::CUDAUploadBuffer<MeshLight> m_MeshLights;
 	std::shared_ptr<RTSTreeWrapper> m_STree = nullptr;
 	unsigned int m_LightHgRecIndex = 0;
-	unsigned int m_SamplePerAll = 0;
-	unsigned int m_SamplePerTmp = 0;
+	unsigned int m_SamplePerAll    = 0;
+	unsigned int m_SamplePerTmp    = 0;
 	unsigned int m_SamplePerLaunch = 0;
 	unsigned int m_SampleForBudget = 0;
 	unsigned int m_SampleForRemain = 0;
-	unsigned int m_SampleForPass = 0;
-	unsigned int m_CurIteration = 0;
-	float        m_RatioForBudget = 0.10f;
+	unsigned int m_SampleForPass   = 0;
+	unsigned int m_CurIteration    = 0;
+	float        m_RatioForBudget  = 0.50f;
 };
 
 Test24GuidePathOPXTracer::Test24GuidePathOPXTracer(
@@ -176,7 +176,7 @@ void Test24GuidePathOPXTracer::Update()
 		this->m_Impl->m_RGRecordBuffer.cpuHandle[0].data.w = w;
 		this->m_Impl->m_RGRecordBuffer.Upload();
 	}
-	if ((this->m_Impl->m_EventFlags & TEST24_EVENT_FLAG_FLUSH_FRAME) == TEST24_EVENT_FLAG_FLUSH_FRAME)
+	if ((this->m_Impl->m_EventFlags & TEST24_EVENT_FLAG_FLUSH_FRAME)   == TEST24_EVENT_FLAG_FLUSH_FRAME)
 	{
 		std::vector<float3> zeroAccumValues(this->m_Impl->m_Framebuffer.lock()->GetWidth() * this->m_Impl->m_Framebuffer.lock()->GetHeight(), make_float3(0.0f));
 		cudaMemcpy(this->m_Impl->m_Framebuffer.lock()->GetComponent<test::RTCUDABufferFBComponent<float3>>("RAccum")->GetHandle().getDevicePtr(), zeroAccumValues.data(), sizeof(float3) * this->m_Impl->m_Framebuffer.lock()->GetWidth() * this->m_Impl->m_Framebuffer.lock()->GetHeight(), cudaMemcpyHostToDevice);
@@ -195,7 +195,7 @@ void Test24GuidePathOPXTracer::Update()
 		this->m_Impl->m_SeedBuffer.resize(this->m_Impl->m_Framebuffer.lock()->GetWidth() * this->m_Impl->m_Framebuffer.lock()->GetHeight());
 		this->m_Impl->m_SeedBuffer.upload(seedData);
 	}
-	if ((this->m_Impl->m_EventFlags & TEST24_EVENT_FLAG_UPDATE_LIGHT) == TEST24_EVENT_FLAG_UPDATE_LIGHT)
+	if ((this->m_Impl->m_EventFlags & TEST24_EVENT_FLAG_UPDATE_LIGHT)  == TEST24_EVENT_FLAG_UPDATE_LIGHT)
 	{
 		auto lightColor = make_float4(this->m_Impl->m_BgLightColor, 1.0f);
 		this->m_Impl->m_MSRecordBuffers.cpuHandle[RAY_TYPE_RADIANCE].data.bgColor = lightColor;
@@ -313,7 +313,7 @@ void Test24GuidePathOPXTracer::InitShaderBindingTable()
 	this->m_Impl->m_Camera = this->m_Impl->m_CameraController.lock()->GetCamera(aspect);
 	auto& materials = this->m_Impl->m_Materials;
 	this->m_Impl->m_RGRecordBuffer.Alloc(1);
-	this->m_Impl->m_RGRecordBuffer.cpuHandle[0] = this->m_Impl->m_RGProgramGroups["Guide.Default"].getSBTRecord<RayGenData>();
+	this->m_Impl->m_RGRecordBuffer.cpuHandle[0] = this->m_Impl->m_RGProgramGroups["Guide.Guiding.Default"].getSBTRecord<RayGenData>();
 	this->m_Impl->m_RGRecordBuffer.cpuHandle[0].data.eye = this->m_Impl->m_Camera.getEye();
 	auto [u, v, w] = this->m_Impl->m_Camera.getUVW();
 	this->m_Impl->m_RGRecordBuffer.cpuHandle[0].data.u = u;
@@ -482,13 +482,13 @@ void Test24GuidePathOPXTracer::OnLaunchBegin(int width, int height, UserData* pU
 {
 	if (pUserData->samplePerAll == 0)
 	{
-		this->m_Impl->m_SamplePerAll = 0;
-		this->m_Impl->m_SamplePerTmp = 0;
+		this->m_Impl->m_SamplePerAll    = 0;
+		this->m_Impl->m_SamplePerTmp    = 0;
 		this->m_Impl->m_SampleForBudget = pUserData->sampleForBudget;
 		this->m_Impl->m_SamplePerLaunch = pUserData->samplePerLaunch;
 		this->m_Impl->m_SampleForRemain = ((this->m_Impl->m_SampleForBudget - 1 + this->m_Impl->m_SamplePerLaunch) / this->m_Impl->m_SamplePerLaunch) * this->m_Impl->m_SamplePerLaunch;
-		this->m_Impl->m_CurIteration = 0;
-		this->m_Impl->m_SampleForPass = 0;
+		this->m_Impl->m_CurIteration    = 0;
+		this->m_Impl->m_SampleForPass   = 0;
 		std::random_device rd;
 		std::mt19937 mt(rd());
 		std::vector<unsigned int> seedData(width * height);

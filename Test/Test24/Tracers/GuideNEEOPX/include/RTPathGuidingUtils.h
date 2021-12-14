@@ -10,8 +10,8 @@
 #include <stb_image_write.h>
 #include <RTLib/core/CUDA.h>
 #include <RTLib/math/VectorFunction.h>
-namespace test {
-	using  RTDTreeNode = ::DTreeNode;
+namespace test24_nee_guide {
+	using  RTDTreeNode = DTreeNode;
 	class  RTDTree {
 	public:
 		RTDTree()noexcept {
