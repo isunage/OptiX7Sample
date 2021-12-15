@@ -79,9 +79,9 @@ void Test24Application::InitBase()
     m_Framebuffer = std::shared_ptr<test::RTFramebuffer>(new test::RTFramebuffer(m_FbWidth, m_FbHeight));
     //GBuffer
     m_Framebuffer->AddComponent<test::RTCUDABufferFBComponent<float3>>("GPosition");
-    m_Framebuffer->AddComponent<test::RTCUDABufferFBComponent<float3>>("GNormal");
-    m_Framebuffer->AddComponent<test::RTCUDABufferFBComponent<float2>>("GTexCoord");
-    m_Framebuffer->AddComponent<test::RTCUDABufferFBComponent<float>>( "GDepth");
+    m_Framebuffer->AddComponent<test::RTCUDABufferFBComponent<float3>>("GNormal"  );
+    m_Framebuffer->AddComponent<test::RTCUDABufferFBComponent<float3>>("GDiffuse" );
+    m_Framebuffer->AddComponent<test::RTCUDABufferFBComponent<float3>>("GEmission");
     //Render
     m_Framebuffer->AddComponent<test::RTCUDABufferFBComponent<float3>>("RAccum");
     m_Framebuffer->AddComponent<test::RTCUGLBufferFBComponent<uchar4>>("RFrame");
@@ -188,8 +188,11 @@ void Test24Application::RenderGui()
 
 void Test24Application::InitScene()
 {
-    if (m_ObjModelManager->LoadAsset("CornellBox-Water", TEST_TEST24_DATA_PATH"/Models/CornellBox/CornellBox-Water.obj")) {
+    /*if (m_ObjModelManager->LoadAsset("CornellBox-Water", TEST_TEST24_DATA_PATH"/Models/CornellBox/CornellBox-Water.obj")) {
         m_CurObjModelName = "CornellBox-Water";
+    }*/
+    if (m_ObjModelManager->LoadAsset("Bistro-Exterior", TEST_TEST24_DATA_PATH"/Models/Bistro/Exterior/exterior.obj")) {
+        m_CurObjModelName = "Bistro-Exterior";
     }
     {
         size_t materialSize = 0;
@@ -516,7 +519,7 @@ void Test24Application::Launch()
         }
         if (name == "GuidePathOPX")
         {
-            //‚È‚º‚©SDTree‚ÌAccumulation‚ªi‚Ü‚È‚¢
+            //ãªãœã‹SDTreeã®AccumulationãŒé€²ã¾ãªã„
             Test24GuidePathOPXTracer::UserData  userData = {};
             userData.samplePerLaunch = m_SamplePerLaunch;
             userData.samplePerAll = m_SamplePerAll;
@@ -534,7 +537,7 @@ void Test24Application::Launch()
         }
         if (name == "GuideNEEOPX")
         {
-            //‚È‚º‚©SDTree‚ÌAccumulation‚ªi‚Ü‚È‚¢
+            //ãªãœã‹SDTreeã®AccumulationãŒé€²ã¾ãªã„
             Test24GuideNEEOPXTracer::UserData  userData = {};
             userData.samplePerLaunch = m_SamplePerLaunch;
             userData.samplePerAll = m_SamplePerAll;
@@ -549,6 +552,14 @@ void Test24Application::Launch()
                 m_SamplePerAll = 0;
                 m_EventFlags |= TEST24_EVENT_FLAG_CHANGE_TRACE;
             }
+        }
+        if (name == "ReSTIROPX")
+        {
+            Test24ReSTIROPXTracer::UserData  userData = {};
+            userData.numCandidates = 16;
+            userData.isSync = true;
+            userData.stream = nullptr;
+            m_Tracers[name]->Launch(m_FbWidth, m_FbHeight, &userData);
         }
         if (name == "DebugOPX") {
             Test24DebugOPXTracer::UserData userData = {};

@@ -4,8 +4,8 @@ using namespace test24_restir;
 struct RadiancePRD {
     float3 position;
     float3 normal;
-    float2 texCoord;
-    float  distance;
+    float3 emission;
+    float3 diffuse;
 };
 extern "C" {
     __constant__ RayFirstParams params;
@@ -43,54 +43,52 @@ extern "C" __global__ void     __raygen__first() {
         (2.0f * static_cast<float>(idx.y) / static_cast<float>(dim.y)) - 1.0);
     const float3 origin    = rgData->pinhole[0].eye;
     const float3 direction = rtlib::normalize(d.x * u + d.y * v + w);
-    //printf("%f, %lf, %lf\n", direction.x, direction.y, direction.z);
+    // printf("org: %f, %lf, %lf\n", origin.x   , origin.y   , origin.z);
+    // printf("dir: %f, %lf, %lf\n", direction.x, direction.y, direction.z);
     RadiancePRD prd;
     trace(params.gasHandle, origin, direction, 0.0f, 1e16f, &prd);
-    params.curPossBuffer[params.width * idx.y + idx.x] = prd.position;
-    params.curNormBuffer[params.width * idx.y + idx.x] = prd.normal;
-    params.curTexCBuffer[params.width * idx.y + idx.x] = make_float2(prd.texCoord);
-    params.curDistBuffer[params.width * idx.y + idx.x] = prd.distance;
+    params.posiBuffer[params.width * idx.y + idx.x] = prd.position;
+    params.normBuffer[params.width * idx.y + idx.x] = prd.normal;
+    params.emitBuffer[params.width * idx.y + idx.x] = prd.emission;
+    params.diffBuffer[params.width * idx.y + idx.x] = prd.diffuse;
 }
 extern "C" __global__ void       __miss__first() {
-    auto* msData  = reinterpret_cast<MissData*>(optixGetSbtDataPointer());
-    auto prd      = getRadiancePRD();
-    prd->position = make_float3(0.0f);
-    prd->normal   = make_float3(0.0f);
-    prd->texCoord = make_float2(0.0f);
-    prd->distance = optixGetRayTmax();
+    auto* msData        = reinterpret_cast<MissData*>(optixGetSbtDataPointer());
+    auto prd            = getRadiancePRD();
+    prd->position       = make_float3(0.0f);
+    prd->normal         = make_float3(0.0f);
+    prd->emission       = make_float3(0.0f);
+    prd->diffuse        = make_float3(0.0f);
 }
 extern "C" __global__ void __closesthit__first() {
     auto* hgData = reinterpret_cast<HitgroupData*>(optixGetSbtDataPointer());
-    float2 texCoord = optixGetTriangleBarycentrics();
-    auto primitiveID = optixGetPrimitiveIndex();
+    float2 texCoord     = optixGetTriangleBarycentrics();
+    auto primitiveID    = optixGetPrimitiveIndex();
     const float3 rayDirection = optixGetWorldRayDirection();
     //printf("%d\n", primitiveId);
-    const float3 p  = optixGetWorldRayOrigin() + optixGetRayTmax() * rayDirection;
-    const float3 v0 = optixTransformPointFromObjectToWorldSpace( hgData->vertices[hgData->indices[primitiveID].x]);
-    const float3 v1 = optixTransformPointFromObjectToWorldSpace( hgData->vertices[hgData->indices[primitiveID].y]);
-    const float3 v2 = optixTransformPointFromObjectToWorldSpace( hgData->vertices[hgData->indices[primitiveID].z]);
-    const float3 n0 = optixTransformNormalFromObjectToWorldSpace(hgData->normals[ hgData->indices[primitiveID].x]);
-    const float3 n1 = optixTransformNormalFromObjectToWorldSpace(hgData->normals[ hgData->indices[primitiveID].y]);
-    const float3 n2 = optixTransformNormalFromObjectToWorldSpace(hgData->normals[ hgData->indices[primitiveID].z]);
+    const float3 p      = optixGetWorldRayOrigin() + optixGetRayTmax() * rayDirection;
+    const float3 v0     = optixTransformPointFromObjectToWorldSpace (hgData->vertices[hgData->indices[primitiveID].x]);
+    const float3 v1     = optixTransformPointFromObjectToWorldSpace (hgData->vertices[hgData->indices[primitiveID].y]);
+    const float3 v2     = optixTransformPointFromObjectToWorldSpace (hgData->vertices[hgData->indices[primitiveID].z]);
+    const float3 n0     = optixTransformNormalFromObjectToWorldSpace(hgData->normals[ hgData->indices[primitiveID].x]);
+    const float3 n1     = optixTransformNormalFromObjectToWorldSpace(hgData->normals[ hgData->indices[primitiveID].y]);
+    const float3 n2     = optixTransformNormalFromObjectToWorldSpace(hgData->normals[ hgData->indices[primitiveID].z]);
     const float3 n_base = rtlib::normalize((1.0f - texCoord.x - texCoord.y) * n0 + texCoord.x * n1 + texCoord.y * n2);
     const float3 n_face = rtlib::normalize(rtlib::cross(v1 - v0, v2 - v0));
     const float3 normal = faceForward(n_face, make_float3(-rayDirection.x, -rayDirection.y, -rayDirection.z), n_face);
-    auto t0       = hgData->texCoords[hgData->indices[primitiveID].x];
-    auto t1       = hgData->texCoords[hgData->indices[primitiveID].y];
-    auto t2       = hgData->texCoords[hgData->indices[primitiveID].z];
-    auto t        = (1.0f - texCoord.x - texCoord.y) * t0 + texCoord.x * t1 + texCoord.y * t2;
-    auto diffuse  = hgData->getDiffuseColor(t);
-    auto specular = hgData->getSpecularColor(t);
-    auto transmit = hgData->transmit;
-    auto emission = hgData->getEmissionColor(t);
-    float3 sTreeSize;
+    auto t0             = hgData->texCoords[hgData->indices[primitiveID].x];
+    auto t1             = hgData->texCoords[hgData->indices[primitiveID].y];
+    auto t2             = hgData->texCoords[hgData->indices[primitiveID].z];
+    auto t              = (1.0f - texCoord.x - texCoord.y) * t0 + texCoord.x * t1 + texCoord.y * t2;
+    auto diffuse        = hgData->getDiffuseColor(t);
+    auto specular       = hgData->getSpecularColor(t);
+    auto transmit       = hgData->transmit;
+    auto emission       = hgData->getEmissionColor(t);
     //printf("%f %f\n",t0.x,t0.y);
-    auto prd      = getRadiancePRD();
-    prd->position = p;
-    prd->normal   = normal;
-    prd->texCoord = t;
-    prd->distance = optixGetRayTmax();
+    auto prd            = getRadiancePRD();
+    prd->position       = p;
+    prd->normal         = normal;
+    prd->emission       = emission;
+    prd->diffuse        = diffuse;
 }
-extern "C" __global__ void        __anyhit__ah() {
-    auto* hgData = reinterpret_cast<HitgroupData*>(optixGetSbtDataPointer());
-}
+

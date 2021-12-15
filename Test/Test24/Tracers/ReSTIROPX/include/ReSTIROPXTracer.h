@@ -26,6 +26,7 @@ private:
 public:
     struct UserData
     {
+        unsigned int numCandidates;
         bool isSync;
         CUstream stream;
     };
@@ -47,13 +48,17 @@ public:
     virtual ~Test24ReSTIROPXTracer();
 
 private:
+    void InitFrameResources();
     void InitPipeline();
     void InitShaderBindingTable();
+    void InitLight();
     void InitLaunchParams();
+
+    void FreeFrameResources();
     void FreePipeline();
     void FreeShaderBindingTable();
+    void FreeLight();
     void FreeLaunchParams();
-
 private:
     struct Impl;
     std::unique_ptr<Impl> m_Impl;
