@@ -32,15 +32,26 @@ static __forceinline__ __device__ void trace(OptixTraversableHandle handle, cons
     optixTrace(handle, rayOrigin, rayDirection, tmin, tmax, 0.0f, OptixVisibilityMask(255), OPTIX_RAY_FLAG_NONE, RAY_TYPE_RADIANCE, RAY_TYPE_COUNT, RAY_TYPE_RADIANCE, p0, p1);
 }
 extern "C" __global__ void     __raygen__first() {
-    const uint3 idx = optixGetLaunchIndex();
-    const uint3 dim = optixGetLaunchDimensions();
-    auto* rgData    = reinterpret_cast<RayGenData*>(optixGetSbtDataPointer());
-    const float3 u  = rgData->pinhole[0].u;
-    const float3 v  = rgData->pinhole[0].v;
-    const float3 w  = rgData->pinhole[0].w;
-    const float2 d  = make_float2(
-        (2.0f * static_cast<float>(idx.x) / static_cast<float>(dim.x)) - 1.0,
-        (2.0f * static_cast<float>(idx.y) / static_cast<float>(dim.y)) - 1.0);
+    const uint3 idx   = optixGetLaunchIndex();
+    const uint3 dim   = optixGetLaunchDimensions();
+    auto* rgData      = reinterpret_cast<RayGenData*>(optixGetSbtDataPointer());
+    const float3 u    = rgData->pinhole[0].u;
+    const float3 v    = rgData->pinhole[0].v;
+    const float3 w    = rgData->pinhole[0].w;
+    unsigned int seed = params.seedBuffer[params.width * idx.y + idx.x];
+    //Jitter ?(possibility of biass)
+#if 0
+    rtlib::Xorshift32 xor32(seed);
+    const float2 jitter = rtlib::random_float2(xor32);
+    const float2 d = make_float2(
+        ((2.0f * static_cast<float>(idx.x) + jitter.x) / static_cast<float>(dim.x)) - 1.0,
+        ((2.0f * static_cast<float>(idx.y) + jitter.y) / static_cast<float>(dim.y)) - 1.0);
+    params.seedBuffer[params.width * idx.y + idx.x] = xor32.m_seed;
+#else
+    const float2 d = make_float2(
+        ((2.0f * static_cast<float>(idx.x) ) / static_cast<float>(dim.x)) - 1.0,
+        ((2.0f * static_cast<float>(idx.y) ) / static_cast<float>(dim.y)) - 1.0);
+#endif
     const float3 origin    = rgData->pinhole[0].eye;
     const float3 direction = rtlib::normalize(d.x * u + d.y * v + w);
     // printf("org: %f, %lf, %lf\n", origin.x   , origin.y   , origin.z);
@@ -86,7 +97,7 @@ extern "C" __global__ void __closesthit__first() {
     auto emission       = hgData->getEmissionColor(t);
     //printf("%f %f\n",t0.x,t0.y);
     auto prd            = getRadiancePRD();
-    prd->position       = p;
+    prd->position       = p+0.01f*normal;
     prd->normal         = normal;
     prd->emission       = emission;
     prd->diffuse        = diffuse;

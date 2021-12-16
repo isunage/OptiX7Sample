@@ -22,7 +22,7 @@ inline auto SpecifyMaterialType(const rtlib::ext::VariableMap& material) -> std:
 	}
 	else
 	{
-		return "Phong";
+		return "Diffuse";
 	}
 };
 using RayGRecord = rtlib::SBTRecord<RayGenData>;
@@ -130,8 +130,8 @@ void Test24PathOPXTracer::Initialize()
 	 if (width != m_Impl->m_Framebuffer->GetWidth() || height != m_Impl->m_Framebuffer->GetHeight()) {
 		 return;
 	 }
-	this->m_Impl->m_Params.cpuHandle[0].width  = width;
-	this->m_Impl->m_Params.cpuHandle[0].height = height;
+	this->m_Impl->m_Params.cpuHandle[0].width       = width;
+	this->m_Impl->m_Params.cpuHandle[0].height      = height;
 	this->m_Impl->m_Params.cpuHandle[0].accumBuffer = m_Impl->m_Framebuffer->GetComponent<test::RTCUDABufferFBComponent<float3>>("RAccum")->GetHandle().getDevicePtr();
 	this->m_Impl->m_Params.cpuHandle[0].frameBuffer = m_Impl->m_Framebuffer->GetComponent<test::RTCUGLBufferFBComponent<uchar4>>("RFrame")->GetHandle().map();
 	this->m_Impl->m_Params.cpuHandle[0].seedBuffer  = this->m_Impl->m_SeedBuffer.getDevicePtr();

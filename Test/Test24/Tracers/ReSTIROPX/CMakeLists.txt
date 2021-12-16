@@ -29,7 +29,7 @@ add_library(Test24_Tracer_ReSTIROPX STATIC
 add_custom_command(TARGET Test24_Tracer_ReSTIROPX PRE_BUILD  COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/cuda/RayTrace.h     ${TEST_TEST24_RESTIR_OPX_CUDA_PATH}/RayTrace.h  )
 add_custom_command(TARGET Test24_Tracer_ReSTIROPX POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/cuda/RayFirst.cu    ${TEST_TEST24_RESTIR_OPX_CUDA_PATH}/RayFirst.cu )
 add_custom_command(TARGET Test24_Tracer_ReSTIROPX POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/cuda/RaySecond.cu   ${TEST_TEST24_RESTIR_OPX_CUDA_PATH}/RaySecond.cu)
-add_custom_command(TARGET Test24_Tracer_ReSTIROPX POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/cuda/RayFirst.cu    ${TEST_TEST24_RESTIR_OPX_CUDA_PATH}/ReservoirReuse.cu )
+add_custom_command(TARGET Test24_Tracer_ReSTIROPX POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/cuda/ReservoirReuse.cu    ${TEST_TEST24_RESTIR_OPX_CUDA_PATH}/ReservoirReuse.cu )
 
 rtlib_compile_ptx(Test24_Tracer_ReSTIROPX ${TEST_TEST24_RESTIR_OPX_CUDA_PATH}/RayFirst.cu         ${TEST_TEST24_RESTIR_OPX_CUDA_PATH} )
 rtlib_compile_ptx(Test24_Tracer_ReSTIROPX ${TEST_TEST24_RESTIR_OPX_CUDA_PATH}/RaySecond.cu        ${TEST_TEST24_RESTIR_OPX_CUDA_PATH} )

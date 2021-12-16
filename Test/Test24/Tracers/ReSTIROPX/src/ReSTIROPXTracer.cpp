@@ -13,6 +13,8 @@ using MissRecord2 = rtlib::SBTRecord<MissData2>;
 using HitGRecord2 = rtlib::SBTRecord<HitgroupData2>;
 using Pipeline = rtlib::OPXPipeline;
 using ModuleMap = std::unordered_map<std::string, rtlib::OPXModule>;
+using CUDAModuleMap = std::unordered_map<std::string, rtlib::CUDAModule>;
+using CUDAFunctionMap = std::unordered_map<std::string, rtlib::CUDAFunction>;
 using RGProgramGroupMap = std::unordered_map<std::string, rtlib::OPXRaygenPG>;
 using MSProgramGroupMap = std::unordered_map<std::string, rtlib::OPXMissPG>;
 using HGProgramGroupMap = std::unordered_map<std::string, rtlib::OPXHitgroupPG>;
@@ -37,6 +39,8 @@ struct Test24ReSTIROPXTracer::Impl
 	{
 		Pipeline  m_Pipeline = {};
 		ModuleMap m_Modules = {};
+		CUDAModuleMap m_CUDAModules = {};
+		CUDAFunctionMap m_CUDAFunctions = {};
 		RGProgramGroupMap m_RGProgramGroups = {};
 		MSProgramGroupMap m_MSProgramGroups = {};
 		HGProgramGroupMap m_HGProgramGroups = {};
@@ -77,9 +81,10 @@ struct Test24ReSTIROPXTracer::Impl
 	const unsigned int& m_EventFlags;
 	FirstPipeline       m_First;
 	SecondPipeline      m_Second;
-	rtlib::CUDAUploadBuffer<MeshLight> m_MeshLights;
-	rtlib::CUDABuffer<Reservoir>       m_ResvBuffers[3];
-	rtlib::CUDABuffer<unsigned int>    m_SeedBuffer;
+	rtlib::CUDAUploadBuffer<MeshLight>     m_MeshLights;
+	rtlib::CUDABuffer<Reservoir<LightRec>> m_ResvBuffers[3];
+	rtlib::CUDABuffer<ReservoirState>      m_TempBuffer;
+	rtlib::CUDABuffer<unsigned int>        m_SeedBuffer;
 	unsigned int        m_LightHgRecIndex = 0;
 	unsigned int        m_PrvReservoirIdx = 0;
 	unsigned int        m_CurReservoirIdx = 1;
@@ -118,7 +123,6 @@ void Test24ReSTIROPXTracer::Launch(int width, int height, void* userData)
 	if (width != m_Impl->m_Framebuffer->GetWidth() || height != m_Impl->m_Framebuffer->GetHeight()) {
 		return;
 	}
-
 	m_Impl->m_NumCandidates = pUserData->numCandidates;
 
 	this->m_Impl->m_First.m_Params.cpuHandle[0].width = width;
@@ -127,6 +131,7 @@ void Test24ReSTIROPXTracer::Launch(int width, int height, void* userData)
 	this->m_Impl->m_First.m_Params.cpuHandle[0].normBuffer = m_Impl->m_Framebuffer->GetComponent<test::RTCUDABufferFBComponent<float3>>("GNormal")->GetHandle().getDevicePtr();
 	this->m_Impl->m_First.m_Params.cpuHandle[0].emitBuffer = m_Impl->m_Framebuffer->GetComponent<test::RTCUDABufferFBComponent<float3>>("GEmission")->GetHandle().getDevicePtr();
 	this->m_Impl->m_First.m_Params.cpuHandle[0].diffBuffer = m_Impl->m_Framebuffer->GetComponent<test::RTCUDABufferFBComponent<float3>>("GDiffuse")->GetHandle().getDevicePtr();
+	this->m_Impl->m_First.m_Params.cpuHandle[0].seedBuffer = m_Impl->m_SeedBuffer.getDevicePtr();
 	//TODO
 	cudaMemcpyAsync(this->m_Impl->m_First.m_Params.gpuHandle.getDevicePtr(), &this->m_Impl->m_First.m_Params.cpuHandle[0], sizeof(RayFirstParams), cudaMemcpyHostToDevice, pUserData->stream);
 	this->m_Impl->m_First.m_Pipeline.launch(pUserData->stream, this->m_Impl->m_First.m_Params.gpuHandle.getDevicePtr(), this->m_Impl->m_First.m_ShaderBindingTable, width, height, 1);
@@ -143,20 +148,70 @@ void Test24ReSTIROPXTracer::Launch(int width, int height, void* userData)
 	this->m_Impl->m_Second.m_Params.cpuHandle[0].emitBuffer      = m_Impl->m_Framebuffer->GetComponent<test::RTCUDABufferFBComponent<float3>>("GEmission")->GetHandle().getDevicePtr();
 	this->m_Impl->m_Second.m_Params.cpuHandle[0].diffBuffer      = m_Impl->m_Framebuffer->GetComponent<test::RTCUDABufferFBComponent<float3>>("GDiffuse")->GetHandle().getDevicePtr();
 	this->m_Impl->m_Second.m_Params.cpuHandle[0].accumBuffer     = m_Impl->m_Framebuffer->GetComponent<test::RTCUDABufferFBComponent<float3>>("RAccum")->GetHandle().getDevicePtr();
-	this->m_Impl->m_Second.m_Params.cpuHandle[0].resvBuffer      = m_Impl->m_ResvBuffers[m_Impl->m_FnlReservoirIdx].getDevicePtr();
+	this->m_Impl->m_Second.m_Params.cpuHandle[0].resvBuffer      = m_Impl->m_ResvBuffers[m_Impl->m_CurReservoirIdx].getDevicePtr();
+	this->m_Impl->m_Second.m_Params.cpuHandle[0].tempBuffer      = m_Impl->m_TempBuffer.getDevicePtr();
 	this->m_Impl->m_Second.m_Params.cpuHandle[0].frameBuffer     = m_Impl->m_Framebuffer->GetComponent<test::RTCUGLBufferFBComponent<uchar4>>("RFrame")->GetHandle().map();
 	this->m_Impl->m_Second.m_Params.cpuHandle[0].meshLights      = m_Impl->GetMeshLightList();
 
 	cudaMemcpyAsync(this->m_Impl->m_Second.m_Params.gpuHandle.getDevicePtr(), &this->m_Impl->m_Second.m_Params.cpuHandle[0], sizeof(RaySecondParams), cudaMemcpyHostToDevice, pUserData->stream);
 	this->m_Impl->m_Second.m_Pipeline.launch(pUserData->stream, this->m_Impl->m_Second.m_Params.gpuHandle.getDevicePtr()+0 , this->m_Impl->m_Second.m_ShaderBindingTableForInit, width, height, 1);
 	RTLIB_CU_CHECK(cuStreamSynchronize(pUserData->stream));
+	if(m_Impl->m_SamplePerAll>2){
+		std::cout << "(" << m_Impl->m_CurReservoirIdx << "," << m_Impl->m_PrvReservoirIdx << "," << m_Impl->m_FnlReservoirIdx << ")" << std::endl;
+		unsigned int kNumBlocks = 64;
+		uint2 numThreads = (make_uint2(width - 1, height - 1) / kNumBlocks) + make_uint2(1);
+		auto params = m_Impl->m_Second.m_Params.gpuHandle.getDevicePtr();
+		auto prvResvBuffer  = m_Impl->m_ResvBuffers[m_Impl->m_PrvReservoirIdx].getDevicePtr();
+		auto curResvBuffer  = m_Impl->m_ResvBuffers[m_Impl->m_CurReservoirIdx].getDevicePtr();
+		auto tmpStatBuffer  = m_Impl->m_TempBuffer.getDevicePtr();
+		void* args[] = {
+			reinterpret_cast<void*>(&prvResvBuffer),
+			reinterpret_cast<void*>(&curResvBuffer),
+			reinterpret_cast<void*>(&tmpStatBuffer),
+			reinterpret_cast<void*>(&params),
+			reinterpret_cast<void*>(&width),
+			reinterpret_cast<void*>(&height),
+		};
+		this->m_Impl->m_Second.m_CUDAFunctions["Second.TemporalCache"].launch(make_uint3(kNumBlocks, kNumBlocks, 1), make_uint3(numThreads, 1), 0, pUserData->stream, args, nullptr);
+		RTLIB_CU_CHECK(cuStreamSynchronize(pUserData->stream));
+	}
+	{
+		unsigned int kNumBlocks = 64;
+		int range = pUserData->spatialReuseRange;
+		
+		uint2 numThreads = (make_uint2(width - 1, height - 1) / kNumBlocks) + make_uint2(1);
+		auto params = m_Impl->m_Second.m_Params.gpuHandle.getDevicePtr();
+		int  sample = 30;
+		for (int i = 0; i < pUserData->iterationSpatialReuse;++i) {
+			auto inResvBuffer  = m_Impl->m_ResvBuffers[m_Impl->m_CurReservoirIdx].getDevicePtr();
+			auto outResvBuffer = m_Impl->m_ResvBuffers[m_Impl->m_FnlReservoirIdx].getDevicePtr();
+			auto tmpStatBuffer = m_Impl->m_TempBuffer.getDevicePtr();
+			void* args[] = {
+				reinterpret_cast<void*>(&inResvBuffer),
+				reinterpret_cast<void*>(&outResvBuffer),
+				reinterpret_cast<void*>(&tmpStatBuffer),
+				reinterpret_cast<void*>(&params),
+				reinterpret_cast<void*>(&width),
+				reinterpret_cast<void*>(&height),
+				reinterpret_cast<void*>(&sample),
+				reinterpret_cast<void*>(&range),
+			};
+			this->m_Impl->m_Second.m_CUDAFunctions["Second.SpatialCache"].launch(make_uint3(kNumBlocks, kNumBlocks, 1), make_uint3(numThreads, 1), 0, pUserData->stream, args, nullptr);
+			RTLIB_CU_CHECK(cuStreamSynchronize(pUserData->stream));
+			std::swap(m_Impl->m_CurReservoirIdx, m_Impl->m_FnlReservoirIdx);
+		}
+		
 
+		this->m_Impl->m_Second.m_Params.cpuHandle[0].resvBuffer = m_Impl->m_ResvBuffers[m_Impl->m_CurReservoirIdx].getDevicePtr();
+		cudaMemcpyAsync(this->m_Impl->m_Second.m_Params.gpuHandle.getDevicePtr(), &this->m_Impl->m_Second.m_Params.cpuHandle[0], sizeof(RaySecondParams), cudaMemcpyHostToDevice, pUserData->stream);
+	}
 	this->m_Impl->m_Second.m_Pipeline.launch(pUserData->stream, this->m_Impl->m_Second.m_Params.gpuHandle.getDevicePtr()+0 , this->m_Impl->m_Second.m_ShaderBindingTableForDraw, width, height, 1);
 	RTLIB_CU_CHECK(cuStreamSynchronize(pUserData->stream));
 
 	m_Impl->m_Framebuffer->GetComponent<test::RTCUGLBufferFBComponent<uchar4>>("RFrame")->GetHandle().unmap();
 	this->m_Impl->m_Second.m_Params.cpuHandle[0].samplePerALL += this->m_Impl->m_Second.m_Params.cpuHandle[0].samplePerLaunch;
 	this->m_Impl->m_SamplePerAll = this->m_Impl->m_Second.m_Params.cpuHandle[0].samplePerALL;
+	std::swap(m_Impl->m_CurReservoirIdx, m_Impl->m_PrvReservoirIdx);
 }
 
 void Test24ReSTIROPXTracer::CleanUp()
@@ -203,13 +258,17 @@ void Test24ReSTIROPXTracer::Update()
 		this->m_Impl->m_SeedBuffer.resize(this->m_Impl->m_Framebuffer->GetWidth() * this->m_Impl->m_Framebuffer->GetHeight());
 		this->m_Impl->m_SeedBuffer.upload(seedData);
 
-		std::vector<Reservoir> reservoirs(this->m_Impl->m_Framebuffer->GetWidth() * this->m_Impl->m_Framebuffer->GetHeight());
+		std::vector<Reservoir<LightRec>> reservoirs(this->m_Impl->m_Framebuffer->GetWidth() * this->m_Impl->m_Framebuffer->GetHeight());
 		this->m_Impl->m_ResvBuffers[0].resize(this->m_Impl->m_Framebuffer->GetWidth() * this->m_Impl->m_Framebuffer->GetHeight());
 		this->m_Impl->m_ResvBuffers[1].resize(this->m_Impl->m_Framebuffer->GetWidth() * this->m_Impl->m_Framebuffer->GetHeight());
 		this->m_Impl->m_ResvBuffers[2].resize(this->m_Impl->m_Framebuffer->GetWidth() * this->m_Impl->m_Framebuffer->GetHeight());
 		this->m_Impl->m_ResvBuffers[0].upload(reservoirs);
 		this->m_Impl->m_ResvBuffers[1].upload(reservoirs);
 		this->m_Impl->m_ResvBuffers[2].upload(reservoirs);
+
+		std::vector<ReservoirState> tempStates(this->m_Impl->m_Framebuffer->GetWidth() * this->m_Impl->m_Framebuffer->GetHeight(),{0.0f});
+		this->m_Impl->m_TempBuffer.resize(this->m_Impl->m_Framebuffer->GetWidth() * this->m_Impl->m_Framebuffer->GetHeight());
+		this->m_Impl->m_TempBuffer.upload(tempStates);
 	}
 	if ((this->m_Impl->m_EventFlags  & TEST24_EVENT_FLAG_UPDATE_LIGHT)  == TEST24_EVENT_FLAG_UPDATE_LIGHT)
 	{
@@ -229,10 +288,14 @@ void Test24ReSTIROPXTracer::InitFrameResources()
 	std::generate(seedData.begin(), seedData.end(), mt);
 	this->m_Impl->m_SeedBuffer = rtlib::CUDABuffer<uint32_t>(seedData);
 
-	std::vector<Reservoir> reservoirs(this->m_Impl->m_Framebuffer->GetWidth() * this->m_Impl->m_Framebuffer->GetHeight());
-	this->m_Impl->m_ResvBuffers[0] = rtlib::CUDABuffer<Reservoir>(reservoirs);
-	this->m_Impl->m_ResvBuffers[1] = rtlib::CUDABuffer<Reservoir>(reservoirs);
-	this->m_Impl->m_ResvBuffers[2] = rtlib::CUDABuffer<Reservoir>(reservoirs);
+	std::vector<Reservoir<LightRec>> reservoirs(this->m_Impl->m_Framebuffer->GetWidth() * this->m_Impl->m_Framebuffer->GetHeight());
+	this->m_Impl->m_ResvBuffers[0] = rtlib::CUDABuffer<Reservoir<LightRec>>(reservoirs);
+	this->m_Impl->m_ResvBuffers[1] = rtlib::CUDABuffer<Reservoir<LightRec>>(reservoirs);
+	this->m_Impl->m_ResvBuffers[2] = rtlib::CUDABuffer<Reservoir<LightRec>>(reservoirs);
+
+
+	std::vector<ReservoirState> tempStates(this->m_Impl->m_Framebuffer->GetWidth() * this->m_Impl->m_Framebuffer->GetHeight(), { 0.0f });
+	this->m_Impl->m_TempBuffer = rtlib::CUDABuffer<ReservoirState>(tempStates);
 }
 
 void Test24ReSTIROPXTracer::InitPipeline()
@@ -325,6 +388,16 @@ void Test24ReSTIROPXTracer::InitPipeline()
 		this->m_Impl->m_Second.m_MSProgramGroups["Second.Occluded"] = this->m_Impl->m_Second.m_Pipeline.createMissPG({ this->m_Impl->m_Second.m_Modules["RaySecond"], "__miss__occluded" });
 		this->m_Impl->m_Second.m_HGProgramGroups["Second.Occluded"] = this->m_Impl->m_Second.m_Pipeline.createHitgroupPG({ this->m_Impl->m_Second.m_Modules["RaySecond"], "__closesthit__occluded" }, {}, {});
 		this->m_Impl->m_Second.m_Pipeline.link(debugLinkOptions);
+	}
+	{
+		auto rayReSTIRPtxFile = std::ifstream(TEST_TEST24_RESTIR_OPX_CUDA_PATH "/ReservoirReuse.ptx", std::ios::binary);
+		if (!rayReSTIRPtxFile.is_open())
+			throw std::runtime_error("Failed To Load RaySecond.ptx!");
+		auto rayReSTIRPtxData = std::string((std::istreambuf_iterator<char>(rayReSTIRPtxFile)), (std::istreambuf_iterator<char>()));
+		rayReSTIRPtxFile.close(); 
+		this->m_Impl->m_Second.m_CUDAModules[ "ReservoirReuse"]        = rtlib::CUDAModule(rayReSTIRPtxData.data());
+		this->m_Impl->m_Second.m_CUDAFunctions["Second.SpatialCache"]  = this->m_Impl->m_Second.m_CUDAModules["ReservoirReuse"].getFunction( "combineSpatialReservoirs");
+		this->m_Impl->m_Second.m_CUDAFunctions["Second.TemporalCache"] = this->m_Impl->m_Second.m_CUDAModules["ReservoirReuse"].getFunction("combineTemporalReservoirs");
 	}
 }
 
@@ -536,6 +609,7 @@ void Test24ReSTIROPXTracer::InitLaunchParams()
 	this->m_Impl->m_First.m_Params.cpuHandle[0].normBuffer = m_Impl->m_Framebuffer->GetComponent<test::RTCUDABufferFBComponent<float3>>("GNormal")->GetHandle().getDevicePtr();
 	this->m_Impl->m_First.m_Params.cpuHandle[0].emitBuffer = m_Impl->m_Framebuffer->GetComponent<test::RTCUDABufferFBComponent<float3>>("GEmission")->GetHandle().getDevicePtr();
 	this->m_Impl->m_First.m_Params.cpuHandle[0].diffBuffer = m_Impl->m_Framebuffer->GetComponent<test::RTCUDABufferFBComponent<float3>>("GDiffuse")->GetHandle().getDevicePtr();
+	this->m_Impl->m_First.m_Params.cpuHandle[0].seedBuffer = m_Impl->m_SeedBuffer.getDevicePtr();
 	this->m_Impl->m_First.m_Params.Upload();
 	this->m_Impl->m_Second.m_Params.Alloc(1);
 	this->m_Impl->m_Second.m_Params.cpuHandle[0].gasHandle       = tlas->GetHandle();

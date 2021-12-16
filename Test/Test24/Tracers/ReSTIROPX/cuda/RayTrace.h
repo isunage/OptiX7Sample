@@ -32,8 +32,7 @@ namespace test24_restir
     {
         float3 position;
         float3 emission;
-        float  distance;
-        float  invPdf;
+        float3 normal;
     };
     struct MeshLight
     {
@@ -45,33 +44,32 @@ namespace test24_restir
         float3              emission;
         cudaTextureObject_t emissionTex;
         template<typename RNG>
-        RTLIB_INLINE RTLIB_HOST_DEVICE auto Sample(const float3& p_in, LightRec& lRec, RNG& rng)->float3
+        RTLIB_INLINE RTLIB_HOST_DEVICE auto Sample(const float3& p_in, LightRec& lRec, float& distance, float& invAreaProb, RNG& rng)->float3
         {
             auto triIdx = indices[rng.next() % indCount];
-            auto v0 = vertices[triIdx.x];
-            auto v1 = vertices[triIdx.y];
-            auto v2 = vertices[triIdx.z];
-            auto t0 = texCoords[triIdx.x];
-            auto t1 = texCoords[triIdx.y];
-            auto t2 = texCoords[triIdx.z];
+            auto v0     =  vertices[triIdx.x];
+            auto v1     =  vertices[triIdx.y];
+            auto v2     =  vertices[triIdx.z];
+            auto t0     = texCoords[triIdx.x];
+            auto t1     = texCoords[triIdx.y];
+            auto t2     = texCoords[triIdx.z];
             //normal
-            auto n0 = rtlib::cross(v1 - v0, v2 - v0);
+            auto n0     = rtlib::cross(v1 - v0, v2 - v0);
             //area light
-            auto dA = rtlib::length(n0) / 2.0f;
-            n0 = rtlib::normalize(n0);
-            auto bary     = rtlib::random_in_unit_triangle(make_float3(1.0f, 0.0f, 0.0f), make_float3(0.0f, 1.0f, 0.0f), make_float3(0.0f, 0.0f, 1.0f), rng);
-            auto p        = bary.x * v0 + bary.y * v1 + bary.z * v2;
-            auto t        = bary.x * t0 + bary.y * t1 + bary.z * t2;
-            auto e        = getEmissionColor(t);
-            auto w_out    = p - p_in;
-            auto d        = rtlib::length(w_out);
-            w_out         = rtlib::normalize(w_out);
-            auto lndl     = -rtlib::dot(w_out, n0);
-            auto invPdf   = lndl * dA * static_cast<float>(indCount) / (d * d);
+            auto dA     = rtlib::length(n0) / 2.0f;
+            n0          = rtlib::normalize(n0);
+            auto bary   = rtlib::random_in_unit_triangle(make_float3(1.0f, 0.0f, 0.0f), make_float3(0.0f, 1.0f, 0.0f), make_float3(0.0f, 0.0f, 1.0f), rng);
+            auto p      = bary.x * v0 + bary.y * v1 + bary.z * v2;
+            auto t      = bary.x * t0 + bary.y * t1 + bary.z * t2;
+            auto e      = getEmissionColor(t);
+            auto w_out  = p - p_in;
+            auto d      = rtlib::length(w_out);
+            w_out       = rtlib::normalize(w_out);
             lRec.position = p;
             lRec.emission = e;
-            lRec.distance = d;
-            lRec.invPdf = invPdf;
+            lRec.normal   = n0;
+            distance      = d;
+            invAreaProb   = dA * static_cast<float>(indCount);
             return w_out;
         };
 #ifdef __CUDACC__
@@ -92,23 +90,29 @@ namespace test24_restir
         unsigned int count;
         MeshLight* data;
     };
+    template<typename T>
     struct Reservoir
     {
         float        w     = 0.0f;
         float        w_sum = 0.0f;
-        unsigned int y     = 0;
         unsigned int m     = 0;
-
-        RTLIB_INLINE RTLIB_HOST_DEVICE void Update(unsigned int x_i, float w_i, float rnd01)
+        T            y     = {};
+        RTLIB_INLINE RTLIB_HOST_DEVICE bool Update(T x_i, float w_i, float rnd01)
         {
             w      = 0.0f;
             w_sum += w_i;
             ++m;
-            if ((w_i/w_sum) >= rnd01)
+            if ((w_i / w_sum) >= rnd01)
             {
                 y = x_i;
+                return true;
             }
+            return false;
         }
+    };
+    struct ReservoirState
+    {
+        float targetDensity;
     };
     struct RayFirstParams
     {
@@ -119,6 +123,7 @@ namespace test24_restir
         float3*                 normBuffer;
         float3*                 emitBuffer;
         float3*                 diffBuffer;
+        unsigned int*           seedBuffer;
     };
     struct RaySecondParams
     {
@@ -131,12 +136,13 @@ namespace test24_restir
         MeshLightList           meshLights;
         float3*                accumBuffer;
         uchar4*                frameBuffer;
-        float3*                 posiBuffer;
-        float3*                 normBuffer;
-        float3*                 emitBuffer;
-        float3*                 diffBuffer;
-        Reservoir*              resvBuffer;
-        unsigned int*           seedBuffer;
+        float3*                posiBuffer;
+        float3*                normBuffer;
+        float3*                emitBuffer;
+        float3*                diffBuffer;
+        Reservoir<LightRec>*   resvBuffer;
+        ReservoirState*        tempBuffer;
+        unsigned int*          seedBuffer;
     };
     struct RayGenData
     {
@@ -145,7 +151,7 @@ namespace test24_restir
     struct MissData {
         float4  bgColor;
     };
-    struct MissData2{};
+    struct MissData2 {};
     struct HitgroupData {
         float3* vertices;
         float3* normals;
@@ -193,6 +199,6 @@ namespace test24_restir
         }
 #endif
     };
-    struct HitgroupData2{};
+    struct HitgroupData2 {};
 }
 #endif

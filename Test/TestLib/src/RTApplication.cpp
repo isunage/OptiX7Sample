@@ -2,9 +2,15 @@
 
 int test::RTApplication::Run(int argc, const char** argv)
 {
-    this->SetArgs(argc, argv);
-    this->Initialize();
-    this->MainLoop();
+    try {
+
+        this->SetArgs(argc, argv);
+        this->Initialize();
+        this->MainLoop();
+    }
+    catch (std::runtime_error& err) {
+        std::cout << err.what() << std::endl;
+    }
     this->CleanUp();
     this->SetArgs(0, nullptr);
     return 0;

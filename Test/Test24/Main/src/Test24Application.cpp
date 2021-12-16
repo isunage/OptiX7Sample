@@ -112,6 +112,7 @@ void Test24Application::InitBase()
     m_FramePublicNames.push_back("DDiffuse");
     m_FramePublicNames.push_back("DSpecular");
     m_FramePublicNames.push_back("DTransmit");
+    m_FramePublicNames.push_back("DEmission");
     m_FramePublicNames.push_back("DShinness");
     m_FramePublicNames.push_back("DIOR");
     m_CurMainFrameName = "RFrame";
@@ -188,9 +189,9 @@ void Test24Application::RenderGui()
 
 void Test24Application::InitScene()
 {
-    /*if (m_ObjModelManager->LoadAsset("CornellBox-Water", TEST_TEST24_DATA_PATH"/Models/CornellBox/CornellBox-Water.obj")) {
-        m_CurObjModelName = "CornellBox-Water";
-    }*/
+    //if (m_ObjModelManager->LoadAsset("CornellBox-Water", TEST_TEST24_DATA_PATH"/Models/CornellBox/CornellBox-Water.obj")) {
+    //    m_CurObjModelName = "CornellBox-Water";
+    //}
     if (m_ObjModelManager->LoadAsset("Bistro-Exterior", TEST_TEST24_DATA_PATH"/Models/Bistro/Exterior/exterior.obj")) {
         m_CurObjModelName = "Bistro-Exterior";
     }
@@ -556,9 +557,11 @@ void Test24Application::Launch()
         if (name == "ReSTIROPX")
         {
             Test24ReSTIROPXTracer::UserData  userData = {};
-            userData.numCandidates = 16;
-            userData.isSync = true;
-            userData.stream = nullptr;
+            userData.spatialReuseRange     = 5;
+            userData.iterationSpatialReuse = 2;
+            userData.numCandidates         = 32;
+            userData.isSync                = true;
+            userData.stream                = nullptr;
             m_Tracers[name]->Launch(m_FbWidth, m_FbHeight, &userData);
         }
         if (name == "DebugOPX") {

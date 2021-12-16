@@ -27,6 +27,8 @@ public:
     struct UserData
     {
         unsigned int numCandidates;
+        unsigned int iterationSpatialReuse;
+        unsigned int spatialReuseRange;
         bool isSync;
         CUstream stream;
     };

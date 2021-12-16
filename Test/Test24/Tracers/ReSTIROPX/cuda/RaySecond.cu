@@ -102,40 +102,48 @@ extern "C" __global__ void     __raygen__init() {
     auto   normal    = params.normBuffer[params.width * idx.y + idx.x];
     auto   emission  = params.emitBuffer[params.width * idx.y + idx.x];
     auto   diffuse   = params.diffBuffer[params.width * idx.y + idx.x];
-    auto   origin    = params.posiBuffer[params.width * idx.y + idx.x] + 0.01f * normal;
+    auto   origin    = params.posiBuffer[params.width * idx.y + idx.x];
     auto   isNotDone =(emission.x == 0.0f) && (emission.y == 0.0f) && (emission.z == 0.0f);
-    Reservoir resv   = {};
+    Reservoir<LightRec> resv   = {};
+    float     p_y = 0.0f;
+    float     ldist_y = 0.0f;
+    float3    ldir_y = {};
     if (isNotDone) {
-        auto direction = rtlib::normalize(d.x * u + d.y * v + w);
+        auto direction   = rtlib::normalize(d.x * u + d.y * v + w);
         rtlib::Xorshift32 xor32(seed);
         for (int i = 0; i < params.numCandidates; ++i) {
-            auto   lightId  = xor32.next() % params.meshLights.count;
-            auto& meshLight = params.meshLights.data[lightId];
+            auto   lightId       = xor32.next() % params.meshLights.count;
+            auto& meshLight      = params.meshLights.data[lightId];
             LightRec lrec;
-            float3   ldir   = meshLight.Sample(origin, lrec, xor32);
-            float3   bsdf   = diffuse * RTLIB_M_INV_PI;
-            float3   le     = lrec.emission;
-            float    g_over_p = fabs(rtlib::dot(ldir, normal)) * lrec.invPdf;
-            float3   lp     = bsdf * le * g_over_p;
-            float    lp_a   = (lp.x + lp.y + lp.z) / 3.0f;
-            resv.Update(lightId, lp_a * static_cast<float>(params.meshLights.count), rtlib::random_float1(xor32));
+            float    ldist       = 0.0f;
+            float    invAreaProb = 0.0f;
+            float3   ldir        = meshLight.Sample(origin, lrec, ldist, invAreaProb, xor32);
+            //Bsdf
+            float3   bsdf        = diffuse * RTLIB_M_INV_PI;
+            //Emission
+            float3   le          = lrec.emission;
+            //Geometry
+            float    g           = fabs(rtlib::dot(ldir, normal)) * fabs(rtlib::dot(ldir, lrec.normal)) /(ldist * ldist);
+            //Target Candiates
+            float3   lp          = bsdf * le * g;
+            float    lp_a        = (lp.x + lp.y + lp.z) / 3.0f;
+            //invAreaProb
+            invAreaProb         *= static_cast<float>(params.meshLights.count);
+            if (resv.Update(lrec, lp_a * invAreaProb, rtlib::random_float1(xor32))) {
+                p_y              = lp_a;
+                ldist_y          = ldist;
+                ldir_y           = ldir;
+            }
         }
-        auto& meshLight   = params.meshLights.data[resv.y];
-        LightRec lrec;
-        float3   ldir     = meshLight.Sample(origin, lrec, xor32);
-        float3   bsdf     = diffuse * RTLIB_M_INV_PI;
-        float3   le       = lrec.emission;
-        float    g_over_p = fabs(rtlib::dot(ldir, normal)) * lrec.invPdf;
-        float3   lp       = bsdf * le * g_over_p;
-        float    lp_a     = (lp.x + lp.y + lp.z) / 3.0f;
-        if (resv.w_sum > 0.0f && lp_a > 0.0f) {
-            const bool occluded = traceOccluded(params.gasHandle, origin, ldir, 0.001f, lrec.distance - 0.001f);
-            resv.w = occluded ? 0.0f : (resv.w_sum / (lp_a * static_cast<float>(resv.m)));
+        if (resv.w_sum > 0.0f && p_y > 0.0f) {
+            const bool occluded = traceOccluded(params.gasHandle, origin, ldir_y, 0.01f, ldist_y - 0.01f);
+            resv.w = occluded ? 0.0f : (resv.w_sum / (p_y * static_cast<float>(resv.m)));
         }
         seed = xor32.m_seed;
     }
-    params.resvBuffer[params.width * idx.y + idx.x] = resv;
-    params.seedBuffer[params.width * idx.y + idx.x] = seed;
+    params.tempBuffer[params.width * idx.y + idx.x].targetDensity = p_y;
+    params.resvBuffer[params.width * idx.y + idx.x]               = resv;
+    params.seedBuffer[params.width * idx.y + idx.x]               = seed;
 }
 extern "C" __global__ void     __raygen__draw() {
     const uint3 idx  = optixGetLaunchIndex();
@@ -148,46 +156,45 @@ extern "C" __global__ void     __raygen__draw() {
         (2.0f * static_cast<float>(idx.x) / static_cast<float>(dim.x)) - 1.0,
         (2.0f * static_cast<float>(idx.y) / static_cast<float>(dim.y)) - 1.0);
     auto resv     = params.resvBuffer[params.width * idx.y + idx.x];
+    auto temp     = params.tempBuffer[params.width * idx.y + idx.x];
     auto seed     = params.seedBuffer[params.width * idx.y + idx.x];
     auto normal   = params.normBuffer[params.width * idx.y + idx.x];
     auto emission = params.emitBuffer[params.width * idx.y + idx.x];
     auto diffuse  = params.diffBuffer[params.width * idx.y + idx.x];
     auto origin   = params.posiBuffer[params.width * idx.y + idx.x];
-    auto result   = params.samplePerLaunch * emission;
+    auto result   = emission;
     auto direction= rtlib::normalize(d.x * u + d.y * v + w);
     auto isNotDone=(emission.x == 0.0f) && (emission.y == 0.0f) && (emission.z == 0.0f);
     if (isNotDone){
-        rtlib::Xorshift32 xor32(seed);
-        auto& meshLight = params.meshLights.data[resv.y];
-        for (int i = 0; i < params.samplePerLaunch; ++i) {
-            //unsigned int ldx  = xor32.next() % params.meshLights.count;
-            LightRec lrec;
-            float3   ldir     = meshLight.Sample(origin, lrec, xor32);
-            float3   bsdf     = diffuse * RTLIB_M_INV_PI;
-            float3   le       = lrec.emission;
-            float    g_over_p = fabs(rtlib::dot(ldir, normal)) * lrec.invPdf;
-            //float3   lp     = bsdf * le * g_over_p * static_cast<float>(params.meshLights.count);
-            float3   lp       = bsdf * le * g_over_p;
-            float    lp_a     =(lp.x + lp.y + lp.z) / 3.0f;
-            if (lp_a > 0.0f) {
-                const bool occluded = traceOccluded(params.gasHandle, origin, ldir, 0.001f, lrec.distance - 0.001f);
-                if (!occluded) {
-                    result   += lp * resv.w;
-                }
+        float3 ldir  = resv.y.position - origin;
+        //Distance
+        float  ldist = rtlib::length(ldir);
+        ldir /= static_cast<float>(ldist);
+        //Bsdf
+        float3 bsdf  = diffuse * RTLIB_M_INV_PI;
+        //Emission
+        float3 l_e   = resv.y.emission;
+        //Geometry 
+        float  g     = fabsf(rtlib::dot(normal, ldir)) * fabsf(rtlib::dot(resv.y.normal, ldir)) / (ldist * ldist);
+        //Indirect Illumination
+        float3 f     = bsdf * l_e * g;
+        if (resv.w > 0.0f) {
+            const bool occluded = traceOccluded(params.gasHandle, origin, ldir, 0.01f, ldist - 0.01f);
+            if (!occluded) {
+                result += f * resv.w;
             }
         }
-        seed   = xor32.m_seed;
     }
     const float3 prevAccumColor = params.accumBuffer[params.width * idx.y + idx.x];
     const float3 accumColor     = prevAccumColor + result;
-    float3 frameColor           = accumColor / (static_cast<float>(params.samplePerALL + params.samplePerLaunch));
+    float3 frameColor           = accumColor / (static_cast<float>(params.samplePerALL + 1));
     frameColor                  = frameColor / (make_float3(1.0f, 1.0f, 1.0f) + frameColor);
     params.frameBuffer[params.width * idx.y + idx.x] = make_uchar4(
         static_cast<unsigned char>(255.99 * rtlib::linear_to_gamma(frameColor.x)),
         static_cast<unsigned char>(255.99 * rtlib::linear_to_gamma(frameColor.y)),
         static_cast<unsigned char>(255.99 * rtlib::linear_to_gamma(frameColor.z)), 255);
     params.accumBuffer[params.width * idx.y + idx.x] = accumColor;
-    params.seedBuffer[params.width * idx.y + idx.x]  = seed;
+    params.seedBuffer [params.width * idx.y + idx.x] = seed;
 }
 extern "C" __global__ void __closesthit__occluded() {
     setPayloadOccluded(true);
