@@ -18,12 +18,13 @@ extern "C" __global__ void combineSpatialReservoirs(
         auto normal    = params->normBuffer[width * j + i];
         auto diffuse   = params->diffBuffer[width * j + i];
         auto seed      = params->seedBuffer[width * j + i];
+        auto distance  = params->distBuffer[width * j + i];
         auto xor32     = rtlib::Xorshift32(seed);
         Reservoir<LightRec> r;
         float p_q = tmpStatBuffer[width * j + i].targetDensity;
         //First: Combine CurResv
+        Reservoir<LightRec> curResv = inResvBuffer[width * j + i];
         {
-            Reservoir<LightRec> curResv = inResvBuffer[width * j + i];
             if (curResv.w_sum <= 0.0f) {
                 p_q           = 0.0f;
                 curResv.w_sum = 0.0f;
@@ -34,12 +35,22 @@ extern "C" __global__ void combineSpatialReservoirs(
         //Second: Combine NearResv
         for (int k = 0; k < sample; ++k)
         {
+            /**/
             int s = i + cosf(rtlib::random_float1(xor32) * RTLIB_M_2PI) * static_cast<float>(range);
             int t = j + sinf(rtlib::random_float1(xor32) * RTLIB_M_2PI) * static_cast<float>(range);
             if (s<0 || s > width - 1 || t<0 || t> height-1||((s==i)&&(t==j))) {
                 continue;
             }
-            auto   r_i   = inResvBuffer[width * t + s];
+            /**/
+            float3 near_normal   = params->normBuffer[t * width + s];
+            float  near_distance = params->distBuffer[t * width + s];
+            if (rtlib::dot(near_normal, normal) < 0.90f ||
+                fabsf((near_distance - distance)/distance) > 0.10f) {
+                continue;
+            }
+
+            auto r_i   = inResvBuffer[width * t + s];
+            
             float3 ldir  = r_i.y.position - origin;
             //Distance
             float  ldist = rtlib::length(ldir);

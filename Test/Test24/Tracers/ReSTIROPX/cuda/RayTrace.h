@@ -6,7 +6,7 @@
 #include <RTLib/math/Math.h>
 #include <RTLib/math/Random.h>
 #include <RTLib/math/VectorFunction.h>
-#include <RTLib/math/Math.h>
+#include <RTLib/math/Matrix.h>
 #include <RayTraceConfig.h>
 namespace test24_restir
 {
@@ -123,6 +123,7 @@ namespace test24_restir
         float3*                 normBuffer;
         float3*                 emitBuffer;
         float3*                 diffBuffer;
+        float *                 distBuffer;
         unsigned int*           seedBuffer;
     };
     struct RaySecondParams
@@ -140,9 +141,10 @@ namespace test24_restir
         float3*                normBuffer;
         float3*                emitBuffer;
         float3*                diffBuffer;
+        float*                 distBuffer;
+        unsigned int*          seedBuffer;
         Reservoir<LightRec>*   resvBuffer;
         ReservoirState*        tempBuffer;
-        unsigned int*          seedBuffer;
     };
     struct RayGenData
     {

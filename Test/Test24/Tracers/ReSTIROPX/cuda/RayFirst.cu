@@ -6,6 +6,7 @@ struct RadiancePRD {
     float3 normal;
     float3 emission;
     float3 diffuse;
+    float  distance;
 };
 extern "C" {
     __constant__ RayFirstParams params;
@@ -54,14 +55,13 @@ extern "C" __global__ void     __raygen__first() {
 #endif
     const float3 origin    = rgData->pinhole[0].eye;
     const float3 direction = rtlib::normalize(d.x * u + d.y * v + w);
-    // printf("org: %f, %lf, %lf\n", origin.x   , origin.y   , origin.z);
-    // printf("dir: %f, %lf, %lf\n", direction.x, direction.y, direction.z);
     RadiancePRD prd;
     trace(params.gasHandle, origin, direction, 0.0f, 1e16f, &prd);
     params.posiBuffer[params.width * idx.y + idx.x] = prd.position;
     params.normBuffer[params.width * idx.y + idx.x] = prd.normal;
     params.emitBuffer[params.width * idx.y + idx.x] = prd.emission;
     params.diffBuffer[params.width * idx.y + idx.x] = prd.diffuse;
+    params.distBuffer[params.width * idx.y + idx.x] = prd.distance;
 }
 extern "C" __global__ void       __miss__first() {
     auto* msData        = reinterpret_cast<MissData*>(optixGetSbtDataPointer());
@@ -70,6 +70,7 @@ extern "C" __global__ void       __miss__first() {
     prd->normal         = make_float3(0.0f);
     prd->emission       = make_float3(0.0f);
     prd->diffuse        = make_float3(0.0f);
+    prd->distance       = optixGetRayTmax();
 }
 extern "C" __global__ void __closesthit__first() {
     auto* hgData = reinterpret_cast<HitgroupData*>(optixGetSbtDataPointer());
@@ -101,5 +102,6 @@ extern "C" __global__ void __closesthit__first() {
     prd->normal         = normal;
     prd->emission       = emission;
     prd->diffuse        = diffuse;
+    prd->distance       = optixGetRayTmax();
 }
 

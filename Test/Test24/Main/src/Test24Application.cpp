@@ -78,23 +78,24 @@ void Test24Application::InitBase()
     glfwSetCursorPosCallback(m_Window, CursorPosCallback);
     m_Framebuffer = std::shared_ptr<test::RTFramebuffer>(new test::RTFramebuffer(m_FbWidth, m_FbHeight));
     //GBuffer
-    m_Framebuffer->AddComponent<test::RTCUDABufferFBComponent<float3>>("GPosition");
-    m_Framebuffer->AddComponent<test::RTCUDABufferFBComponent<float3>>("GNormal"  );
-    m_Framebuffer->AddComponent<test::RTCUDABufferFBComponent<float3>>("GDiffuse" );
-    m_Framebuffer->AddComponent<test::RTCUDABufferFBComponent<float3>>("GEmission");
-    //Render
-    m_Framebuffer->AddComponent<test::RTCUDABufferFBComponent<float3>>("RAccum");
-    m_Framebuffer->AddComponent<test::RTCUGLBufferFBComponent<uchar4>>("RFrame");
-    //Debug
-    m_Framebuffer->AddComponent<test::RTCUGLBufferFBComponent<uchar4>>("DNormal");
+    m_Framebuffer->AddComponent<test::RTCUDABufferFBComponent<float3>>("GPosition" );
+    m_Framebuffer->AddComponent<test::RTCUDABufferFBComponent<float3>>("GNormal"   );
+    m_Framebuffer->AddComponent<test::RTCUDABufferFBComponent<float3>>("GDiffuse"  );
+    m_Framebuffer->AddComponent<test::RTCUDABufferFBComponent<float3>>("GEmission" );
+    m_Framebuffer->AddComponent<test::RTCUDABufferFBComponent<float >>("GDistance" );
+    //Render 
+    m_Framebuffer->AddComponent<test::RTCUDABufferFBComponent<float3>>("RAccum"    );
+    m_Framebuffer->AddComponent<test::RTCUGLBufferFBComponent<uchar4>>("RFrame"    );
+    //Debug 
+    m_Framebuffer->AddComponent<test::RTCUGLBufferFBComponent<uchar4>>("DNormal"  );
     m_Framebuffer->AddComponent<test::RTCUGLBufferFBComponent<uchar4>>("DTexCoord");
     m_Framebuffer->AddComponent<test::RTCUGLBufferFBComponent<uchar4>>("DDistance");
-    m_Framebuffer->AddComponent<test::RTCUGLBufferFBComponent<uchar4>>("DDiffuse");
+    m_Framebuffer->AddComponent<test::RTCUGLBufferFBComponent<uchar4>>("DDiffuse" );
     m_Framebuffer->AddComponent<test::RTCUGLBufferFBComponent<uchar4>>("DSpecular");
     m_Framebuffer->AddComponent<test::RTCUGLBufferFBComponent<uchar4>>("DTransmit");
     m_Framebuffer->AddComponent<test::RTCUGLBufferFBComponent<uchar4>>("DEmission");
     m_Framebuffer->AddComponent<test::RTCUGLBufferFBComponent<uchar4>>("DShinness");
-    m_Framebuffer->AddComponent<test::RTCUGLBufferFBComponent<uchar4>>("DIOR");
+    m_Framebuffer->AddComponent<test::RTCUGLBufferFBComponent<uchar4>>("DIOR"     );
     m_Framebuffer->AddComponent<test::RTCUGLBufferFBComponent<uchar4>>("DSTreeCol");
     //Texture
     m_Framebuffer->AddComponent<test::RTGLTextureFBComponent<uchar4>>( "RTexture");
