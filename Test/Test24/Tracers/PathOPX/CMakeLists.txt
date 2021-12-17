@@ -23,10 +23,12 @@ add_library(Test24_Tracer_PathOPX STATIC
     ${CMAKE_CURRENT_SOURCE_DIR}/cuda/Callable.cu
 )
 
-add_custom_command(TARGET Test24_Tracer_PathOPX PRE_BUILD  COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/cuda/RayTrace.h     ${TEST_TEST24_PATH_OPX_CUDA_PATH}/RayTrace.h )
-add_custom_command(TARGET Test24_Tracer_PathOPX POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/cuda/RayTrace.cu    ${TEST_TEST24_PATH_OPX_CUDA_PATH}/RayTrace.cu)
-
-rtlib_compile_ptx(Test24_Tracer_PathOPX ${TEST_TEST24_PATH_OPX_CUDA_PATH}/RayTrace.cu   ${TEST_TEST24_PATH_OPX_CUDA_PATH} )
+add_custom_target(Test24_Tracer_PathOPX_Build_Kernel)
+add_custom_command(TARGET Test24_Tracer_PathOPX_Build_Kernel PRE_BUILD  COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/cuda/RayTrace.h     ${TEST_TEST24_PATH_OPX_CUDA_PATH}/RayTrace.h )
+add_custom_command(TARGET Test24_Tracer_PathOPX_Build_Kernel POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/cuda/RayTrace.cu    ${TEST_TEST24_PATH_OPX_CUDA_PATH}/RayTrace.cu)
+rtlib_compile_ptx(Test24_Tracer_PathOPX_Build_Kernel ${TEST_TEST24_PATH_OPX_CUDA_PATH}/RayTrace.cu   ${TEST_TEST24_PATH_OPX_CUDA_PATH} )
 
 target_include_directories(Test24_Tracer_PathOPX PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_BINARY_DIR}/cuda)
 target_link_libraries(Test24_Tracer_PathOPX PUBLIC  TestLib Test24_Share)
+add_dependencies(Test24_Tracer_PathOPX Test24_Tracer_PathOPX_Build_Kernel)
+set_target_properties(Test24_Tracer_PathOPX Test24_Tracer_PathOPX_Build_Kernel PROPERTIES FOLDER Test24/Tracers/PathOPX)

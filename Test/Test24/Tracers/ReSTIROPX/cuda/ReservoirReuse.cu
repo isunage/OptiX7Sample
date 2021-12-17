@@ -85,44 +85,59 @@ extern "C" __global__ void combineTemporalReservoirs(
     int                   height) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     int j = blockIdx.y * blockDim.y + threadIdx.y;
-    if (i < width && j < height) {
-        auto origin    = params->posiBuffer[width * j + i];
-        auto normal    = params->normBuffer[width * j + i];
-        auto diffuse   = params->diffBuffer[width * j + i];
-        auto seed      = params->seedBuffer[width * j + i];
-        auto xor32     = rtlib::Xorshift32(seed);
-        Reservoir<LightRec> r;
-        float p_q = tmpStatBuffer[width * j + i].targetDensity;
-        //First: Combine CurResv
-        {
-            Reservoir<LightRec> curResv = curResvBuffer[width * j + i];
-            if (curResv.w_sum <= 0.0f) {
-                p_q = 0.0f;
-                curResv.w_sum = 0.0f;
-            }
-            r.Update(curResv.y, p_q * curResv.w * static_cast<float>(curResv.m), rtlib::random_float1(xor32));
-            r.m = curResv.m;
-        }
-        {
-            auto prvResv   = prvResvBuffer[width * j + i];
-            prvResv.m = rtlib::min(prvResv.m, 20 * r.m);
-            //selective probability on current pixel
-            float3   ldir  = prvResv.y.position - origin;
-            float    ldist = rtlib::length(ldir);
-                     ldir /= static_cast<float>(ldist);
-            float3   bsdf  = diffuse * RTLIB_M_INV_PI;
-            float3   le    = prvResv.y.emission;
-            float    g     = fabs(rtlib::dot(ldir, normal)) * fabs(rtlib::dot(ldir, prvResv.y.normal)) / (ldist * ldist);
-            float3   lp    = bsdf * le * g;
-            float    lp_q  = (lp.x + lp.y + lp.z) / 3.0f;
-            if (r.Update(prvResv.y, lp_q * prvResv.w * static_cast<float>(prvResv.m), rtlib::random_float1(xor32))) {
-                p_q        = lp_q;
-            }
-            r.m += prvResv.m;
-        }
-        r.w = (p_q <= 0.0f) ? 0.0f : (r.w_sum / (static_cast<float>(r.m) * p_q));
-        curResvBuffer[width * j + i]               = r;
-        tmpStatBuffer[width * j + i].targetDensity = p_q;
-        params->seedBuffer[width * j + i]          = xor32.m_seed;
+    if (i >= width || j >= height) {
+        return;
     }
+    auto dIdx = params->motiBuffer[width * j + i];
+    int  s = i + dIdx.x;
+    int  t = j + dIdx.y;
+    if (s<0 || s >= width || t< 0 || t >= height) {
+        return;
+    }
+    auto curNormal   = params->normBuffer[width * j + i];
+    auto curDistance = params->distBuffer[width * j + i];
+    auto prvNormal   = params->normBuffer[width * t + s];
+    auto prvDistance = params->distBuffer[width * t + s];
+    if (rtlib::dot(curNormal, prvNormal) < 0.90f ||
+        fabsf((prvDistance - curDistance) / curDistance) > 0.10f) {
+        return;
+    }
+
+    auto origin     = params->posiBuffer[width * j + i];
+    auto curDiffuse = params->diffBuffer[width * j + i];
+    auto seed       = params->seedBuffer[width * j + i];
+    auto xor32      = rtlib::Xorshift32(seed);
+    Reservoir<LightRec> r;
+    float p_q = tmpStatBuffer[width * j + i].targetDensity;
+    //First: Combine CurResv
+    {
+        Reservoir<LightRec> curResv = curResvBuffer[width * j + i];
+        if (curResv.w_sum <= 0.0f) {
+            p_q = 0.0f;
+            curResv.w_sum = 0.0f;
+        }
+        r.Update(curResv.y, p_q * curResv.w * static_cast<float>(curResv.m), rtlib::random_float1(xor32));
+        r.m = curResv.m;
+    }
+    {
+        auto prvResv   = prvResvBuffer[width * t + s];
+        prvResv.m      = rtlib::min(prvResv.m, 20 * r.m);
+        //selective probability on current pixel
+        float3   ldir  = prvResv.y.position - origin;
+        float    ldist = rtlib::length(ldir);
+        ldir /= static_cast<float>(ldist);
+        float3   bsdf = curDiffuse * RTLIB_M_INV_PI;
+        float3   le   = prvResv.y.emission;
+        float    g    = fabs(rtlib::dot(ldir, curNormal)) * fabs(rtlib::dot(ldir, prvResv.y.normal)) / (ldist * ldist);
+        float3   lp   = bsdf * le * g;
+        float    lp_q = (lp.x + lp.y + lp.z) / 3.0f;
+        if (r.Update(prvResv.y, lp_q * prvResv.w * static_cast<float>(prvResv.m), rtlib::random_float1(xor32))) {
+            p_q = lp_q;
+        }
+        r.m += prvResv.m;
+    }
+    r.w = (p_q <= 0.0f) ? 0.0f : (r.w_sum / (static_cast<float>(r.m) * p_q));
+    curResvBuffer[width * j + i] = r;
+    tmpStatBuffer[width * j + i].targetDensity = p_q;
+    params->seedBuffer[width * j + i] = xor32.m_seed;
 }

@@ -36,9 +36,9 @@ extern "C" __global__ void     __raygen__first() {
     const uint3 idx   = optixGetLaunchIndex();
     const uint3 dim   = optixGetLaunchDimensions();
     auto* rgData      = reinterpret_cast<RayGenData*>(optixGetSbtDataPointer());
-    const float3 u    = rgData->pinhole[0].u;
-    const float3 v    = rgData->pinhole[0].v;
-    const float3 w    = rgData->pinhole[0].w;
+    const float3 u    = rgData->pinhole[FRAME_TYPE_CURRENT].u;
+    const float3 v    = rgData->pinhole[FRAME_TYPE_CURRENT].v;
+    const float3 w    = rgData->pinhole[FRAME_TYPE_CURRENT].w;
     unsigned int seed = params.seedBuffer[params.width * idx.y + idx.x];
     //Jitter ?(possibility of biass)
 #if 0
@@ -62,6 +62,24 @@ extern "C" __global__ void     __raygen__first() {
     params.emitBuffer[params.width * idx.y + idx.x] = prd.emission;
     params.diffBuffer[params.width * idx.y + idx.x] = prd.diffuse;
     params.distBuffer[params.width * idx.y + idx.x] = prd.distance;
+
+    if (params.updateMotion)
+    {
+        float3 curPosition = prd.position;
+        float3 prvCamEye   = rgData->pinhole[FRAME_TYPE_PREVIOUS].eye;
+        float3 prvCamU     = rgData->pinhole[FRAME_TYPE_PREVIOUS].u;
+        float3 prvCamV     = rgData->pinhole[FRAME_TYPE_PREVIOUS].v;
+        float3 prvCamW     = rgData->pinhole[FRAME_TYPE_PREVIOUS].w;
+        float3 prvEye2Pos  = prvCamEye - curPosition;
+        auto   prvDxyz     = rtlib::Matrix3x3(prvCamU, prvCamV, prvEye2Pos).Inverse() * make_float3(-prvCamW.x, -prvCamW.y, -prvCamW.z);
+        auto   prvIdx      = make_int2((prvDxyz.x + 1.0f) * static_cast<float>(params.width) / 2.0f, (prvDxyz.y + 1.0f) * static_cast<float>(params.height) / 2.0f);
+        params.motiBuffer[params.width * idx.y + idx.x] = make_int2( prvIdx.x - static_cast<int>(idx.x), prvIdx.y - static_cast<int>(idx.y));
+    }
+    else {
+        params.motiBuffer[params.width * idx.y + idx.x] = {0,0};
+    }
+
+    rgData->pinhole[FRAME_TYPE_PREVIOUS] = rgData->pinhole[FRAME_TYPE_CURRENT];
 }
 extern "C" __global__ void       __miss__first() {
     auto* msData        = reinterpret_cast<MissData*>(optixGetSbtDataPointer());

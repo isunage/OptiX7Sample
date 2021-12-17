@@ -15,6 +15,11 @@ namespace test24_restir
         RAY_TYPE_OCCLUSION = 1,
         RAY_TYPE_COUNT = 2,
     };
+    enum   FlameType {
+        FRAME_TYPE_CURRENT  = 0,
+        FRAME_TYPE_PREVIOUS,
+        FRAME_TYPE_COUNT
+    };
     enum   MaterialType {
         MATERIAL_TYPE_DIFFUSE = 0,
         MATERIAL_TYPE_SPECULAR,
@@ -114,6 +119,7 @@ namespace test24_restir
     {
         float targetDensity;
     };
+    //NOT OPTIMIZE
     struct RayFirstParams
     {
         unsigned int                 width;
@@ -125,7 +131,10 @@ namespace test24_restir
         float3*                 diffBuffer;
         float *                 distBuffer;
         unsigned int*           seedBuffer;
+        int2*                   motiBuffer;
+        bool                  updateMotion;
     };
+    //NOT OPTIMIZE
     struct RaySecondParams
     {
         unsigned int                 width;
@@ -137,14 +146,15 @@ namespace test24_restir
         MeshLightList           meshLights;
         float3*                accumBuffer;
         uchar4*                frameBuffer;
-        float3*                posiBuffer;
-        float3*                normBuffer;
-        float3*                emitBuffer;
-        float3*                diffBuffer;
-        float*                 distBuffer;
-        unsigned int*          seedBuffer;
-        Reservoir<LightRec>*   resvBuffer;
-        ReservoirState*        tempBuffer;
+        float3*                 posiBuffer;
+        float3*                 normBuffer;
+        float3*                 emitBuffer;
+        float3*                 diffBuffer;
+        float*                  distBuffer;
+        unsigned int*           seedBuffer;
+        int2*                   motiBuffer;
+        Reservoir<LightRec>*    resvBuffer;
+        ReservoirState*         tempBuffer;
     };
     struct RayGenData
     {

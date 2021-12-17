@@ -92,9 +92,9 @@ extern "C" __global__ void     __raygen__init() {
     const uint3 idx = optixGetLaunchIndex();
     const uint3 dim = optixGetLaunchDimensions();
     auto* rgData    = reinterpret_cast<RayGenData*>(optixGetSbtDataPointer());
-    const float3 u  = rgData->pinhole[0].u;
-    const float3 v  = rgData->pinhole[0].v;
-    const float3 w  = rgData->pinhole[0].w;
+    const float3 u  = rgData->pinhole[FRAME_TYPE_CURRENT].u;
+    const float3 v  = rgData->pinhole[FRAME_TYPE_CURRENT].v;
+    const float3 w  = rgData->pinhole[FRAME_TYPE_CURRENT].w;
     const float2 d  = make_float2(
         (2.0f * static_cast<float>(idx.x) / static_cast<float>(dim.x)) - 1.0,
         (2.0f * static_cast<float>(idx.y) / static_cast<float>(dim.y)) - 1.0);
@@ -144,14 +144,16 @@ extern "C" __global__ void     __raygen__init() {
     params.tempBuffer[params.width * idx.y + idx.x].targetDensity = p_y;
     params.resvBuffer[params.width * idx.y + idx.x]               = resv;
     params.seedBuffer[params.width * idx.y + idx.x]               = seed;
+
+    rgData->pinhole[FRAME_TYPE_PREVIOUS] = rgData->pinhole[FRAME_TYPE_CURRENT];
 }
 extern "C" __global__ void     __raygen__draw() {
     const uint3 idx  = optixGetLaunchIndex();
     const uint3 dim  = optixGetLaunchDimensions();
     auto* rgData     = reinterpret_cast<RayGenData*>(optixGetSbtDataPointer());
-    const float3 u   = rgData->pinhole[0].u;
-    const float3 v   = rgData->pinhole[0].v;
-    const float3 w   = rgData->pinhole[0].w;
+    const float3 u   = rgData->pinhole[FRAME_TYPE_CURRENT].u;
+    const float3 v   = rgData->pinhole[FRAME_TYPE_CURRENT].v;
+    const float3 w   = rgData->pinhole[FRAME_TYPE_CURRENT].w;
     const float2 d   = make_float2(
         (2.0f * static_cast<float>(idx.x) / static_cast<float>(dim.x)) - 1.0,
         (2.0f * static_cast<float>(idx.y) / static_cast<float>(dim.y)) - 1.0);
@@ -194,7 +196,9 @@ extern "C" __global__ void     __raygen__draw() {
         static_cast<unsigned char>(255.99 * rtlib::linear_to_gamma(frameColor.y)),
         static_cast<unsigned char>(255.99 * rtlib::linear_to_gamma(frameColor.z)), 255);
     params.accumBuffer[params.width * idx.y + idx.x] = accumColor;
-    params.seedBuffer [params.width * idx.y + idx.x] = seed;
+    params.seedBuffer[ params.width * idx.y + idx.x] = seed;
+
+    rgData->pinhole[FRAME_TYPE_PREVIOUS] = rgData->pinhole[FRAME_TYPE_CURRENT];
 }
 extern "C" __global__ void __closesthit__occluded() {
     setPayloadOccluded(true);

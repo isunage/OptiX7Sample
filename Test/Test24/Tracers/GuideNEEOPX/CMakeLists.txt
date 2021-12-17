@@ -42,11 +42,14 @@ add_library(Test24_Tracer_GuideNEEOPX STATIC
     ${CMAKE_CURRENT_SOURCE_DIR}/cuda/Callable.cu
 )
 
-add_custom_command(TARGET Test24_Tracer_GuideNEEOPX PRE_BUILD  COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/cuda/RayTrace.h     ${TEST_TEST24_GUIDE_NEE_OPX_CUDA_PATH}/RayTrace.h )
-add_custom_command(TARGET Test24_Tracer_GuideNEEOPX PRE_BUILD  COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/cuda/PathGuiding.h     ${TEST_TEST24_GUIDE_NEE_OPX_CUDA_PATH}/PathGuiding.h )
-add_custom_command(TARGET Test24_Tracer_GuideNEEOPX POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/cuda/RayGuide.cu    ${TEST_TEST24_GUIDE_NEE_OPX_CUDA_PATH}/RayGuide.cu)
+add_custom_target (Test24_Tracer_GuideNEEOPX_BUILD_KERNEL)
+add_custom_command(TARGET Test24_Tracer_GuideNEEOPX_BUILD_KERNEL PRE_BUILD  COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/cuda/RayTrace.h     ${TEST_TEST24_GUIDE_NEE_OPX_CUDA_PATH}/RayTrace.h )
+add_custom_command(TARGET Test24_Tracer_GuideNEEOPX_BUILD_KERNEL PRE_BUILD  COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/cuda/PathGuiding.h     ${TEST_TEST24_GUIDE_NEE_OPX_CUDA_PATH}/PathGuiding.h )
+add_custom_command(TARGET Test24_Tracer_GuideNEEOPX_BUILD_KERNEL POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/cuda/RayGuide.cu    ${TEST_TEST24_GUIDE_NEE_OPX_CUDA_PATH}/RayGuide.cu)
 
-rtlib_compile_ptx(Test24_Tracer_GuideNEEOPX ${TEST_TEST24_GUIDE_NEE_OPX_CUDA_PATH}/RayGuide.cu   ${TEST_TEST24_GUIDE_NEE_OPX_CUDA_PATH} )
+rtlib_compile_ptx(Test24_Tracer_GuideNEEOPX_BUILD_KERNEL ${TEST_TEST24_GUIDE_NEE_OPX_CUDA_PATH}/RayGuide.cu   ${TEST_TEST24_GUIDE_NEE_OPX_CUDA_PATH} )
 
 target_include_directories(Test24_Tracer_GuideNEEOPX PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_BINARY_DIR}/cuda)
 target_link_libraries(Test24_Tracer_GuideNEEOPX PUBLIC  TestLib Test24_Share)
+add_dependencies(Test24_Tracer_GuideNEEOPX Test24_Tracer_GuideNEEOPX_BUILD_KERNEL)
+set_target_properties(Test24_Tracer_GuideNEEOPX  Test24_Tracer_GuideNEEOPX_BUILD_KERNEL PROPERTIES  FOLDER Test24/Tracers/GuideNEEOPX )
