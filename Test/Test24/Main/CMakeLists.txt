@@ -1,13 +1,3 @@
-
-set(TEST_TEST24_NUM_RAY_TYPE 2)
-set(TEST_TEST24_DATA_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../../../Data"  )
-set(TEST_TEST24_RSLT_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../../../Result/Test/Test24")
-
-configure_file(
-    ${CMAKE_CURRENT_SOURCE_DIR}/Test24Config.h.in
-    ${CMAKE_CURRENT_BINARY_DIR}/Test24Config.h
-)
-
 add_executable(
     Test24
     ${CMAKE_CURRENT_SOURCE_DIR}/include/Test24Application.h
@@ -15,8 +5,6 @@ add_executable(
     ${CMAKE_CURRENT_SOURCE_DIR}/src/Test24Application.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/Test24Gui.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/Test24Config.h.in
-    ${CMAKE_CURRENT_BINARY_DIR}/Test24Config.h
 )
 
 target_include_directories(Test24 PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include ${CMAKE_CURRENT_BINARY_DIR})

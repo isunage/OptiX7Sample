@@ -90,7 +90,6 @@ struct Test24ReSTIROPXTracer::Impl
 	unsigned int        m_FnlReservoirIdx = 2;
 	unsigned int        m_SamplePerAll    = 0;
 	unsigned int        m_SamplePerLaunch = 1;
-	unsigned int        m_NumCandidates   = 1;
 	bool                m_UpdateMotion    = false;
 	rtlib::ext::Camera  m_Camera          = {};
 };
@@ -103,6 +102,13 @@ Test24ReSTIROPXTracer::Test24ReSTIROPXTracer(
 	m_Impl = std::make_unique<Test24ReSTIROPXTracer::Impl>(
 		Context, Framebuffer, CameraController, TextureManager, TopLevelAS, Materials, BgLightColor,eventFlags
 		);
+	this->GetVariables()->SetUInt32(  "NumCandidates" , 32);
+	this->GetVariables()->SetBool(    "ReuseTemporal" , true);
+	this->GetVariables()->SetBool(      "ReuseSpatial", true);
+	this->GetVariables()->SetUInt32(   "RangeSpatial" , 30);
+	this->GetVariables()->SetUInt32(  "SampleSpatial" , 5);
+	this->GetVariables()->SetUInt32("IterationSpatial", 4);
+
 }
 
 void Test24ReSTIROPXTracer::Initialize()
@@ -124,7 +130,6 @@ void Test24ReSTIROPXTracer::Launch(int width, int height, void* userData)
 	if (width != m_Impl->m_SharedFramebuffer->GetWidth() || height != m_Impl->m_SharedFramebuffer->GetHeight()) {
 		return;
 	}
-	m_Impl->m_NumCandidates = pUserData->numCandidates;
 
 	this->m_Impl->m_First.m_Params.cpuHandle[0].width        = width;
 	this->m_Impl->m_First.m_Params.cpuHandle[0].height       = height;
@@ -140,12 +145,12 @@ void Test24ReSTIROPXTracer::Launch(int width, int height, void* userData)
 	cudaMemcpyAsync(this->m_Impl->m_First.m_Params.gpuHandle.getDevicePtr(), &this->m_Impl->m_First.m_Params.cpuHandle[0], sizeof(RayFirstParams), cudaMemcpyHostToDevice, pUserData->stream);
 	this->m_Impl->m_First.m_Pipeline.launch(pUserData->stream, this->m_Impl->m_First.m_Params.gpuHandle.getDevicePtr(), this->m_Impl->m_First.m_ShaderBindingTable, width, height, 1);
 	RTLIB_CU_CHECK(cuStreamSynchronize(pUserData->stream));
-	
+
 	this->m_Impl->m_Second.m_Params.cpuHandle[0].width           = width;
 	this->m_Impl->m_Second.m_Params.cpuHandle[0].height          = height;
 	this->m_Impl->m_Second.m_Params.cpuHandle[0].samplePerALL    = m_Impl->m_SamplePerAll;
 	this->m_Impl->m_Second.m_Params.cpuHandle[0].samplePerLaunch = m_Impl->m_SamplePerLaunch;
-	this->m_Impl->m_Second.m_Params.cpuHandle[0].numCandidates   = m_Impl->m_NumCandidates;
+	this->m_Impl->m_Second.m_Params.cpuHandle[0].numCandidates   = GetVariables()->GetUInt32("NumCandidates");
 	this->m_Impl->m_Second.m_Params.cpuHandle[0].seedBuffer      = m_Impl->m_UniqueFramebuffer->GetComponent<test::RTCUDABufferFBComponent<unsigned int>>("Seed")->GetHandle().getDevicePtr();
 	this->m_Impl->m_Second.m_Params.cpuHandle[0].motiBuffer      = m_Impl->m_UniqueFramebuffer->GetComponent<test::RTCUDABufferFBComponent<int2>>  ("Motion2D"  )->GetHandle().getDevicePtr();
 	this->m_Impl->m_Second.m_Params.cpuHandle[0].curPosiBuffer   = m_Impl->m_SharedFramebuffer->GetComponent<test::RTCUDABufferFBComponent<float3>>("GPosition" )->GetHandle().getDevicePtr();
@@ -166,10 +171,10 @@ void Test24ReSTIROPXTracer::Launch(int width, int height, void* userData)
 	this->m_Impl->m_Second.m_Pipeline.launch(pUserData->stream, this->m_Impl->m_Second.m_Params.gpuHandle.getDevicePtr() , this->m_Impl->m_Second.m_ShaderBindingTableForInit, width, height, 1);
 	RTLIB_CU_CHECK(cuStreamSynchronize(pUserData->stream));
 
-	if(m_Impl->m_UpdateMotion){
+	if(m_Impl->m_UpdateMotion && GetVariables()->GetBool("ReuseTemporal")) {
 		unsigned int kNumBlocks = 64;
-		uint2 numThreads = (make_uint2(width - 1, height - 1) / kNumBlocks) + make_uint2(1);
-		auto params = m_Impl->m_Second.m_Params.gpuHandle.getDevicePtr();
+		uint2 numThreads    = (make_uint2(width - 1, height - 1) / kNumBlocks) + make_uint2(1);
+		auto params         = m_Impl->m_Second.m_Params.gpuHandle.getDevicePtr();
 		auto prvResvBuffer  = m_Impl->m_UniqueFramebuffer->GetComponent<test::RTCUDABufferFBComponent<Reservoir<LightRec>>>("Reservoir" + std::to_string(m_Impl->m_PrvReservoirIdx))->GetHandle().getDevicePtr();
 		auto curResvBuffer  = m_Impl->m_UniqueFramebuffer->GetComponent<test::RTCUDABufferFBComponent<Reservoir<LightRec>>>("Reservoir" + std::to_string(m_Impl->m_CurReservoirIdx))->GetHandle().getDevicePtr();
 		auto tmpStatBuffer  = m_Impl->m_UniqueFramebuffer->GetComponent<test::RTCUDABufferFBComponent<ReservoirState>>("ResvState")->GetHandle().getDevicePtr();
@@ -186,17 +191,14 @@ void Test24ReSTIROPXTracer::Launch(int width, int height, void* userData)
 		this->m_Impl->m_Second.m_CUDAFunctions["Second.TemporalCache"].launch(make_uint3(kNumBlocks, kNumBlocks, 1), make_uint3(numThreads, 1), 0, pUserData->stream, args, nullptr);
 		RTLIB_CU_CHECK(cuStreamSynchronize(pUserData->stream));
 	}
-	else {
-		std::cout << "PrvResvBuffer is Invalid" << std::endl;
-	}
-	{
+	if (GetVariables()->GetBool("ReuseSpatial")) {
 		unsigned int kNumBlocks = 64;
-		int range = pUserData->spatialReuseRange;
+		int range = GetVariables()->GetUInt32("RangeSpatial");
 		
 		uint2 numThreads = (make_uint2(width - 1, height - 1) / kNumBlocks) + make_uint2(1);
 		auto params = m_Impl->m_Second.m_Params.gpuHandle.getDevicePtr();
-		int  sample = 5;
-		for (int i = 0; i < pUserData->iterationSpatialReuse;++i) {
+		int  sample = GetVariables()->GetUInt32("SampleSpatial");
+		for (int i  = 0; i < this->GetVariables()->GetUInt32("IterationSpatial"); ++i) {
 			auto inResvBuffer  = m_Impl->m_UniqueFramebuffer->GetComponent<test::RTCUDABufferFBComponent<Reservoir<LightRec>>>("Reservoir" + std::to_string(m_Impl->m_CurReservoirIdx))->GetHandle().getDevicePtr();
 			auto outResvBuffer = m_Impl->m_UniqueFramebuffer->GetComponent<test::RTCUDABufferFBComponent<Reservoir<LightRec>>>("Reservoir" + std::to_string(m_Impl->m_FnlReservoirIdx))->GetHandle().getDevicePtr();
 			auto tmpStatBuffer = m_Impl->m_UniqueFramebuffer->GetComponent<test::RTCUDABufferFBComponent<ReservoirState>>("ResvState")->GetHandle().getDevicePtr();
@@ -700,7 +702,7 @@ void Test24ReSTIROPXTracer::InitLaunchParams()
 	this->m_Impl->m_Second.m_Params.cpuHandle[0].height          = this->m_Impl->m_SharedFramebuffer->GetHeight();
 	this->m_Impl->m_Second.m_Params.cpuHandle[0].samplePerALL    = m_Impl->m_SamplePerAll;
 	this->m_Impl->m_Second.m_Params.cpuHandle[0].samplePerLaunch = m_Impl->m_SamplePerLaunch;
-	this->m_Impl->m_Second.m_Params.cpuHandle[0].numCandidates   = m_Impl->m_NumCandidates;
+	this->m_Impl->m_Second.m_Params.cpuHandle[0].numCandidates   = GetVariables()->GetUInt32("NumCandidates");
 	this->m_Impl->m_Second.m_Params.cpuHandle[0].seedBuffer      = m_Impl->m_UniqueFramebuffer->GetComponent<test::RTCUDABufferFBComponent<unsigned int>>("Seed")->GetHandle().getDevicePtr();
 	this->m_Impl->m_Second.m_Params.cpuHandle[0].motiBuffer      = m_Impl->m_UniqueFramebuffer->GetComponent<test::RTCUDABufferFBComponent<int2>>(  "Motion2D" )->GetHandle().getDevicePtr();
 	this->m_Impl->m_Second.m_Params.cpuHandle[0].curPosiBuffer   = m_Impl->m_SharedFramebuffer->GetComponent<test::RTCUDABufferFBComponent<float3>>("GPosition")->GetHandle().getDevicePtr();

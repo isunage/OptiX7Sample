@@ -624,11 +624,8 @@ void Test24Application::Launch()
         if (name == "ReSTIROPX")
         {
             Test24ReSTIROPXTracer::UserData  userData = {};
-            userData.spatialReuseRange     = 30;
-            userData.iterationSpatialReuse = 4;
-            userData.numCandidates         = 32;
-            userData.isSync                = true;
-            userData.stream                = nullptr;
+            userData.isSync                           = true;
+            userData.stream                           = nullptr;
             m_Tracers[name]->Launch(m_FbWidth, m_FbHeight, &userData);
         }
         if (name == "DebugOPX") {

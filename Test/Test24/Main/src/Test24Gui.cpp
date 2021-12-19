@@ -347,7 +347,7 @@ private:
     const float& m_CurFrameTime;
     const float& m_DelFrameTime;
 };
-class TraceConfigGuiWindow:public test::RTGuiWindow {
+class       TraceConfigGuiWindow:public test::RTGuiWindow {
 private:
     using TracerVariableMap = std::unordered_map < std::string, std::shared_ptr<rtlib::ext::VariableMap>>;
 public:
@@ -391,7 +391,44 @@ private:
 public:
     ReSTIRTraceConfigGuiWindow(const TracerVariableMap& tracerVariables_, unsigned int& eventFlags_)noexcept : TraceConfigGuiWindow("ReSTIROPX", tracerVariables_,eventFlags_) {}
     virtual void DrawGui()override {
+        auto variable = GetVariable();
+        if (variable) {
+            int numCandidates = variable->GetUInt32("NumCandidates");
+            if (ImGui::SliderInt("NumCandidates", &numCandidates, 1, 64)) {
+                variable->SetUInt32("NumCandidates", numCandidates);
+                SetEvent(TEST24_EVENT_FLAG_CHANGE_TRACE);
+            }
+            bool temporalReuse = variable->GetBool("ReuseTemporal");
+            if (ImGui::Checkbox("Temporal Reuse", &temporalReuse))
+            {
+                variable->SetBool("ReuseTemporal", temporalReuse);
+                SetEvent(TEST24_EVENT_FLAG_CHANGE_TRACE);
+            }
 
+            bool  spatialReuse = variable->GetBool("ReuseSpatial");
+            if (ImGui::Checkbox("Spatial Reuse", &spatialReuse))
+            {
+                variable->SetBool("ReuseSpatial", spatialReuse);
+                SetEvent(TEST24_EVENT_FLAG_CHANGE_TRACE);
+            }
+            if (spatialReuse) {
+                int iter  = variable->GetUInt32("IterationSpatial");
+                if (ImGui::SliderInt("Iteration", &iter, 1, 10)) {
+                    variable->SetUInt32("IterationSpatial", iter);
+                    SetEvent(TEST24_EVENT_FLAG_CHANGE_TRACE);
+                }
+                int range = variable->GetUInt32("RangeSpatial");
+                if (ImGui::SliderInt("Range", &range, 1, 100)) {
+                    variable->SetUInt32("RangeSpatial", range);
+                    SetEvent(TEST24_EVENT_FLAG_CHANGE_TRACE);
+                }
+                int sample = variable->GetUInt32("SampleSpatial");
+                if (ImGui::SliderInt("Sample", &sample, 1, 10)) {
+                    variable->SetUInt32("SampleSpatial", sample);
+                    SetEvent(TEST24_EVENT_FLAG_CHANGE_TRACE);
+                }
+            }
+        }
     }
     virtual ~ReSTIRTraceConfigGuiWindow()noexcept {}
 private:

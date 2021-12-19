@@ -17,7 +17,7 @@ extern "C" __global__ void combineSpatialReservoirs(
         auto origin    = params->curPosiBuffer[width * j + i];
         auto normal    = params->curNormBuffer[width * j + i];
         auto diffuse   = params->curDiffBuffer[width * j + i];
-        auto a_diffuse = (diffuse.x + diffuse.y + diffuse.z) / 3.0f;
+        auto a_diffuse = (0.2126f * diffuse.x + 0.7152f * diffuse.y + 0.0722 * diffuse.z);
         auto seed      = params->seedBuffer[width * j + i];
         auto distance  = params->distBuffer[width * j + i];
         auto xor32     = rtlib::Xorshift32(seed);
@@ -46,7 +46,7 @@ extern "C" __global__ void combineSpatialReservoirs(
             float3 near_diffuse  =    params->curDiffBuffer[t * width + s];
             float3 near_normal   = params->curNormBuffer[t * width + s];
             float  near_distance =    params->distBuffer[t * width + s];
-            float  near_a_diffuse= (near_diffuse.x + near_diffuse.y + near_diffuse.z) / 3.0f;
+            float  near_a_diffuse= (0.2126f * near_diffuse.x + 0.7152f * near_diffuse.y + 0.0722 * near_diffuse.z);
             
             if (rtlib::dot(near_normal, normal) < 0.90f ||
                 fabsf((near_distance - distance)/distance)  > 0.10f ||
@@ -106,8 +106,8 @@ extern "C" __global__ void combineTemporalReservoirs(
     auto prvNormal   = params->prvNormBuffer[width * t + s];
     auto curDiffuse  = params->curDiffBuffer[width * j + i];
     auto prvDiffuse  = params->prvDiffBuffer[width * t + s];
-    auto cDiffuse_a  = (curDiffuse.x + curDiffuse.y + curDiffuse.z) / 3.0f;
-    auto pDiffuse_a  = (prvDiffuse.x + prvDiffuse.y + prvDiffuse.z) / 3.0f;
+    auto cDiffuse_a  = (0.2126f * curDiffuse.x + 0.7152f* curDiffuse.y + 0.0722 * curDiffuse.z) ;
+    auto pDiffuse_a  = (0.2126f * prvDiffuse.x + 0.7152f* prvDiffuse.y + 0.0722 * prvDiffuse.z) ;
     auto prvDistance = rtlib::length(prvPosition-camEye);
     
     if (rtlib::dot(curNormal, prvNormal) < 0.90f ||
