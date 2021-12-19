@@ -1,7 +1,7 @@
 #define __CUDACC__
 #include "RayTrace.h"
 #include "PathGuiding.h"
-using namespace test24_nee_guide;
+using namespace test24_wrs_guide;
 struct RadiancePRD {
     DTreeWrapper* dTree;
     float3        dTreeVoxelSize;
@@ -708,8 +708,8 @@ extern "C" __global__ void __closesthit__radiance_for_diffuse_pg_nee_with_nee_li
             resv.w = occluded ? 0.0f : (resv.w_sum / (f_a_y * static_cast<float>(resv.m)));
         }
         auto  weight = f_y * resv.w;
-#endif
         prd->radiance += prvThroughPut * weight;
+#endif
     }
     prd->countEmitted = false;
     prd->seed = xor32.m_seed;
@@ -802,6 +802,7 @@ extern "C" __global__ void __closesthit__radiance_for_diffuse_pg_nee_with_def_li
         prd->cosine = cosine2;
     }
     {
+#if 0  
         LightRec lRec = {};
         auto& light = params.light.data[xor32.next() % params.light.count];
         auto  distance = 0.0f;
@@ -822,6 +823,40 @@ extern "C" __global__ void __closesthit__radiance_for_diffuse_pg_nee_with_def_li
             }
         }
         prd->radiance += prvThroughPut * weight;
+#else 
+        Reservoir<LightRec> resv = {};
+        auto f_y = make_float3(0.0f);
+        auto f_a_y = 0.0f;
+        auto lightDir_y = make_float3(0.0f);
+        auto distance_y = 0.0f;
+        for (int i = 0; i < 32; ++i) {
+            LightRec lRec = {};
+            auto& light = params.light.data[xor32.next() % params.light.count];
+            auto  distance = 0.0f;
+            auto  invAreaP = 0.0f;
+            auto  lightDir = light.Sample(position, lRec, distance, invAreaP, xor32);
+            auto  ndl = rtlib::dot(lightDir, normal);
+            auto  emission = lRec.emission;
+            auto  bsdf = diffuse*RTLIB_M_INV_PI;
+            auto  g = ndl * fabsf(rtlib::dot(lightDir, lRec.normal)) / (distance * distance);
+            invAreaP *= static_cast<float>(params.light.count);
+            auto  f = emission * bsdf * g;
+            auto  f_a = (f.x + f.y + f.z) / 3.0f;
+            if (resv.Update(lRec, f_a * invAreaP, rtlib::random_float1(xor32))) {
+                f_y = f;
+                f_a_y = f_a;
+                lightDir_y = lightDir;
+                distance_y = distance;
+            }
+        }
+        if (resv.w_sum > 0.0f && f_a_y > 0.0f) {
+            const bool occluded = traceOccluded(params.gasHandle, position, lightDir_y, 0.01f, distance_y - 0.01f);
+            resv.w = occluded ? 0.0f : (resv.w_sum / (f_a_y * static_cast<float>(resv.m)));
+        }
+        auto  weight = f_y * resv.w;
+        prd->radiance += prvThroughPut * weight;
+#endif
+        
     }
     prd->countEmitted = false;
     prd->seed = xor32.m_seed;
@@ -1361,6 +1396,7 @@ extern "C" __global__ void __closesthit__radiance_for_phong_pg_nee_with_nee_ligh
         }
         {
             const auto  diffuseLobe = diffuse / (a_diffuse * RTLIB_M_PI);
+#if 0  
             LightRec lRec = {};
             auto& light = params.light.data[xor32.next() % params.light.count];
             auto  distance = 0.0f;
@@ -1381,6 +1417,39 @@ extern "C" __global__ void __closesthit__radiance_for_phong_pg_nee_with_nee_ligh
                 }
             }
             prd->radiance += prvThroughPut * weight;
+#else 
+            Reservoir<LightRec> resv = {};
+            auto f_y = make_float3(0.0f);
+            auto f_a_y = 0.0f;
+            auto lightDir_y = make_float3(0.0f);
+            auto distance_y = 0.0f;
+            for (int i = 0; i < 32; ++i) {
+                LightRec lRec = {};
+                auto& light = params.light.data[xor32.next() % params.light.count];
+                auto  distance = 0.0f;
+                auto  invAreaP = 0.0f;
+                auto  lightDir = light.Sample(position, lRec, distance, invAreaP, xor32);
+                auto  ndl = rtlib::dot(lightDir, normal);
+                auto  emission = lRec.emission;
+                auto  bsdf = diffuseLobe;
+                auto  g = ndl * fabsf(rtlib::dot(lightDir, lRec.normal)) / (distance * distance);
+                invAreaP *= static_cast<float>(params.light.count);
+                auto  f = emission * bsdf * g;
+                auto  f_a = (f.x + f.y + f.z) / 3.0f;
+                if (resv.Update(lRec, f_a * invAreaP, rtlib::random_float1(xor32))) {
+                    f_y = f;
+                    f_a_y = f_a;
+                    lightDir_y = lightDir;
+                    distance_y = distance;
+                }
+            }
+            if (resv.w_sum > 0.0f && f_a_y > 0.0f) {
+                const bool occluded = traceOccluded(params.gasHandle, position, lightDir_y, 0.01f, distance_y - 0.01f);
+                resv.w = occluded ? 0.0f : (resv.w_sum / (f_a_y * static_cast<float>(resv.m)));
+            }
+            auto  weight = f_y * resv.w;
+            prd->radiance += prvThroughPut * weight;
+#endif
         }
         prd->countEmitted = false;
     }
@@ -1522,19 +1591,20 @@ extern "C" __global__ void __closesthit__radiance_for_phong_pg_nee_with_def_ligh
         }
         {
             const auto  diffuseLobe = diffuse / (a_diffuse * RTLIB_M_PI);
+#if 0
             LightRec lRec = {};
-            auto& light = params.light.data[xor32.next() % params.light.count];
+            auto& light    = params.light.data[xor32.next() % params.light.count];
             auto  distance = 0.0f;
             auto  invAreaP = 0.0f;
             auto  lightDir = light.Sample(position, lRec, distance, invAreaP, xor32);
-            auto  ndl = rtlib::dot(lightDir, normal);
+            auto  ndl      = rtlib::dot(lightDir, normal);
             auto  emission = lRec.emission;
-            auto  bsdf = diffuseLobe;
-            auto  g = ndl * fabsf(rtlib::dot(lightDir, lRec.normal)) / (distance * distance);
-            invAreaP *= static_cast<float>(params.light.count);
-            auto  f = emission * bsdf * g;
-            auto  f_a = (f.x + f.y + f.z) / 3.0f;
-            auto  weight = make_float3(0.0f);
+            auto  bsdf     = diffuseLobe;
+            auto  g        = ndl * fabsf(rtlib::dot(lightDir, lRec.normal)) / (distance * distance);
+            invAreaP      *= static_cast<float>(params.light.count);
+            auto  f        = emission * bsdf * g;
+            auto  f_a      = (f.x + f.y + f.z) / 3.0f;
+            auto  weight   = make_float3(0.0f);
             if (f_a > 0.0f && invAreaP > 0.0f) {
                 const bool occluded = traceOccluded(params.gasHandle, position, lightDir, 0.01f, distance - 0.01f);
                 if (!occluded) {
@@ -1542,6 +1612,39 @@ extern "C" __global__ void __closesthit__radiance_for_phong_pg_nee_with_def_ligh
                 }
             }
             prd->radiance += prvThroughPut * weight;
+#else
+            Reservoir<LightRec> resv = {};
+            auto f_y   = make_float3(0.0f);
+            auto f_a_y = 0.0f;
+            auto lightDir_y = make_float3(0.0f);
+            auto distance_y = 0.0f;
+            for (int i = 0; i < 32; ++i) {
+                LightRec lRec = {};
+                auto& light = params.light.data[xor32.next() % params.light.count];
+                auto  distance = 0.0f;
+                auto  invAreaP = 0.0f;
+                auto  lightDir = light.Sample(position, lRec, distance, invAreaP, xor32);
+                auto  ndl = rtlib::dot(lightDir, normal);
+                auto  emission = lRec.emission;
+                auto  bsdf = diffuseLobe;
+                auto  g = ndl * fabsf(rtlib::dot(lightDir, lRec.normal)) / (distance * distance);
+                invAreaP *= static_cast<float>(params.light.count);
+                auto  f = emission * bsdf * g;
+                auto  f_a = (f.x + f.y + f.z) / 3.0f;
+                if (resv.Update(lRec, f_a * invAreaP, rtlib::random_float1(xor32))) {
+                    f_y = f;
+                    f_a_y = f_a;
+                    lightDir_y = lightDir;
+                    distance_y = distance;
+                }
+            }
+            if (resv.w_sum > 0.0f && f_a_y > 0.0f) {
+                const bool occluded = traceOccluded(params.gasHandle, position, lightDir_y, 0.01f, distance_y - 0.01f);
+                resv.w = occluded ? 0.0f : (resv.w_sum / (f_a_y * static_cast<float>(resv.m)));
+            }
+            auto  weight = f_y * resv.w;
+            prd->radiance += prvThroughPut * weight;
+#endif
         }
         prd->countEmitted = false;
     }

@@ -5,8 +5,9 @@
 #include <PathOPXTracer.h>
 #include <NEEOPXTracer.h>
 #include <GuidePathOPXTracer.h>
+#include < GuideWRSOPXTracer.h>
 #include < GuideNEEOPXTracer.h>
-#include <ReSTIROPXTracer.h>
+#include <   ReSTIROPXTracer.h>
 #include <Test24Config.h>
 #include <filesystem>
 Test24Application::Test24Application(int fbWidth, int fbHeight, std::string name) noexcept : test::RTApplication(name)
@@ -34,6 +35,7 @@ Test24Application::Test24Application(int fbWidth, int fbHeight, std::string name
     m_Tracers          = {};
     m_FramePublicNames = {};
     m_TracePublicNames = {};
+    m_TracerVariables  = {};
 }
 
 auto Test24Application::New(int fbWidth, int fbHeight, std::string name) noexcept -> std::shared_ptr<test::RTApplication>
@@ -84,8 +86,8 @@ void Test24Application::InitBase()
     m_Framebuffer->AddComponent<test::RTCUDABufferFBComponent<float3>>("GEmission" );
     m_Framebuffer->AddComponent<test::RTCUDABufferFBComponent<float >>("GDistance" );
     //Render 
-    m_Framebuffer->AddComponent<test::RTCUDABufferFBComponent<float3>>("RAccum"    );
-    m_Framebuffer->AddComponent<test::RTCUGLBufferFBComponent<uchar4>>("RFrame"    );
+    m_Framebuffer->AddComponent<test::RTCUDABufferFBComponent<float3>>("RAccum");//For HDR
+    m_Framebuffer->AddComponent<test::RTCUGLBufferFBComponent<uchar4>>("RFrame");//For PNG
     //Debug 
     m_Framebuffer->AddComponent<test::RTCUGLBufferFBComponent<uchar4>>("DNormal"  );
     m_Framebuffer->AddComponent<test::RTCUGLBufferFBComponent<uchar4>>("DTexCoord");
@@ -117,6 +119,17 @@ void Test24Application::InitBase()
     m_FramePublicNames.push_back("DShinness");
     m_FramePublicNames.push_back("DIOR");
     m_CurMainFrameName = "RFrame";
+    //Public Tracers
+    m_TracePublicNames.clear();
+    m_TracePublicNames.push_back("TestGL");
+    m_TracePublicNames.push_back("PathOPX");
+    m_TracePublicNames.push_back("NEEOPX");
+    m_TracePublicNames.push_back("GuidePathOPX");
+    m_TracePublicNames.push_back("GuideNEEOPX");
+    m_TracePublicNames.push_back("GuideWRSOPX");
+    m_TracePublicNames.push_back("ReSTIROPX");
+    m_TracePublicNames.push_back("DebugOPX");
+    m_CurMainTraceName = m_TracePublicNames.front();
     //Renderer
     m_Renderer = std::make_unique<rtlib::ext::RectRenderer>();
     m_Renderer->init();
@@ -164,6 +177,7 @@ void Test24Application::InitGui()
         m_DelFrameTime,
         m_FramePublicNames, 
         m_TracePublicNames, 
+        m_TracerVariables,
         m_LaunchTracerSet, 
         m_BgLightColor, 
         m_CurMainFrameName, 
@@ -359,96 +373,130 @@ void Test24Application::FreeScene()
 
 void Test24Application::InitTracers()
 {
-    m_Tracers.reserve(7);
-    m_Tracers["TestGL"] = std::make_shared<Test24TestGLTracer>(
-        m_FbWidth, 
-        m_FbHeight, 
-        m_Window,
-        m_ObjModelManager,
-        m_Framebuffer, 
-        m_CameraController, 
-        m_CurObjModelName, 
-        m_EventFlags
-    );
-    m_Tracers["TestGL"]->Initialize();
-    m_Tracers["DebugOPX"] = std::make_shared<Test24DebugOPXTracer>(
-        m_Context, 
-        m_Framebuffer, 
-        m_CameraController, 
-        m_TextureManager, 
-        m_IASHandles["TopLevel"], 
-        m_Materials, 
-        m_BgLightColor, 
-        m_EventFlags
-    );
-    m_Tracers["DebugOPX"]->Initialize();
-    m_Tracers["PathOPX"] = std::make_shared<Test24PathOPXTracer>(
-        m_Context,
-        m_Framebuffer,
-        m_CameraController,
-        m_TextureManager,
-        m_IASHandles["TopLevel"],
-        m_Materials,
-        m_BgLightColor,
-        m_EventFlags,
-        m_MaxTraceDepth
-        );
-    m_Tracers["PathOPX"]->Initialize();
-    m_Tracers[std::string("GuidePathOPX")]=std::make_shared<Test24GuidePathOPXTracer>(
-        m_Context,
-        m_Framebuffer,
-        m_CameraController,
-        m_TextureManager,
-        m_IASHandles["TopLevel"],
-        m_Materials,
-        m_BgLightColor,
-        m_EventFlags,
-        m_MaxTraceDepth
-    );
-    m_Tracers[std::string("GuidePathOPX")]->Initialize();
-    m_Tracers[std::string("GuideNEEOPX")] = std::make_shared<Test24GuideNEEOPXTracer>(
-        m_Context,
-        m_Framebuffer,
-        m_CameraController,
-        m_TextureManager,
-        m_IASHandles["TopLevel"],
-        m_Materials,
-        m_BgLightColor,
-        m_EventFlags,
-        m_MaxTraceDepth
-        );
-    m_Tracers[std::string("GuideNEEOPX")]->Initialize();
-    m_Tracers[std::string("NEEOPX")]     = std::make_shared<Test24NEEOPXTracer>(
-        m_Context,
-        m_Framebuffer,
-        m_CameraController,
-        m_TextureManager,
-        m_IASHandles["TopLevel"],
-        m_Materials,
-        m_BgLightColor, 
-        m_EventFlags,
-        m_MaxTraceDepth
-    );
-    m_Tracers[std::string("NEEOPX")]->Initialize();
-    m_Tracers[std::string("ReSTIROPX")] = std::make_shared<Test24ReSTIROPXTracer>(
-        m_Context,
-        m_Framebuffer,
-        m_CameraController,
-        m_TextureManager,
-        m_IASHandles["TopLevel"],
-        m_Materials,
-        m_BgLightColor,
-        m_EventFlags
-    );
-    m_Tracers[std::string("ReSTIROPX")]->Initialize();
-    m_TracePublicNames.clear();
-    m_TracePublicNames.reserve(m_Tracers.size());
-    for (auto& [name, tracer] : m_Tracers)
+    m_Tracers.reserve(8);
+    /*     TestGL */
     {
-        m_TracePublicNames.push_back(name);
+        m_Tracers["TestGL"] = std::make_shared<Test24TestGLTracer>(
+            m_FbWidth,
+            m_FbHeight,
+            m_Window,
+            m_ObjModelManager,
+            m_Framebuffer,
+            m_CameraController,
+            m_CurObjModelName,
+            m_EventFlags
+            );
+        m_Tracers["TestGL"]->Initialize();
     }
-
-    m_CurMainTraceName = m_TracePublicNames.front();
+    /*    DebugOPX*/
+    {
+        m_Tracers["DebugOPX"] = std::make_shared<Test24DebugOPXTracer>(
+            m_Context,
+            m_Framebuffer,
+            m_CameraController,
+            m_TextureManager,
+            m_IASHandles["TopLevel"],
+            m_Materials,
+            m_BgLightColor,
+            m_EventFlags
+            );
+        m_Tracers["DebugOPX"]->Initialize();
+    }
+    /*     PathOPX*/
+    {
+        m_Tracers["PathOPX"] = std::make_shared<Test24PathOPXTracer>(
+            m_Context,
+            m_Framebuffer,
+            m_CameraController,
+            m_TextureManager,
+            m_IASHandles["TopLevel"],
+            m_Materials,
+            m_BgLightColor,
+            m_EventFlags,
+            m_MaxTraceDepth
+            );
+        m_Tracers["PathOPX"]->Initialize();
+    }
+    /*GuidePathOPX*/
+    {
+        m_Tracers["GuidePathOPX"] = std::make_shared<Test24GuidePathOPXTracer>(
+            m_Context,
+            m_Framebuffer,
+            m_CameraController,
+            m_TextureManager,
+            m_IASHandles["TopLevel"],
+            m_Materials,
+            m_BgLightColor,
+            m_EventFlags,
+            m_MaxTraceDepth
+            );
+        m_Tracers["GuidePathOPX"]->Initialize();
+    }
+    /* GuideNEEOPX*/
+    {
+        m_Tracers["GuideNEEOPX"] = std::make_shared<Test24GuideNEEOPXTracer>(
+            m_Context,
+            m_Framebuffer,
+            m_CameraController,
+            m_TextureManager,
+            m_IASHandles["TopLevel"],
+            m_Materials,
+            m_BgLightColor,
+            m_EventFlags,
+            m_MaxTraceDepth
+            );
+        m_Tracers["GuideNEEOPX"]->Initialize();
+    }
+    /* GuideWRSOPX*/
+    {
+        m_Tracers["GuideWRSOPX"] = std::make_shared<Test24GuideWRSOPXTracer>(
+            m_Context,
+            m_Framebuffer,
+            m_CameraController,
+            m_TextureManager,
+            m_IASHandles["TopLevel"],
+            m_Materials,
+            m_BgLightColor,
+            m_EventFlags,
+            m_MaxTraceDepth
+            );
+        m_Tracers["GuideWRSOPX"]->Initialize();
+    }
+    /*      NEEOPX*/
+    {
+        m_Tracers["NEEOPX"] = std::make_shared<Test24NEEOPXTracer>(
+            m_Context,
+            m_Framebuffer,
+            m_CameraController,
+            m_TextureManager,
+            m_IASHandles["TopLevel"],
+            m_Materials,
+            m_BgLightColor,
+            m_EventFlags,
+            m_MaxTraceDepth
+            );
+        m_Tracers["NEEOPX"]->Initialize();
+    }
+    /*   ReSTIROPX*/
+    {
+        m_Tracers["ReSTIROPX"] = std::make_shared<Test24ReSTIROPXTracer>(
+            m_Context,
+            m_Framebuffer,
+            m_CameraController,
+            m_TextureManager,
+            m_IASHandles["TopLevel"],
+            m_Materials,
+            m_BgLightColor,
+            m_EventFlags
+            );
+        m_Tracers["ReSTIROPX"]->Initialize();
+    }
+    /*   Variables*/
+    m_TracerVariables.clear();
+    m_TracerVariables.reserve(8);
+    for (auto& [name, tracer]  : m_Tracers) {
+        m_TracerVariables[name] = tracer->GetVariables();
+    }
 }
 
 void Test24Application::FreeTracers()
@@ -524,7 +572,7 @@ void Test24Application::Launch()
             //なぜかSDTreeのAccumulationが進まない
             Test24GuidePathOPXTracer::UserData  userData = {};
             userData.samplePerLaunch = m_SamplePerLaunch;
-            userData.samplePerAll = m_SamplePerAll;
+            userData.samplePerAll    = m_SamplePerAll;
             userData.sampleForBudget = 4096;
             userData.iterationForBuilt = 0;
             userData.isSync = true;
@@ -534,25 +582,43 @@ void Test24Application::Launch()
             if (m_SamplePerAll >= userData.sampleForBudget) {
                 m_CurMainTraceName = "PathOPX";
                 m_SamplePerAll = 0;
-                m_EventFlags |= TEST24_EVENT_FLAG_CHANGE_TRACE;
+                m_EventFlags  |= TEST24_EVENT_FLAG_CHANGE_TRACE;
             }
         }
         if (name == "GuideNEEOPX")
         {
             //なぜかSDTreeのAccumulationが進まない
             Test24GuideNEEOPXTracer::UserData  userData = {};
-            userData.samplePerLaunch = m_SamplePerLaunch;
-            userData.samplePerAll = m_SamplePerAll;
-            userData.sampleForBudget = 4096;
+            userData.samplePerLaunch   = m_SamplePerLaunch;
+            userData.samplePerAll      = m_SamplePerAll;
+            userData.sampleForBudget   = 4096;
+            userData.iterationForBuilt = 0;
+            userData.isSync            = true;
+            userData.stream            = nullptr;
+            m_Tracers[name]->Launch(m_FbWidth, m_FbHeight, &userData);
+            m_SamplePerAll            += m_SamplePerLaunch;
+            if (m_SamplePerAll >= userData.sampleForBudget) {
+                m_CurMainTraceName     = "PathOPX";
+                m_SamplePerAll         = 0;
+                m_EventFlags |= TEST24_EVENT_FLAG_CHANGE_TRACE;
+            }
+        }
+        if (name == "GuideWRSOPX")
+        {
+            //なぜかSDTreeのAccumulationが進まない
+            Test24GuideWRSOPXTracer::UserData  userData = {};
+            userData.samplePerLaunch   = m_SamplePerLaunch;
+            userData.samplePerAll      = m_SamplePerAll;
+            userData.sampleForBudget   = 4096;
             userData.iterationForBuilt = 0;
             userData.isSync = true;
             userData.stream = nullptr;
             m_Tracers[name]->Launch(m_FbWidth, m_FbHeight, &userData);
             m_SamplePerAll += m_SamplePerLaunch;
-            if (m_SamplePerAll >= userData.sampleForBudget) {
+            if (m_SamplePerAll    >= userData.sampleForBudget) {
                 m_CurMainTraceName = "PathOPX";
-                m_SamplePerAll = 0;
-                m_EventFlags |= TEST24_EVENT_FLAG_CHANGE_TRACE;
+                m_SamplePerAll     = 0;
+                m_EventFlags      |= TEST24_EVENT_FLAG_CHANGE_TRACE;
             }
         }
         if (name == "ReSTIROPX")

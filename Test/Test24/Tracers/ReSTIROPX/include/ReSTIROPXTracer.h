@@ -19,7 +19,7 @@
 class Test24ReSTIROPXTracer : public test::RTTracer
 {
 private:
-    using ContextPtr = std::shared_ptr<test::RTContext>;
+    using ContextPtr           = std::shared_ptr<test::RTContext>;
     using FramebufferSharedPtr = std::shared_ptr<test::RTFramebuffer>;
     using FramebufferUniquePtr = std::unique_ptr<test::RTFramebuffer>;
     using CameraControllerPtr  = std::shared_ptr<rtlib::ext::CameraController>;

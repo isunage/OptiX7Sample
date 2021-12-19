@@ -27,11 +27,10 @@ public:
 		unsigned int samplePerAll;
 		unsigned int samplePerLaunch;
 	};
-	using ContextPtr = std::shared_ptr<test::RTContext>;
-	using FramebufferPtr = std::shared_ptr<test::RTFramebuffer>;
+	using ContextPtr          = std::shared_ptr<test::RTContext>;
+	using FramebufferPtr      = std::shared_ptr<test::RTFramebuffer>;
 	using CameraControllerPtr = std::shared_ptr<rtlib::ext::CameraController>;
 	using TextureAssetManager = std::shared_ptr<test::RTTextureAssetManager>;
-private:
 	using Pipeline  = rtlib::OPXPipeline;
 	using ModuleMap =   std::unordered_map<std::string, rtlib::OPXModule>;
 	using RGProgramGroupMap = std::unordered_map<std::string, rtlib::OPXRaygenPG>;

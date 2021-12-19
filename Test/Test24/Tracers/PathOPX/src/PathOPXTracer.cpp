@@ -97,7 +97,7 @@ Test24PathOPXTracer::Test24PathOPXTracer(
 	const std::vector<rtlib::ext::VariableMap>& materials, 
 	const float3& bgLightColor,
 	const unsigned int& eventFlags,
-	const unsigned int& maxTraceDepth){
+	const unsigned int& maxTraceDepth) :test::RTTracer() {
 	m_Impl = std::make_unique<Test24PathOPXTracer::Impl>(
 		context,
 		framebuffer,

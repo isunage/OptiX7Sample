@@ -1,11 +1,11 @@
-#include "../include/GuideNEEOPXTracer.h"
+#include "../include/GuideWRSOPXTracer.h"
 #include <RTPathGuidingUtils.h>
 #include <RTLib/ext/Utils.h>
 #include <RayTrace.h>
 #include <fstream>
 #include <random>
 using namespace std::string_literals;
-using namespace test24_nee_guide;
+using namespace test24_wrs_guide;
 inline auto SpecifyMaterialType(const rtlib::ext::VariableMap& material) -> std::string
 {
 	auto emitCol = material.GetFloat3As<float3>("emitCol");
@@ -31,7 +31,7 @@ using RayGRecord = rtlib::SBTRecord<RayGenData>;
 using MissRecord = rtlib::SBTRecord<MissData>;
 using HitGRecord = rtlib::SBTRecord<HitgroupData>;
 // RTTracer ����Čp������܂���
-struct Test24GuideNEEOPXTracer::Impl {
+struct Test24GuideWRSOPXTracer::Impl {
 	Impl(
 		ContextPtr context,
 		FramebufferPtr framebuffer,
@@ -104,7 +104,7 @@ struct Test24GuideNEEOPXTracer::Impl {
 	float        m_RatioForBudget  = 0.50f;
 };
 
-Test24GuideNEEOPXTracer::Test24GuideNEEOPXTracer(
+Test24GuideWRSOPXTracer::Test24GuideWRSOPXTracer(
 	ContextPtr context,
 	FramebufferPtr framebuffer,
 	CameraControllerPtr cameraController,
@@ -114,7 +114,7 @@ Test24GuideNEEOPXTracer::Test24GuideNEEOPXTracer(
 	const float3& bgLightColor,
 	const unsigned int& eventFlags,
 	const unsigned int& maxTraceDepth) :test::RTTracer() {
-	m_Impl = std::make_unique<Test24GuideNEEOPXTracer::Impl>(
+	m_Impl = std::make_unique<Test24GuideWRSOPXTracer::Impl>(
 		context,
 		framebuffer,
 		cameraController,
@@ -126,7 +126,7 @@ Test24GuideNEEOPXTracer::Test24GuideNEEOPXTracer(
 		maxTraceDepth);
 }
 
-void Test24GuideNEEOPXTracer::Initialize()
+void Test24GuideWRSOPXTracer::Initialize()
 {
 	this->InitFrameResources();
 	this->InitPipeline();
@@ -136,7 +136,7 @@ void Test24GuideNEEOPXTracer::Initialize()
 	this->InitLaunchParams();
 }
 
-void Test24GuideNEEOPXTracer::Launch(int width, int height, void* pdata)
+void Test24GuideWRSOPXTracer::Launch(int width, int height, void* pdata)
 {
 
 	UserData* pUserData = (UserData*)pdata;
@@ -152,7 +152,7 @@ void Test24GuideNEEOPXTracer::Launch(int width, int height, void* pdata)
 	this->OnLaunchEnd(width, height, pUserData);
 }
 
-void Test24GuideNEEOPXTracer::CleanUp()
+void Test24GuideWRSOPXTracer::CleanUp()
 {
 	this->FreePipeline();
 	this->FreeShaderBindingTable();
@@ -163,7 +163,7 @@ void Test24GuideNEEOPXTracer::CleanUp()
 	this->m_Impl->m_LightHgRecIndex = 0;
 }
 
-void Test24GuideNEEOPXTracer::Update()
+void Test24GuideWRSOPXTracer::Update()
 {
 	if ((this->m_Impl->m_EventFlags & TEST24_EVENT_FLAG_UPDATE_CAMERA) == TEST24_EVENT_FLAG_UPDATE_CAMERA)
 	{
@@ -203,15 +203,15 @@ void Test24GuideNEEOPXTracer::Update()
 	}
 }
 
-bool Test24GuideNEEOPXTracer::ShouldLock() const noexcept
+bool Test24GuideWRSOPXTracer::ShouldLock() const noexcept
 {
 	return false;
 }
 
-Test24GuideNEEOPXTracer::~Test24GuideNEEOPXTracer() {
+Test24GuideWRSOPXTracer::~Test24GuideWRSOPXTracer() {
 }
 
-void Test24GuideNEEOPXTracer::InitLight()
+void Test24GuideWRSOPXTracer::InitLight()
 {
 	auto ChooseNEE = [](const rtlib::ext::MeshPtr& mesh)->bool {
 		return (mesh->GetUniqueResource()->triIndBuffer.Size() < 200 || mesh->GetUniqueResource()->triIndBuffer.Size() > 230);
@@ -243,9 +243,9 @@ void Test24GuideNEEOPXTracer::InitLight()
 	m_Impl->m_MeshLights.Alloc();
 	m_Impl->m_MeshLights.Upload();
 }
-void Test24GuideNEEOPXTracer::InitPipeline()
+void Test24GuideWRSOPXTracer::InitPipeline()
 {
-	auto rayGuidePtxFile = std::ifstream(TEST_TEST24_GUIDE_NEE_OPX_CUDA_PATH "/RayGuide.ptx", std::ios::binary);
+	auto rayGuidePtxFile = std::ifstream(TEST_TEST24_GUIDE_WRS_OPX_CUDA_PATH "/RayGuide.ptx", std::ios::binary);
 	if (!rayGuidePtxFile.is_open()) {
 		throw std::runtime_error("Failed To Load RayGuide.ptx!");
 	}
@@ -300,7 +300,7 @@ void Test24GuideNEEOPXTracer::InitPipeline()
 	m_Impl->m_Pipeline.link(guideLinkOptions);
 }
 
-void Test24GuideNEEOPXTracer::InitFrameResources()
+void Test24GuideWRSOPXTracer::InitFrameResources()
 {
 	std::vector<unsigned int> seedData(this->m_Impl->m_Framebuffer.lock()->GetWidth() * this->m_Impl->m_Framebuffer.lock()->GetHeight());
 	std::random_device rd;
@@ -310,7 +310,7 @@ void Test24GuideNEEOPXTracer::InitFrameResources()
 }
 
 
-void Test24GuideNEEOPXTracer::InitShaderBindingTable()
+void Test24GuideWRSOPXTracer::InitShaderBindingTable()
 {
 	float aspect = static_cast<float>(this->m_Impl->m_Framebuffer.lock()->GetWidth()) / static_cast<float>(this->m_Impl->m_Framebuffer.lock()->GetHeight());
 	auto tlas = this->m_Impl->m_TopLevelAS.lock();
@@ -429,7 +429,7 @@ void Test24GuideNEEOPXTracer::InitShaderBindingTable()
 	this->m_Impl->m_ShaderBindingTable.hitgroupRecordStrideInBytes = sizeof(HitGRecord);
 }
 
-void Test24GuideNEEOPXTracer::InitLaunchParams()
+void Test24GuideWRSOPXTracer::InitLaunchParams()
 {
 	auto tlas = this->m_Impl->m_TopLevelAS.lock();
 	this->m_Impl->m_Params.Alloc(1);
@@ -446,11 +446,11 @@ void Test24GuideNEEOPXTracer::InitLaunchParams()
 	this->m_Impl->m_Params.Upload();
 }
 
-void Test24GuideNEEOPXTracer::FreeLight()
+void Test24GuideWRSOPXTracer::FreeLight()
 {
 }
 
-void Test24GuideNEEOPXTracer::InitSdTree()
+void Test24GuideWRSOPXTracer::InitSdTree()
 {
 	auto worldAABB = rtlib::utils::AABB();
 	for (auto& instanceSet : m_Impl->m_TopLevelAS.lock()->GetInstanceSets()) {
@@ -474,13 +474,13 @@ void Test24GuideNEEOPXTracer::InitSdTree()
 
 }
 
-void Test24GuideNEEOPXTracer::FreeSdTree()
+void Test24GuideWRSOPXTracer::FreeSdTree()
 {
 	m_Impl->m_STree->Clear();
 	m_Impl->m_STree.reset();
 }
 
-void Test24GuideNEEOPXTracer::FreePipeline()
+void Test24GuideWRSOPXTracer::FreePipeline()
 {
 	this->m_Impl->m_RGProgramGroups = {};
 	this->m_Impl->m_HGProgramGroups = {};
@@ -488,7 +488,7 @@ void Test24GuideNEEOPXTracer::FreePipeline()
 	this->m_Impl->m_Pipeline = {};
 }
 
-void Test24GuideNEEOPXTracer::FreeShaderBindingTable()
+void Test24GuideWRSOPXTracer::FreeShaderBindingTable()
 {
 	this->m_Impl->m_ShaderBindingTable = {};
 	this->m_Impl->m_RGRecordBuffer.Reset();
@@ -496,12 +496,12 @@ void Test24GuideNEEOPXTracer::FreeShaderBindingTable()
 	this->m_Impl->m_HGRecordBuffers.Reset();
 }
 
-void Test24GuideNEEOPXTracer::FreeLaunchParams()
+void Test24GuideWRSOPXTracer::FreeLaunchParams()
 {
 	this->m_Impl->m_Params.Reset();
 }
 
-void Test24GuideNEEOPXTracer::OnLaunchBegin(int width, int height, UserData* pUserData)
+void Test24GuideWRSOPXTracer::OnLaunchBegin(int width, int height, UserData* pUserData)
 {
 	if (pUserData->samplePerAll == 0)
 	{
@@ -541,7 +541,7 @@ void Test24GuideNEEOPXTracer::OnLaunchBegin(int width, int height, UserData* pUs
 	std::cout << "CurIteration: " << this->m_Impl->m_CurIteration << " SamplePerTmp: " << this->m_Impl->m_SamplePerTmp << std::endl;
 }
 
-void Test24GuideNEEOPXTracer::OnLaunchExecute(int width, int height, UserData* pUserData)
+void Test24GuideWRSOPXTracer::OnLaunchExecute(int width, int height, UserData* pUserData)
 {
 	this->m_Impl->m_Params.cpuHandle[0].width = width;
 	this->m_Impl->m_Params.cpuHandle[0].height = height;
@@ -567,7 +567,7 @@ void Test24GuideNEEOPXTracer::OnLaunchExecute(int width, int height, UserData* p
 	this->m_Impl->m_SamplePerTmp += this->m_Impl->m_SamplePerLaunch;
 }
 
-void Test24GuideNEEOPXTracer::OnLaunchEnd(int width, int height, UserData* pUserData)
+void Test24GuideWRSOPXTracer::OnLaunchEnd(int width, int height, UserData* pUserData)
 {
 	if (this->m_Impl->m_SamplePerTmp >= this->m_Impl->m_SampleForPass)
 	{
@@ -579,7 +579,7 @@ void Test24GuideNEEOPXTracer::OnLaunchEnd(int width, int height, UserData* pUser
 	}
 }
 
-void Test24GuideNEEOPXTracer::FreeFrameResources()
+void Test24GuideWRSOPXTracer::FreeFrameResources()
 {
 	this->m_Impl->m_SeedBuffer.reset();
 }

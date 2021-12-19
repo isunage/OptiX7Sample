@@ -1,5 +1,5 @@
-#ifndef TEST_TEST24_GUIDE_NEE_OPX_TRACER_H
-#define TEST_TEST24_GUIDE_NEE_OPX_TRACER_H
+#ifndef TEST_TEST24_GUIDE_WRS_OPX_TRACER_H
+#define TEST_TEST24_GUIDE_WRS_OPX_TRACER_H
 #include <TestLib/RTTracer.h>
 #include <TestLib/RTAssets.h>
 #include <TestLib/RTFrameBuffer.h>
@@ -13,12 +13,12 @@
 #include <RTLib/ext/Resources.h>
 #include <RTLib/ext/Resources/GL.h>
 #include <RTLib/ext/Resources/CUDA.h>
-#include <Test24GuideNEEOPXConfig.h>
+#include <Test24GuideWRSOPXConfig.h>
 #include <Test24Event.h>
 #include <memory>
 //SimpleTracer
 // GuideTracer
-class Test24GuideNEEOPXTracer : public test::RTTracer
+class Test24GuideWRSOPXTracer : public test::RTTracer
 {
 public:
     struct UserData
@@ -41,7 +41,7 @@ private:
     using MSProgramGroupMap   = std::unordered_map<std::string, rtlib::OPXMissPG>;
     using HGProgramGroupMap   = std::unordered_map<std::string, rtlib::OPXHitgroupPG>;
 public:
-    Test24GuideNEEOPXTracer(
+    Test24GuideWRSOPXTracer(
         ContextPtr context,
         FramebufferPtr framebuffer,
         CameraControllerPtr cameraController,
@@ -57,7 +57,7 @@ public:
     virtual void CleanUp() override;
     virtual void Update() override;
     virtual bool ShouldLock()const noexcept;
-    virtual ~Test24GuideNEEOPXTracer();
+    virtual ~Test24GuideWRSOPXTracer();
 
 private:
     void InitLight();

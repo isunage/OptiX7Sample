@@ -28,6 +28,7 @@ private:
     using TextureAssetManagerPtr = std::shared_ptr<test::RTTextureAssetManager>;
     using GeometryASMap = std::unordered_map<std::string, rtlib::ext::GASHandlePtr>;
     using InstanceASMap = std::unordered_map<std::string, rtlib::ext::IASHandlePtr>;
+    using TracerVariableMap = std::unordered_map<std::string, std::shared_ptr<rtlib::ext::VariableMap>>;
 private:
     Test24Application(int fbWidth, int fbHeight, std::string name) noexcept;
 public:
@@ -97,6 +98,7 @@ private:
     //Tracer
     std::vector<std::string> m_TracePublicNames;
     std::string              m_CurMainTraceName;
+    TracerVariableMap               m_TracerVariables;
     std::unordered_set<std::string> m_LaunchTracerSet;
     //ObjModel
     std::string m_CurObjModelName;

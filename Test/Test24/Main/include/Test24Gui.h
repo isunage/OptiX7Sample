@@ -8,21 +8,25 @@
 #include <Test24Event.h>
 class Test24GuiDelegate : public test::RTAppGuiDelegate
 {
+private:
+	using TracerVariableMap =  std::unordered_map < std::string, std::shared_ptr<rtlib::ext::VariableMap>>;
 public:
 	Test24GuiDelegate(
 		GLFWwindow* window,
 		const std::shared_ptr<rtlib::ext::CameraController>& cameraController,
-		const std::shared_ptr<test::RTFramebuffer>         & framebuffer,
+		const std::shared_ptr<test::RTFramebuffer>& framebuffer,
 		const std::shared_ptr<test::RTObjModelAssetManager>& objModelAssetManager,
-		const std::shared_ptr<test::RTTextureAssetManager> & textureManager,
+		const std::shared_ptr<test::RTTextureAssetManager>& textureManager,
 		const std::array<float, 2>& curCursorPos,
 		const std::array<float, 2>& delCursorPos,
 		const std::array<float, 2>& scrollOffsets,
 		const float& curFrameTime,
 		const float& delFrameTime,
-		const std::vector<std::string> & framePublicNames,
-		const std::vector<std::string> & tracePublicNames,
+		const std::vector<std::string>& framePublicNames,
+		const std::vector<std::string>& tracePublicNames,
+		const TracerVariableMap       & tracerVariables,
 		std::unordered_set<std::string>& launchTracerSet,
+		
 		float3& bgLightColor,
 		std::string& curMainFrameName,
 		std::string& curMainTraceName,
@@ -50,6 +54,7 @@ public:
 		m_MaxTraceDepth{ maxTraceDepth },
 		m_SamplePerAll{ samplePerAll },
 		m_SamplePerLaunch{samplePerLaunch},
+		m_TracerVariables {tracerVariables},
 		m_LaunchTracerSet { launchTracerSet  },
 		m_EventFlags{eventFlags},
 		m_Gui{ std::make_shared<test::RTGui>(window) }
@@ -75,6 +80,7 @@ private:
 	const float& m_DelFrameTime;
 	const std::vector<std::string>&  m_FramePublicNames;
 	const std::vector<std::string>&  m_TracePublicNames;
+	const TracerVariableMap&         m_TracerVariables;
 	std::unordered_set<std::string>& m_LaunchTracerSet;
 	std::string&  m_CurObjModelName;
 	std::string&  m_CurMainFrameName;

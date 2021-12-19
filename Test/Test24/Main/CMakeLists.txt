@@ -1,6 +1,7 @@
 
 set(TEST_TEST24_NUM_RAY_TYPE 2)
-set(TEST_TEST24_DATA_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../../../Data")
+set(TEST_TEST24_DATA_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../../../Data"  )
+set(TEST_TEST24_RSLT_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../../../Result/Test/Test24")
 
 configure_file(
     ${CMAKE_CURRENT_SOURCE_DIR}/Test24Config.h.in
@@ -19,5 +20,16 @@ add_executable(
 )
 
 target_include_directories(Test24 PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include ${CMAKE_CURRENT_BINARY_DIR})
-target_link_libraries(Test24 TestLib Test24_Share Test24_Tracer_TestGL Test24_Tracer_DebugOPX Test24_Tracer_PathOPX Test24_Tracer_NEEOPX Test24_Tracer_GuidePathOPX Test24_Tracer_GuideNEEOPX Test24_Tracer_ReSTIROPX)
-set_target_properties(Test24                     PROPERTIES  FOLDER Test24/Main)
+target_link_libraries(Test24 
+    TestLib 
+    Test24_Share 
+    Test24_Tracer_TestGL 
+    Test24_Tracer_DebugOPX 
+    Test24_Tracer_PathOPX 
+    Test24_Tracer_NEEOPX 
+    Test24_Tracer_GuidePathOPX 
+    Test24_Tracer_GuideNEEOPX 
+    Test24_Tracer_GuideWRSOPX 
+    Test24_Tracer_ReSTIROPX
+ )
+set_target_properties(Test24 PROPERTIES  FOLDER Test24/Main)

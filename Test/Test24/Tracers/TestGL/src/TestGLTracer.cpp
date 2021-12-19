@@ -3,7 +3,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtx/transform.hpp>
 Test24TestGLTracer::Test24TestGLTracer(int fbWidth, int fbHeight, GLFWwindow *window, const std::shared_ptr<test::RTObjModelAssetManager>& objModelManager, const std::shared_ptr<test::RTFramebuffer> &framebuffer, const std::shared_ptr<rtlib::ext::CameraController> &cameraController, const std::string& objModelName,
-    const unsigned int& eventFlags) noexcept :m_EventFlags{ eventFlags }, m_NewObjModelName{objModelName}
+    const unsigned int& eventFlags) noexcept :test::RTTracer(), m_EventFlags{eventFlags}, m_NewObjModelName{objModelName}
 {
     m_FbWidth = fbWidth;
     m_FbHeight = fbHeight;

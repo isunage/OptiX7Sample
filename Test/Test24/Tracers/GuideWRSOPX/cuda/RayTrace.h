@@ -12,7 +12,7 @@
 //#define RAY_GUIDING_SAMPLE_BY_COSINE_SPHERE
 //#define TEST_SKIP_TEXTURE_SAMPLE
 //#define TEST11_SHOW_EMISSON_COLOR
-namespace test24_nee_guide
+namespace test24_wrs_guide
 {
     enum RayType
     {

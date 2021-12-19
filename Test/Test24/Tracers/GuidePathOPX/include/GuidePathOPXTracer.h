@@ -62,8 +62,6 @@ public:
 private:
     void InitLight();
     void FreeLight();
-    void InitSTree();
-    void FreeSTree();
     void InitSdTree();
     void FreeSdTree();
     void InitFrameResources();

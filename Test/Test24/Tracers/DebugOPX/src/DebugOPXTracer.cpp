@@ -55,7 +55,7 @@ struct Test24DebugOPXTracer::Impl
 
 Test24DebugOPXTracer::Test24DebugOPXTracer(
 	ContextPtr Context, FramebufferPtr Framebuffer, CameraControllerPtr CameraController, TextureAssetManager TextureManager,
-	rtlib::ext::IASHandlePtr TopLevelAS, const std::vector<rtlib::ext::VariableMap>& Materials, const float3& BgLightColor,const unsigned int& eventFlags)
+	rtlib::ext::IASHandlePtr TopLevelAS, const std::vector<rtlib::ext::VariableMap>& Materials, const float3& BgLightColor,const unsigned int& eventFlags) :test::RTTracer()
 {
 	m_Impl = std::make_unique<Test24DebugOPXTracer::Impl>(
 		Context,Framebuffer,CameraController,TextureManager,TopLevelAS,Materials,BgLightColor, eventFlags

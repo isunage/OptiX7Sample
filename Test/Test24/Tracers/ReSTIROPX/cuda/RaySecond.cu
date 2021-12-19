@@ -101,7 +101,7 @@ extern "C" __global__ void     __raygen__init() {
     auto   seed      = params.seedBuffer[params.width * idx.y + idx.x];
     auto   normal    = params.curNormBuffer[params.width * idx.y + idx.x];
     auto   emission  = params.emitBuffer[params.width * idx.y + idx.x];
-    auto   diffuse   = params.diffBuffer[params.width * idx.y + idx.x];
+    auto   diffuse   = params.curDiffBuffer[params.width * idx.y + idx.x];
     auto   origin    = params.curPosiBuffer[params.width * idx.y + idx.x];
     auto   isNotDone =(emission.x == 0.0f) && (emission.y == 0.0f) && (emission.z == 0.0f);
     Reservoir<LightRec> resv   = {};
@@ -162,7 +162,7 @@ extern "C" __global__ void     __raygen__draw() {
     auto seed     = params.seedBuffer[params.width * idx.y + idx.x];
     auto normal   = params.curNormBuffer[params.width * idx.y + idx.x];
     auto emission = params.emitBuffer[params.width * idx.y + idx.x];
-    auto diffuse  = params.diffBuffer[params.width * idx.y + idx.x];
+    auto diffuse  = params.curDiffBuffer[params.width * idx.y + idx.x];
     auto origin   = params.curPosiBuffer[params.width * idx.y + idx.x];
     auto result   = emission;
     auto direction= rtlib::normalize(d.x * u + d.y * v + w);
@@ -199,8 +199,9 @@ extern "C" __global__ void     __raygen__draw() {
     params.seedBuffer[ params.width * idx.y + idx.x] = seed;
 
     rgData->pinhole[FRAME_TYPE_PREVIOUS] = rgData->pinhole[FRAME_TYPE_CURRENT];
-    params.prvPosiBuffer[params.width * idx.y + idx.x] = origin;
-    params.prvNormBuffer[params.width * idx.y + idx.x] = normal;
+    params.prvPosiBuffer[params.width * idx.y + idx.x] = origin ;
+    params.prvNormBuffer[params.width * idx.y + idx.x] = normal ;
+    params.prvDiffBuffer[params.width * idx.y + idx.x] = diffuse;
 }
 extern "C" __global__ void __closesthit__occluded() {
     setPayloadOccluded(true);

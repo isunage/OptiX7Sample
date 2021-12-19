@@ -150,9 +150,10 @@ namespace test24_restir
         float3* prvPosiBuffer;
         float3* curNormBuffer;
         float3* prvNormBuffer;
+        float3* curDiffBuffer;
+        float3* prvDiffBuffer;
         float3* emitBuffer;
-        float3* diffBuffer;
-        float* distBuffer;
+        float * distBuffer;
         unsigned int* seedBuffer;
         int2* motiBuffer;
         Reservoir<LightRec>* resvBuffer;
