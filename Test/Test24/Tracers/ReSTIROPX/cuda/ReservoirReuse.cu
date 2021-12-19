@@ -14,8 +14,8 @@ extern "C" __global__ void combineSpatialReservoirs(
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     int j = blockIdx.y * blockDim.y + threadIdx.y;
     if (i < width && j < height) {
-        auto origin    = params->posiBuffer[width * j + i];
-        auto normal    = params->normBuffer[width * j + i];
+        auto origin    = params->curPosiBuffer[width * j + i];
+        auto normal    = params->curNormBuffer[width * j + i];
         auto diffuse   = params->diffBuffer[width * j + i];
         auto seed      = params->seedBuffer[width * j + i];
         auto distance  = params->distBuffer[width * j + i];
@@ -42,7 +42,7 @@ extern "C" __global__ void combineSpatialReservoirs(
                 continue;
             }
             /**/
-            float3 near_normal   = params->normBuffer[t * width + s];
+            float3 near_normal   = params->curNormBuffer[t * width + s];
             float  near_distance = params->distBuffer[t * width + s];
             if (rtlib::dot(near_normal, normal) < 0.90f ||
                 fabsf((near_distance - distance)/distance) > 0.10f) {
@@ -81,6 +81,7 @@ extern "C" __global__ void combineTemporalReservoirs(
     Reservoir<LightRec> * curResvBuffer,
     ReservoirState      * tmpStatBuffer,
     RaySecondParams     * params, 
+    float3                camEye,
     int                   width, 
     int                   height) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
@@ -94,16 +95,18 @@ extern "C" __global__ void combineTemporalReservoirs(
     if (s<0 || s >= width || t< 0 || t >= height) {
         return;
     }
-    auto curNormal   = params->normBuffer[width * j + i];
-    auto curDistance = params->distBuffer[width * j + i];
-    auto prvNormal   = params->normBuffer[width * t + s];
-    auto prvDistance = params->distBuffer[width * t + s];
+    auto curNormal   = params->curNormBuffer[width * j + i];
+    auto curDistance = params->distBuffer[   width * j + i];
+    auto prvPosition = params->prvPosiBuffer[width * t + s];
+    auto prvNormal   = params->prvNormBuffer[width * t + s];
+    auto prvDistance = rtlib::length(prvPosition-camEye);
+    
     if (rtlib::dot(curNormal, prvNormal) < 0.90f ||
         fabsf((prvDistance - curDistance) / curDistance) > 0.10f) {
         return;
     }
 
-    auto origin     = params->posiBuffer[width * j + i];
+    auto origin     = params->curPosiBuffer[width * j + i];
     auto curDiffuse = params->diffBuffer[width * j + i];
     auto seed       = params->seedBuffer[width * j + i];
     auto xor32      = rtlib::Xorshift32(seed);

@@ -53,13 +53,13 @@ struct Test24ReSTIROPXTracer::Impl
 	};
 	Impl(
 		ContextPtr Context,
-		FramebufferPtr Framebuffer,
+		FramebufferSharedPtr Framebuffer,
 		CameraControllerPtr CameraController,
 		TextureAssetManager TextureManager,
 		rtlib::ext::IASHandlePtr TopLevelAS,
 		const std::vector<rtlib::ext::VariableMap>& Materials,
 		const float3& BgLightColor,
-		const unsigned int& EventFlags) :m_Context{ Context }, m_Framebuffer{ Framebuffer }, m_CameraController{ CameraController }, m_TextureManager{ TextureManager }, m_Materials{ Materials }, m_TopLevelAS{ TopLevelAS }, m_BgLightColor{ BgLightColor }, m_CurEventFlags{ EventFlags }, m_PrvEventFlags{TEST24_EVENT_FLAG_NONE}
+		const unsigned int& EventFlags) :m_Context{ Context }, m_SharedFramebuffer{ Framebuffer }, m_CameraController{ CameraController }, m_TextureManager{ TextureManager }, m_Materials{ Materials }, m_TopLevelAS{ TopLevelAS }, m_BgLightColor{ BgLightColor }, m_CurEventFlags{ EventFlags }, m_PrvEventFlags{TEST24_EVENT_FLAG_NONE}
 	{
 	}
 	~Impl() {
@@ -72,9 +72,10 @@ struct Test24ReSTIROPXTracer::Impl
 		return list;
 	}
 	ContextPtr m_Context;
-	FramebufferPtr m_Framebuffer;
-	CameraControllerPtr m_CameraController;
-	TextureAssetManager m_TextureManager;
+	FramebufferSharedPtr m_SharedFramebuffer;
+	FramebufferUniquePtr m_UniqueFramebuffer;
+	CameraControllerPtr  m_CameraController;
+	TextureAssetManager  m_TextureManager;
 	rtlib::ext::IASHandlePtr m_TopLevelAS;
 	const std::vector<rtlib::ext::VariableMap>& m_Materials;
 	const float3& m_BgLightColor;
@@ -83,10 +84,6 @@ struct Test24ReSTIROPXTracer::Impl
 	FirstPipeline       m_First;
 	SecondPipeline      m_Second;
 	rtlib::CUDAUploadBuffer<MeshLight>     m_MeshLights;
-	rtlib::CUDABuffer<Reservoir<LightRec>> m_ResvBuffers[3];
-	rtlib::CUDABuffer<ReservoirState>      m_TempBuffer;
-	rtlib::CUDABuffer<unsigned int>        m_SeedBuffer;
-	rtlib::CUDABuffer<int2>                m_MotiBuffer;
 	unsigned int        m_LightHgRecIndex = 0;
 	unsigned int        m_PrvReservoirIdx = 0;
 	unsigned int        m_CurReservoirIdx = 1;
@@ -99,7 +96,7 @@ struct Test24ReSTIROPXTracer::Impl
 };
 
 Test24ReSTIROPXTracer::Test24ReSTIROPXTracer(
-	ContextPtr Context, FramebufferPtr Framebuffer, CameraControllerPtr CameraController, TextureAssetManager TextureManager,
+	ContextPtr Context, FramebufferSharedPtr Framebuffer, CameraControllerPtr CameraController, TextureAssetManager TextureManager,
 	rtlib::ext::IASHandlePtr TopLevelAS, const std::vector<rtlib::ext::VariableMap>& Materials, const float3& BgLightColor, const unsigned int& eventFlags)
 {
 	m_Impl = std::make_unique<Test24ReSTIROPXTracer::Impl>(
@@ -123,20 +120,20 @@ void Test24ReSTIROPXTracer::Launch(int width, int height, void* userData)
 	{
 		return;
 	}
-	if (width != m_Impl->m_Framebuffer->GetWidth() || height != m_Impl->m_Framebuffer->GetHeight()) {
+	if (width != m_Impl->m_SharedFramebuffer->GetWidth() || height != m_Impl->m_SharedFramebuffer->GetHeight()) {
 		return;
 	}
 	m_Impl->m_NumCandidates = pUserData->numCandidates;
 
 	this->m_Impl->m_First.m_Params.cpuHandle[0].width        = width;
 	this->m_Impl->m_First.m_Params.cpuHandle[0].height       = height;
-	this->m_Impl->m_First.m_Params.cpuHandle[0].posiBuffer   = m_Impl->m_Framebuffer->GetComponent<test::RTCUDABufferFBComponent<float3>>("GPosition")->GetHandle().getDevicePtr();
-	this->m_Impl->m_First.m_Params.cpuHandle[0].normBuffer   = m_Impl->m_Framebuffer->GetComponent<test::RTCUDABufferFBComponent<float3>>("GNormal"  )->GetHandle().getDevicePtr();
-	this->m_Impl->m_First.m_Params.cpuHandle[0].emitBuffer   = m_Impl->m_Framebuffer->GetComponent<test::RTCUDABufferFBComponent<float3>>("GEmission")->GetHandle().getDevicePtr();
-	this->m_Impl->m_First.m_Params.cpuHandle[0].diffBuffer   = m_Impl->m_Framebuffer->GetComponent<test::RTCUDABufferFBComponent<float3>>("GDiffuse" )->GetHandle().getDevicePtr();
-	this->m_Impl->m_First.m_Params.cpuHandle[0].distBuffer   = m_Impl->m_Framebuffer->GetComponent<test::RTCUDABufferFBComponent<float >>("GDistance")->GetHandle().getDevicePtr();
-	this->m_Impl->m_First.m_Params.cpuHandle[0].seedBuffer   = m_Impl->m_SeedBuffer.getDevicePtr();
-	this->m_Impl->m_First.m_Params.cpuHandle[0].motiBuffer   = m_Impl->m_MotiBuffer.getDevicePtr();
+	this->m_Impl->m_First.m_Params.cpuHandle[0].posiBuffer   = m_Impl->m_SharedFramebuffer->GetComponent<test::RTCUDABufferFBComponent<float3>>("GPosition")->GetHandle().getDevicePtr();
+	this->m_Impl->m_First.m_Params.cpuHandle[0].normBuffer   = m_Impl->m_SharedFramebuffer->GetComponent<test::RTCUDABufferFBComponent<float3>>("GNormal"  )->GetHandle().getDevicePtr();
+	this->m_Impl->m_First.m_Params.cpuHandle[0].emitBuffer   = m_Impl->m_SharedFramebuffer->GetComponent<test::RTCUDABufferFBComponent<float3>>("GEmission")->GetHandle().getDevicePtr();
+	this->m_Impl->m_First.m_Params.cpuHandle[0].diffBuffer   = m_Impl->m_SharedFramebuffer->GetComponent<test::RTCUDABufferFBComponent<float3>>("GDiffuse" )->GetHandle().getDevicePtr();
+	this->m_Impl->m_First.m_Params.cpuHandle[0].distBuffer   = m_Impl->m_SharedFramebuffer->GetComponent<test::RTCUDABufferFBComponent<float >>("GDistance")->GetHandle().getDevicePtr();
+	this->m_Impl->m_First.m_Params.cpuHandle[0].seedBuffer   = m_Impl->m_UniqueFramebuffer->GetComponent<test::RTCUDABufferFBComponent<unsigned int>>("Seed")->GetHandle().getDevicePtr();
+	this->m_Impl->m_First.m_Params.cpuHandle[0].motiBuffer   = m_Impl->m_UniqueFramebuffer->GetComponent<test::RTCUDABufferFBComponent<int2>>("Motion2D")->GetHandle().getDevicePtr();
 	this->m_Impl->m_First.m_Params.cpuHandle[0].updateMotion = m_Impl->m_UpdateMotion;
 	//TODO
 	cudaMemcpyAsync(this->m_Impl->m_First.m_Params.gpuHandle.getDevicePtr(), &this->m_Impl->m_First.m_Params.cpuHandle[0], sizeof(RayFirstParams), cudaMemcpyHostToDevice, pUserData->stream);
@@ -148,17 +145,19 @@ void Test24ReSTIROPXTracer::Launch(int width, int height, void* userData)
 	this->m_Impl->m_Second.m_Params.cpuHandle[0].samplePerALL    = m_Impl->m_SamplePerAll;
 	this->m_Impl->m_Second.m_Params.cpuHandle[0].samplePerLaunch = m_Impl->m_SamplePerLaunch;
 	this->m_Impl->m_Second.m_Params.cpuHandle[0].numCandidates   = m_Impl->m_NumCandidates;
-	this->m_Impl->m_Second.m_Params.cpuHandle[0].seedBuffer      = m_Impl->m_SeedBuffer.getDevicePtr();
-	this->m_Impl->m_Second.m_Params.cpuHandle[0].motiBuffer      = m_Impl->m_MotiBuffer.getDevicePtr();
-	this->m_Impl->m_Second.m_Params.cpuHandle[0].posiBuffer      = m_Impl->m_Framebuffer->GetComponent<test::RTCUDABufferFBComponent<float3>>("GPosition")->GetHandle().getDevicePtr();
-	this->m_Impl->m_Second.m_Params.cpuHandle[0].normBuffer      = m_Impl->m_Framebuffer->GetComponent<test::RTCUDABufferFBComponent<float3>>("GNormal"  )->GetHandle().getDevicePtr();
-	this->m_Impl->m_Second.m_Params.cpuHandle[0].emitBuffer      = m_Impl->m_Framebuffer->GetComponent<test::RTCUDABufferFBComponent<float3>>("GEmission")->GetHandle().getDevicePtr();
-	this->m_Impl->m_Second.m_Params.cpuHandle[0].diffBuffer      = m_Impl->m_Framebuffer->GetComponent<test::RTCUDABufferFBComponent<float3>>("GDiffuse" )->GetHandle().getDevicePtr();
-	this->m_Impl->m_Second.m_Params.cpuHandle[0].accumBuffer     = m_Impl->m_Framebuffer->GetComponent<test::RTCUDABufferFBComponent<float3>>("RAccum"   )->GetHandle().getDevicePtr();
-	this->m_Impl->m_Second.m_Params.cpuHandle[0].distBuffer      = m_Impl->m_Framebuffer->GetComponent<test::RTCUDABufferFBComponent<float >>("GDistance")->GetHandle().getDevicePtr();
-	this->m_Impl->m_Second.m_Params.cpuHandle[0].resvBuffer      = m_Impl->m_ResvBuffers[m_Impl->m_CurReservoirIdx].getDevicePtr();
-	this->m_Impl->m_Second.m_Params.cpuHandle[0].tempBuffer      = m_Impl->m_TempBuffer.getDevicePtr();
-	this->m_Impl->m_Second.m_Params.cpuHandle[0].frameBuffer     = m_Impl->m_Framebuffer->GetComponent<test::RTCUGLBufferFBComponent<uchar4>>("RFrame")->GetHandle().map();
+	this->m_Impl->m_Second.m_Params.cpuHandle[0].seedBuffer      = m_Impl->m_UniqueFramebuffer->GetComponent<test::RTCUDABufferFBComponent<unsigned int>>("Seed")->GetHandle().getDevicePtr();
+	this->m_Impl->m_Second.m_Params.cpuHandle[0].motiBuffer      = m_Impl->m_UniqueFramebuffer->GetComponent<test::RTCUDABufferFBComponent<int2>>  ("Motion2D"  )->GetHandle().getDevicePtr();
+	this->m_Impl->m_Second.m_Params.cpuHandle[0].curPosiBuffer   = m_Impl->m_SharedFramebuffer->GetComponent<test::RTCUDABufferFBComponent<float3>>("GPosition" )->GetHandle().getDevicePtr();
+	this->m_Impl->m_Second.m_Params.cpuHandle[0].curNormBuffer   = m_Impl->m_SharedFramebuffer->GetComponent<test::RTCUDABufferFBComponent<float3>>("GNormal"   )->GetHandle().getDevicePtr();
+	this->m_Impl->m_Second.m_Params.cpuHandle[0].prvPosiBuffer   = m_Impl->m_UniqueFramebuffer->GetComponent<test::RTCUDABufferFBComponent<float3>>("GPosition2")->GetHandle().getDevicePtr();
+	this->m_Impl->m_Second.m_Params.cpuHandle[0].prvNormBuffer   = m_Impl->m_UniqueFramebuffer->GetComponent<test::RTCUDABufferFBComponent<float3>>("GNormal2"  )->GetHandle().getDevicePtr();
+	this->m_Impl->m_Second.m_Params.cpuHandle[0].emitBuffer      = m_Impl->m_SharedFramebuffer->GetComponent<test::RTCUDABufferFBComponent<float3>>("GEmission" )->GetHandle().getDevicePtr();
+	this->m_Impl->m_Second.m_Params.cpuHandle[0].diffBuffer      = m_Impl->m_SharedFramebuffer->GetComponent<test::RTCUDABufferFBComponent<float3>>("GDiffuse"  )->GetHandle().getDevicePtr();
+	this->m_Impl->m_Second.m_Params.cpuHandle[0].accumBuffer     = m_Impl->m_SharedFramebuffer->GetComponent<test::RTCUDABufferFBComponent<float3>>("RAccum"    )->GetHandle().getDevicePtr();
+	this->m_Impl->m_Second.m_Params.cpuHandle[0].distBuffer      = m_Impl->m_SharedFramebuffer->GetComponent<test::RTCUDABufferFBComponent<float >>("GDistance" )->GetHandle().getDevicePtr();
+	this->m_Impl->m_Second.m_Params.cpuHandle[0].resvBuffer      = m_Impl->m_UniqueFramebuffer->GetComponent<test::RTCUDABufferFBComponent<Reservoir<LightRec>>>("Reservoir" + std::to_string(m_Impl->m_CurReservoirIdx))->GetHandle().getDevicePtr();
+	this->m_Impl->m_Second.m_Params.cpuHandle[0].tempBuffer      = m_Impl->m_UniqueFramebuffer->GetComponent<test::RTCUDABufferFBComponent<ReservoirState>>("ResvState")->GetHandle().getDevicePtr();
+	this->m_Impl->m_Second.m_Params.cpuHandle[0].frameBuffer     = m_Impl->m_SharedFramebuffer->GetComponent<test::RTCUGLBufferFBComponent<uchar4>>("RFrame")->GetHandle().map();
 	this->m_Impl->m_Second.m_Params.cpuHandle[0].meshLights      = m_Impl->GetMeshLightList();
 
 	cudaMemcpyAsync(this->m_Impl->m_Second.m_Params.gpuHandle.getDevicePtr(), &this->m_Impl->m_Second.m_Params.cpuHandle[0], sizeof(RaySecondParams), cudaMemcpyHostToDevice, pUserData->stream);
@@ -169,14 +168,16 @@ void Test24ReSTIROPXTracer::Launch(int width, int height, void* userData)
 		unsigned int kNumBlocks = 64;
 		uint2 numThreads = (make_uint2(width - 1, height - 1) / kNumBlocks) + make_uint2(1);
 		auto params = m_Impl->m_Second.m_Params.gpuHandle.getDevicePtr();
-		auto prvResvBuffer  = m_Impl->m_ResvBuffers[m_Impl->m_PrvReservoirIdx].getDevicePtr();
-		auto curResvBuffer  = m_Impl->m_ResvBuffers[m_Impl->m_CurReservoirIdx].getDevicePtr();
-		auto tmpStatBuffer  = m_Impl->m_TempBuffer.getDevicePtr();
+		auto prvResvBuffer  = m_Impl->m_UniqueFramebuffer->GetComponent<test::RTCUDABufferFBComponent<Reservoir<LightRec>>>("Reservoir" + std::to_string(m_Impl->m_PrvReservoirIdx))->GetHandle().getDevicePtr();
+		auto curResvBuffer  = m_Impl->m_UniqueFramebuffer->GetComponent<test::RTCUDABufferFBComponent<Reservoir<LightRec>>>("Reservoir" + std::to_string(m_Impl->m_CurReservoirIdx))->GetHandle().getDevicePtr();
+		auto tmpStatBuffer  = m_Impl->m_UniqueFramebuffer->GetComponent<test::RTCUDABufferFBComponent<ReservoirState>>("ResvState")->GetHandle().getDevicePtr();
+		auto camEye         = m_Impl->m_Camera.getEye();
 		void* args[] = {
 			reinterpret_cast<void*>(&prvResvBuffer),
 			reinterpret_cast<void*>(&curResvBuffer),
 			reinterpret_cast<void*>(&tmpStatBuffer),
 			reinterpret_cast<void*>(&params),
+			reinterpret_cast<void*>(&camEye),
 			reinterpret_cast<void*>(&width ),
 			reinterpret_cast<void*>(&height),
 		};
@@ -192,11 +193,11 @@ void Test24ReSTIROPXTracer::Launch(int width, int height, void* userData)
 		
 		uint2 numThreads = (make_uint2(width - 1, height - 1) / kNumBlocks) + make_uint2(1);
 		auto params = m_Impl->m_Second.m_Params.gpuHandle.getDevicePtr();
-		int  sample = 30;
+		int  sample = 5;
 		for (int i = 0; i < pUserData->iterationSpatialReuse;++i) {
-			auto inResvBuffer  = m_Impl->m_ResvBuffers[m_Impl->m_CurReservoirIdx].getDevicePtr();
-			auto outResvBuffer = m_Impl->m_ResvBuffers[m_Impl->m_FnlReservoirIdx].getDevicePtr();
-			auto tmpStatBuffer = m_Impl->m_TempBuffer.getDevicePtr();
+			auto inResvBuffer  = m_Impl->m_UniqueFramebuffer->GetComponent<test::RTCUDABufferFBComponent<Reservoir<LightRec>>>("Reservoir" + std::to_string(m_Impl->m_CurReservoirIdx))->GetHandle().getDevicePtr();
+			auto outResvBuffer = m_Impl->m_UniqueFramebuffer->GetComponent<test::RTCUDABufferFBComponent<Reservoir<LightRec>>>("Reservoir" + std::to_string(m_Impl->m_FnlReservoirIdx))->GetHandle().getDevicePtr();
+			auto tmpStatBuffer = m_Impl->m_UniqueFramebuffer->GetComponent<test::RTCUDABufferFBComponent<ReservoirState>>("ResvState")->GetHandle().getDevicePtr();
 			void* args[] = {
 				reinterpret_cast<void*>(&inResvBuffer),
 				reinterpret_cast<void*>(&outResvBuffer),
@@ -213,13 +214,13 @@ void Test24ReSTIROPXTracer::Launch(int width, int height, void* userData)
 		}
 		
 
-		this->m_Impl->m_Second.m_Params.cpuHandle[0].resvBuffer = m_Impl->m_ResvBuffers[m_Impl->m_CurReservoirIdx].getDevicePtr();
+		this->m_Impl->m_Second.m_Params.cpuHandle[0].resvBuffer = m_Impl->m_UniqueFramebuffer->GetComponent<test::RTCUDABufferFBComponent<Reservoir<LightRec>>>("Reservoir" + std::to_string(m_Impl->m_CurReservoirIdx))->GetHandle().getDevicePtr();
 		cudaMemcpyAsync(this->m_Impl->m_Second.m_Params.gpuHandle.getDevicePtr(), &this->m_Impl->m_Second.m_Params.cpuHandle[0], sizeof(RaySecondParams), cudaMemcpyHostToDevice, pUserData->stream);
 	}
 	this->m_Impl->m_Second.m_Pipeline.launch(pUserData->stream, this->m_Impl->m_Second.m_Params.gpuHandle.getDevicePtr()+0 , this->m_Impl->m_Second.m_ShaderBindingTableForDraw, width, height, 1);
 	RTLIB_CU_CHECK(cuStreamSynchronize(pUserData->stream));
 
-	m_Impl->m_Framebuffer->GetComponent<test::RTCUGLBufferFBComponent<uchar4>>("RFrame")->GetHandle().unmap();
+	m_Impl->m_SharedFramebuffer->GetComponent<test::RTCUGLBufferFBComponent<uchar4>>("RFrame")->GetHandle().unmap();
 	this->m_Impl->m_Second.m_Params.cpuHandle[0].samplePerALL += this->m_Impl->m_Second.m_Params.cpuHandle[0].samplePerLaunch;
 	this->m_Impl->m_SamplePerAll = this->m_Impl->m_Second.m_Params.cpuHandle[0].samplePerALL;
 	std::swap(m_Impl->m_CurReservoirIdx, m_Impl->m_PrvReservoirIdx);
@@ -241,7 +242,7 @@ void Test24ReSTIROPXTracer::Update()
 	m_Impl->m_UpdateMotion = true;
 	if (this->m_Impl->m_CurEventFlags   & TEST24_EVENT_FLAG_BIT_UPDATE_CAMERA)
 	{
-		float aspect = (float)m_Impl->m_Framebuffer->GetWidth() / (float)m_Impl->m_Framebuffer->GetHeight();
+		float aspect = (float)m_Impl->m_SharedFramebuffer->GetWidth() / (float)m_Impl->m_SharedFramebuffer->GetHeight();
 		this->m_Impl->m_Camera = this->m_Impl->m_CameraController->GetCamera(aspect);
 		auto eye       = this->m_Impl->m_Camera.getEye();
 		auto [u, v, w] = this->m_Impl->m_Camera.getUVW();
@@ -277,43 +278,49 @@ void Test24ReSTIROPXTracer::Update()
 
 	if (this->m_Impl->m_CurEventFlags   & TEST24_EVENT_FLAG_BIT_FLUSH_FRAME)
 	{
-		std::vector<float3> zeroAccumValues(this->m_Impl->m_Framebuffer->GetWidth() * this->m_Impl->m_Framebuffer->GetHeight(), make_float3(0.0f));
-		cudaMemcpy(this->m_Impl->m_Framebuffer->GetComponent<test::RTCUDABufferFBComponent<float3>>("RAccum")->GetHandle().getDevicePtr(), zeroAccumValues.data(), sizeof(float3) * this->m_Impl->m_Framebuffer->GetWidth() * this->m_Impl->m_Framebuffer->GetHeight(), cudaMemcpyHostToDevice);
+		std::vector<float3> zeroAccumValues(this->m_Impl->m_SharedFramebuffer->GetWidth() * this->m_Impl->m_SharedFramebuffer->GetHeight(), make_float3(0.0f));
+		cudaMemcpy(this->m_Impl->m_SharedFramebuffer->GetComponent<test::RTCUDABufferFBComponent<float3>>("RAccum")->GetHandle().getDevicePtr(), zeroAccumValues.data(), sizeof(float3) * this->m_Impl->m_SharedFramebuffer->GetWidth() * this->m_Impl->m_SharedFramebuffer->GetHeight(), cudaMemcpyHostToDevice);
 		this->m_Impl->m_Second.m_Params.cpuHandle[0].samplePerALL = 0;
 		this->m_Impl->m_SamplePerAll = 0;
 	}
 
-	bool shouldRegen = ((this->m_Impl->m_SamplePerAll + this->m_Impl->m_Second.m_Params.cpuHandle[0].samplePerLaunch) / 1024 != this->m_Impl->m_SamplePerAll / 1024);
-	if ((this->m_Impl->m_CurEventFlags  & TEST24_EVENT_FLAG_BIT_RESIZE_FRAME) || shouldRegen)
-	{
+	if (this->m_Impl->m_CurEventFlags   & TEST24_EVENT_FLAG_BIT_RESIZE_FRAME) {
 		std::cout << "Regen!\n";
-		std::vector<unsigned int> seedData(this->m_Impl->m_Framebuffer->GetWidth() * this->m_Impl->m_Framebuffer->GetHeight());
+		m_Impl->m_UniqueFramebuffer->Resize(m_Impl->m_SharedFramebuffer->GetWidth(), m_Impl->m_SharedFramebuffer->GetHeight());
+
+		m_Impl->m_UniqueFramebuffer->GetComponent<test::RTCUDABufferFBComponent<float3>>("GPosition2")->GetHandle().upload(std::vector<float3>(m_Impl->m_SharedFramebuffer->GetWidth() * m_Impl->m_SharedFramebuffer->GetHeight(), { 0.0f,0.0f,0.0f }));
+
+		m_Impl->m_UniqueFramebuffer->GetComponent<test::RTCUDABufferFBComponent<float3>>("GNormal2"  )->GetHandle().upload(std::vector<float3>(m_Impl->m_SharedFramebuffer->GetWidth() * m_Impl->m_SharedFramebuffer->GetHeight(), { 0.0f,0.0f,0.0f }));
+
+		std::vector<unsigned int> seedData(this->m_Impl->m_SharedFramebuffer->GetWidth() * this->m_Impl->m_SharedFramebuffer->GetHeight());
 		std::random_device rd;
 		std::mt19937 mt(rd());
 		std::generate(seedData.begin(), seedData.end(), mt);
-		this->m_Impl->m_SeedBuffer.resize(this->m_Impl->m_Framebuffer->GetWidth() * this->m_Impl->m_Framebuffer->GetHeight());
-		this->m_Impl->m_SeedBuffer.upload(seedData);
-	}
+		m_Impl->m_UniqueFramebuffer->GetComponent<test::RTCUDABufferFBComponent<unsigned int>>("Seed")->GetHandle().upload(seedData);
 
-	if (this->m_Impl->m_CurEventFlags   & TEST24_EVENT_FLAG_BIT_RESIZE_FRAME) {
-		std::vector<Reservoir<LightRec>> reservoirs(this->m_Impl->m_Framebuffer->GetWidth() * this->m_Impl->m_Framebuffer->GetHeight());
-		this->m_Impl->m_ResvBuffers[0].resize(this->m_Impl->m_Framebuffer->GetWidth() * this->m_Impl->m_Framebuffer->GetHeight());
-		this->m_Impl->m_ResvBuffers[1].resize(this->m_Impl->m_Framebuffer->GetWidth() * this->m_Impl->m_Framebuffer->GetHeight());
-		this->m_Impl->m_ResvBuffers[2].resize(this->m_Impl->m_Framebuffer->GetWidth() * this->m_Impl->m_Framebuffer->GetHeight());
-		this->m_Impl->m_ResvBuffers[0].upload(reservoirs);
-		this->m_Impl->m_ResvBuffers[1].upload(reservoirs);
-		this->m_Impl->m_ResvBuffers[2].upload(reservoirs);
+		std::vector<Reservoir<LightRec>> reservoirs(this->m_Impl->m_SharedFramebuffer->GetWidth() * this->m_Impl->m_SharedFramebuffer->GetHeight());
+		m_Impl->m_UniqueFramebuffer->GetComponent<test::RTCUDABufferFBComponent<Reservoir<LightRec>>>("Reservoir0")->GetHandle().upload(reservoirs);
+		m_Impl->m_UniqueFramebuffer->GetComponent<test::RTCUDABufferFBComponent<Reservoir<LightRec>>>("Reservoir1")->GetHandle().upload(reservoirs);
+		m_Impl->m_UniqueFramebuffer->GetComponent<test::RTCUDABufferFBComponent<Reservoir<LightRec>>>("Reservoir2")->GetHandle().upload(reservoirs);
 
-		std::vector<ReservoirState> tempStates(this->m_Impl->m_Framebuffer->GetWidth() * this->m_Impl->m_Framebuffer->GetHeight(), { 0.0f });
-		this->m_Impl->m_TempBuffer.resize(this->m_Impl->m_Framebuffer->GetWidth() * this->m_Impl->m_Framebuffer->GetHeight());
-		this->m_Impl->m_TempBuffer.upload(tempStates);
+		std::vector<ReservoirState> resvStates(this->m_Impl->m_SharedFramebuffer->GetWidth() * this->m_Impl->m_SharedFramebuffer->GetHeight(), { 0.0f });
+		m_Impl->m_UniqueFramebuffer->GetComponent<test::RTCUDABufferFBComponent<ReservoirState>>("ResvState")->GetHandle().upload(resvStates);
 
-		std::vector<int2> motionData(this->m_Impl->m_Framebuffer->GetWidth() * this->m_Impl->m_Framebuffer->GetHeight(), { 0,0 });
-		this->m_Impl->m_MotiBuffer.resize(this->m_Impl->m_Framebuffer->GetWidth() * this->m_Impl->m_Framebuffer->GetHeight());
-		this->m_Impl->m_MotiBuffer.upload(motionData);
+		std::vector<int2> motionData(this->m_Impl->m_SharedFramebuffer->GetWidth() * this->m_Impl->m_SharedFramebuffer->GetHeight(), { 0,0 });
+		m_Impl->m_UniqueFramebuffer->GetComponent<test::RTCUDABufferFBComponent<int2>>("Motion2D")->GetHandle().upload(motionData);
 		m_Impl->m_UpdateMotion = false;
 	}
 
+	bool shouldRegen = ((this->m_Impl->m_SamplePerAll + this->m_Impl->m_Second.m_Params.cpuHandle[0].samplePerLaunch) / 1024 != this->m_Impl->m_SamplePerAll / 1024);
+	if (shouldRegen)
+	{
+		std::cout << "Regen!\n";
+		std::vector<unsigned int> seedData(this->m_Impl->m_SharedFramebuffer->GetWidth() * this->m_Impl->m_SharedFramebuffer->GetHeight());
+		std::random_device rd;
+		std::mt19937 mt(rd());
+		std::generate(seedData.begin(), seedData.end(), mt);
+		m_Impl->m_UniqueFramebuffer->GetComponent<test::RTCUDABufferFBComponent<unsigned int>>("Seed")->GetHandle().upload(seedData);
+	}
 	if (this->m_Impl->m_CurEventFlags   & TEST24_EVENT_FLAG_BIT_UPDATE_LIGHT)
 	{
 		auto lightColor = make_float4(this->m_Impl->m_BgLightColor, 1.0f);
@@ -332,22 +339,36 @@ Test24ReSTIROPXTracer::~Test24ReSTIROPXTracer() {}
 
 void Test24ReSTIROPXTracer::InitFrameResources()
 {
-	std::vector<unsigned int> seedData(this->m_Impl->m_Framebuffer->GetWidth() * this->m_Impl->m_Framebuffer->GetHeight());
+	m_Impl->m_UniqueFramebuffer = std::unique_ptr<test::RTFramebuffer>(new test::RTFramebuffer(m_Impl->m_SharedFramebuffer->GetWidth(), m_Impl->m_SharedFramebuffer->GetHeight()));
+
+	m_Impl->m_UniqueFramebuffer->AddComponent<test::RTCUDABufferFBComponent<float3>>("GPosition2");
+	m_Impl->m_UniqueFramebuffer->GetComponent<test::RTCUDABufferFBComponent<float3>>("GPosition2")->GetHandle().upload(std::vector<float3>(m_Impl->m_SharedFramebuffer->GetWidth()* m_Impl->m_SharedFramebuffer->GetHeight(), { 0.0f,0.0f,0.0f }));
+
+	m_Impl->m_UniqueFramebuffer->AddComponent<test::RTCUDABufferFBComponent<float3>>("GNormal2");
+	m_Impl->m_UniqueFramebuffer->GetComponent<test::RTCUDABufferFBComponent<float3>>("GNormal2")->GetHandle().upload(std::vector<float3>(m_Impl->m_SharedFramebuffer->GetWidth() * m_Impl->m_SharedFramebuffer->GetHeight(), { 0.0f,0.0f,0.0f }));
+
+	std::vector<unsigned int> seedData(this->m_Impl->m_SharedFramebuffer->GetWidth() * this->m_Impl->m_SharedFramebuffer->GetHeight());
 	std::random_device rd;
 	std::mt19937 mt(rd());
 	std::generate(seedData.begin(), seedData.end(), mt);
-	this->m_Impl->m_SeedBuffer = rtlib::CUDABuffer<uint32_t>(seedData);
+	m_Impl->m_UniqueFramebuffer->AddComponent<test::RTCUDABufferFBComponent<unsigned int>>("Seed");
+	m_Impl->m_UniqueFramebuffer->GetComponent<test::RTCUDABufferFBComponent<unsigned int>>("Seed")->GetHandle().upload(seedData);
 
-	std::vector<Reservoir<LightRec>> reservoirs(this->m_Impl->m_Framebuffer->GetWidth() * this->m_Impl->m_Framebuffer->GetHeight());
-	this->m_Impl->m_ResvBuffers[0] = rtlib::CUDABuffer<Reservoir<LightRec>>(reservoirs);
-	this->m_Impl->m_ResvBuffers[1] = rtlib::CUDABuffer<Reservoir<LightRec>>(reservoirs);
-	this->m_Impl->m_ResvBuffers[2] = rtlib::CUDABuffer<Reservoir<LightRec>>(reservoirs);
+	std::vector<Reservoir<LightRec>> reservoirs(this->m_Impl->m_SharedFramebuffer->GetWidth() * this->m_Impl->m_SharedFramebuffer->GetHeight());
+	m_Impl->m_UniqueFramebuffer->AddComponent<test::RTCUDABufferFBComponent<Reservoir<LightRec>>>("Reservoir0");
+	m_Impl->m_UniqueFramebuffer->AddComponent<test::RTCUDABufferFBComponent<Reservoir<LightRec>>>("Reservoir1");
+	m_Impl->m_UniqueFramebuffer->AddComponent<test::RTCUDABufferFBComponent<Reservoir<LightRec>>>("Reservoir2");
+	m_Impl->m_UniqueFramebuffer->GetComponent<test::RTCUDABufferFBComponent<Reservoir<LightRec>>>("Reservoir0")->GetHandle().upload(reservoirs);
+	m_Impl->m_UniqueFramebuffer->GetComponent<test::RTCUDABufferFBComponent<Reservoir<LightRec>>>("Reservoir1")->GetHandle().upload(reservoirs);
+	m_Impl->m_UniqueFramebuffer->GetComponent<test::RTCUDABufferFBComponent<Reservoir<LightRec>>>("Reservoir2")->GetHandle().upload(reservoirs);
+	
+	std::vector<ReservoirState> resvStates(this->m_Impl->m_SharedFramebuffer->GetWidth() * this->m_Impl->m_SharedFramebuffer->GetHeight(), { 0.0f });
+	m_Impl->m_UniqueFramebuffer->AddComponent<test::RTCUDABufferFBComponent<ReservoirState>>("ResvState");
+	m_Impl->m_UniqueFramebuffer->GetComponent<test::RTCUDABufferFBComponent<ReservoirState>>("ResvState")->GetHandle().upload(resvStates);
 
-	std::vector<ReservoirState> tempStates(this->m_Impl->m_Framebuffer->GetWidth() * this->m_Impl->m_Framebuffer->GetHeight(), { 0.0f });
-	this->m_Impl->m_TempBuffer = rtlib::CUDABuffer<ReservoirState>(tempStates);
-
-	std::vector<int2> motionData(this->m_Impl->m_Framebuffer->GetWidth() * this->m_Impl->m_Framebuffer->GetHeight(), { 0,0 });
-	this->m_Impl->m_MotiBuffer = rtlib::CUDABuffer<int2>(motionData);
+	std::vector<int2> motionData(this->m_Impl->m_SharedFramebuffer->GetWidth() * this->m_Impl->m_SharedFramebuffer->GetHeight(), { 0,0 });
+	m_Impl->m_UniqueFramebuffer->AddComponent<test::RTCUDABufferFBComponent<int2>>("Motion2D");
+	m_Impl->m_UniqueFramebuffer->GetComponent<test::RTCUDABufferFBComponent<int2>>("Motion2D")->GetHandle().upload(motionData);
 }
 
 void Test24ReSTIROPXTracer::InitPipeline()
@@ -457,7 +478,7 @@ void Test24ReSTIROPXTracer::InitShaderBindingTable()
 {
 	/**First **/
 	{
-		float aspect = static_cast<float>(m_Impl->m_Framebuffer->GetWidth()) / static_cast<float>(m_Impl->m_Framebuffer->GetHeight());
+		float aspect = static_cast<float>(m_Impl->m_SharedFramebuffer->GetWidth()) / static_cast<float>(m_Impl->m_SharedFramebuffer->GetHeight());
 		auto tlas = this->m_Impl->m_TopLevelAS;
 		this->m_Impl->m_Camera = this->m_Impl->m_CameraController->GetCamera(aspect);
 		auto& materials = this->m_Impl->m_Materials;
@@ -655,33 +676,35 @@ void Test24ReSTIROPXTracer::InitLaunchParams()
 	auto tlas = this->m_Impl->m_TopLevelAS;
 	this->m_Impl->m_First.m_Params.Alloc(1);
 	this->m_Impl->m_First.m_Params.cpuHandle[0].gasHandle    = tlas->GetHandle();
-	this->m_Impl->m_First.m_Params.cpuHandle[0].width        = this->m_Impl->m_Framebuffer->GetWidth();
-	this->m_Impl->m_First.m_Params.cpuHandle[0].height       = this->m_Impl->m_Framebuffer->GetHeight();
-	this->m_Impl->m_First.m_Params.cpuHandle[0].posiBuffer   = m_Impl->m_Framebuffer->GetComponent<test::RTCUDABufferFBComponent<float3>>("GPosition")->GetHandle().getDevicePtr();
-	this->m_Impl->m_First.m_Params.cpuHandle[0].normBuffer   = m_Impl->m_Framebuffer->GetComponent<test::RTCUDABufferFBComponent<float3>>("GNormal"  )->GetHandle().getDevicePtr();
-	this->m_Impl->m_First.m_Params.cpuHandle[0].emitBuffer   = m_Impl->m_Framebuffer->GetComponent<test::RTCUDABufferFBComponent<float3>>("GEmission")->GetHandle().getDevicePtr();
-	this->m_Impl->m_First.m_Params.cpuHandle[0].diffBuffer   = m_Impl->m_Framebuffer->GetComponent<test::RTCUDABufferFBComponent<float3>>("GDiffuse" )->GetHandle().getDevicePtr();
-	this->m_Impl->m_First.m_Params.cpuHandle[0].distBuffer   = m_Impl->m_Framebuffer->GetComponent<test::RTCUDABufferFBComponent<float >>("GDistance")->GetHandle().getDevicePtr();
-	this->m_Impl->m_First.m_Params.cpuHandle[0].seedBuffer   = m_Impl->m_SeedBuffer.getDevicePtr();
-	this->m_Impl->m_First.m_Params.cpuHandle[0].motiBuffer   = m_Impl->m_MotiBuffer.getDevicePtr();
+	this->m_Impl->m_First.m_Params.cpuHandle[0].width        = this->m_Impl->m_SharedFramebuffer->GetWidth();
+	this->m_Impl->m_First.m_Params.cpuHandle[0].height       = this->m_Impl->m_SharedFramebuffer->GetHeight();
+	this->m_Impl->m_First.m_Params.cpuHandle[0].posiBuffer   = m_Impl->m_SharedFramebuffer->GetComponent<test::RTCUDABufferFBComponent<float3>>("GPosition")->GetHandle().getDevicePtr();
+	this->m_Impl->m_First.m_Params.cpuHandle[0].normBuffer   = m_Impl->m_SharedFramebuffer->GetComponent<test::RTCUDABufferFBComponent<float3>>("GNormal"  )->GetHandle().getDevicePtr();
+	this->m_Impl->m_First.m_Params.cpuHandle[0].emitBuffer   = m_Impl->m_SharedFramebuffer->GetComponent<test::RTCUDABufferFBComponent<float3>>("GEmission")->GetHandle().getDevicePtr();
+	this->m_Impl->m_First.m_Params.cpuHandle[0].diffBuffer   = m_Impl->m_SharedFramebuffer->GetComponent<test::RTCUDABufferFBComponent<float3>>("GDiffuse" )->GetHandle().getDevicePtr();
+	this->m_Impl->m_First.m_Params.cpuHandle[0].distBuffer   = m_Impl->m_SharedFramebuffer->GetComponent<test::RTCUDABufferFBComponent<float >>("GDistance")->GetHandle().getDevicePtr();
+	this->m_Impl->m_First.m_Params.cpuHandle[0].seedBuffer   = m_Impl->m_UniqueFramebuffer->GetComponent<test::RTCUDABufferFBComponent<unsigned int>>("Seed")->GetHandle().getDevicePtr();
+	this->m_Impl->m_First.m_Params.cpuHandle[0].motiBuffer   = m_Impl->m_UniqueFramebuffer->GetComponent<test::RTCUDABufferFBComponent<int2>>("Motion2D")->GetHandle().getDevicePtr();
 	this->m_Impl->m_First.m_Params.cpuHandle[0].updateMotion = m_Impl->m_UpdateMotion;
 	this->m_Impl->m_First.m_Params.Upload();
 	this->m_Impl->m_Second.m_Params.Alloc(1);
 	this->m_Impl->m_Second.m_Params.cpuHandle[0].gasHandle       = tlas->GetHandle();
-	this->m_Impl->m_Second.m_Params.cpuHandle[0].width           = this->m_Impl->m_Framebuffer->GetWidth();
-	this->m_Impl->m_Second.m_Params.cpuHandle[0].height          = this->m_Impl->m_Framebuffer->GetHeight();
+	this->m_Impl->m_Second.m_Params.cpuHandle[0].width           = this->m_Impl->m_SharedFramebuffer->GetWidth();
+	this->m_Impl->m_Second.m_Params.cpuHandle[0].height          = this->m_Impl->m_SharedFramebuffer->GetHeight();
 	this->m_Impl->m_Second.m_Params.cpuHandle[0].samplePerALL    = m_Impl->m_SamplePerAll;
 	this->m_Impl->m_Second.m_Params.cpuHandle[0].samplePerLaunch = m_Impl->m_SamplePerLaunch;
 	this->m_Impl->m_Second.m_Params.cpuHandle[0].numCandidates   = m_Impl->m_NumCandidates;
-	this->m_Impl->m_Second.m_Params.cpuHandle[0].seedBuffer      = m_Impl->m_SeedBuffer.getDevicePtr();
-	this->m_Impl->m_Second.m_Params.cpuHandle[0].motiBuffer = m_Impl->m_MotiBuffer.getDevicePtr();
-	this->m_Impl->m_Second.m_Params.cpuHandle[0].posiBuffer      = m_Impl->m_Framebuffer->GetComponent<test::RTCUDABufferFBComponent<float3>>("GPosition")->GetHandle().getDevicePtr();
-	this->m_Impl->m_Second.m_Params.cpuHandle[0].normBuffer      = m_Impl->m_Framebuffer->GetComponent<test::RTCUDABufferFBComponent<float3>>("GNormal"  )->GetHandle().getDevicePtr();
-	this->m_Impl->m_Second.m_Params.cpuHandle[0].emitBuffer      = m_Impl->m_Framebuffer->GetComponent<test::RTCUDABufferFBComponent<float3>>("GEmission")->GetHandle().getDevicePtr();
-	this->m_Impl->m_Second.m_Params.cpuHandle[0].diffBuffer      = m_Impl->m_Framebuffer->GetComponent<test::RTCUDABufferFBComponent<float3>>("GDiffuse" )->GetHandle().getDevicePtr();
-	this->m_Impl->m_Second.m_Params.cpuHandle[0].distBuffer      = m_Impl->m_Framebuffer->GetComponent<test::RTCUDABufferFBComponent<float >>("GDistance")->GetHandle().getDevicePtr();
-	this->m_Impl->m_Second.m_Params.cpuHandle[0].resvBuffer      = m_Impl->m_ResvBuffers[m_Impl->m_FnlReservoirIdx].getDevicePtr();
-	this->m_Impl->m_Second.m_Params.cpuHandle[0].accumBuffer     = m_Impl->m_Framebuffer->GetComponent<test::RTCUDABufferFBComponent<float3>>("RAccum"   )->GetHandle().getDevicePtr();
+	this->m_Impl->m_Second.m_Params.cpuHandle[0].seedBuffer      = m_Impl->m_UniqueFramebuffer->GetComponent<test::RTCUDABufferFBComponent<unsigned int>>("Seed")->GetHandle().getDevicePtr();
+	this->m_Impl->m_Second.m_Params.cpuHandle[0].motiBuffer      = m_Impl->m_UniqueFramebuffer->GetComponent<test::RTCUDABufferFBComponent<int2>>(  "Motion2D" )->GetHandle().getDevicePtr();
+	this->m_Impl->m_Second.m_Params.cpuHandle[0].curPosiBuffer   = m_Impl->m_SharedFramebuffer->GetComponent<test::RTCUDABufferFBComponent<float3>>("GPosition")->GetHandle().getDevicePtr();
+	this->m_Impl->m_Second.m_Params.cpuHandle[0].curNormBuffer   = m_Impl->m_SharedFramebuffer->GetComponent<test::RTCUDABufferFBComponent<float3>>("GNormal"  )->GetHandle().getDevicePtr();
+	this->m_Impl->m_Second.m_Params.cpuHandle[0].prvPosiBuffer   = m_Impl->m_UniqueFramebuffer->GetComponent<test::RTCUDABufferFBComponent<float3>>("GPosition2")->GetHandle().getDevicePtr();
+	this->m_Impl->m_Second.m_Params.cpuHandle[0].prvNormBuffer   = m_Impl->m_UniqueFramebuffer->GetComponent<test::RTCUDABufferFBComponent<float3>>("GNormal2")->GetHandle().getDevicePtr();
+	this->m_Impl->m_Second.m_Params.cpuHandle[0].emitBuffer      = m_Impl->m_SharedFramebuffer->GetComponent<test::RTCUDABufferFBComponent<float3>>("GEmission")->GetHandle().getDevicePtr();
+	this->m_Impl->m_Second.m_Params.cpuHandle[0].diffBuffer      = m_Impl->m_SharedFramebuffer->GetComponent<test::RTCUDABufferFBComponent<float3>>("GDiffuse" )->GetHandle().getDevicePtr();
+	this->m_Impl->m_Second.m_Params.cpuHandle[0].distBuffer      = m_Impl->m_SharedFramebuffer->GetComponent<test::RTCUDABufferFBComponent<float >>("GDistance")->GetHandle().getDevicePtr();
+	this->m_Impl->m_Second.m_Params.cpuHandle[0].resvBuffer      = m_Impl->m_UniqueFramebuffer->GetComponent<test::RTCUDABufferFBComponent<Reservoir<LightRec>>>("Reservoir"+std::to_string(m_Impl->m_FnlReservoirIdx))->GetHandle().getDevicePtr();
+	this->m_Impl->m_Second.m_Params.cpuHandle[0].accumBuffer     = m_Impl->m_SharedFramebuffer->GetComponent<test::RTCUDABufferFBComponent<float3>>("RAccum"   )->GetHandle().getDevicePtr();
 	this->m_Impl->m_Second.m_Params.cpuHandle[0].frameBuffer     = nullptr;
 	this->m_Impl->m_Second.m_Params.cpuHandle[0].meshLights      = m_Impl->GetMeshLightList();
 	this->m_Impl->m_Second.m_Params.Upload();
@@ -689,6 +712,7 @@ void Test24ReSTIROPXTracer::InitLaunchParams()
 
 void Test24ReSTIROPXTracer::FreeFrameResources()
 {
+	this->m_Impl->m_UniqueFramebuffer.reset();
 }
 
 void Test24ReSTIROPXTracer::FreePipeline()

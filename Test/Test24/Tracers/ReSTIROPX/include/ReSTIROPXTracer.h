@@ -20,9 +20,10 @@ class Test24ReSTIROPXTracer : public test::RTTracer
 {
 private:
     using ContextPtr = std::shared_ptr<test::RTContext>;
-    using FramebufferPtr = std::shared_ptr<test::RTFramebuffer>;
-    using CameraControllerPtr = std::shared_ptr<rtlib::ext::CameraController>;
-    using TextureAssetManager = std::shared_ptr<test::RTTextureAssetManager>;
+    using FramebufferSharedPtr = std::shared_ptr<test::RTFramebuffer>;
+    using FramebufferUniquePtr = std::unique_ptr<test::RTFramebuffer>;
+    using CameraControllerPtr  = std::shared_ptr<rtlib::ext::CameraController>;
+    using TextureAssetManager  = std::shared_ptr<test::RTTextureAssetManager>;
 public:
     struct UserData
     {
@@ -35,7 +36,7 @@ public:
 
 public:
     Test24ReSTIROPXTracer(ContextPtr Context,
-        FramebufferPtr Framebuffer,
+        FramebufferSharedPtr Framebuffer,
         CameraControllerPtr CameraController,
         TextureAssetManager TextureManager,
         rtlib::ext::IASHandlePtr TopLevelAS,

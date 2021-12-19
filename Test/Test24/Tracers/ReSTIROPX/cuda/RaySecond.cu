@@ -99,10 +99,10 @@ extern "C" __global__ void     __raygen__init() {
         (2.0f * static_cast<float>(idx.x) / static_cast<float>(dim.x)) - 1.0,
         (2.0f * static_cast<float>(idx.y) / static_cast<float>(dim.y)) - 1.0);
     auto   seed      = params.seedBuffer[params.width * idx.y + idx.x];
-    auto   normal    = params.normBuffer[params.width * idx.y + idx.x];
+    auto   normal    = params.curNormBuffer[params.width * idx.y + idx.x];
     auto   emission  = params.emitBuffer[params.width * idx.y + idx.x];
     auto   diffuse   = params.diffBuffer[params.width * idx.y + idx.x];
-    auto   origin    = params.posiBuffer[params.width * idx.y + idx.x];
+    auto   origin    = params.curPosiBuffer[params.width * idx.y + idx.x];
     auto   isNotDone =(emission.x == 0.0f) && (emission.y == 0.0f) && (emission.z == 0.0f);
     Reservoir<LightRec> resv   = {};
     float     p_y = 0.0f;
@@ -160,10 +160,10 @@ extern "C" __global__ void     __raygen__draw() {
     auto resv     = params.resvBuffer[params.width * idx.y + idx.x];
     auto temp     = params.tempBuffer[params.width * idx.y + idx.x];
     auto seed     = params.seedBuffer[params.width * idx.y + idx.x];
-    auto normal   = params.normBuffer[params.width * idx.y + idx.x];
+    auto normal   = params.curNormBuffer[params.width * idx.y + idx.x];
     auto emission = params.emitBuffer[params.width * idx.y + idx.x];
     auto diffuse  = params.diffBuffer[params.width * idx.y + idx.x];
-    auto origin   = params.posiBuffer[params.width * idx.y + idx.x];
+    auto origin   = params.curPosiBuffer[params.width * idx.y + idx.x];
     auto result   = emission;
     auto direction= rtlib::normalize(d.x * u + d.y * v + w);
     auto isNotDone=(emission.x == 0.0f) && (emission.y == 0.0f) && (emission.z == 0.0f);
@@ -199,6 +199,8 @@ extern "C" __global__ void     __raygen__draw() {
     params.seedBuffer[ params.width * idx.y + idx.x] = seed;
 
     rgData->pinhole[FRAME_TYPE_PREVIOUS] = rgData->pinhole[FRAME_TYPE_CURRENT];
+    params.prvPosiBuffer[params.width * idx.y + idx.x] = origin;
+    params.prvNormBuffer[params.width * idx.y + idx.x] = normal;
 }
 extern "C" __global__ void __closesthit__occluded() {
     setPayloadOccluded(true);

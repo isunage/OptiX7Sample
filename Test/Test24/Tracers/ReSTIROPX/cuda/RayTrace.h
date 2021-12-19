@@ -16,7 +16,7 @@ namespace test24_restir
         RAY_TYPE_COUNT = 2,
     };
     enum   FlameType {
-        FRAME_TYPE_CURRENT  = 0,
+        FRAME_TYPE_CURRENT = 0,
         FRAME_TYPE_PREVIOUS,
         FRAME_TYPE_COUNT
     };
@@ -44,7 +44,7 @@ namespace test24_restir
         float3* vertices;
         float3* normals;
         float2* texCoords;
-        uint3 * indices;
+        uint3* indices;
         unsigned int        indCount;
         float3              emission;
         cudaTextureObject_t emissionTex;
@@ -52,29 +52,29 @@ namespace test24_restir
         RTLIB_INLINE RTLIB_HOST_DEVICE auto Sample(const float3& p_in, LightRec& lRec, float& distance, float& invAreaProb, RNG& rng)->float3
         {
             auto triIdx = indices[rng.next() % indCount];
-            auto v0     =  vertices[triIdx.x];
-            auto v1     =  vertices[triIdx.y];
-            auto v2     =  vertices[triIdx.z];
-            auto t0     = texCoords[triIdx.x];
-            auto t1     = texCoords[triIdx.y];
-            auto t2     = texCoords[triIdx.z];
+            auto v0 = vertices[triIdx.x];
+            auto v1 = vertices[triIdx.y];
+            auto v2 = vertices[triIdx.z];
+            auto t0 = texCoords[triIdx.x];
+            auto t1 = texCoords[triIdx.y];
+            auto t2 = texCoords[triIdx.z];
             //normal
-            auto n0     = rtlib::cross(v1 - v0, v2 - v0);
+            auto n0 = rtlib::cross(v1 - v0, v2 - v0);
             //area light
-            auto dA     = rtlib::length(n0) / 2.0f;
-            n0          = rtlib::normalize(n0);
-            auto bary   = rtlib::random_in_unit_triangle(make_float3(1.0f, 0.0f, 0.0f), make_float3(0.0f, 1.0f, 0.0f), make_float3(0.0f, 0.0f, 1.0f), rng);
-            auto p      = bary.x * v0 + bary.y * v1 + bary.z * v2;
-            auto t      = bary.x * t0 + bary.y * t1 + bary.z * t2;
-            auto e      = getEmissionColor(t);
-            auto w_out  = p - p_in;
-            auto d      = rtlib::length(w_out);
-            w_out       = rtlib::normalize(w_out);
+            auto dA = rtlib::length(n0) / 2.0f;
+            n0 = rtlib::normalize(n0);
+            auto bary = rtlib::random_in_unit_triangle(make_float3(1.0f, 0.0f, 0.0f), make_float3(0.0f, 1.0f, 0.0f), make_float3(0.0f, 0.0f, 1.0f), rng);
+            auto p = bary.x * v0 + bary.y * v1 + bary.z * v2;
+            auto t = bary.x * t0 + bary.y * t1 + bary.z * t2;
+            auto e = getEmissionColor(t);
+            auto w_out = p - p_in;
+            auto d = rtlib::length(w_out);
+            w_out = rtlib::normalize(w_out);
             lRec.position = p;
             lRec.emission = e;
-            lRec.normal   = n0;
-            distance      = d;
-            invAreaProb   = dA * static_cast<float>(indCount);
+            lRec.normal = n0;
+            distance = d;
+            invAreaProb = dA * static_cast<float>(indCount);
             return w_out;
         };
 #ifdef __CUDACC__
@@ -98,13 +98,13 @@ namespace test24_restir
     template<typename T>
     struct Reservoir
     {
-        float        w     = 0.0f;
+        float        w = 0.0f;
         float        w_sum = 0.0f;
-        unsigned int m     = 0;
-        T            y     = {};
+        unsigned int m = 0;
+        T            y = {};
         RTLIB_INLINE RTLIB_HOST_DEVICE bool Update(T x_i, float w_i, float rnd01)
         {
-            w      = 0.0f;
+            w = 0.0f;
             w_sum += w_i;
             ++m;
             if ((w_i / w_sum) >= rnd01)
@@ -125,13 +125,13 @@ namespace test24_restir
         unsigned int                 width;
         unsigned int                height;
         OptixTraversableHandle   gasHandle;
-        float3*                 posiBuffer;
-        float3*                 normBuffer;
-        float3*                 emitBuffer;
-        float3*                 diffBuffer;
-        float *                 distBuffer;
-        unsigned int*           seedBuffer;
-        int2*                   motiBuffer;
+        float3* posiBuffer;
+        float3* normBuffer;
+        float3* emitBuffer;
+        float3* diffBuffer;
+        float* distBuffer;
+        unsigned int* seedBuffer;
+        int2* motiBuffer;
         bool                  updateMotion;
     };
     //NOT OPTIMIZE
@@ -144,17 +144,19 @@ namespace test24_restir
         unsigned int         numCandidates;
         OptixTraversableHandle   gasHandle;
         MeshLightList           meshLights;
-        float3*                accumBuffer;
-        uchar4*                frameBuffer;
-        float3*                 posiBuffer;
-        float3*                 normBuffer;
-        float3*                 emitBuffer;
-        float3*                 diffBuffer;
-        float*                  distBuffer;
-        unsigned int*           seedBuffer;
-        int2*                   motiBuffer;
-        Reservoir<LightRec>*    resvBuffer;
-        ReservoirState*         tempBuffer;
+        float3* accumBuffer;
+        uchar4* frameBuffer;
+        float3* curPosiBuffer;
+        float3* prvPosiBuffer;
+        float3* curNormBuffer;
+        float3* prvNormBuffer;
+        float3* emitBuffer;
+        float3* diffBuffer;
+        float* distBuffer;
+        unsigned int* seedBuffer;
+        int2* motiBuffer;
+        Reservoir<LightRec>* resvBuffer;
+        ReservoirState* tempBuffer;
     };
     struct RayGenData
     {
