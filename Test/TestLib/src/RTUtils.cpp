@@ -74,8 +74,21 @@ bool test::SavePngImgFromCUDA(const char* filename, const rtlib::CUDATexture2D<u
 
 bool test::SavePngImgFromGL(  const char* filename, const rtlib::GLBuffer<uchar4>& buffer, size_t width, size_t height)
 {
+	std::vector<uchar4> imageData(width * height);
+	{
+		std::unique_ptr<uchar4[]> imagePixels(new uchar4[width * height]);
+		buffer.bind();
+		uchar4* pMapData = (uchar4*)glMapBuffer(buffer.getTarget(), GL_READ_ONLY);
+		memcpy(imagePixels.get(), pMapData, sizeof(uchar4) * width * height);
+		glUnmapBuffer(buffer.getTarget());
+		buffer.unbind();
 
-	return false;
+		for (int i = 0; i < height; ++i)
+		{
+			std::memcpy(imageData.data() + (height - 1 - i) * width, imagePixels.get() + i * width, sizeof(uchar4) * width);
+		}
+	}
+	return stbi_write_png(filename, width, height, 4, imageData.data(), width * 4);
 }
 
 bool test::SavePngImgFromGL(  const char* filename, const rtlib::GLTexture2D<uchar4>& texture)

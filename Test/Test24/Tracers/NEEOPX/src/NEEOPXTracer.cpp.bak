@@ -71,6 +71,7 @@ struct Test24NEEOPXTracer::Impl {
 	rtlib::CUDABuffer<unsigned int> m_SeedBuffer;
 	rtlib::CUDAUploadBuffer<MeshLight> m_MeshLights;
 	unsigned int m_LightHgRecIndex = 0;
+	unsigned int m_SamplePerAll = 0;
 };
 
 Test24NEEOPXTracer::Test24NEEOPXTracer(
@@ -118,8 +119,6 @@ void Test24NEEOPXTracer::Launch(int width, int height, void* pdata)
 	if (width != m_Impl->m_Framebuffer.lock()->GetWidth() || height != m_Impl->m_Framebuffer.lock()->GetHeight()) {
 		return;
 	}
-	 auto samplePerAll    = GetVariables()->GetUInt32("SamplePerAll");
-	 auto samplePerLaunch = GetVariables()->GetUInt32("SamplePerLaunch");
 	this->m_Impl->m_Params.cpuHandle[0].width = width;
 	this->m_Impl->m_Params.cpuHandle[0].height = height;
 	this->m_Impl->m_Params.cpuHandle[0].accumBuffer = m_Impl->m_Framebuffer.lock()->GetComponent<test::RTCUDABufferFBComponent<float3>>("RAccum")->GetHandle().getDevicePtr();
@@ -169,10 +168,9 @@ void Test24NEEOPXTracer::Update()
 		cudaMemcpy(m_Impl->m_Framebuffer.lock()->GetComponent<test::RTCUDABufferFBComponent<float3>>("RAccum")->GetHandle().getDevicePtr(), zeroAccumValues.data(), sizeof(float3) * this->m_Impl->m_Framebuffer.lock()->GetWidth() * this->m_Impl->m_Framebuffer.lock()->GetHeight(), cudaMemcpyHostToDevice);
 		this->m_Impl->m_Params.cpuHandle[0].maxTraceDepth = this->m_Impl->m_MaxTraceDepth;
 		this->m_Impl->m_Params.cpuHandle[0].samplePerALL  = 0;
-		GetVariables()->SetUInt32("SamplePerAll", 0);
+		this->m_Impl->m_SamplePerAll                      = 0;
 	}
-	auto samplePerAll=GetVariables()->GetUInt32("SamplePerAll");
-	bool shouldRegen = ((samplePerAll + this->m_Impl->m_Params.cpuHandle[0].samplePerLaunch) / 1024 != samplePerAll / 1024);
+	autosamplePerAll=GetVariables()->GetUInt32("SamplePerAll");bool shouldRegen = ((samplePerAll + this->m_Impl->m_Params.cpuHandle[0].samplePerLaunch) / 1024 != samplePerAll / 1024);
 	if (((this->m_Impl->m_EventFlags & TEST24_EVENT_FLAG_RESIZE_FRAME) == TEST24_EVENT_FLAG_RESIZE_FRAME) || shouldRegen)
 	{
 		std::cout << "Regen!\n";

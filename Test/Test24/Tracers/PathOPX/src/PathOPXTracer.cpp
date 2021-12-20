@@ -4,27 +4,7 @@
 #include <random>
 using namespace std::string_literals;
 using namespace test24_path;
-inline auto SpecifyMaterialType(const rtlib::ext::VariableMap& material) -> std::string
-{
-	auto emitCol = material.GetFloat3As<float3>("emitCol");
-	auto specCol = material.GetFloat3As<float3>("specCol");
-	auto tranCol = material.GetFloat3As<float3>("tranCol");
-	auto refrIndx = material.GetFloat1("refrIndx");
-	auto shinness = material.GetFloat1("shinness");
-	auto illum = material.GetUInt32("illum");
-	if (illum == 7)
-	{
-		return "Refraction";
-	}
-	else if (emitCol.x + emitCol.y + emitCol.z > 0.0f)
-	{
-		return "Emission";
-	}
-	else
-	{
-		return "Diffuse";
-	}
-};
+
 using RayGRecord = rtlib::SBTRecord<RayGenData>;
 using MissRecord = rtlib::SBTRecord<MissData>;
 using HitGRecord = rtlib::SBTRecord<HitgroupData>;
@@ -85,16 +65,15 @@ struct Test24PathOPXTracer::Impl {
 	rtlib::CUDABuffer<unsigned int>         m_SeedBuffer  = {};
 	rtlib::CUDAUploadBuffer<MeshLight>      m_MeshLights  = {};
 	unsigned int m_LightHgRecIndex = 0;
-	unsigned int m_SamplePerAll    = 0;
 };
 
 Test24PathOPXTracer::Test24PathOPXTracer(
-	ContextPtr context, 
-	FramebufferPtr framebuffer, 
-	CameraControllerPtr cameraController, 
-	TextureAssetManager textureManager, 
-	rtlib::ext::IASHandlePtr topLevelAS, 
-	const std::vector<rtlib::ext::VariableMap>& materials, 
+	ContextPtr context,
+	FramebufferPtr framebuffer,
+	CameraControllerPtr cameraController,
+	TextureAssetManager textureManager,
+	rtlib::ext::IASHandlePtr topLevelAS,
+	const std::vector<rtlib::ext::VariableMap>& materials,
 	const float3& bgLightColor,
 	const unsigned int& eventFlags,
 	const unsigned int& maxTraceDepth) :test::RTTracer() {
@@ -108,6 +87,9 @@ Test24PathOPXTracer::Test24PathOPXTracer(
 		bgLightColor,
 		eventFlags,
 		maxTraceDepth);
+
+	GetVariables()->SetUInt32("SamplePerAll"   , 0);
+	GetVariables()->SetUInt32("SamplePerLaunch", 1);
 }
 
 void Test24PathOPXTracer::Initialize()
@@ -130,13 +112,16 @@ void Test24PathOPXTracer::Initialize()
 	 if (width != m_Impl->m_Framebuffer->GetWidth() || height != m_Impl->m_Framebuffer->GetHeight()) {
 		 return;
 	 }
-	this->m_Impl->m_Params.cpuHandle[0].width       = width;
-	this->m_Impl->m_Params.cpuHandle[0].height      = height;
-	this->m_Impl->m_Params.cpuHandle[0].accumBuffer = m_Impl->m_Framebuffer->GetComponent<test::RTCUDABufferFBComponent<float3>>("RAccum")->GetHandle().getDevicePtr();
-	this->m_Impl->m_Params.cpuHandle[0].frameBuffer = m_Impl->m_Framebuffer->GetComponent<test::RTCUGLBufferFBComponent<uchar4>>("RFrame")->GetHandle().map();
-	this->m_Impl->m_Params.cpuHandle[0].seedBuffer  = this->m_Impl->m_SeedBuffer.getDevicePtr();
-	this->m_Impl->m_Params.cpuHandle[0].isBuilt     = false;
-	this->m_Impl->m_Params.cpuHandle[0].samplePerLaunch = pUserData->samplePerLaunch;
+	 auto samplePerAll    = GetVariables()->GetUInt32("SamplePerAll");
+	 auto samplePerLaunch = GetVariables()->GetUInt32("SamplePerLaunch");
+	this->m_Impl->m_Params.cpuHandle[0].width           = width;
+	this->m_Impl->m_Params.cpuHandle[0].height          = height;
+	this->m_Impl->m_Params.cpuHandle[0].accumBuffer     = m_Impl->m_Framebuffer->GetComponent<test::RTCUDABufferFBComponent<float3>>("RAccum")->GetHandle().getDevicePtr();
+	this->m_Impl->m_Params.cpuHandle[0].frameBuffer     = m_Impl->m_Framebuffer->GetComponent<test::RTCUGLBufferFBComponent<uchar4>>("RFrame")->GetHandle().map();
+	this->m_Impl->m_Params.cpuHandle[0].seedBuffer      = this->m_Impl->m_SeedBuffer.getDevicePtr();
+	this->m_Impl->m_Params.cpuHandle[0].isBuilt         = false;
+	this->m_Impl->m_Params.cpuHandle[0].samplePerALL    = samplePerAll;
+	this->m_Impl->m_Params.cpuHandle[0].samplePerLaunch = samplePerLaunch;
 	cudaMemcpyAsync(this->m_Impl->m_Params.gpuHandle.getDevicePtr(), &this->m_Impl->m_Params.cpuHandle[0], sizeof(RayTraceParams), cudaMemcpyHostToDevice, pUserData->stream);
 	this->m_Impl->m_Pipeline.launch(pUserData->stream, this->m_Impl->m_Params.gpuHandle.getDevicePtr(), this->m_Impl->m_ShaderBindingTable, width, height, 1);
 	if (pUserData->isSync)
@@ -144,8 +129,9 @@ void Test24PathOPXTracer::Initialize()
 		RTLIB_CU_CHECK(cuStreamSynchronize(pUserData->stream));
 	}
 	m_Impl->m_Framebuffer->GetComponent<test::RTCUGLBufferFBComponent<uchar4>>("RFrame")->GetHandle().unmap();
-	this->m_Impl->m_Params.cpuHandle[0].samplePerALL += this->m_Impl->m_Params.cpuHandle[0].samplePerLaunch;
-	this->m_Impl->m_SamplePerAll = pUserData->samplePerAll = this->m_Impl->m_Params.cpuHandle[0].samplePerALL;
+	samplePerAll += samplePerLaunch;
+	this->m_Impl->m_Params.cpuHandle[0].samplePerALL = samplePerAll;
+	GetVariables()->SetUInt32("SamplePerAll", samplePerAll);
 }
 
  void Test24PathOPXTracer::CleanUp()
@@ -177,9 +163,10 @@ void Test24PathOPXTracer::Initialize()
 		cudaMemcpy(m_Impl->m_Framebuffer->GetComponent<test::RTCUDABufferFBComponent<float3>>("RAccum")->GetHandle().getDevicePtr(), zeroAccumValues.data(),sizeof(float3)* this->m_Impl->m_Framebuffer->GetWidth() * this->m_Impl->m_Framebuffer->GetHeight(),cudaMemcpyHostToDevice);
 		this->m_Impl->m_Params.cpuHandle[0].maxTraceDepth = this->m_Impl->m_MaxTraceDepth;
 		this->m_Impl->m_Params.cpuHandle[0].samplePerALL  = 0;
-		this->m_Impl->m_SamplePerAll                      = 0;
+		GetVariables()->SetUInt32("SamplePerAll", 0);
 	}
-	bool shouldRegen = ((this->m_Impl->m_SamplePerAll + this->m_Impl->m_Params.cpuHandle[0].samplePerLaunch) / 1024 != this->m_Impl->m_SamplePerAll / 1024);
+	auto samplePerAll = GetVariables()->GetUInt32("SamplePerAll");
+	bool shouldRegen = ((samplePerAll + this->m_Impl->m_Params.cpuHandle[0].samplePerLaunch) / 1024 != samplePerAll / 1024);
 	if (((this->m_Impl->m_EventFlags & TEST24_EVENT_FLAG_RESIZE_FRAME) == TEST24_EVENT_FLAG_RESIZE_FRAME) || shouldRegen)
 	{
 		std::cout << "Regen!\n";
@@ -373,7 +360,7 @@ void Test24PathOPXTracer::Initialize()
 						{
 							this->m_Impl->m_LightHgRecIndex = RAY_TYPE_COUNT * sbtOffset + RAY_TYPE_COUNT * i + RAY_TYPE_RADIANCE;
 						}
-						std::string typeString = SpecifyMaterialType(material);
+						std::string typeString = test24::SpecifyMaterialType(material);
 						if (typeString == "Phong" || typeString == "Diffuse")
 						{
 							typeString += ".Default";
@@ -409,7 +396,8 @@ void Test24PathOPXTracer::Initialize()
 	this->m_Impl->m_Params.cpuHandle[0].seedBuffer  = this->m_Impl->m_SeedBuffer.getDevicePtr();
 	this->m_Impl->m_Params.cpuHandle[0].isBuilt     = false;
 	this->m_Impl->m_Params.cpuHandle[0].maxTraceDepth = this->m_Impl->m_MaxTraceDepth;
-	this->m_Impl->m_Params.cpuHandle[0].samplePerLaunch = 1;
+	this->m_Impl->m_Params.cpuHandle[0].samplePerALL    = GetVariables()->GetUInt32("SamplePerAll"   );
+	this->m_Impl->m_Params.cpuHandle[0].samplePerLaunch = GetVariables()->GetUInt32("SamplePerLaunch");
 
 	this->m_Impl->m_Params.Upload();
 }

@@ -6,27 +6,6 @@
 #include <random>
 using namespace std::string_literals;
 using namespace test24_wrs_guide;
-inline auto SpecifyMaterialType(const rtlib::ext::VariableMap& material) -> std::string
-{
-	auto emitCol = material.GetFloat3As<float3>("emitCol");
-	auto specCol = material.GetFloat3As<float3>("specCol");
-	auto tranCol = material.GetFloat3As<float3>("tranCol");
-	auto refrIndx = material.GetFloat1("refrIndx");
-	auto shinness = material.GetFloat1("shinness");
-	auto illum = material.GetUInt32("illum");
-	if (illum == 7)
-	{
-		return "Refraction";
-	}
-	else if (emitCol.x + emitCol.y + emitCol.z > 0.0f)
-	{
-		return "Emission";
-	}
-	else
-	{
-		return "Diffuse";
-	}
-};
 using RayGRecord = rtlib::SBTRecord<RayGenData>;
 using MissRecord = rtlib::SBTRecord<MissData>;
 using HitGRecord = rtlib::SBTRecord<HitgroupData>;
@@ -260,6 +239,7 @@ void Test24GuideWRSOPXTracer::InitLight()
 	m_Impl->m_MeshLights.Alloc();
 	m_Impl->m_MeshLights.Upload();
 }
+
 void Test24GuideWRSOPXTracer::InitPipeline()
 {
 	auto rayGuidePtxFile = std::ifstream(TEST_TEST24_GUIDE_WRS_OPX_CUDA_PATH "/RayGuide.ptx", std::ios::binary);
@@ -404,7 +384,7 @@ void Test24GuideWRSOPXTracer::InitShaderBindingTable()
 						{
 							m_Impl->m_LightHgRecIndex = RAY_TYPE_COUNT * sbtOffset + RAY_TYPE_COUNT * i + RAY_TYPE_RADIANCE;
 						}
-						std::string typeString = SpecifyMaterialType(material);
+						std::string typeString = test24::SpecifyMaterialType(material);
 						if (typeString == "Phong" || typeString == "Diffuse")
 						{
 							typeString += ".Guiding.NEE";
@@ -638,4 +618,5 @@ void Test24GuideWRSOPXTracer::FreeFrameResources()
 {
 	this->m_Impl->m_SeedBuffer.reset();
 }
+
 

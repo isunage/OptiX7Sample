@@ -553,23 +553,20 @@ void Test24Application::Launch()
         if (name == "PathOPX"     )
         {
             Test24PathOPXTracer::UserData  userData = {};
-            userData.samplePerLaunch = m_SamplePerLaunch;
-            userData.isSync          = true;
-            userData.stream          = nullptr;
+            userData.isSync = true;
+            userData.stream = nullptr;
             m_Tracers[name]->Launch(m_FbWidth, m_FbHeight, &userData);
-            m_SamplePerAll           = userData.samplePerAll;
+            m_SamplePerAll  = m_Tracers[name]->GetVariables()->GetUInt32("SamplePerAll");
         }
         if (name == "NEEOPX"      ) {
             Test24NEEOPXTracer::UserData userData = {};
-            userData.samplePerLaunch = m_SamplePerLaunch;
-            userData.isSync          = true;
-            userData.stream          = nullptr;
+            userData.isSync = true;
+            userData.stream = nullptr;
             m_Tracers[name]->Launch(m_FbWidth, m_FbHeight, &userData);
-            m_SamplePerAll           = userData.samplePerAll;
+            m_SamplePerAll  = m_Tracers[name]->GetVariables()->GetUInt32("SamplePerAll");
         }
         if (name == "GuidePathOPX")
         {
-            //なぜかSDTreeのAccumulationが進まない
             Test24GuidePathOPXTracer::UserData  userData = {};
             userData.finished = false;
             userData.isSync   = true;
@@ -588,7 +585,6 @@ void Test24Application::Launch()
         }
         if (name == "GuideNEEOPX" )
         {
-            //なぜかSDTreeのAccumulationが進まない
             Test24GuideNEEOPXTracer::UserData  userData = {};
             userData.finished = false;
             userData.isSync   = true;
@@ -607,7 +603,6 @@ void Test24Application::Launch()
         }
         if (name == "GuideWRSOPX" )
         {
-            //なぜかSDTreeのAccumulationが進まない
             Test24GuideWRSOPXTracer::UserData  userData = {};
             userData.finished = false;
             userData.isSync   = true;
@@ -627,9 +622,10 @@ void Test24Application::Launch()
         if (name == "ReSTIROPX"   )
         {
             Test24ReSTIROPXTracer::UserData  userData = {};
-            userData.isSync                           = true;
-            userData.stream                           = nullptr;
+            userData.isSync = true;
+            userData.stream = nullptr;
             m_Tracers[name]->Launch(m_FbWidth, m_FbHeight, &userData);
+            m_SamplePerAll = m_Tracers[name]->GetVariables()->GetUInt32("SamplePerAll");
         }
         if (name == "DebugOPX"    ) {
             Test24DebugOPXTracer::UserData userData = {};

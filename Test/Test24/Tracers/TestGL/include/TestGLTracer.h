@@ -6,7 +6,7 @@
 #include <RTLib/core/GL.h>
 #include <RTLib/ext/Camera.h>
 #include <GLFW/glfw3.h>
-#include <Test24Event.h>
+#include <Test24Share.h>
 class Test24TestGLTracer: public test::RTTracer
 {
 private:

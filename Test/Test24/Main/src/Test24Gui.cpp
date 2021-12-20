@@ -1,6 +1,9 @@
+#include <nlohmann/json.hpp>
 #include <Test24Gui.h>
 #include <Test24Config.h>
 #include <filesystem>
+#include <chrono>
+#include <random>
 class       ObjModelConfigGuiWindow : public test::RTGuiWindow
 {
 public:
@@ -116,12 +119,6 @@ public:
             }
         }
         {
-            int val = samplePerLaunch;
-            if (ImGui::SliderInt("SamplePerLaunch", &val, 1, 100)) {
-                samplePerLaunch = val;
-            }
-        }
-        {
             int val = curTraceIdx;
             for (auto i = 0; i < traceNames.size(); ++i)
             {
@@ -217,8 +214,8 @@ private:
 class         CameraConfigGuiWindow :public test::RTGuiWindow{
 public:
 
-    explicit CameraConfigGuiWindow(const std::shared_ptr<test::RTFramebuffer>& framebuffer_, const std::shared_ptr<rtlib::ext::CameraController>& cameraController_, unsigned int& eventFlags_)noexcept :
-        test::RTGuiWindow("CameraConfig", ImGuiWindowFlags_MenuBar), cameraController{ cameraController_ }, eventFlags{ eventFlags_ }, framebuffer{framebuffer_}{}
+    explicit CameraConfigGuiWindow(GLFWwindow* window_, const std::shared_ptr<test::RTFramebuffer>& framebuffer_, const std::shared_ptr<rtlib::ext::CameraController>& cameraController_, unsigned int& eventFlags_)noexcept :
+        test::RTGuiWindow("CameraConfig", ImGuiWindowFlags_MenuBar), m_Window{ window_ }, cameraController{ cameraController_ }, eventFlags{ eventFlags_ }, framebuffer{ framebuffer_ }, m_FilePath{ "" }{}
     virtual void DrawGui()override {
         auto camera = cameraController->GetCamera((float)framebuffer->GetWidth() / (float)framebuffer->GetHeight());
         auto eye    = camera.getEye();
@@ -265,6 +262,74 @@ public:
             ImGui::Text("Sensitivity:  %f"  , sense);
             ImGui::Text("Speed:  %f"        , speed);
         }
+
+        char saveFilePath[256];
+        std::strncpy(saveFilePath, m_FilePath.c_str(), sizeof(saveFilePath) - 1);
+        if (ImGui::InputText("SaveFilepath", saveFilePath, sizeof(saveFilePath))) {
+            m_FilePath = std::string(saveFilePath);
+        }
+
+        if (ImGui::Button("Save")) {
+            std::string filePathRoot = std::string(TEST_TEST24_RSLT_PATH) + "/" + saveFilePath;
+            if (!std::filesystem::exists(filePathRoot)) {
+                std::filesystem::create_directories(filePathRoot);
+            }
+            std::string filePath     = filePathRoot + "pinhole_camera.json";
+            nlohmann::json cameraJson;
+            auto camEye           = camera.getEye();
+            cameraJson[ "Eye"]   = std::array<float, 3>{arr_eye[0], arr_eye[1], arr_eye[2]};
+            cameraJson[ "At" ]   = std::array<float, 3>{arr_atv[0], arr_atv[1], arr_atv[2]};
+            cameraJson[ "Vup"]   = std::array<float, 3>{arr_vup[0], arr_vup[1], arr_vup[2]};
+            cameraJson["FovY"]   = camera.getFovY();
+            cameraJson["Width"]  = framebuffer->GetWidth();
+            cameraJson["Height"] = framebuffer->GetHeight();
+            cameraJson["Zoom" ]  = zoom;
+            cameraJson["Speed"]  = speed;
+            cameraJson["Sense"]  = sense;
+            auto jsonStr = cameraJson.dump();
+            std::ofstream jsonFile(filePath);
+            jsonFile << jsonStr;
+            jsonFile.close();
+        }
+        if (!HasEvent(TEST24_EVENT_FLAG_BIT_LOCK)) {
+            ImGui::SameLine();
+            if (ImGui::Button("Load")) {
+                std::string filePathRoot = std::string(TEST_TEST24_RSLT_PATH) + "/" + saveFilePath;
+                std::string filePath = filePathRoot + "pinhole_camera.json";
+                if (std::filesystem::exists(filePath)) {
+                    
+                    std::ifstream jsonFile(filePath);
+                    std::string jsonStr = std::string((std::istreambuf_iterator<char>(jsonFile)), (std::istreambuf_iterator<char>()));
+                    jsonFile.close();
+
+                    auto cameraJson   = nlohmann::json::parse(jsonStr);
+                    auto camEyeArr    = cameraJson["Eye"   ].get<std::vector<float>>();
+                    auto camAtArr     = cameraJson["At"    ].get<std::vector<float>>();
+                    auto camVupArr    = cameraJson["Vup"   ].get<std::vector<float>>();
+                    auto camFovY      = cameraJson["FovY"  ].get<float>();
+                    auto camWidth     = cameraJson["Width" ].get<int>();
+                    auto camHeight    = cameraJson["Height"].get<int>();
+                    auto camZoom      = cameraJson["Zoom"  ].get<float>();
+                    auto camSpeed     = cameraJson["Speed" ].get<float>();
+                    auto camSense     = cameraJson["Sense" ].get<float>();
+
+                    glfwSetWindowSize(m_Window, camWidth, camHeight);
+
+                    cameraController->SetCamera(rtlib::ext::Camera(
+                        make_float3(camEyeArr[0], camEyeArr[1],camEyeArr[2]),
+                        make_float3( camAtArr[0],  camAtArr[1], camAtArr[2]),
+                        make_float3(camVupArr[0], camVupArr[1],camVupArr[2]),
+                        camFovY, static_cast<float>(camWidth)/static_cast<float>(camHeight)
+                    ));
+                    cameraController->SetZoom(camZoom);
+                    cameraController->SetMovementSpeed(camSpeed);
+                    cameraController->SetMouseSensitivity(camSense);
+
+                    SetEvent(TEST24_EVENT_FLAG_RESIZE_FRAME);
+                }
+            }
+        }
+
     }
     virtual ~CameraConfigGuiWindow() noexcept {}
 private:
@@ -280,6 +345,8 @@ private:
         eventFlags |= eventFlag;
     }
 
+    GLFWwindow* m_Window;
+    std::string m_FilePath;
     std::shared_ptr<test::RTFramebuffer> framebuffer;
     std::shared_ptr<rtlib::ext::CameraController> cameraController;
     unsigned int& eventFlags;
@@ -359,7 +426,7 @@ class          TraceConfigGuiWindow:public test::RTGuiWindow {
 private:
     using TracerVariableMap = std::unordered_map < std::string, std::shared_ptr<rtlib::ext::VariableMap>>;
 public:
-    TraceConfigGuiWindow(const std::string& traceName_, const TracerVariableMap& tracerVariables_, unsigned int& eventFlags_)noexcept :test::RTGuiWindow(traceName_, ImGuiWindowFlags_MenuBar), traceName{ traceName_ }, tracerVariables{ tracerVariables_ }, eventFlags{eventFlags_}{}
+    TraceConfigGuiWindow(const std::string& traceName_, const TracerVariableMap& tracerVariables_, const std::shared_ptr<test::RTFramebuffer>& framebuffer_, unsigned int& eventFlags_)noexcept :test::RTGuiWindow(traceName_, ImGuiWindowFlags_MenuBar), traceName{ traceName_ }, tracerVariables{ tracerVariables_ }, framebuffer{ framebuffer_ }, eventFlags{ eventFlags_ }{}
     virtual void DrawGui()override {
         ImGui::Text("TraceName: %s", traceName.c_str());
     }
@@ -376,6 +443,10 @@ public:
         }
     }
 protected:
+    auto GetFramebuffer()const noexcept ->  std::shared_ptr < test::RTFramebuffer>
+    {
+        return framebuffer;
+    }
     bool HasEvent(unsigned int eventFlag)const noexcept
     {
         return (eventFlags & eventFlag) == eventFlag;
@@ -388,16 +459,113 @@ protected:
         eventFlags |= eventFlag;
     }
 private:
-    std::string                    traceName;
-    const TracerVariableMap& tracerVariables;
-    unsigned int&                 eventFlags;
+    std::shared_ptr < test::RTFramebuffer> framebuffer;
+    std::string                              traceName;
+    const TracerVariableMap&           tracerVariables;
+    unsigned int&                           eventFlags;
+};
+class      PathTraceConfigGuiWindow : public TraceConfigGuiWindow
+{
+private:
+    using TracerVariableMap = std::unordered_map < std::string, std::shared_ptr<rtlib::ext::VariableMap>>;
+public:
+    PathTraceConfigGuiWindow(const TracerVariableMap& tracerVariables_, const std::shared_ptr<test::RTFramebuffer>& framebuffer_, unsigned int& eventFlags_)noexcept : TraceConfigGuiWindow("PathOPX", tracerVariables_, framebuffer_, eventFlags_) {}
+    virtual void DrawGui()override {
+        auto variable = GetVariable();
+        if (variable) {
+            int samplePerLaunch   = variable->GetUInt32("SamplePerLaunch");
+            if (!HasEvent(TEST24_EVENT_FLAG_BIT_LOCK)) {
+                if (ImGui::SliderInt("SamplePerLaunch", &samplePerLaunch, 1, 100)) {
+                    variable->SetUInt32("SamplePerLaunch", samplePerLaunch);
+                    SetEvent(TEST24_EVENT_FLAG_CHANGE_TRACE);
+                }
+            }
+            else {
+                ImGui::Text("  SamplePerLaunch: %d", samplePerLaunch);
+            }
+
+            int samplePerAll = variable->GetUInt32("SamplePerAll");
+            ImGui::Text("SamplePerAll: %d", samplePerAll);
+
+            char saveFilePath[256];
+            std::strncpy(saveFilePath, m_FilePath.c_str(), sizeof(saveFilePath) - 1);
+            if (ImGui::InputText("SaveFilepath", saveFilePath, sizeof(saveFilePath))) {
+                m_FilePath = std::string(saveFilePath);
+            }
+
+            if (ImGui::Button("Save")) {
+                std::string filePathBase = std::string(TEST_TEST24_RSLT_PATH) + "/" + saveFilePath + "result_path_" + std::to_string(samplePerAll);
+                std::string filePathPng = filePathBase + ".png";
+                auto rTexture = GetFramebuffer()->GetComponent<test::RTGLTextureFBComponent<uchar4>>("RTexture");
+                if (test::SavePngImgFromGL(filePathPng.c_str(), rTexture->GetHandle())) {
+                    std::cout << "Save\n";
+                }
+                std::string filePathExr = filePathBase + ".exr";
+                auto rAccum = GetFramebuffer()->GetComponent<test::RTCUDABufferFBComponent<float3>>("RAccum");
+                if (test::SaveExrImgFromCUDA(filePathExr.c_str(), rAccum->GetHandle(), GetFramebuffer()->GetWidth(), GetFramebuffer()->GetHeight(), samplePerAll)) {
+                    std::cout << "Save\n";
+                }
+            }
+        }
+    }
+    virtual ~PathTraceConfigGuiWindow()noexcept {}
+private:
+    std::string m_FilePath;
+};
+class       NEETraceConfigGuiWindow : public TraceConfigGuiWindow
+{
+private:
+    using TracerVariableMap = std::unordered_map < std::string, std::shared_ptr<rtlib::ext::VariableMap>>;
+public:
+    NEETraceConfigGuiWindow(const TracerVariableMap& tracerVariables_, const std::shared_ptr<test::RTFramebuffer>& framebuffer_, unsigned int& eventFlags_)noexcept : TraceConfigGuiWindow("NEEOPX", tracerVariables_, framebuffer_, eventFlags_) {}
+    virtual void DrawGui()override {
+        auto variable = GetVariable();
+        if (variable) {
+            int samplePerLaunch = variable->GetUInt32("SamplePerLaunch");
+            if (!HasEvent(TEST24_EVENT_FLAG_BIT_LOCK)) {
+                if (ImGui::SliderInt("SamplePerLaunch", &samplePerLaunch, 1, 100)) {
+                    variable->SetUInt32("SamplePerLaunch", samplePerLaunch);
+                    SetEvent(TEST24_EVENT_FLAG_CHANGE_TRACE);
+                }
+            }
+            else {
+                ImGui::Text("  SamplePerLaunch: %d", samplePerLaunch);
+            }
+
+            int samplePerAll = variable->GetUInt32("SamplePerAll");
+            ImGui::Text("SamplePerAll: %d", samplePerAll);
+
+            char saveFilePath[256];
+            std::strncpy(saveFilePath, m_FilePath.c_str(), sizeof(saveFilePath) - 1);
+            if (ImGui::InputText("SaveFilepath", saveFilePath, sizeof(saveFilePath))) {
+                m_FilePath = std::string(saveFilePath);
+            }
+
+            if (ImGui::Button("Save")) {
+                std::string filePathBase = std::string(TEST_TEST24_RSLT_PATH) + "/" + saveFilePath + "result_path_" + std::to_string(samplePerAll);
+                std::string filePathPng = filePathBase + ".png";
+                auto rTexture = GetFramebuffer()->GetComponent<test::RTGLTextureFBComponent<uchar4>>("RTexture");
+                if (test::SavePngImgFromGL(filePathPng.c_str(), rTexture->GetHandle())) {
+                    std::cout << "Save\n";
+                }
+                std::string filePathExr = filePathBase + ".exr";
+                auto rAccum = GetFramebuffer()->GetComponent<test::RTCUDABufferFBComponent<float3>>("RAccum");
+                if (test::SaveExrImgFromCUDA(filePathExr.c_str(), rAccum->GetHandle(), GetFramebuffer()->GetWidth(), GetFramebuffer()->GetHeight(), samplePerAll)) {
+                    std::cout << "Save\n";
+                }
+            }
+        }
+    }
+    virtual ~NEETraceConfigGuiWindow()noexcept {}
+private:
+    std::string m_FilePath;
 };
 class    ReSTIRTraceConfigGuiWindow : public TraceConfigGuiWindow
 {
 private:
     using TracerVariableMap = std::unordered_map < std::string, std::shared_ptr<rtlib::ext::VariableMap>>;
 public:
-    ReSTIRTraceConfigGuiWindow(const TracerVariableMap& tracerVariables_, unsigned int& eventFlags_)noexcept : TraceConfigGuiWindow("ReSTIROPX", tracerVariables_,eventFlags_) {}
+    ReSTIRTraceConfigGuiWindow(const TracerVariableMap& tracerVariables_, const std::shared_ptr<test::RTFramebuffer>& framebuffer_, unsigned int& eventFlags_)noexcept : TraceConfigGuiWindow("ReSTIROPX", tracerVariables_, framebuffer_,eventFlags_) {}
     virtual void DrawGui()override {
         auto variable = GetVariable();
         if (variable) {
@@ -436,18 +604,41 @@ public:
                     SetEvent(TEST24_EVENT_FLAG_CHANGE_TRACE);
                 }
             }
+
+            int samplePerAll = variable->GetUInt32("SamplePerAll");
+            ImGui::Text("SamplePerAll: %d", samplePerAll);
+
+            char saveFilePath[256];
+            std::strncpy(saveFilePath, m_FilePath.c_str(), sizeof(saveFilePath) - 1);
+            if (ImGui::InputText("SaveFilepath", saveFilePath, sizeof(saveFilePath))) {
+                m_FilePath = std::string(saveFilePath);
+            }
+
+            if (ImGui::Button("Save")) {
+                std::string filePathBase = std::string(TEST_TEST24_RSLT_PATH) + "/" + saveFilePath + "result_restir_" + std::to_string(samplePerAll);
+                std::string filePathPng = filePathBase + ".png";
+                auto rTexture = GetFramebuffer()->GetComponent<test::RTGLTextureFBComponent<uchar4>>("RTexture");
+                if (test::SavePngImgFromGL(filePathPng.c_str(), rTexture->GetHandle())) {
+                    std::cout << "Save\n";
+                }
+                std::string filePathExr = filePathBase + ".exr";
+                auto rAccum = GetFramebuffer()->GetComponent<test::RTCUDABufferFBComponent<float3>>("RAccum");
+                if (test::SaveExrImgFromCUDA(filePathExr.c_str(), rAccum->GetHandle(), GetFramebuffer()->GetWidth(), GetFramebuffer()->GetHeight(), samplePerAll)) {
+                    std::cout << "Save\n";
+                }
+            }
         }
     }
     virtual ~ReSTIRTraceConfigGuiWindow()noexcept {}
 private:
-
+    std::string m_FilePath;
 };
 class GuidePathTraceConfigGuiWindow : public TraceConfigGuiWindow
 {
 private:
     using TracerVariableMap = std::unordered_map < std::string, std::shared_ptr<rtlib::ext::VariableMap>>;
 public:
-    GuidePathTraceConfigGuiWindow(const TracerVariableMap& tracerVariables_, unsigned int& eventFlags_)noexcept : TraceConfigGuiWindow("GuidePathOPX", tracerVariables_, eventFlags_) {}
+    GuidePathTraceConfigGuiWindow(const TracerVariableMap& tracerVariables_, const std::shared_ptr<test::RTFramebuffer>& framebuffer_, unsigned int& eventFlags_)noexcept : TraceConfigGuiWindow("GuidePathOPX", tracerVariables_, framebuffer_, eventFlags_) , m_FilePath("") {}
     virtual void DrawGui()override {
         auto variable = GetVariable();
         if (variable) {
@@ -489,25 +680,45 @@ public:
             ImGui::Text("CurIteration: %d", curIteration);
             ImGui::Text("SamplePerTmp: %d", samplePerTmp);
 
+            char saveFilePath[256];
+            std::strncpy(saveFilePath, m_FilePath.c_str(), sizeof(saveFilePath) - 1);
+            if (ImGui::InputText("SaveFilepath", saveFilePath, sizeof(saveFilePath))) {
+                m_FilePath = std::string(saveFilePath);
+            }
+
             bool isLaunched = variable->GetBool("Launched");
             if (!isLaunched) {
                 if (ImGui::Button("Started")) {
                     variable->SetBool("Started", true);
                     SetEvent(TEST24_EVENT_FLAG_CHANGE_TRACE);
                 }
+                ImGui::SameLine();
+            }
+            if (ImGui::Button("Save")) {
+                std::string filePathBase = std::string(TEST_TEST24_RSLT_PATH) + "/" + saveFilePath + "result_guide_path_" + std::to_string(samplePerAll);
+                std::string filePathPng = filePathBase + ".png";
+                auto rTexture = GetFramebuffer()->GetComponent<test::RTGLTextureFBComponent<uchar4>>("RTexture");
+                if (test::SavePngImgFromGL(filePathPng.c_str(), rTexture->GetHandle())) {
+                    std::cout << "Save\n";
+                }
+                std::string filePathExr = filePathBase + ".exr";
+                auto rAccum = GetFramebuffer()->GetComponent<test::RTCUDABufferFBComponent<float3>>("RAccum");
+                if (test::SaveExrImgFromCUDA(filePathExr.c_str(), rAccum->GetHandle(), GetFramebuffer()->GetWidth(), GetFramebuffer()->GetHeight(), samplePerAll)) {
+                    std::cout << "Save\n";
+                }
             }
         }
     }
     virtual ~GuidePathTraceConfigGuiWindow()noexcept {}
 private:
-
+    std::string m_FilePath;
 };
 class  GuideNEETraceConfigGuiWindow : public TraceConfigGuiWindow
 {
 private:
     using TracerVariableMap = std::unordered_map < std::string, std::shared_ptr<rtlib::ext::VariableMap>>;
 public:
-    GuideNEETraceConfigGuiWindow(const TracerVariableMap& tracerVariables_, unsigned int& eventFlags_)noexcept : TraceConfigGuiWindow("GuideNEEOPX", tracerVariables_, eventFlags_) {}
+    GuideNEETraceConfigGuiWindow(const TracerVariableMap& tracerVariables_, const std::shared_ptr<test::RTFramebuffer>& framebuffer_, unsigned int& eventFlags_)noexcept : TraceConfigGuiWindow("GuideNEEOPX", tracerVariables_, framebuffer_, eventFlags_), m_FilePath("") {}
     virtual void DrawGui()override {
         auto variable = GetVariable();
         if (variable) {
@@ -549,31 +760,51 @@ public:
             ImGui::Text("CurIteration: %d", curIteration);
             ImGui::Text("SamplePerTmp: %d", samplePerTmp);
 
+            char saveFilePath[256];
+            std::strncpy(saveFilePath, m_FilePath.c_str(), sizeof(saveFilePath) - 1);
+            if (ImGui::InputText("SaveFilepath", saveFilePath, sizeof(saveFilePath))) {
+                m_FilePath = std::string(saveFilePath);
+            }
+
             bool isLaunched = variable->GetBool("Launched");
             if (!isLaunched) {
                 if (ImGui::Button("Started")) {
                     variable->SetBool("Started", true);
                     SetEvent(TEST24_EVENT_FLAG_CHANGE_TRACE);
                 }
+                ImGui::SameLine();
+            }
+            if (ImGui::Button("Save")) {
+                std::string filePathBase = std::string(TEST_TEST24_RSLT_PATH) + "/" + saveFilePath + "result_guide_nee_" + std::to_string(samplePerAll);
+                std::string filePathPng = filePathBase + ".png";
+                auto rTexture = GetFramebuffer()->GetComponent<test::RTGLTextureFBComponent<uchar4>>("RTexture");
+                if (test::SavePngImgFromGL(filePathPng.c_str(), rTexture->GetHandle())) {
+                    std::cout << "Save\n";
+                }
+                std::string filePathExr = filePathBase + ".exr";
+                auto rAccum = GetFramebuffer()->GetComponent<test::RTCUDABufferFBComponent<float3>>("RAccum");
+                if (test::SaveExrImgFromCUDA(filePathExr.c_str(), rAccum->GetHandle(), GetFramebuffer()->GetWidth(), GetFramebuffer()->GetHeight(), samplePerAll)) {
+                    std::cout << "Save\n";
+                }
             }
         }
     }
     virtual ~GuideNEETraceConfigGuiWindow()noexcept {}
 private:
-
+    std::string m_FilePath;
 };
 class  GuideWRSTraceConfigGuiWindow : public TraceConfigGuiWindow
 {
 private:
     using TracerVariableMap = std::unordered_map < std::string, std::shared_ptr<rtlib::ext::VariableMap>>;
 public:
-    GuideWRSTraceConfigGuiWindow(const TracerVariableMap& tracerVariables_, unsigned int& eventFlags_)noexcept : TraceConfigGuiWindow("GuideWRSOPX", tracerVariables_, eventFlags_) {}
+    GuideWRSTraceConfigGuiWindow(const TracerVariableMap& tracerVariables_, const std::shared_ptr<test::RTFramebuffer>& framebuffer_, unsigned int& eventFlags_)noexcept : TraceConfigGuiWindow("GuideWRSOPX", tracerVariables_, framebuffer_, eventFlags_), m_FilePath{}{}
     virtual void DrawGui()override {
         auto variable = GetVariable();
         if (variable) {
-            int sampleForBudget = variable->GetUInt32("SampleForBudget");
-            int samplePerLaunch = variable->GetUInt32("SamplePerLaunch");
-            auto ratioForBudget = variable->GetFloat1("RatioForBudget");
+            int sampleForBudget   = variable->GetUInt32("SampleForBudget");
+            int samplePerLaunch   = variable->GetUInt32("SamplePerLaunch");
+            auto ratioForBudget   = variable->GetFloat1("RatioForBudget");
             int iterationForBuilt = variable->GetUInt32("IterationForBuilt");
 
             if (!HasEvent(TEST24_EVENT_FLAG_BIT_LOCK)) {
@@ -609,19 +840,38 @@ public:
             ImGui::Text("CurIteration: %d", curIteration);
             ImGui::Text("SamplePerTmp: %d", samplePerTmp);
 
+            char saveFilePath[256];
+            std::strncpy(saveFilePath, m_FilePath.c_str(), sizeof(saveFilePath)-1);
+            if (ImGui::InputText("SaveFilepath", saveFilePath, sizeof(saveFilePath))) {
+                m_FilePath = std::string(saveFilePath);
+            }
+
             bool isLaunched = variable->GetBool("Launched");
             if (!isLaunched) {
                 if (ImGui::Button("Started")) {
                     variable->SetBool("Started", true);
                     SetEvent(TEST24_EVENT_FLAG_CHANGE_TRACE);
                 }
+                ImGui::SameLine();
             }
-
+            if (ImGui::Button("Save")) {
+                std::string filePathBase = std::string(TEST_TEST24_RSLT_PATH) + "/" + saveFilePath + "result_guide_wrs_" + std::to_string(samplePerAll);
+                std::string filePathPng  = filePathBase + ".png";
+                auto rTexture = GetFramebuffer()->GetComponent<test::RTGLTextureFBComponent<uchar4>>("RTexture");
+                if (test::SavePngImgFromGL(filePathPng.c_str()  , rTexture->GetHandle())) {
+                    std::cout << "Save\n";
+                }
+                std::string filePathExr = filePathBase + ".exr";
+                auto rAccum = GetFramebuffer()->GetComponent<test::RTCUDABufferFBComponent<float3>>("RAccum");
+                if (test::SaveExrImgFromCUDA(filePathExr.c_str(), rAccum->GetHandle(), GetFramebuffer()->GetWidth(), GetFramebuffer()->GetHeight(), samplePerAll)) {
+                    std::cout << "Save\n";
+                }
+            }
         }
     }
     virtual ~GuideWRSTraceConfigGuiWindow()noexcept {}
 private:
-
+    std::string m_FilePath;
 };
 void  Test24GuiDelegate::Initialize()
 {
@@ -675,22 +925,32 @@ void  Test24GuiDelegate::Initialize()
             m_Gui->SetGuiWindow(mainTcCnfgWindow);
             trcrItem->SetGuiMenuItem(std::make_shared<test:: RTGuiOpenWindowMenuItem>(mainTcCnfgWindow));
             trcrItem->SetGuiMenuItem(std::make_shared<test::RTGuiCloseWindowMenuItem>(mainTcCnfgWindow));
-            auto restirTcCnfgWindow = std::make_shared<ReSTIRTraceConfigGuiWindow>( m_TracerVariables, m_EventFlags);
+            auto   pathTcCnfgWindow = std::make_shared<  PathTraceConfigGuiWindow>( m_TracerVariables, m_Framebuffer, m_EventFlags);
+            pathTcCnfgWindow->SetActive(false);
+            if (mainTcCnfgWindow->AddTracerWindow(pathTcCnfgWindow->GetName(), pathTcCnfgWindow)) {
+                m_Gui->SetGuiWindow(pathTcCnfgWindow);
+            }
+            auto    neeTcCnfgWindow = std::make_shared<    NEETraceConfigGuiWindow>(m_TracerVariables, m_Framebuffer, m_EventFlags);
+             neeTcCnfgWindow->SetActive(false);
+            if (mainTcCnfgWindow->AddTracerWindow(neeTcCnfgWindow->GetName(), neeTcCnfgWindow)) {
+                m_Gui->SetGuiWindow(neeTcCnfgWindow);
+            }
+            auto restirTcCnfgWindow = std::make_shared<ReSTIRTraceConfigGuiWindow>( m_TracerVariables, m_Framebuffer, m_EventFlags);
             restirTcCnfgWindow->SetActive(false);
             if (mainTcCnfgWindow->AddTracerWindow(restirTcCnfgWindow->GetName(), restirTcCnfgWindow)) {
                 m_Gui->SetGuiWindow(restirTcCnfgWindow);
             }
-            auto gdPathTcCnfgWindow = std::make_shared<GuidePathTraceConfigGuiWindow>(m_TracerVariables, m_EventFlags);
+            auto gdPathTcCnfgWindow = std::make_shared<GuidePathTraceConfigGuiWindow>(m_TracerVariables, m_Framebuffer, m_EventFlags);
             gdPathTcCnfgWindow->SetActive(false);
             if (mainTcCnfgWindow->AddTracerWindow(gdPathTcCnfgWindow->GetName(), gdPathTcCnfgWindow)) {
                 m_Gui->SetGuiWindow(gdPathTcCnfgWindow);
             }
-            auto gdNEETcCnfgWindow = std::make_shared<GuideNEETraceConfigGuiWindow>(m_TracerVariables, m_EventFlags);
+            auto gdNEETcCnfgWindow = std::make_shared<GuideNEETraceConfigGuiWindow>(m_TracerVariables, m_Framebuffer, m_EventFlags);
             gdNEETcCnfgWindow->SetActive(false);
             if (mainTcCnfgWindow->AddTracerWindow(gdNEETcCnfgWindow->GetName() , gdNEETcCnfgWindow)) {
                 m_Gui->SetGuiWindow(gdNEETcCnfgWindow);
             }
-            auto gdWRSTcCnfgWindow = std::make_shared<GuideWRSTraceConfigGuiWindow>(m_TracerVariables, m_EventFlags);
+            auto gdWRSTcCnfgWindow = std::make_shared<GuideWRSTraceConfigGuiWindow>(m_TracerVariables, m_Framebuffer, m_EventFlags);
             gdWRSTcCnfgWindow->SetActive(false);
             if (mainTcCnfgWindow->AddTracerWindow(gdWRSTcCnfgWindow->GetName(), gdWRSTcCnfgWindow)) {
                 m_Gui->SetGuiWindow(gdWRSTcCnfgWindow);
@@ -708,7 +968,7 @@ void  Test24GuiDelegate::Initialize()
         // Camera
         {
             auto cmrItem = cnfgMenu->AddGuiMenu("Camera");
-            auto cmrCnfgWindow = std::make_shared<CameraConfigGuiWindow>(m_Framebuffer, m_CameraController, m_EventFlags);
+            auto cmrCnfgWindow = std::make_shared<CameraConfigGuiWindow>(m_Window,m_Framebuffer, m_CameraController, m_EventFlags);
             cmrCnfgWindow->SetActive(false);   //Default: Invisible
             m_Gui->SetGuiWindow(cmrCnfgWindow);
             cmrItem->SetGuiMenuItem(std::make_shared<test::RTGuiOpenWindowMenuItem>(cmrCnfgWindow));

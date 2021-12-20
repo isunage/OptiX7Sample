@@ -13,7 +13,7 @@
 #include <RTLib/ext/Resources.h>
 #include <RTLib/ext/Resources/GL.h>
 #include <RTLib/ext/Resources/CUDA.h>
-#include <Test24Event.h>
+#include <Test24Share.h>
 #include <memory>
 // DebugTracer
 class Test24DebugOPXTracer : public test::RTTracer

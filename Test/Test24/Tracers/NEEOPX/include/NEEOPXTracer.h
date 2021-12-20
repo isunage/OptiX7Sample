@@ -13,7 +13,7 @@
 #include <RTLib/ext/Resources.h>
 #include <RTLib/ext/Resources/GL.h>
 #include <RTLib/ext/Resources/CUDA.h>
-#include <Test24Event.h>
+#include <Test24Share.h>
 #include <Test24NEEOPXConfig.h>
 #include <memory>
 //SimpleTracer
@@ -24,8 +24,6 @@ public:
 	{
 		bool         isSync;
 		CUstream     stream;
-		unsigned int samplePerAll;
-		unsigned int samplePerLaunch;
 	};
 	using ContextPtr = std::shared_ptr<test::RTContext>;
 	using FramebufferPtr = std::shared_ptr<test::RTFramebuffer>;

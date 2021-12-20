@@ -13,7 +13,7 @@
 #include <RTLib/ext/RectRenderer.h>
 #include <RTLib/ext/Camera.h>
 #include <RTLib/ext/VariableMap.h>
-#include <Test24Event.h>
+#include <Test24Share.h>
 class Test24Application : public test::RTApplication
 {
 private:

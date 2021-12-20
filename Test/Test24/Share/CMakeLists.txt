@@ -8,10 +8,11 @@ configure_file(
 )
 
 add_library(Test24_Share 
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/Test24Event.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/Test24Share.h
     ${CMAKE_CURRENT_SOURCE_DIR}/Test24Config.h.in
     ${CMAKE_CURRENT_BINARY_DIR}/Test24Config.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/Test24Event.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/Test24Share.cpp
 )
 target_include_directories(Test24_Share PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_link_libraries(Test24_Share PUBLIC RTLib)
 set_target_properties(Test24_Share               PROPERTIES  FOLDER Test24/Share)

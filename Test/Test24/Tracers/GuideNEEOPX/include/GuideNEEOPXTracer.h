@@ -14,7 +14,7 @@
 #include <RTLib/ext/Resources/GL.h>
 #include <RTLib/ext/Resources/CUDA.h>
 #include <Test24GuideNEEOPXConfig.h>
-#include <Test24Event.h>
+#include <Test24Share.h>
 #include <memory>
 //SimpleTracer
 // GuideTracer

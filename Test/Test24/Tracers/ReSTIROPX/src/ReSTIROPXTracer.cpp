@@ -88,8 +88,6 @@ struct Test24ReSTIROPXTracer::Impl
 	unsigned int        m_PrvReservoirIdx = 0;
 	unsigned int        m_CurReservoirIdx = 1;
 	unsigned int        m_FnlReservoirIdx = 2;
-	unsigned int        m_SamplePerAll    = 0;
-	unsigned int        m_SamplePerLaunch = 1;
 	bool                m_UpdateMotion    = false;
 	rtlib::ext::Camera  m_Camera          = {};
 };
@@ -102,6 +100,8 @@ Test24ReSTIROPXTracer::Test24ReSTIROPXTracer(
 	m_Impl = std::make_unique<Test24ReSTIROPXTracer::Impl>(
 		Context, Framebuffer, CameraController, TextureManager, TopLevelAS, Materials, BgLightColor,eventFlags
 		);
+	this->GetVariables()->SetUInt32( "SamplePerAll"   , 0);
+	this->GetVariables()->SetUInt32( "SamplePerLaunch", 1);
 	this->GetVariables()->SetUInt32(  "NumCandidates" , 32);
 	this->GetVariables()->SetBool(    "ReuseTemporal" , true);
 	this->GetVariables()->SetBool(      "ReuseSpatial", true);
@@ -131,6 +131,9 @@ void Test24ReSTIROPXTracer::Launch(int width, int height, void* userData)
 		return;
 	}
 
+	auto samplePerAll    = GetVariables()->GetUInt32("SamplePerAll");
+	auto samplePerLaunch = GetVariables()->GetUInt32("SamplePerLaunch");
+
 	this->m_Impl->m_First.m_Params.cpuHandle[0].width        = width;
 	this->m_Impl->m_First.m_Params.cpuHandle[0].height       = height;
 	this->m_Impl->m_First.m_Params.cpuHandle[0].posiBuffer   = m_Impl->m_SharedFramebuffer->GetComponent<test::RTCUDABufferFBComponent<float3>>("GPosition")->GetHandle().getDevicePtr();
@@ -148,8 +151,8 @@ void Test24ReSTIROPXTracer::Launch(int width, int height, void* userData)
 
 	this->m_Impl->m_Second.m_Params.cpuHandle[0].width           = width;
 	this->m_Impl->m_Second.m_Params.cpuHandle[0].height          = height;
-	this->m_Impl->m_Second.m_Params.cpuHandle[0].samplePerALL    = m_Impl->m_SamplePerAll;
-	this->m_Impl->m_Second.m_Params.cpuHandle[0].samplePerLaunch = m_Impl->m_SamplePerLaunch;
+	this->m_Impl->m_Second.m_Params.cpuHandle[0].samplePerALL    = samplePerAll;
+	this->m_Impl->m_Second.m_Params.cpuHandle[0].samplePerLaunch = samplePerLaunch;
 	this->m_Impl->m_Second.m_Params.cpuHandle[0].numCandidates   = GetVariables()->GetUInt32("NumCandidates");
 	this->m_Impl->m_Second.m_Params.cpuHandle[0].seedBuffer      = m_Impl->m_UniqueFramebuffer->GetComponent<test::RTCUDABufferFBComponent<unsigned int>>("Seed")->GetHandle().getDevicePtr();
 	this->m_Impl->m_Second.m_Params.cpuHandle[0].motiBuffer      = m_Impl->m_UniqueFramebuffer->GetComponent<test::RTCUDABufferFBComponent<int2>>  ("Motion2D"  )->GetHandle().getDevicePtr();
@@ -225,8 +228,11 @@ void Test24ReSTIROPXTracer::Launch(int width, int height, void* userData)
 	RTLIB_CU_CHECK(cuStreamSynchronize(pUserData->stream));
 
 	m_Impl->m_SharedFramebuffer->GetComponent<test::RTCUGLBufferFBComponent<uchar4>>("RFrame")->GetHandle().unmap();
-	this->m_Impl->m_Second.m_Params.cpuHandle[0].samplePerALL += this->m_Impl->m_Second.m_Params.cpuHandle[0].samplePerLaunch;
-	this->m_Impl->m_SamplePerAll = this->m_Impl->m_Second.m_Params.cpuHandle[0].samplePerALL;
+
+	samplePerAll += samplePerLaunch;
+
+	this->m_Impl->m_Second.m_Params.cpuHandle[0].samplePerALL = samplePerAll;
+	GetVariables()->SetUInt32("SamplePerAll", samplePerAll);
 	std::swap(m_Impl->m_CurReservoirIdx, m_Impl->m_PrvReservoirIdx);
 }
 
@@ -285,7 +291,7 @@ void Test24ReSTIROPXTracer::Update()
 		std::vector<float3> zeroAccumValues(this->m_Impl->m_SharedFramebuffer->GetWidth() * this->m_Impl->m_SharedFramebuffer->GetHeight(), make_float3(0.0f));
 		cudaMemcpy(this->m_Impl->m_SharedFramebuffer->GetComponent<test::RTCUDABufferFBComponent<float3>>("RAccum")->GetHandle().getDevicePtr(), zeroAccumValues.data(), sizeof(float3) * this->m_Impl->m_SharedFramebuffer->GetWidth() * this->m_Impl->m_SharedFramebuffer->GetHeight(), cudaMemcpyHostToDevice);
 		this->m_Impl->m_Second.m_Params.cpuHandle[0].samplePerALL = 0;
-		this->m_Impl->m_SamplePerAll = 0;
+		GetVariables()->SetUInt32("SamplePerAll", 0);
 	}
 
 	if (this->m_Impl->m_CurEventFlags   & TEST24_EVENT_FLAG_BIT_RESIZE_FRAME) {
@@ -317,7 +323,8 @@ void Test24ReSTIROPXTracer::Update()
 		m_Impl->m_UpdateMotion = false;
 	}
 
-	bool shouldRegen = ((this->m_Impl->m_SamplePerAll + this->m_Impl->m_Second.m_Params.cpuHandle[0].samplePerLaunch) / 1024 != this->m_Impl->m_SamplePerAll / 1024);
+	auto samplePerAll = GetVariables()->GetUInt32("SamplePerAll");
+	bool shouldRegen = ((samplePerAll + this->m_Impl->m_Second.m_Params.cpuHandle[0].samplePerLaunch) / 1024 != samplePerAll / 1024);
 	if (shouldRegen)
 	{
 		std::cout << "Regen!\n";
@@ -682,6 +689,9 @@ void Test24ReSTIROPXTracer::InitLight()
 
 void Test24ReSTIROPXTracer::InitLaunchParams()
 {
+	auto samplePerAll = GetVariables()->GetUInt32("SamplePerAll");
+	auto samplePerLaunch = GetVariables()->GetUInt32("SamplePerLaunch");
+
 	auto tlas = this->m_Impl->m_TopLevelAS;
 	this->m_Impl->m_First.m_Params.Alloc(1);
 	this->m_Impl->m_First.m_Params.cpuHandle[0].gasHandle    = tlas->GetHandle();
@@ -700,8 +710,8 @@ void Test24ReSTIROPXTracer::InitLaunchParams()
 	this->m_Impl->m_Second.m_Params.cpuHandle[0].gasHandle       = tlas->GetHandle();
 	this->m_Impl->m_Second.m_Params.cpuHandle[0].width           = this->m_Impl->m_SharedFramebuffer->GetWidth();
 	this->m_Impl->m_Second.m_Params.cpuHandle[0].height          = this->m_Impl->m_SharedFramebuffer->GetHeight();
-	this->m_Impl->m_Second.m_Params.cpuHandle[0].samplePerALL    = m_Impl->m_SamplePerAll;
-	this->m_Impl->m_Second.m_Params.cpuHandle[0].samplePerLaunch = m_Impl->m_SamplePerLaunch;
+	this->m_Impl->m_Second.m_Params.cpuHandle[0].samplePerALL    = samplePerAll;
+	this->m_Impl->m_Second.m_Params.cpuHandle[0].samplePerLaunch = samplePerLaunch;
 	this->m_Impl->m_Second.m_Params.cpuHandle[0].numCandidates   = GetVariables()->GetUInt32("NumCandidates");
 	this->m_Impl->m_Second.m_Params.cpuHandle[0].seedBuffer      = m_Impl->m_UniqueFramebuffer->GetComponent<test::RTCUDABufferFBComponent<unsigned int>>("Seed")->GetHandle().getDevicePtr();
 	this->m_Impl->m_Second.m_Params.cpuHandle[0].motiBuffer      = m_Impl->m_UniqueFramebuffer->GetComponent<test::RTCUDABufferFBComponent<int2>>(  "Motion2D" )->GetHandle().getDevicePtr();

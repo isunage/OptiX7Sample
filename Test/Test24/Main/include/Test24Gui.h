@@ -5,7 +5,7 @@
 #include <TestLib/RTGui.h>
 #include <TestLib/RTFrameBuffer.h>
 #include <RTLib/ext/Camera.h>
-#include <Test24Event.h>
+#include <Test24Share.h>
 class Test24GuiDelegate : public test::RTAppGuiDelegate
 {
 private:
