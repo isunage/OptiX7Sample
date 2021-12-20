@@ -1,11 +1,11 @@
-#include "../include/GuideWRSOPXTracer.h"
+#include "../include/GuideNEEOPXTracer.h"
 #include <RTPathGuidingUtils.h>
 #include <RTLib/ext/Utils.h>
 #include <RayTrace.h>
 #include <fstream>
 #include <random>
 using namespace std::string_literals;
-using namespace test24_wrs_guide;
+using namespace test24_nee_guide;
 inline auto SpecifyMaterialType(const rtlib::ext::VariableMap& material) -> std::string
 {
 	auto emitCol = material.GetFloat3As<float3>("emitCol");
@@ -31,7 +31,7 @@ using RayGRecord = rtlib::SBTRecord<RayGenData>;
 using MissRecord = rtlib::SBTRecord<MissData>;
 using HitGRecord = rtlib::SBTRecord<HitgroupData>;
 // RTTracer ����Čp������܂���
-struct Test24GuideWRSOPXTracer::Impl {
+struct Test24GuideNEEOPXTracer::Impl {
 	Impl(
 		ContextPtr context,
 		FramebufferPtr framebuffer,
@@ -70,11 +70,6 @@ struct Test24GuideWRSOPXTracer::Impl {
 		return list;
 	}
 
-	bool HasEvent(unsigned int eventFlag)const noexcept
-	{
-		return (m_EventFlags & eventFlag) == eventFlag;
-	}
-	
 	std::weak_ptr<test::RTContext> m_Context;
 	std::weak_ptr<test::RTFramebuffer> m_Framebuffer;
 	std::weak_ptr<rtlib::ext::CameraController> m_CameraController;
@@ -109,7 +104,7 @@ struct Test24GuideWRSOPXTracer::Impl {
 	float        m_RatioForBudget  = 0.50f;
 };
 
-Test24GuideWRSOPXTracer::Test24GuideWRSOPXTracer(
+Test24GuideNEEOPXTracer::Test24GuideNEEOPXTracer(
 	ContextPtr context,
 	FramebufferPtr framebuffer,
 	CameraControllerPtr cameraController,
@@ -119,7 +114,7 @@ Test24GuideWRSOPXTracer::Test24GuideWRSOPXTracer(
 	const float3& bgLightColor,
 	const unsigned int& eventFlags,
 	const unsigned int& maxTraceDepth) :test::RTTracer() {
-	m_Impl = std::make_unique<Test24GuideWRSOPXTracer::Impl>(
+	m_Impl = std::make_unique<Test24GuideNEEOPXTracer::Impl>(
 		context,
 		framebuffer,
 		cameraController,
@@ -129,19 +124,9 @@ Test24GuideWRSOPXTracer::Test24GuideWRSOPXTracer(
 		bgLightColor,
 		eventFlags,
 		maxTraceDepth);
-
-	GetVariables()->SetBool("Started" , false);
-	GetVariables()->SetBool("Launched", false);
-	GetVariables()->SetUInt32("SamplePerAll"     , 0);
-	GetVariables()->SetUInt32("SamplePerTmp"     , 0);
-	GetVariables()->SetUInt32("SamplePerLaunch"  , 1);
-	GetVariables()->SetUInt32("SampleForBudget"  , 1024);
-	GetVariables()->SetUInt32("CurIteration"     , 0);
-	GetVariables()->SetUInt32("IterationForBuilt", 0);
-	GetVariables()->SetFloat1("RatioForBudget"   , 0.5f);
 }
 
-void Test24GuideWRSOPXTracer::Initialize()
+void Test24GuideNEEOPXTracer::Initialize()
 {
 	this->InitFrameResources();
 	this->InitPipeline();
@@ -151,7 +136,7 @@ void Test24GuideWRSOPXTracer::Initialize()
 	this->InitLaunchParams();
 }
 
-void Test24GuideWRSOPXTracer::Launch(int width, int height, void* pdata)
+void Test24GuideNEEOPXTracer::Launch(int width, int height, void* pdata)
 {
 
 	UserData* pUserData = (UserData*)pdata;
@@ -162,13 +147,12 @@ void Test24GuideWRSOPXTracer::Launch(int width, int height, void* pdata)
 	if (width != this->m_Impl->m_Framebuffer.lock()->GetWidth() || height != this->m_Impl->m_Framebuffer.lock()->GetHeight()) {
 		return;
 	}
-	if (this->OnLaunchBegin  (width, height, pUserData)) {
-		this->OnLaunchExecute(width, height, pUserData);
-		this->OnLaunchEnd(    width, height, pUserData);
-	}
+	this->OnLaunchBegin(width, height, pUserData);
+	this->OnLaunchExecute(width, height, pUserData);
+	this->OnLaunchEnd(width, height, pUserData);
 }
 
-void Test24GuideWRSOPXTracer::CleanUp()
+void Test24GuideNEEOPXTracer::CleanUp()
 {
 	this->FreePipeline();
 	this->FreeShaderBindingTable();
@@ -179,9 +163,9 @@ void Test24GuideWRSOPXTracer::CleanUp()
 	this->m_Impl->m_LightHgRecIndex = 0;
 }
 
-void Test24GuideWRSOPXTracer::Update()
+void Test24GuideNEEOPXTracer::Update()
 {
-	if (this->m_Impl->  HasEvent(TEST24_EVENT_FLAG_BIT_UPDATE_CAMERA)  )
+	if ((this->m_Impl->m_EventFlags & TEST24_EVENT_FLAG_UPDATE_CAMERA) == TEST24_EVENT_FLAG_UPDATE_CAMERA)
 	{
 		float aspect = static_cast<float>(this->m_Impl->m_Framebuffer.lock()->GetWidth()) / static_cast<float>(this->m_Impl->m_Framebuffer.lock()->GetHeight());
 		this->m_Impl->m_Camera = this->m_Impl->m_CameraController.lock()->GetCamera(aspect);
@@ -192,17 +176,16 @@ void Test24GuideWRSOPXTracer::Update()
 		this->m_Impl->m_RGRecordBuffer.cpuHandle[0].data.w = w;
 		this->m_Impl->m_RGRecordBuffer.Upload();
 	}
-	if (this->m_Impl->HasEvent(TEST24_EVENT_FLAG_BIT_FLUSH_FRAME  ))
+	if ((this->m_Impl->m_EventFlags & TEST24_EVENT_FLAG_FLUSH_FRAME)   == TEST24_EVENT_FLAG_FLUSH_FRAME)
 	{
 		std::vector<float3> zeroAccumValues(this->m_Impl->m_Framebuffer.lock()->GetWidth() * this->m_Impl->m_Framebuffer.lock()->GetHeight(), make_float3(0.0f));
 		cudaMemcpy(this->m_Impl->m_Framebuffer.lock()->GetComponent<test::RTCUDABufferFBComponent<float3>>("RAccum")->GetHandle().getDevicePtr(), zeroAccumValues.data(), sizeof(float3) * this->m_Impl->m_Framebuffer.lock()->GetWidth() * this->m_Impl->m_Framebuffer.lock()->GetHeight(), cudaMemcpyHostToDevice);
 		this->m_Impl->m_Params.cpuHandle[0].maxTraceDepth = this->m_Impl->m_MaxTraceDepth;
 		this->m_Impl->m_Params.cpuHandle[0].samplePerALL = 0;
-		GetVariables()->SetUInt32("SamplePerAll", 0);
+		this->m_Impl->m_SamplePerAll = 0;
 	}
-	auto samplePerAll=GetVariables()->GetUInt32("SamplePerAll");
-	bool shouldRegen = ((samplePerAll + this->m_Impl->m_Params.cpuHandle[0].samplePerLaunch) / 1024 != samplePerAll / 1024);
-	if (this->m_Impl->HasEvent(TEST24_EVENT_FLAG_BIT_RESIZE_FRAME  )   || shouldRegen)
+	bool shouldRegen = ((this->m_Impl->m_SamplePerAll + this->m_Impl->m_Params.cpuHandle[0].samplePerLaunch) / 1024 != this->m_Impl->m_SamplePerAll / 1024);
+	if (((this->m_Impl->m_EventFlags & TEST24_EVENT_FLAG_RESIZE_FRAME) == TEST24_EVENT_FLAG_RESIZE_FRAME) || shouldRegen)
 	{
 		std::cout << "Regen!\n";
 		std::vector<unsigned int> seedData(this->m_Impl->m_Framebuffer.lock()->GetWidth() * this->m_Impl->m_Framebuffer.lock()->GetHeight());
@@ -212,7 +195,7 @@ void Test24GuideWRSOPXTracer::Update()
 		this->m_Impl->m_SeedBuffer.resize(this->m_Impl->m_Framebuffer.lock()->GetWidth() * this->m_Impl->m_Framebuffer.lock()->GetHeight());
 		this->m_Impl->m_SeedBuffer.upload(seedData);
 	}
-	if (this->m_Impl->HasEvent(TEST24_EVENT_FLAG_BIT_UPDATE_LIGHT  )   )
+	if ((this->m_Impl->m_EventFlags & TEST24_EVENT_FLAG_UPDATE_LIGHT)  == TEST24_EVENT_FLAG_UPDATE_LIGHT)
 	{
 		auto lightColor = make_float4(this->m_Impl->m_BgLightColor, 1.0f);
 		this->m_Impl->m_MSRecordBuffers.cpuHandle[RAY_TYPE_RADIANCE].data.bgColor = lightColor;
@@ -220,15 +203,15 @@ void Test24GuideWRSOPXTracer::Update()
 	}
 }
 
-bool Test24GuideWRSOPXTracer::ShouldLock() const noexcept
+bool Test24GuideNEEOPXTracer::ShouldLock() const noexcept
 {
 	return false;
 }
 
-Test24GuideWRSOPXTracer::~Test24GuideWRSOPXTracer() {
+Test24GuideNEEOPXTracer::~Test24GuideNEEOPXTracer() {
 }
 
-void Test24GuideWRSOPXTracer::InitLight()
+void Test24GuideNEEOPXTracer::InitLight()
 {
 	auto ChooseNEE = [](const rtlib::ext::MeshPtr& mesh)->bool {
 		return (mesh->GetUniqueResource()->triIndBuffer.Size() < 200 || mesh->GetUniqueResource()->triIndBuffer.Size() > 230);
@@ -260,9 +243,9 @@ void Test24GuideWRSOPXTracer::InitLight()
 	m_Impl->m_MeshLights.Alloc();
 	m_Impl->m_MeshLights.Upload();
 }
-void Test24GuideWRSOPXTracer::InitPipeline()
+void Test24GuideNEEOPXTracer::InitPipeline()
 {
-	auto rayGuidePtxFile = std::ifstream(TEST_TEST24_GUIDE_WRS_OPX_CUDA_PATH "/RayGuide.ptx", std::ios::binary);
+	auto rayGuidePtxFile = std::ifstream(TEST_TEST24_GUIDE_NEE_OPX_CUDA_PATH "/RayGuide.ptx", std::ios::binary);
 	if (!rayGuidePtxFile.is_open()) {
 		throw std::runtime_error("Failed To Load RayGuide.ptx!");
 	}
@@ -317,7 +300,7 @@ void Test24GuideWRSOPXTracer::InitPipeline()
 	m_Impl->m_Pipeline.link(guideLinkOptions);
 }
 
-void Test24GuideWRSOPXTracer::InitFrameResources()
+void Test24GuideNEEOPXTracer::InitFrameResources()
 {
 	std::vector<unsigned int> seedData(this->m_Impl->m_Framebuffer.lock()->GetWidth() * this->m_Impl->m_Framebuffer.lock()->GetHeight());
 	std::random_device rd;
@@ -327,7 +310,7 @@ void Test24GuideWRSOPXTracer::InitFrameResources()
 }
 
 
-void Test24GuideWRSOPXTracer::InitShaderBindingTable()
+void Test24GuideNEEOPXTracer::InitShaderBindingTable()
 {
 	float aspect = static_cast<float>(this->m_Impl->m_Framebuffer.lock()->GetWidth()) / static_cast<float>(this->m_Impl->m_Framebuffer.lock()->GetHeight());
 	auto tlas = this->m_Impl->m_TopLevelAS.lock();
@@ -446,7 +429,7 @@ void Test24GuideWRSOPXTracer::InitShaderBindingTable()
 	this->m_Impl->m_ShaderBindingTable.hitgroupRecordStrideInBytes = sizeof(HitGRecord);
 }
 
-void Test24GuideWRSOPXTracer::InitLaunchParams()
+void Test24GuideNEEOPXTracer::InitLaunchParams()
 {
 	auto tlas = this->m_Impl->m_TopLevelAS.lock();
 	this->m_Impl->m_Params.Alloc(1);
@@ -463,11 +446,11 @@ void Test24GuideWRSOPXTracer::InitLaunchParams()
 	this->m_Impl->m_Params.Upload();
 }
 
-void Test24GuideWRSOPXTracer::FreeLight()
+void Test24GuideNEEOPXTracer::FreeLight()
 {
 }
 
-void Test24GuideWRSOPXTracer::InitSdTree()
+void Test24GuideNEEOPXTracer::InitSdTree()
 {
 	auto worldAABB = rtlib::utils::AABB();
 	for (auto& instanceSet : m_Impl->m_TopLevelAS.lock()->GetInstanceSets()) {
@@ -491,13 +474,13 @@ void Test24GuideWRSOPXTracer::InitSdTree()
 
 }
 
-void Test24GuideWRSOPXTracer::FreeSdTree()
+void Test24GuideNEEOPXTracer::FreeSdTree()
 {
 	m_Impl->m_STree->Clear();
 	m_Impl->m_STree.reset();
 }
 
-void Test24GuideWRSOPXTracer::FreePipeline()
+void Test24GuideNEEOPXTracer::FreePipeline()
 {
 	this->m_Impl->m_RGProgramGroups = {};
 	this->m_Impl->m_HGProgramGroups = {};
@@ -505,7 +488,7 @@ void Test24GuideWRSOPXTracer::FreePipeline()
 	this->m_Impl->m_Pipeline = {};
 }
 
-void Test24GuideWRSOPXTracer::FreeShaderBindingTable()
+void Test24GuideNEEOPXTracer::FreeShaderBindingTable()
 {
 	this->m_Impl->m_ShaderBindingTable = {};
 	this->m_Impl->m_RGRecordBuffer.Reset();
@@ -513,23 +496,21 @@ void Test24GuideWRSOPXTracer::FreeShaderBindingTable()
 	this->m_Impl->m_HGRecordBuffers.Reset();
 }
 
-void Test24GuideWRSOPXTracer::FreeLaunchParams()
+void Test24GuideNEEOPXTracer::FreeLaunchParams()
 {
 	this->m_Impl->m_Params.Reset();
 }
 
-bool Test24GuideWRSOPXTracer::OnLaunchBegin(int width, int height, UserData* pUserData)
+void Test24GuideNEEOPXTracer::OnLaunchBegin(int width, int height, UserData* pUserData)
 {
-	if (GetVariables()->GetBool("Started"))
+	if (pUserData->samplePerAll == 0)
 	{
-		auto sampleForBudget = GetVariables()->GetUInt32("SampleForBudget");
-		auto samplePerLaunch = GetVariables()->GetUInt32("SamplePerLaunch");
-		GetVariables()->SetUInt32("SamplePerAll", 0);
-		GetVariables()->SetUInt32("SamplePerTmp", 0);
-		GetVariables()->SetUInt32("CurIteration", 0);
-		GetVariables()->SetBool("Launched", true);
-		GetVariables()->SetBool( "Started", false);
-		this->m_Impl->m_SampleForRemain = ((sampleForBudget - 1 + samplePerLaunch) / samplePerLaunch) * samplePerLaunch;
+		this->m_Impl->m_SamplePerAll = 0;
+		this->m_Impl->m_SamplePerTmp = 0;
+		this->m_Impl->m_SampleForBudget = pUserData->sampleForBudget;
+		this->m_Impl->m_SamplePerLaunch = pUserData->samplePerLaunch;
+		this->m_Impl->m_SampleForRemain = ((this->m_Impl->m_SampleForBudget - 1 + this->m_Impl->m_SamplePerLaunch) / this->m_Impl->m_SamplePerLaunch) * this->m_Impl->m_SamplePerLaunch;
+		this->m_Impl->m_CurIteration = 0;
 		this->m_Impl->m_SampleForPass = 0;
 		std::random_device rd;
 		std::mt19937 mt(rd());
@@ -539,54 +520,39 @@ bool Test24GuideWRSOPXTracer::OnLaunchBegin(int width, int height, UserData* pUs
 		this->m_Impl->m_STree->Clear();
 		this->m_Impl->m_STree->Upload();
 	}
-	if (!GetVariables()->GetBool("Launched")) {
-		return false;
-	}
-	auto curIteration    = GetVariables()->GetUInt32("CurIteration");
-	auto samplePerAll    = GetVariables()->GetUInt32("SamplePerAll");
-	auto samplePerTmp    = GetVariables()->GetUInt32("SamplePerTmp");
-	auto samplePerLaunch = GetVariables()->GetUInt32("SamplePerLaunch");
-	auto sampleForBudget = GetVariables()->GetUInt32("SampleForBudget");
-	auto ratioForBudget  = GetVariables()->GetFloat1("RatioForBudget");
-	if (samplePerTmp == 0)
+	if (this->m_Impl->m_SamplePerTmp == 0)
 	{
 		//CurIteration > 0 -> Reset
 		this->m_Impl->m_SampleForRemain = this->m_Impl->m_SampleForRemain - this->m_Impl->m_SampleForPass;
-		this->m_Impl->m_SampleForPass = std::min<uint32_t>(this->m_Impl->m_SampleForRemain, (1 << curIteration) * samplePerLaunch);
-		if ((this->m_Impl->m_SampleForRemain - this->m_Impl->m_SampleForPass < 2 * this->m_Impl->m_SampleForPass) || (samplePerAll >= ratioForBudget * static_cast<float>(sampleForBudget)))
+		this->m_Impl->m_SampleForPass = std::min<uint32_t>(this->m_Impl->m_SampleForRemain, (1 << this->m_Impl->m_CurIteration) * this->m_Impl->m_SamplePerLaunch);
+		if ((this->m_Impl->m_SampleForRemain - this->m_Impl->m_SampleForPass < 2 * this->m_Impl->m_SampleForPass) || (this->m_Impl->m_SamplePerAll >= this->m_Impl->m_RatioForBudget * static_cast<float>(this->m_Impl->m_SampleForBudget)))
 		{
-			std::cout << "Final: this->m_Impl->m_SamplePerAll=" << samplePerAll << std::endl;
+			std::cout << "Final: this->m_Impl->m_SamplePerAll=" << this->m_Impl->m_SamplePerAll << std::endl;
 			this->m_Impl->m_SampleForPass = this->m_Impl->m_SampleForRemain;
 		}
 		/*Remain>Pass -> Not Final Iteration*/
 		if (this->m_Impl->m_SampleForRemain > this->m_Impl->m_SampleForPass)
 		{
 			this->m_Impl->m_STree->Download();
-			this->m_Impl->m_STree->Reset(curIteration, samplePerLaunch);
+			this->m_Impl->m_STree->Reset(this->m_Impl->m_CurIteration, this->m_Impl->m_SamplePerLaunch);
 			this->m_Impl->m_STree->Upload();
 		}
 	}
-	std::cout << "CurIteration: " << curIteration << " SamplePerTmp: " << samplePerTmp << std::endl;
-	return true;
+	std::cout << "CurIteration: " << this->m_Impl->m_CurIteration << " SamplePerTmp: " << this->m_Impl->m_SamplePerTmp << std::endl;
 }
 
-void Test24GuideWRSOPXTracer::OnLaunchExecute(int width, int height, UserData* pUserData)
+void Test24GuideNEEOPXTracer::OnLaunchExecute(int width, int height, UserData* pUserData)
 {
-	auto curIteration     = GetVariables()->GetUInt32("CurIteration");
-	auto iterationForBuilt= GetVariables()->GetUInt32("IterationForBuilt");
-	auto samplePerAll     = GetVariables()->GetUInt32("SamplePerAll");
-	auto samplePerTmp     = GetVariables()->GetUInt32("SamplePerTmp");
-	auto samplePerLaunch  = GetVariables()->GetUInt32("SamplePerLaunch");	
-	this->m_Impl->m_Params.cpuHandle[0].width           = width;
-	this->m_Impl->m_Params.cpuHandle[0].height          = height;
-	this->m_Impl->m_Params.cpuHandle[0].sdTree          = this->m_Impl->m_STree->GetGpuHandle();
-	this->m_Impl->m_Params.cpuHandle[0].accumBuffer     = this->m_Impl->m_Framebuffer.lock()->GetComponent<test::RTCUDABufferFBComponent<float3>>("RAccum")->GetHandle().getDevicePtr();
-	this->m_Impl->m_Params.cpuHandle[0].frameBuffer     = this->m_Impl->m_Framebuffer.lock()->GetComponent<test::RTCUGLBufferFBComponent<uchar4>>("RFrame")->GetHandle().map();
-	this->m_Impl->m_Params.cpuHandle[0].seedBuffer      = this->m_Impl->m_SeedBuffer.getDevicePtr();
-	this->m_Impl->m_Params.cpuHandle[0].isBuilt         = curIteration > iterationForBuilt;
-	this->m_Impl->m_Params.cpuHandle[0].isFinal         = this->m_Impl->m_SampleForPass >= this->m_Impl->m_SampleForRemain;
-	this->m_Impl->m_Params.cpuHandle[0].samplePerALL    = samplePerAll;
-	this->m_Impl->m_Params.cpuHandle[0].samplePerLaunch = samplePerLaunch;
+	this->m_Impl->m_Params.cpuHandle[0].width = width;
+	this->m_Impl->m_Params.cpuHandle[0].height = height;
+	this->m_Impl->m_Params.cpuHandle[0].sdTree = this->m_Impl->m_STree->GetGpuHandle();
+	this->m_Impl->m_Params.cpuHandle[0].accumBuffer = this->m_Impl->m_Framebuffer.lock()->GetComponent<test::RTCUDABufferFBComponent<float3>>("RAccum")->GetHandle().getDevicePtr();
+	this->m_Impl->m_Params.cpuHandle[0].frameBuffer = this->m_Impl->m_Framebuffer.lock()->GetComponent<test::RTCUGLBufferFBComponent<uchar4>>("RFrame")->GetHandle().map();
+	this->m_Impl->m_Params.cpuHandle[0].seedBuffer = this->m_Impl->m_SeedBuffer.getDevicePtr();
+	this->m_Impl->m_Params.cpuHandle[0].isBuilt = this->m_Impl->m_CurIteration > pUserData->iterationForBuilt;
+	this->m_Impl->m_Params.cpuHandle[0].isFinal = this->m_Impl->m_SampleForPass >= this->m_Impl->m_SampleForRemain;
+	this->m_Impl->m_Params.cpuHandle[0].samplePerALL = this->m_Impl->m_SamplePerAll;
+	this->m_Impl->m_Params.cpuHandle[0].samplePerLaunch = this->m_Impl->m_SamplePerLaunch;
 	cudaMemcpyAsync(this->m_Impl->m_Params.gpuHandle.getDevicePtr(), &this->m_Impl->m_Params.cpuHandle[0], sizeof(RayTraceParams), cudaMemcpyHostToDevice, pUserData->stream);
 	//cudaMemcpy(this->m_Impl->m_Params.gpuHandle.getDevicePtr(), &this->m_Impl->m_Params.cpuHandle[0], sizeof(RayTraceParams), cudaMemcpyHostToDevice);
 	this->m_Impl->m_Pipeline.launch(pUserData->stream, this->m_Impl->m_Params.gpuHandle.getDevicePtr(), this->m_Impl->m_ShaderBindingTable, width, height, 2);
@@ -596,45 +562,24 @@ void Test24GuideWRSOPXTracer::OnLaunchExecute(int width, int height, UserData* p
 		cuStreamSynchronize(pUserData->stream);
 	}
 	this->m_Impl->m_Framebuffer.lock()->GetComponent<test::RTCUGLBufferFBComponent<uchar4>>("RFrame")->GetHandle().unmap();
-
-	samplePerAll += samplePerLaunch;
-	samplePerTmp += samplePerLaunch;
-	this->m_Impl->m_Params.cpuHandle[0].samplePerALL = samplePerAll;
-
-	GetVariables()->SetUInt32("SamplePerAll", samplePerAll);
-	GetVariables()->SetUInt32("SamplePerTmp", samplePerTmp);
+	this->m_Impl->m_Params.cpuHandle[0].samplePerALL += this->m_Impl->m_SamplePerLaunch;
+	this->m_Impl->m_SamplePerAll = pUserData->samplePerAll = this->m_Impl->m_Params.cpuHandle[0].samplePerALL;
+	this->m_Impl->m_SamplePerTmp += this->m_Impl->m_SamplePerLaunch;
 }
 
-void Test24GuideWRSOPXTracer::OnLaunchEnd(int width, int height, UserData* pUserData)
+void Test24GuideNEEOPXTracer::OnLaunchEnd(int width, int height, UserData* pUserData)
 {
-	auto samplePerAll    = GetVariables()->GetUInt32("SamplePerAll");
-	auto samplePerTmp    = GetVariables()->GetUInt32("SamplePerTmp");
-	auto sampleForBudget = GetVariables()->GetUInt32("SampleForBudget");
-	auto curIteration    = GetVariables()->GetUInt32("CurIteration");
-
-	if (samplePerTmp >= this->m_Impl->m_SampleForPass)
+	if (this->m_Impl->m_SamplePerTmp >= this->m_Impl->m_SampleForPass)
 	{
 		this->m_Impl->m_STree->Download();
 		this->m_Impl->m_STree->Build();
 		this->m_Impl->m_STree->Upload();
-
-		curIteration++;
-		GetVariables()->SetUInt32("SamplePerTmp", 0);
-		GetVariables()->SetUInt32("CurIteration", curIteration);
-	}
-	if (samplePerAll >= sampleForBudget)
-	{
-		GetVariables()->SetBool("Launched", false);
-		GetVariables()->SetBool("Started" , false);
-		GetVariables()->SetUInt32("SamplePerAll",0);
-		pUserData->finished = true;
-	}
-	else {
-		pUserData->finished = false;
+		this->m_Impl->m_SamplePerTmp = 0;
+		this->m_Impl->m_CurIteration++;
 	}
 }
 
-void Test24GuideWRSOPXTracer::FreeFrameResources()
+void Test24GuideNEEOPXTracer::FreeFrameResources()
 {
 	this->m_Impl->m_SeedBuffer.reset();
 }

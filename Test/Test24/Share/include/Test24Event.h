@@ -1,6 +1,6 @@
 #ifndef TEST_TEST24_EVENT_H
 #define TEST_TEST24_EVENT_H
-enum Test24EventFlagBits : unsigned int
+enum Test24EventFlagBits  : unsigned int
 {
     TEST24_EVENT_FLAG_BIT_NONE         = 0,
     TEST24_EVENT_FLAG_BIT_FLUSH_FRAME  = 1,
@@ -10,7 +10,7 @@ enum Test24EventFlagBits : unsigned int
     TEST24_EVENT_FLAG_BIT_UPDATE_LIGHT = 16,
     TEST24_EVENT_FLAG_BIT_LOCK         = 32,
 };
-enum Test24EventFlag: unsigned int 
+enum Test24EventFlag     : unsigned int 
 {
     TEST24_EVENT_FLAG_NONE          = TEST24_EVENT_FLAG_BIT_NONE,
     TEST24_EVENT_FLAG_FLUSH_FRAME   = TEST24_EVENT_FLAG_BIT_FLUSH_FRAME,

@@ -23,10 +23,7 @@ class Test24GuideNEEOPXTracer : public test::RTTracer
 public:
     struct UserData
     {
-        unsigned int samplePerAll;
-        unsigned int samplePerLaunch;
-        unsigned int sampleForBudget;
-        unsigned int iterationForBuilt;
+        bool         finished;
         bool         isSync;
         CUstream     stream;
     };
@@ -72,7 +69,7 @@ private:
     void FreeShaderBindingTable();
     void InitLaunchParams();
     void FreeLaunchParams();
-    void OnLaunchBegin(int width, int height, UserData* pUserData);
+    bool OnLaunchBegin(int width, int height, UserData* pUserData);
     void OnLaunchExecute(int width, int height, UserData* pUserData);
     void OnLaunchEnd(int width, int height, UserData* pUserData);
 private:

@@ -70,6 +70,11 @@ struct Test24GuideNEEOPXTracer::Impl {
 		return list;
 	}
 
+	bool HasEvent(unsigned int eventFlag)const noexcept
+	{
+		return (m_EventFlags & eventFlag) == eventFlag;
+	}
+	
 	std::weak_ptr<test::RTContext> m_Context;
 	std::weak_ptr<test::RTFramebuffer> m_Framebuffer;
 	std::weak_ptr<rtlib::ext::CameraController> m_CameraController;
@@ -94,14 +99,8 @@ struct Test24GuideNEEOPXTracer::Impl {
 	rtlib::CUDAUploadBuffer<MeshLight> m_MeshLights;
 	std::shared_ptr<RTSTreeWrapper> m_STree = nullptr;
 	unsigned int m_LightHgRecIndex = 0;
-	unsigned int m_SamplePerAll    = 0;
-	unsigned int m_SamplePerTmp    = 0;
-	unsigned int m_SamplePerLaunch = 0;
-	unsigned int m_SampleForBudget = 0;
 	unsigned int m_SampleForRemain = 0;
 	unsigned int m_SampleForPass   = 0;
-	unsigned int m_CurIteration    = 0;
-	float        m_RatioForBudget  = 0.50f;
 };
 
 Test24GuideNEEOPXTracer::Test24GuideNEEOPXTracer(
@@ -124,6 +123,16 @@ Test24GuideNEEOPXTracer::Test24GuideNEEOPXTracer(
 		bgLightColor,
 		eventFlags,
 		maxTraceDepth);
+
+	GetVariables()->SetBool("Started" , false);
+	GetVariables()->SetBool("Launched", false);
+	GetVariables()->SetUInt32("SamplePerAll"     , 0);
+	GetVariables()->SetUInt32("SamplePerTmp"     , 0);
+	GetVariables()->SetUInt32("SamplePerLaunch"  , 1);
+	GetVariables()->SetUInt32("SampleForBudget"  , 1024);
+	GetVariables()->SetUInt32("CurIteration"     , 0);
+	GetVariables()->SetUInt32("IterationForBuilt", 0);
+	GetVariables()->SetFloat1("RatioForBudget"   , 0.5f);
 }
 
 void Test24GuideNEEOPXTracer::Initialize()
@@ -147,9 +156,10 @@ void Test24GuideNEEOPXTracer::Launch(int width, int height, void* pdata)
 	if (width != this->m_Impl->m_Framebuffer.lock()->GetWidth() || height != this->m_Impl->m_Framebuffer.lock()->GetHeight()) {
 		return;
 	}
-	this->OnLaunchBegin(width, height, pUserData);
-	this->OnLaunchExecute(width, height, pUserData);
-	this->OnLaunchEnd(width, height, pUserData);
+	if (this->OnLaunchBegin  (width, height, pUserData)) {
+		this->OnLaunchExecute(width, height, pUserData);
+		this->OnLaunchEnd(    width, height, pUserData);
+	}
 }
 
 void Test24GuideNEEOPXTracer::CleanUp()
@@ -165,7 +175,7 @@ void Test24GuideNEEOPXTracer::CleanUp()
 
 void Test24GuideNEEOPXTracer::Update()
 {
-	if ((this->m_Impl->m_EventFlags & TEST24_EVENT_FLAG_UPDATE_CAMERA) == TEST24_EVENT_FLAG_UPDATE_CAMERA)
+	if (this->m_Impl->HasEvent(TEST24_EVENT_FLAG_BIT_UPDATE_CAMERA))
 	{
 		float aspect = static_cast<float>(this->m_Impl->m_Framebuffer.lock()->GetWidth()) / static_cast<float>(this->m_Impl->m_Framebuffer.lock()->GetHeight());
 		this->m_Impl->m_Camera = this->m_Impl->m_CameraController.lock()->GetCamera(aspect);
@@ -176,17 +186,17 @@ void Test24GuideNEEOPXTracer::Update()
 		this->m_Impl->m_RGRecordBuffer.cpuHandle[0].data.w = w;
 		this->m_Impl->m_RGRecordBuffer.Upload();
 	}
-	if ((this->m_Impl->m_EventFlags & TEST24_EVENT_FLAG_FLUSH_FRAME)   == TEST24_EVENT_FLAG_FLUSH_FRAME)
+	if (this->m_Impl->HasEvent(TEST24_EVENT_FLAG_BIT_FLUSH_FRAME  ))
 	{
 		std::vector<float3> zeroAccumValues(this->m_Impl->m_Framebuffer.lock()->GetWidth() * this->m_Impl->m_Framebuffer.lock()->GetHeight(), make_float3(0.0f));
 		cudaMemcpy(this->m_Impl->m_Framebuffer.lock()->GetComponent<test::RTCUDABufferFBComponent<float3>>("RAccum")->GetHandle().getDevicePtr(), zeroAccumValues.data(), sizeof(float3) * this->m_Impl->m_Framebuffer.lock()->GetWidth() * this->m_Impl->m_Framebuffer.lock()->GetHeight(), cudaMemcpyHostToDevice);
 		this->m_Impl->m_Params.cpuHandle[0].maxTraceDepth = this->m_Impl->m_MaxTraceDepth;
 		this->m_Impl->m_Params.cpuHandle[0].samplePerALL = 0;
-		this->m_Impl->m_SamplePerAll = 0;
+		GetVariables()->SetUInt32("SamplePerAll", 0);
 	}
-	bool shouldRegen = ((this->m_Impl->m_SamplePerAll + this->m_Impl->m_Params.cpuHandle[0].samplePerLaunch) / 1024 != this->m_Impl->m_SamplePerAll / 1024);
-	if (((this->m_Impl->m_EventFlags & TEST24_EVENT_FLAG_RESIZE_FRAME) == TEST24_EVENT_FLAG_RESIZE_FRAME) || shouldRegen)
-	{
+	auto samplePerAll = GetVariables()->GetUInt32("SamplePerAll");
+	bool shouldRegen = ((samplePerAll + this->m_Impl->m_Params.cpuHandle[0].samplePerLaunch) / 1024 != samplePerAll / 1024);
+	if (this->m_Impl->HasEvent(TEST24_EVENT_FLAG_BIT_RESIZE_FRAME  ) || shouldRegen){
 		std::cout << "Regen!\n";
 		std::vector<unsigned int> seedData(this->m_Impl->m_Framebuffer.lock()->GetWidth() * this->m_Impl->m_Framebuffer.lock()->GetHeight());
 		std::random_device rd;
@@ -195,7 +205,7 @@ void Test24GuideNEEOPXTracer::Update()
 		this->m_Impl->m_SeedBuffer.resize(this->m_Impl->m_Framebuffer.lock()->GetWidth() * this->m_Impl->m_Framebuffer.lock()->GetHeight());
 		this->m_Impl->m_SeedBuffer.upload(seedData);
 	}
-	if ((this->m_Impl->m_EventFlags & TEST24_EVENT_FLAG_UPDATE_LIGHT)  == TEST24_EVENT_FLAG_UPDATE_LIGHT)
+	if (this->m_Impl->HasEvent(TEST24_EVENT_FLAG_BIT_UPDATE_LIGHT ))
 	{
 		auto lightColor = make_float4(this->m_Impl->m_BgLightColor, 1.0f);
 		this->m_Impl->m_MSRecordBuffers.cpuHandle[RAY_TYPE_RADIANCE].data.bgColor = lightColor;
@@ -501,17 +511,19 @@ void Test24GuideNEEOPXTracer::FreeLaunchParams()
 	this->m_Impl->m_Params.Reset();
 }
 
-void Test24GuideNEEOPXTracer::OnLaunchBegin(int width, int height, UserData* pUserData)
+bool Test24GuideNEEOPXTracer::OnLaunchBegin(int width, int height, UserData* pUserData)
 {
-	if (pUserData->samplePerAll == 0)
+	if (GetVariables()->GetBool("Started"))
 	{
-		this->m_Impl->m_SamplePerAll = 0;
-		this->m_Impl->m_SamplePerTmp = 0;
-		this->m_Impl->m_SampleForBudget = pUserData->sampleForBudget;
-		this->m_Impl->m_SamplePerLaunch = pUserData->samplePerLaunch;
-		this->m_Impl->m_SampleForRemain = ((this->m_Impl->m_SampleForBudget - 1 + this->m_Impl->m_SamplePerLaunch) / this->m_Impl->m_SamplePerLaunch) * this->m_Impl->m_SamplePerLaunch;
-		this->m_Impl->m_CurIteration = 0;
-		this->m_Impl->m_SampleForPass = 0;
+		auto sampleForBudget = GetVariables()->GetUInt32("SampleForBudget");
+		auto samplePerLaunch = GetVariables()->GetUInt32("SamplePerLaunch");
+		GetVariables()->SetUInt32("SamplePerAll", 0);
+		GetVariables()->SetUInt32("SamplePerTmp", 0);
+		GetVariables()->SetUInt32("CurIteration", 0);
+		GetVariables()->SetBool("Launched", true);
+		GetVariables()->SetBool( "Started", false);
+		this->m_Impl->m_SampleForRemain = ((sampleForBudget - 1 + samplePerLaunch) / samplePerLaunch) * samplePerLaunch;
+		this->m_Impl->m_SampleForPass   = 0;
 		std::random_device rd;
 		std::mt19937 mt(rd());
 		std::vector<unsigned int> seedData(width * height);
@@ -520,39 +532,55 @@ void Test24GuideNEEOPXTracer::OnLaunchBegin(int width, int height, UserData* pUs
 		this->m_Impl->m_STree->Clear();
 		this->m_Impl->m_STree->Upload();
 	}
-	if (this->m_Impl->m_SamplePerTmp == 0)
+	if (!GetVariables()->GetBool("Launched")) {
+		return false;
+	}
+	auto curIteration    = GetVariables()->GetUInt32("CurIteration");
+	auto samplePerAll    = GetVariables()->GetUInt32("SamplePerAll");
+	auto samplePerTmp    = GetVariables()->GetUInt32("SamplePerTmp");
+	auto samplePerLaunch = GetVariables()->GetUInt32("SamplePerLaunch");
+	auto sampleForBudget = GetVariables()->GetUInt32("SampleForBudget");
+	auto ratioForBudget  = GetVariables()->GetFloat1("RatioForBudget");
+	if (samplePerTmp == 0)
 	{
 		//CurIteration > 0 -> Reset
 		this->m_Impl->m_SampleForRemain = this->m_Impl->m_SampleForRemain - this->m_Impl->m_SampleForPass;
-		this->m_Impl->m_SampleForPass = std::min<uint32_t>(this->m_Impl->m_SampleForRemain, (1 << this->m_Impl->m_CurIteration) * this->m_Impl->m_SamplePerLaunch);
-		if ((this->m_Impl->m_SampleForRemain - this->m_Impl->m_SampleForPass < 2 * this->m_Impl->m_SampleForPass) || (this->m_Impl->m_SamplePerAll >= this->m_Impl->m_RatioForBudget * static_cast<float>(this->m_Impl->m_SampleForBudget)))
+		this->m_Impl->m_SampleForPass = std::min<uint32_t>(this->m_Impl->m_SampleForRemain, (1 << curIteration) * samplePerLaunch);
+		if ((this->m_Impl->m_SampleForRemain - this->m_Impl->m_SampleForPass < 2 * this->m_Impl->m_SampleForPass) || (samplePerAll >= ratioForBudget * static_cast<float>(sampleForBudget)))
 		{
-			std::cout << "Final: this->m_Impl->m_SamplePerAll=" << this->m_Impl->m_SamplePerAll << std::endl;
+			std::cout << "Final: this->m_Impl->m_SamplePerAll=" << samplePerAll << std::endl;
 			this->m_Impl->m_SampleForPass = this->m_Impl->m_SampleForRemain;
 		}
 		/*Remain>Pass -> Not Final Iteration*/
 		if (this->m_Impl->m_SampleForRemain > this->m_Impl->m_SampleForPass)
 		{
 			this->m_Impl->m_STree->Download();
-			this->m_Impl->m_STree->Reset(this->m_Impl->m_CurIteration, this->m_Impl->m_SamplePerLaunch);
+			this->m_Impl->m_STree->Reset(curIteration, samplePerLaunch);
 			this->m_Impl->m_STree->Upload();
 		}
 	}
-	std::cout << "CurIteration: " << this->m_Impl->m_CurIteration << " SamplePerTmp: " << this->m_Impl->m_SamplePerTmp << std::endl;
+	std::cout << "CurIteration: " << curIteration << " SamplePerTmp: " << samplePerTmp << std::endl;
+	return true;
 }
 
 void Test24GuideNEEOPXTracer::OnLaunchExecute(int width, int height, UserData* pUserData)
 {
+	auto curIteration      = GetVariables()->GetUInt32("CurIteration");
+	auto iterationForBuilt = GetVariables()->GetUInt32("IterationForBuilt");
+	auto samplePerAll      = GetVariables()->GetUInt32("SamplePerAll");
+	auto samplePerTmp      = GetVariables()->GetUInt32("SamplePerTmp");
+	auto samplePerLaunch   = GetVariables()->GetUInt32("SamplePerLaunch");
+	
 	this->m_Impl->m_Params.cpuHandle[0].width = width;
 	this->m_Impl->m_Params.cpuHandle[0].height = height;
 	this->m_Impl->m_Params.cpuHandle[0].sdTree = this->m_Impl->m_STree->GetGpuHandle();
 	this->m_Impl->m_Params.cpuHandle[0].accumBuffer = this->m_Impl->m_Framebuffer.lock()->GetComponent<test::RTCUDABufferFBComponent<float3>>("RAccum")->GetHandle().getDevicePtr();
 	this->m_Impl->m_Params.cpuHandle[0].frameBuffer = this->m_Impl->m_Framebuffer.lock()->GetComponent<test::RTCUGLBufferFBComponent<uchar4>>("RFrame")->GetHandle().map();
 	this->m_Impl->m_Params.cpuHandle[0].seedBuffer = this->m_Impl->m_SeedBuffer.getDevicePtr();
-	this->m_Impl->m_Params.cpuHandle[0].isBuilt = this->m_Impl->m_CurIteration > pUserData->iterationForBuilt;
+	this->m_Impl->m_Params.cpuHandle[0].isBuilt = curIteration > iterationForBuilt;
 	this->m_Impl->m_Params.cpuHandle[0].isFinal = this->m_Impl->m_SampleForPass >= this->m_Impl->m_SampleForRemain;
-	this->m_Impl->m_Params.cpuHandle[0].samplePerALL = this->m_Impl->m_SamplePerAll;
-	this->m_Impl->m_Params.cpuHandle[0].samplePerLaunch = this->m_Impl->m_SamplePerLaunch;
+	this->m_Impl->m_Params.cpuHandle[0].samplePerALL    = samplePerAll;
+	this->m_Impl->m_Params.cpuHandle[0].samplePerLaunch = samplePerLaunch;
 	cudaMemcpyAsync(this->m_Impl->m_Params.gpuHandle.getDevicePtr(), &this->m_Impl->m_Params.cpuHandle[0], sizeof(RayTraceParams), cudaMemcpyHostToDevice, pUserData->stream);
 	//cudaMemcpy(this->m_Impl->m_Params.gpuHandle.getDevicePtr(), &this->m_Impl->m_Params.cpuHandle[0], sizeof(RayTraceParams), cudaMemcpyHostToDevice);
 	this->m_Impl->m_Pipeline.launch(pUserData->stream, this->m_Impl->m_Params.gpuHandle.getDevicePtr(), this->m_Impl->m_ShaderBindingTable, width, height, 2);
@@ -562,20 +590,41 @@ void Test24GuideNEEOPXTracer::OnLaunchExecute(int width, int height, UserData* p
 		cuStreamSynchronize(pUserData->stream);
 	}
 	this->m_Impl->m_Framebuffer.lock()->GetComponent<test::RTCUGLBufferFBComponent<uchar4>>("RFrame")->GetHandle().unmap();
-	this->m_Impl->m_Params.cpuHandle[0].samplePerALL += this->m_Impl->m_SamplePerLaunch;
-	this->m_Impl->m_SamplePerAll = pUserData->samplePerAll = this->m_Impl->m_Params.cpuHandle[0].samplePerALL;
-	this->m_Impl->m_SamplePerTmp += this->m_Impl->m_SamplePerLaunch;
+
+	samplePerAll += samplePerLaunch;
+	samplePerTmp += samplePerLaunch;
+	this->m_Impl->m_Params.cpuHandle[0].samplePerALL = samplePerAll;
+
+	GetVariables()->SetUInt32("SamplePerAll", samplePerAll);
+	GetVariables()->SetUInt32("SamplePerTmp", samplePerTmp);
 }
 
 void Test24GuideNEEOPXTracer::OnLaunchEnd(int width, int height, UserData* pUserData)
 {
-	if (this->m_Impl->m_SamplePerTmp >= this->m_Impl->m_SampleForPass)
+	auto samplePerAll    = GetVariables()->GetUInt32("SamplePerAll");
+	auto samplePerTmp    = GetVariables()->GetUInt32("SamplePerTmp");
+	auto sampleForBudget = GetVariables()->GetUInt32("SampleForBudget");
+	auto curIteration    = GetVariables()->GetUInt32("CurIteration");
+
+	if (samplePerTmp >= this->m_Impl->m_SampleForPass)
 	{
 		this->m_Impl->m_STree->Download();
 		this->m_Impl->m_STree->Build();
 		this->m_Impl->m_STree->Upload();
-		this->m_Impl->m_SamplePerTmp = 0;
-		this->m_Impl->m_CurIteration++;
+
+		curIteration++;
+		GetVariables()->SetUInt32("SamplePerTmp", 0);
+		GetVariables()->SetUInt32("CurIteration", curIteration);
+	}
+	if (samplePerAll >= sampleForBudget)
+	{
+		GetVariables()->SetBool("Launched", false);
+		GetVariables()->SetBool("Started" , false);
+		GetVariables()->SetUInt32("SamplePerAll",0);
+		pUserData->finished = true;
+	}
+	else {
+		pUserData->finished = false;
 	}
 }
 

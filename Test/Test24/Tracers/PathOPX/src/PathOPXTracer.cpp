@@ -78,14 +78,14 @@ struct Test24PathOPXTracer::Impl {
 	RGProgramGroupMap m_RGProgramGroups = {};
 	MSProgramGroupMap m_MSProgramGroups = {};
 	HGProgramGroupMap m_HGProgramGroups = {};
-	rtlib::CUDAUploadBuffer<RayGRecord> m_RGRecordBuffer = {};
-	rtlib::CUDAUploadBuffer<MissRecord> m_MSRecordBuffers = {};
-	rtlib::CUDAUploadBuffer<HitGRecord> m_HGRecordBuffers = {};
-	rtlib::CUDAUploadBuffer<RayTraceParams> m_Params = {};
-	rtlib::CUDABuffer<unsigned int> m_SeedBuffer = {};
-	rtlib::CUDAUploadBuffer<MeshLight> m_MeshLights = {};
+	rtlib::CUDAUploadBuffer<RayGRecord>     m_RGRecordBuffer  = {};
+	rtlib::CUDAUploadBuffer<MissRecord>     m_MSRecordBuffers = {};
+	rtlib::CUDAUploadBuffer<HitGRecord>     m_HGRecordBuffers = {};
+	rtlib::CUDAUploadBuffer<RayTraceParams> m_Params      = {};
+	rtlib::CUDABuffer<unsigned int>         m_SeedBuffer  = {};
+	rtlib::CUDAUploadBuffer<MeshLight>      m_MeshLights  = {};
 	unsigned int m_LightHgRecIndex = 0;
-	unsigned int m_SamplePerAll = 0;
+	unsigned int m_SamplePerAll    = 0;
 };
 
 Test24PathOPXTracer::Test24PathOPXTracer(

@@ -550,7 +550,7 @@ void Test24Application::Launch()
 {
     m_LaunchTracerSet.insert(m_CurMainTraceName);
     for (auto& name : m_LaunchTracerSet) {
-        if (name == "PathOPX")
+        if (name == "PathOPX"     )
         {
             Test24PathOPXTracer::UserData  userData = {};
             userData.samplePerLaunch = m_SamplePerLaunch;
@@ -559,82 +559,85 @@ void Test24Application::Launch()
             m_Tracers[name]->Launch(m_FbWidth, m_FbHeight, &userData);
             m_SamplePerAll           = userData.samplePerAll;
         }
-        if (name == "NEEOPX") {
+        if (name == "NEEOPX"      ) {
             Test24NEEOPXTracer::UserData userData = {};
-            userData.samplePerLaunch    = m_SamplePerLaunch;
-            userData.isSync             = true;
-            userData.stream             = nullptr;
+            userData.samplePerLaunch = m_SamplePerLaunch;
+            userData.isSync          = true;
+            userData.stream          = nullptr;
             m_Tracers[name]->Launch(m_FbWidth, m_FbHeight, &userData);
-            m_SamplePerAll              = userData.samplePerAll;
+            m_SamplePerAll           = userData.samplePerAll;
         }
         if (name == "GuidePathOPX")
         {
             //なぜかSDTreeのAccumulationが進まない
             Test24GuidePathOPXTracer::UserData  userData = {};
-            userData.samplePerLaunch = m_SamplePerLaunch;
-            userData.samplePerAll    = m_SamplePerAll;
-            userData.sampleForBudget = 4096;
-            userData.iterationForBuilt = 0;
-            userData.isSync = true;
-            userData.stream = nullptr;
+            userData.finished = false;
+            userData.isSync   = true;
+            userData.stream   = nullptr;
             m_Tracers[name]->Launch(m_FbWidth, m_FbHeight, &userData);
-            m_SamplePerAll += m_SamplePerLaunch;
-            if (m_SamplePerAll >= userData.sampleForBudget) {
-                m_CurMainTraceName = "PathOPX";
-                m_SamplePerAll = 0;
-                m_EventFlags  |= TEST24_EVENT_FLAG_CHANGE_TRACE;
+            m_SamplePerAll    = m_Tracers[name]->GetVariables()->GetUInt32("SamplePerAll");
+            auto launched     = m_Tracers[name]->GetVariables()->GetBool("Launched");
+            if (launched) {
+                m_EventFlags |= TEST24_EVENT_FLAG_LOCK;
             }
-        }
-        if (name == "GuideNEEOPX")
-        {
-            //なぜかSDTreeのAccumulationが進まない
-            Test24GuideNEEOPXTracer::UserData  userData = {};
-            userData.samplePerLaunch   = m_SamplePerLaunch;
-            userData.samplePerAll      = m_SamplePerAll;
-            userData.sampleForBudget   = 4096;
-            userData.iterationForBuilt = 0;
-            userData.isSync            = true;
-            userData.stream            = nullptr;
-            m_Tracers[name]->Launch(m_FbWidth, m_FbHeight, &userData);
-            m_SamplePerAll            += m_SamplePerLaunch;
-            if (m_SamplePerAll >= userData.sampleForBudget) {
-                m_CurMainTraceName     = "PathOPX";
-                m_SamplePerAll         = 0;
-                m_EventFlags |= TEST24_EVENT_FLAG_CHANGE_TRACE;
-            }
-        }
-        if (name == "GuideWRSOPX")
-        {
-            //なぜかSDTreeのAccumulationが進まない
-            Test24GuideWRSOPXTracer::UserData  userData = {};
-            userData.samplePerLaunch   = m_SamplePerLaunch;
-            userData.samplePerAll      = m_SamplePerAll;
-            userData.sampleForBudget   = 4096;
-            userData.iterationForBuilt = 0;
-            userData.isSync = true;
-            userData.stream = nullptr;
-            m_Tracers[name]->Launch(m_FbWidth, m_FbHeight, &userData);
-            m_SamplePerAll += m_SamplePerLaunch;
-            if (m_SamplePerAll    >= userData.sampleForBudget) {
+            if (userData.finished) {
                 m_CurMainTraceName = "PathOPX";
                 m_SamplePerAll     = 0;
                 m_EventFlags      |= TEST24_EVENT_FLAG_CHANGE_TRACE;
             }
         }
-        if (name == "ReSTIROPX")
+        if (name == "GuideNEEOPX" )
+        {
+            //なぜかSDTreeのAccumulationが進まない
+            Test24GuideNEEOPXTracer::UserData  userData = {};
+            userData.finished = false;
+            userData.isSync   = true;
+            userData.stream   = nullptr;
+            m_Tracers[name]->Launch(m_FbWidth, m_FbHeight, &userData);
+            m_SamplePerAll    = m_Tracers[name]->GetVariables()->GetUInt32("SamplePerAll");
+            auto launched     = m_Tracers[name]->GetVariables()->GetBool("Launched");
+            if (launched) {
+                m_EventFlags |= TEST24_EVENT_FLAG_LOCK;
+            }
+            if (userData.finished) {
+                m_CurMainTraceName = "PathOPX";
+                m_SamplePerAll = 0;
+                m_EventFlags  |= TEST24_EVENT_FLAG_CHANGE_TRACE;
+            }
+        }
+        if (name == "GuideWRSOPX" )
+        {
+            //なぜかSDTreeのAccumulationが進まない
+            Test24GuideWRSOPXTracer::UserData  userData = {};
+            userData.finished = false;
+            userData.isSync   = true;
+            userData.stream   = nullptr;
+            m_Tracers[name]->Launch(m_FbWidth, m_FbHeight, &userData);
+            m_SamplePerAll    = m_Tracers[name]->GetVariables()->GetUInt32("SamplePerAll");
+            auto launched     = m_Tracers[name]->GetVariables()->GetBool("Launched");
+            if (launched) {
+                m_EventFlags |= TEST24_EVENT_FLAG_LOCK;
+            }
+            if (userData.finished) {
+                m_CurMainTraceName = "PathOPX";
+                m_SamplePerAll = 0;
+                m_EventFlags |= TEST24_EVENT_FLAG_CHANGE_TRACE;
+            }
+        }
+        if (name == "ReSTIROPX"   )
         {
             Test24ReSTIROPXTracer::UserData  userData = {};
             userData.isSync                           = true;
             userData.stream                           = nullptr;
             m_Tracers[name]->Launch(m_FbWidth, m_FbHeight, &userData);
         }
-        if (name == "DebugOPX") {
+        if (name == "DebugOPX"    ) {
             Test24DebugOPXTracer::UserData userData = {};
             userData.isSync            = true;
             userData.stream            = nullptr;
             m_Tracers[name]->Launch(m_FbWidth, m_FbHeight, &userData);
         }
-        if (name == "TestGL") {
+        if (name == "TestGL"      ) {
             m_Tracers[name]->Launch(m_FbWidth, m_FbHeight, nullptr);
         }
     }
@@ -758,7 +761,7 @@ void Test24Application::ResizeFrame()
 
 void Test24Application::UpdateCamera()
 {
-    if (m_CurFrameTime != 0.0f)
+    if (m_CurFrameTime != 0.0f && !(m_EventFlags&TEST24_EVENT_FLAG_BIT_LOCK))
     {
         if (glfwGetKey(m_Window, GLFW_KEY_W) == GLFW_PRESS)
         {

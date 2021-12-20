@@ -1,7 +1,7 @@
 #include <Test24Gui.h>
 #include <Test24Config.h>
 #include <filesystem>
-class    ObjModelConfigGuiWindow : public test::RTGuiWindow
+class       ObjModelConfigGuiWindow : public test::RTGuiWindow
 {
 public:
     ObjModelConfigGuiWindow(const std::shared_ptr<test::RTFramebuffer>& framebuffer_, const std::shared_ptr<test::RTObjModelAssetManager>& objModelManager_, std::unordered_set<std::string>& launchTracerSet_, std::string& objModelname) :
@@ -87,7 +87,7 @@ public:
     std::unordered_set<std::string> m_RemoveNameSet;
     std::string m_LoadFilePath;
 };
-class   MainTraceConfigGuiWindow : public test::RTGuiWindow
+class      MainTraceConfigGuiWindow : public test::RTGuiWindow
 {
 public:
     explicit MainTraceConfigGuiWindow(const std::vector<std::string>& tracePublicNames, std::string& traceName,unsigned int& maxTraceDepth_, unsigned int& samplePerLaunch_, unsigned int& eventFlags_)noexcept :
@@ -171,7 +171,7 @@ private:
     unsigned int&                   eventFlags;
     bool                            isFirst;
 };
-class   MainFrameConfigGuiWindow : public test::RTGuiWindow
+class      MainFrameConfigGuiWindow : public test::RTGuiWindow
 {
 public:
     explicit MainFrameConfigGuiWindow(const std::vector<std::string>& framePublicNames, std::string& frameName)noexcept :
@@ -214,7 +214,7 @@ private:
     size_t       curFrameIdx;
     bool         isFirst;
 };
-class      CameraConfigGuiWindow :public test::RTGuiWindow{
+class         CameraConfigGuiWindow :public test::RTGuiWindow{
 public:
 
     explicit CameraConfigGuiWindow(const std::shared_ptr<test::RTFramebuffer>& framebuffer_, const std::shared_ptr<rtlib::ext::CameraController>& cameraController_, unsigned int& eventFlags_)noexcept :
@@ -224,38 +224,46 @@ public:
         auto eye    = camera.getEye();
         auto atv    = camera.getLookAt();
         auto vup    = camera.getVup();
-        {
-            float arr_eye [3]= { eye.x,eye.y,eye.z };
+        float arr_eye[3] = { eye.x,eye.y,eye.z };
+        float arr_atv[3] = { atv.x,atv.y,atv.z };
+        float arr_vup[3] = { vup.x,vup.y,vup.z };
+        float zoom = cameraController->GetZoom();
+        auto speed = cameraController->GetMovementSpeed();
+        auto sense = cameraController->GetMouseSensitivity();
+        if(!HasEvent(TEST24_EVENT_FLAG_BIT_LOCK)){
             if (ImGui::InputFloat3("Eye", arr_eye)) {
                 camera.setEye(make_float3(arr_eye[0],arr_eye[1],arr_eye[2]));
                 SetEvent(TEST24_EVENT_FLAG_UPDATE_CAMERA);
             }
-            float arr_atv[3] = { atv.x,atv.y,atv.z };
             if (ImGui::InputFloat3("At", arr_atv)) {
                 camera.setLookAt(make_float3(arr_atv[0], arr_atv[1], arr_atv[2]));
                 SetEvent(TEST24_EVENT_FLAG_UPDATE_CAMERA);
             }
-            float arr_vup[3] = { vup.x,vup.y,vup.z };
-            if (ImGui::InputFloat3("vup", arr_vup)) {
+            if (ImGui::InputFloat3("Vup", arr_vup)) {
                 camera.setLookAt(make_float3(arr_vup[0], arr_vup[1], arr_vup[2]));
                 SetEvent(TEST24_EVENT_FLAG_UPDATE_CAMERA);
             }
-            float zoom = cameraController->GetZoom();
-            if (ImGui::InputFloat("zoom", &zoom)) {
+            if (ImGui::InputFloat("Zoom", &zoom)) {
                 cameraController->SetZoom(zoom);
                 SetEvent(TEST24_EVENT_FLAG_UPDATE_CAMERA);
             }
-            auto sense = cameraController->GetMouseSensitivity();
-            if (ImGui::InputFloat("sensitivity", &sense)) {
+            if (ImGui::InputFloat("Sensitivity", &sense)) {
                 cameraController->SetMouseSensitivity(sense);
             }
-            auto speed = cameraController->GetMovementSpeed();
-            if (ImGui::InputFloat("speed", &speed)) {
+            if (ImGui::InputFloat("Speed", &speed)) {
                 cameraController->SetMovementSpeed(speed);
             }
+            if (HasEvent(TEST24_EVENT_FLAG_BIT_UPDATE_CAMERA)) {
+                cameraController->SetCamera(camera);
+            }
         }
-        if (HasEvent(TEST24_EVENT_FLAG_BIT_UPDATE_CAMERA)) {
-            cameraController->SetCamera(camera);
+        else {
+            ImGui::Text(" Eye: (%f, %f, %f)", arr_eye[0], arr_eye[1], arr_eye[2]);
+            ImGui::Text("  At: (%f, %f, %f)", arr_atv[0], arr_atv[1], arr_atv[2]);
+            ImGui::Text(" Vup: (%f, %f, %f)", arr_atv[0], arr_atv[1], arr_atv[2]);
+            ImGui::Text("Zoom:  %f"         , zoom);
+            ImGui::Text("Sensitivity:  %f"  , sense);
+            ImGui::Text("Speed:  %f"        , speed);
         }
     }
     virtual ~CameraConfigGuiWindow() noexcept {}
@@ -276,7 +284,7 @@ private:
     std::shared_ptr<rtlib::ext::CameraController> cameraController;
     unsigned int& eventFlags;
 };
-class       LightConfigGuiWindow: public test::RTGuiWindow {
+class          LightConfigGuiWindow: public test::RTGuiWindow {
 public:
     LightConfigGuiWindow(
         float3& bgLightColor,
@@ -308,7 +316,7 @@ private:
     float3& m_BgLightColor;
     unsigned int&   m_EventFlags;
 };
-class       InputConfigGuiWindow : public test::RTGuiWindow {
+class          InputConfigGuiWindow : public test::RTGuiWindow {
 public:
     InputConfigGuiWindow(
         const std::array<float, 2>& curCursorPos,
@@ -347,7 +355,7 @@ private:
     const float& m_CurFrameTime;
     const float& m_DelFrameTime;
 };
-class       TraceConfigGuiWindow:public test::RTGuiWindow {
+class          TraceConfigGuiWindow:public test::RTGuiWindow {
 private:
     using TracerVariableMap = std::unordered_map < std::string, std::shared_ptr<rtlib::ext::VariableMap>>;
 public:
@@ -384,7 +392,7 @@ private:
     const TracerVariableMap& tracerVariables;
     unsigned int&                 eventFlags;
 };
-class ReSTIRTraceConfigGuiWindow : public TraceConfigGuiWindow
+class    ReSTIRTraceConfigGuiWindow : public TraceConfigGuiWindow
 {
 private:
     using TracerVariableMap = std::unordered_map < std::string, std::shared_ptr<rtlib::ext::VariableMap>>;
@@ -431,6 +439,187 @@ public:
         }
     }
     virtual ~ReSTIRTraceConfigGuiWindow()noexcept {}
+private:
+
+};
+class GuidePathTraceConfigGuiWindow : public TraceConfigGuiWindow
+{
+private:
+    using TracerVariableMap = std::unordered_map < std::string, std::shared_ptr<rtlib::ext::VariableMap>>;
+public:
+    GuidePathTraceConfigGuiWindow(const TracerVariableMap& tracerVariables_, unsigned int& eventFlags_)noexcept : TraceConfigGuiWindow("GuidePathOPX", tracerVariables_, eventFlags_) {}
+    virtual void DrawGui()override {
+        auto variable = GetVariable();
+        if (variable) {
+            int sampleForBudget   = variable->GetUInt32("SampleForBudget");
+            int samplePerLaunch   = variable->GetUInt32("SamplePerLaunch");
+            auto ratioForBudget   = variable->GetFloat1("RatioForBudget");
+            int iterationForBuilt = variable->GetUInt32("IterationForBuilt");
+
+            if(!HasEvent(TEST24_EVENT_FLAG_BIT_LOCK)){
+                if (ImGui::InputInt("SampleForBudget"      ,&sampleForBudget)) {
+                    variable->SetUInt32("SampleForBudget"  , sampleForBudget);
+                    SetEvent(TEST24_EVENT_FLAG_CHANGE_TRACE);
+                }
+                if (ImGui::SliderInt("SamplePerLaunch"     , &samplePerLaunch, 1, 100)) {
+                    variable->SetUInt32("SamplePerLaunch"   , samplePerLaunch);
+                    SetEvent(TEST24_EVENT_FLAG_CHANGE_TRACE);
+                }
+                if (ImGui::SliderInt("IterationForBuilt"   , &iterationForBuilt, 1, 10)) {
+                    variable->SetUInt32("IterationForBuilt", iterationForBuilt);
+                    SetEvent(TEST24_EVENT_FLAG_CHANGE_TRACE);
+                }
+                if (ImGui::InputFloat(  "RatioForBudget"   , &ratioForBudget)) {
+                    variable->SetFloat1("RatioForBudget"   ,  ratioForBudget);
+                    SetEvent(TEST24_EVENT_FLAG_CHANGE_TRACE);
+                }
+            }
+            else {
+                ImGui::Text("  SamplePerBudget: %d", sampleForBudget  );
+                ImGui::Text("  SamplePerLaunch: %d", samplePerLaunch  );
+                ImGui::Text("   RatioForBudget: %f", ratioForBudget   );
+                ImGui::Text("IterationForBuilt: %f", iterationForBuilt);
+            }
+
+            int samplePerAll = variable->GetUInt32("SamplePerAll");
+            int curIteration = variable->GetUInt32("CurIteration");
+            int samplePerTmp = variable->GetUInt32("SamplePerTmp");
+
+            ImGui::Text("SamplePerAll: %d", samplePerAll);
+            ImGui::Text("CurIteration: %d", curIteration);
+            ImGui::Text("SamplePerTmp: %d", samplePerTmp);
+
+            bool isLaunched = variable->GetBool("Launched");
+            if (!isLaunched) {
+                if (ImGui::Button("Started")) {
+                    variable->SetBool("Started", true);
+                    SetEvent(TEST24_EVENT_FLAG_CHANGE_TRACE);
+                }
+            }
+        }
+    }
+    virtual ~GuidePathTraceConfigGuiWindow()noexcept {}
+private:
+
+};
+class  GuideNEETraceConfigGuiWindow : public TraceConfigGuiWindow
+{
+private:
+    using TracerVariableMap = std::unordered_map < std::string, std::shared_ptr<rtlib::ext::VariableMap>>;
+public:
+    GuideNEETraceConfigGuiWindow(const TracerVariableMap& tracerVariables_, unsigned int& eventFlags_)noexcept : TraceConfigGuiWindow("GuideNEEOPX", tracerVariables_, eventFlags_) {}
+    virtual void DrawGui()override {
+        auto variable = GetVariable();
+        if (variable) {
+            int sampleForBudget   = variable->GetUInt32("SampleForBudget");
+            int samplePerLaunch   = variable->GetUInt32("SamplePerLaunch");
+            auto ratioForBudget   = variable->GetFloat1("RatioForBudget");
+            int iterationForBuilt = variable->GetUInt32("IterationForBuilt");
+
+            if (!HasEvent(TEST24_EVENT_FLAG_BIT_LOCK)) {
+                if (ImGui::InputInt("SampleForBudget", &sampleForBudget)) {
+                    variable->SetUInt32("SampleForBudget", sampleForBudget);
+                    SetEvent(TEST24_EVENT_FLAG_CHANGE_TRACE);
+                }
+                if (ImGui::SliderInt("SamplePerLaunch", &samplePerLaunch, 1, 100)) {
+                    variable->SetUInt32("SamplePerLaunch", samplePerLaunch);
+                    SetEvent(TEST24_EVENT_FLAG_CHANGE_TRACE);
+                }
+                if (ImGui::SliderInt("IterationForBuilt", &iterationForBuilt, 1, 10)) {
+                    variable->SetUInt32("IterationForBuilt", iterationForBuilt);
+                    SetEvent(TEST24_EVENT_FLAG_CHANGE_TRACE);
+                }
+                if (ImGui::InputFloat("RatioForBudget", &ratioForBudget)) {
+                    variable->SetFloat1("RatioForBudget", ratioForBudget);
+                    SetEvent(TEST24_EVENT_FLAG_CHANGE_TRACE);
+                }
+            }
+            else {
+                ImGui::Text("  SamplePerBudget: %d", sampleForBudget);
+                ImGui::Text("  SamplePerLaunch: %d", samplePerLaunch);
+                ImGui::Text("   RatioForBudget: %f", ratioForBudget);
+                ImGui::Text("IterationForBuilt: %f", iterationForBuilt);
+            }
+
+            int samplePerAll = variable->GetUInt32("SamplePerAll");
+            int curIteration = variable->GetUInt32("CurIteration");
+            int samplePerTmp = variable->GetUInt32("SamplePerTmp");
+
+            ImGui::Text("SamplePerAll: %d", samplePerAll);
+            ImGui::Text("CurIteration: %d", curIteration);
+            ImGui::Text("SamplePerTmp: %d", samplePerTmp);
+
+            bool isLaunched = variable->GetBool("Launched");
+            if (!isLaunched) {
+                if (ImGui::Button("Started")) {
+                    variable->SetBool("Started", true);
+                    SetEvent(TEST24_EVENT_FLAG_CHANGE_TRACE);
+                }
+            }
+        }
+    }
+    virtual ~GuideNEETraceConfigGuiWindow()noexcept {}
+private:
+
+};
+class  GuideWRSTraceConfigGuiWindow : public TraceConfigGuiWindow
+{
+private:
+    using TracerVariableMap = std::unordered_map < std::string, std::shared_ptr<rtlib::ext::VariableMap>>;
+public:
+    GuideWRSTraceConfigGuiWindow(const TracerVariableMap& tracerVariables_, unsigned int& eventFlags_)noexcept : TraceConfigGuiWindow("GuideWRSOPX", tracerVariables_, eventFlags_) {}
+    virtual void DrawGui()override {
+        auto variable = GetVariable();
+        if (variable) {
+            int sampleForBudget = variable->GetUInt32("SampleForBudget");
+            int samplePerLaunch = variable->GetUInt32("SamplePerLaunch");
+            auto ratioForBudget = variable->GetFloat1("RatioForBudget");
+            int iterationForBuilt = variable->GetUInt32("IterationForBuilt");
+
+            if (!HasEvent(TEST24_EVENT_FLAG_BIT_LOCK)) {
+                if (ImGui::InputInt("SampleForBudget", &sampleForBudget)) {
+                    variable->SetUInt32("SampleForBudget", sampleForBudget);
+                    SetEvent(TEST24_EVENT_FLAG_CHANGE_TRACE);
+                }
+                if (ImGui::SliderInt("SamplePerLaunch", &samplePerLaunch, 1, 100)) {
+                    variable->SetUInt32("SamplePerLaunch", samplePerLaunch);
+                    SetEvent(TEST24_EVENT_FLAG_CHANGE_TRACE);
+                }
+                if (ImGui::SliderInt("IterationForBuilt", &iterationForBuilt, 1, 10)) {
+                    variable->SetUInt32("IterationForBuilt", iterationForBuilt);
+                    SetEvent(TEST24_EVENT_FLAG_CHANGE_TRACE);
+                }
+                if (ImGui::InputFloat("RatioForBudget", &ratioForBudget)) {
+                    variable->SetFloat1("RatioForBudget", ratioForBudget);
+                    SetEvent(TEST24_EVENT_FLAG_CHANGE_TRACE);
+                }
+            }
+            else {
+                ImGui::Text("  SamplePerBudget: %d", sampleForBudget);
+                ImGui::Text("  SamplePerLaunch: %d", samplePerLaunch);
+                ImGui::Text("   RatioForBudget: %f", ratioForBudget);
+                ImGui::Text("IterationForBuilt: %f", iterationForBuilt);
+            }
+
+            int samplePerAll = variable->GetUInt32("SamplePerAll");
+            int curIteration = variable->GetUInt32("CurIteration");
+            int samplePerTmp = variable->GetUInt32("SamplePerTmp");
+
+            ImGui::Text("SamplePerAll: %d", samplePerAll);
+            ImGui::Text("CurIteration: %d", curIteration);
+            ImGui::Text("SamplePerTmp: %d", samplePerTmp);
+
+            bool isLaunched = variable->GetBool("Launched");
+            if (!isLaunched) {
+                if (ImGui::Button("Started")) {
+                    variable->SetBool("Started", true);
+                    SetEvent(TEST24_EVENT_FLAG_CHANGE_TRACE);
+                }
+            }
+
+        }
+    }
+    virtual ~GuideWRSTraceConfigGuiWindow()noexcept {}
 private:
 
 };
@@ -490,6 +679,21 @@ void  Test24GuiDelegate::Initialize()
             restirTcCnfgWindow->SetActive(false);
             if (mainTcCnfgWindow->AddTracerWindow(restirTcCnfgWindow->GetName(), restirTcCnfgWindow)) {
                 m_Gui->SetGuiWindow(restirTcCnfgWindow);
+            }
+            auto gdPathTcCnfgWindow = std::make_shared<GuidePathTraceConfigGuiWindow>(m_TracerVariables, m_EventFlags);
+            gdPathTcCnfgWindow->SetActive(false);
+            if (mainTcCnfgWindow->AddTracerWindow(gdPathTcCnfgWindow->GetName(), gdPathTcCnfgWindow)) {
+                m_Gui->SetGuiWindow(gdPathTcCnfgWindow);
+            }
+            auto gdNEETcCnfgWindow = std::make_shared<GuideNEETraceConfigGuiWindow>(m_TracerVariables, m_EventFlags);
+            gdNEETcCnfgWindow->SetActive(false);
+            if (mainTcCnfgWindow->AddTracerWindow(gdNEETcCnfgWindow->GetName() , gdNEETcCnfgWindow)) {
+                m_Gui->SetGuiWindow(gdNEETcCnfgWindow);
+            }
+            auto gdWRSTcCnfgWindow = std::make_shared<GuideWRSTraceConfigGuiWindow>(m_TracerVariables, m_EventFlags);
+            gdWRSTcCnfgWindow->SetActive(false);
+            if (mainTcCnfgWindow->AddTracerWindow(gdWRSTcCnfgWindow->GetName(), gdWRSTcCnfgWindow)) {
+                m_Gui->SetGuiWindow(gdWRSTcCnfgWindow);
             }
         }
         // Input
