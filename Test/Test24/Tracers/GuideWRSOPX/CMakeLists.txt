@@ -31,9 +31,10 @@ configure_file(
 
 add_library(Test24_Tracer_GuideWRSOPX STATIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include/GuideWRSOPXTracer.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/RTPathGuidingUtils.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/ext/RTPathGuidingUtils.h
     ${CMAKE_CURRENT_SOURCE_DIR}/cuda/RayTrace.h
     ${CMAKE_CURRENT_SOURCE_DIR}/cuda/PathGuiding.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/Test24GuideWRSOPXConfig.h.in
     ${CMAKE_CURRENT_BINARY_DIR}/Test24GuideWRSOPXConfig.h
     ${TEST_TEST24_GUIDE_WRS_OPX_CUDA_PATH}/PathGuidingConfig.h
 
@@ -49,8 +50,8 @@ add_custom_command(TARGET Test24_Tracer_GuideWRSOPX_BUILD_KERNEL POST_BUILD COMM
 
 rtlib_compile_ptx(Test24_Tracer_GuideWRSOPX_BUILD_KERNEL ${TEST_TEST24_GUIDE_WRS_OPX_CUDA_PATH}/RayGuide.cu   ${TEST_TEST24_GUIDE_WRS_OPX_CUDA_PATH} )
 
-target_include_directories(Test24_Tracer_GuideWRSOPX PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_BINARY_DIR}/cuda)
+target_include_directories(Test24_Tracer_GuideWRSOPX PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include ${CMAKE_CURRENT_BINARY_DIR} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/ext ${CMAKE_CURRENT_BINARY_DIR}/cuda)
 target_link_libraries(Test24_Tracer_GuideWRSOPX PUBLIC  TestLib Test24_Share)
 
 add_dependencies(Test24_Tracer_GuideWRSOPX Test24_Tracer_GuideWRSOPX_BUILD_KERNEL)
-set_target_properties(Test24_Tracer_GuideWRSOPX  Test24_Tracer_GuideWRSOPX_BUILD_KERNEL PROPERTIES  FOLDER Test24/Tracers/GuideWRSOPX )
+set_target_properties(Test24_Tracer_GuideWRSOPX  Test24_Tracer_GuideWRSOPX_BUILD_KERNEL PROPERTIES  FOLDER Test24/Tracer/GuideWRSOPX )

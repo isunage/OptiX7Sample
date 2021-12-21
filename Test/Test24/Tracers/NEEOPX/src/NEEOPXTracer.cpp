@@ -94,6 +94,10 @@ Test24NEEOPXTracer::Test24NEEOPXTracer(
 		eventFlags,
 		maxTraceDepth);
 
+	GetVariables()->SetBool("Started", false);
+	GetVariables()->SetBool("Launched", false);
+
+	GetVariables()->SetUInt32("SampleForBudget", 1024);
 	GetVariables()->SetUInt32("SamplePerAll",0);
 	GetVariables()->SetUInt32("SamplePerLaunch",1);
 }
@@ -118,6 +122,13 @@ void Test24NEEOPXTracer::Launch(int width, int height, void* pdata)
 	if (width != m_Impl->m_Framebuffer.lock()->GetWidth() || height != m_Impl->m_Framebuffer.lock()->GetHeight()) {
 		return;
 	}
+	
+	if (GetVariables()->GetBool("Started")) {
+		GetVariables()->SetBool("Started", false);
+		GetVariables()->SetBool("Launched", true);
+		GetVariables()->SetUInt32("SamplePerAll", 0);
+	}
+
 	 auto samplePerAll    = GetVariables()->GetUInt32("SamplePerAll");
 	 auto samplePerLaunch = GetVariables()->GetUInt32("SamplePerLaunch");
 	this->m_Impl->m_Params.cpuHandle[0].width = width;
@@ -129,7 +140,7 @@ void Test24NEEOPXTracer::Launch(int width, int height, void* pdata)
 	this->m_Impl->m_Params.cpuHandle[0].samplePerALL    = samplePerAll;
 	this->m_Impl->m_Params.cpuHandle[0].samplePerLaunch = samplePerLaunch;
 	cudaMemcpyAsync(this->m_Impl->m_Params.gpuHandle.getDevicePtr(), &this->m_Impl->m_Params.cpuHandle[0], sizeof(RayTraceParams), cudaMemcpyHostToDevice, pUserData->stream);
-	this->m_Impl->m_Pipeline.launch(pUserData->stream, this->m_Impl->m_Params.gpuHandle.getDevicePtr(), this->m_Impl->m_ShaderBindingTable, width, height, 2);
+	this->m_Impl->m_Pipeline.launch(pUserData->stream, this->m_Impl->m_Params.gpuHandle.getDevicePtr(), this->m_Impl->m_ShaderBindingTable, width, height, 1);
 	if (pUserData->isSync)
 	{
 		RTLIB_CU_CHECK(cuStreamSynchronize(pUserData->stream));
@@ -138,6 +149,20 @@ void Test24NEEOPXTracer::Launch(int width, int height, void* pdata)
 	samplePerAll += samplePerLaunch;
 	this->m_Impl->m_Params.cpuHandle[0].samplePerALL = samplePerAll;  
 	GetVariables()->SetUInt32("SamplePerAll",samplePerAll);
+
+	if (GetVariables()->GetBool("Launched")) {
+		auto samplePerAll = GetVariables()->GetUInt32("SamplePerAll");
+		auto sampleForBudget = GetVariables()->GetUInt32("SampleForBudget");
+		if (samplePerAll >= sampleForBudget) {
+			GetVariables()->SetBool("Launched", false);
+			GetVariables()->SetBool("Started", false);
+			GetVariables()->SetUInt32("SamplePerAll", 0);
+			pUserData->finished = true;
+		}
+		else {
+			pUserData->finished = false;
+		}
+	}
 }
 
 void Test24NEEOPXTracer::CleanUp()
@@ -197,17 +222,11 @@ Test24NEEOPXTracer::~Test24NEEOPXTracer() {
 
 void Test24NEEOPXTracer::InitLight()
 {
-	auto ChooseNEE = [](const rtlib::ext::MeshPtr& mesh)->bool {
-		return (mesh->GetUniqueResource()->triIndBuffer.Size() < 200 || mesh->GetUniqueResource()->triIndBuffer.Size() > 230);
-	};
 	auto lightGASHandle = m_Impl->m_TopLevelAS.lock()->GetInstanceSets()[0]->GetInstance(1).baseGASHandle;
 	for (auto& mesh : lightGASHandle->GetMeshes())
 	{
 		//Select NEE Light
-		if (!ChooseNEE(mesh)) {
-			mesh->GetUniqueResource()->variables.SetBool("useNEE", false);
-		}
-		else {
+		if (mesh->GetUniqueResource()->variables.GetBool("useNEE")) {
 			mesh->GetUniqueResource()->variables.SetBool("useNEE", true);
 			std::cout << "Name: " << mesh->GetUniqueResource()->name << " LightCount: " << mesh->GetUniqueResource()->triIndBuffer.Size() << std::endl;
 			MeshLight meshLight = {};

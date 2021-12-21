@@ -202,18 +202,11 @@ Test24GuideNEEOPXTracer::~Test24GuideNEEOPXTracer() {
 
 void Test24GuideNEEOPXTracer::InitLight()
 {
-	auto ChooseNEE = [](const rtlib::ext::MeshPtr& mesh)->bool {
-		return (mesh->GetUniqueResource()->triIndBuffer.Size() < 200 || mesh->GetUniqueResource()->triIndBuffer.Size() > 230);
-	};
 	auto lightGASHandle = m_Impl->m_TopLevelAS.lock()->GetInstanceSets()[0]->GetInstance(1).baseGASHandle;
 	for (auto& mesh : lightGASHandle->GetMeshes())
 	{
 		//Select NEE Light
-		if (!ChooseNEE(mesh)) {
-			mesh->GetUniqueResource()->variables.SetBool("useNEE", false);
-		}
-		else {
-			mesh->GetUniqueResource()->variables.SetBool("useNEE", true);
+		if (mesh->GetUniqueResource()->variables.GetBool("useNEE")){
 			std::cout << "Name: " << mesh->GetUniqueResource()->name << " LightCount: " << mesh->GetUniqueResource()->triIndBuffer.Size() << std::endl;
 			MeshLight meshLight = {};
 			if (!m_Impl->m_TextureManager.lock()->GetAsset(m_Impl->m_Materials[mesh->GetUniqueResource()->materials[0]].GetString("emitTex")).HasGpuComponent("CUDATexture")) {
@@ -562,7 +555,7 @@ void Test24GuideNEEOPXTracer::OnLaunchExecute(int width, int height, UserData* p
 	this->m_Impl->m_Params.cpuHandle[0].samplePerLaunch = samplePerLaunch;
 	cudaMemcpyAsync(this->m_Impl->m_Params.gpuHandle.getDevicePtr(), &this->m_Impl->m_Params.cpuHandle[0], sizeof(RayTraceParams), cudaMemcpyHostToDevice, pUserData->stream);
 	//cudaMemcpy(this->m_Impl->m_Params.gpuHandle.getDevicePtr(), &this->m_Impl->m_Params.cpuHandle[0], sizeof(RayTraceParams), cudaMemcpyHostToDevice);
-	this->m_Impl->m_Pipeline.launch(pUserData->stream, this->m_Impl->m_Params.gpuHandle.getDevicePtr(), this->m_Impl->m_ShaderBindingTable, width, height, 2);
+	this->m_Impl->m_Pipeline.launch(pUserData->stream, this->m_Impl->m_Params.gpuHandle.getDevicePtr(), this->m_Impl->m_ShaderBindingTable, width, height, 1);
 	auto* parmams = this->m_Impl->m_Params.cpuHandle.data();
 	if (pUserData->isSync)
 	{

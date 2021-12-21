@@ -1993,17 +1993,11 @@ void TestPG4Application::InitAccelerationStructures()
 // Light
 void TestPG4Application::InitLight()
 {
-	auto ChooseNEE = [](const rtlib::ext::MeshPtr& mesh)->bool {
-		return (mesh->GetUniqueResource()->triIndBuffer.Size() < 200 || mesh->GetUniqueResource()->triIndBuffer.Size() > 230);
-	};
 	auto lightGASHandle = m_GASHandles["Light"];
 	for (auto& mesh : lightGASHandle->GetMeshes())
 	{
 		//Select NEE Light
-		if (!ChooseNEE(mesh)) {
-			mesh->GetUniqueResource()->variables.SetBool("useNEE", false);
-		}
-		else {
+		if (mesh->GetUniqueResource()->variables.GetBool("useNEE")){
 			mesh->GetUniqueResource()->variables.SetBool("useNEE", true);
 			std::cout << "Name: " << mesh->GetUniqueResource()->name << " LightCount: " << mesh->GetUniqueResource()->triIndBuffer.Size() << std::endl;
 			MeshLight meshLight   = {};

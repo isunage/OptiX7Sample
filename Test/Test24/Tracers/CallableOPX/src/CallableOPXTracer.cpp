@@ -204,18 +204,11 @@ void Test24CallableOPXTracer::Initialize()
 
  void Test24CallableOPXTracer::InitLight()
  {
-	 auto ChooseNEE = [](const rtlib::ext::MeshPtr& mesh)->bool {
-		 return (mesh->GetUniqueResource()->triIndBuffer.Size() < 200 || mesh->GetUniqueResource()->triIndBuffer.Size() > 230);
-	 };
 	 auto lightGASHandle = m_Impl->m_TopLevelAS->GetInstanceSets()[0]->GetInstance(1).baseGASHandle;
 	 for (auto& mesh : lightGASHandle->GetMeshes())
 	 {
 		 //Select NEE Light
-		 if (!ChooseNEE(mesh)) {
-			 mesh->GetUniqueResource()->variables.SetBool("useNEE", false);
-		 }
-		 else {
-			 mesh->GetUniqueResource()->variables.SetBool("useNEE", true);
+		 if (mesh->GetUniqueResource()->variables.GetBool("useNEE")) {
 			 std::cout << "Name: " << mesh->GetUniqueResource()->name << " LightCount: " << mesh->GetUniqueResource()->triIndBuffer.Size() << std::endl;
 			 MeshLight meshLight = {};
 			 if (!m_Impl->m_TextureManager->GetAsset(m_Impl->m_Materials[mesh->GetUniqueResource()->materials[0]].GetString("emitTex")).HasGpuComponent("CUDATexture")) {

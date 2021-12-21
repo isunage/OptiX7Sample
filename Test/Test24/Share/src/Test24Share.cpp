@@ -21,3 +21,7 @@ auto test24::SpecifyMaterialType(const rtlib::ext::VariableMap& material) -> std
 		return "Diffuse";
 	}
 }
+
+auto test24::ChooseNEE(const rtlib::ext::MeshPtr& mesh) -> bool {
+	return true;
+}

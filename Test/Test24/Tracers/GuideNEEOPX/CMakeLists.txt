@@ -7,11 +7,11 @@ configure_file(
 set(PATH_GUIDING_MAX_DEPTH       1024)
 set(RAY_TRACE_S_FILTER           SpatialFilterNearest)
 set(RAY_TRACE_D_FILTER           DirectionalFilterNearest)
-# Specularñ Ç…ëŒÇµÇƒNEEÇçsÇ§Ç©ÅADefaultÇ≈ÇÕçsÇÌÇ»Ç¢ÅiÇÊÇŸÇ«shinnessÇ™çÇÇ≠Ç»ÇØÇÍÇŒÇﬁÇµÇÎï™éUÇÕëùâ¡Ç∑ÇÈåXå¸Åj
+# SpecularÔøΩ Ç…ëŒÇÔøΩÔøΩÔøΩNEEÔøΩÔøΩÔøΩsÔøΩÔøΩÔøΩÔøΩÔøΩADefaultÔøΩ≈ÇÕçsÔøΩÔøΩ»ÇÔøΩÔøΩiÔøΩÔøΩŸÇÔøΩshinnessÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ»ÇÔøΩÔøΩÔøΩŒÇﬁÇÔøΩÔøΩÎï™ÔøΩUÔøΩÕëÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩXÔøΩÔøΩÔøΩj
 set(RAY_TRACE_NEE_SPECULAR 0)
-# floatÇÃéwêîïî23->2^-23,2^-23,2^-23
+# floatÔøΩÃéwÔøΩÔøΩÔøΩÔøΩ23->2^-23,2^-23,2^-23
 set(PATH_GUIDING_STREE_MAX_DEPTH 69)
-# floatÇÃéwêîïî23
+# floatÔøΩÃéwÔøΩÔøΩÔøΩÔøΩ23
 set(PATH_GUIDING_DTREE_MAX_DEPTH 24)
 set(PATH_GUIDING_LI_COSINE       1)
 
@@ -31,9 +31,10 @@ configure_file(
 
 add_library(Test24_Tracer_GuideNEEOPX STATIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include/GuideNEEOPXTracer.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/RTPathGuidingUtils.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/ext/RTPathGuidingUtils.h
     ${CMAKE_CURRENT_SOURCE_DIR}/cuda/RayTrace.h
     ${CMAKE_CURRENT_SOURCE_DIR}/cuda/PathGuiding.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/Test24GuideNEEOPXConfig.h.in
     ${CMAKE_CURRENT_BINARY_DIR}/Test24GuideNEEOPXConfig.h
     ${TEST_TEST24_GUIDE_NEE_OPX_CUDA_PATH}/PathGuidingConfig.h
 
@@ -49,7 +50,7 @@ add_custom_command(TARGET Test24_Tracer_GuideNEEOPX_BUILD_KERNEL POST_BUILD COMM
 
 rtlib_compile_ptx(Test24_Tracer_GuideNEEOPX_BUILD_KERNEL ${TEST_TEST24_GUIDE_NEE_OPX_CUDA_PATH}/RayGuide.cu   ${TEST_TEST24_GUIDE_NEE_OPX_CUDA_PATH} )
 
-target_include_directories(Test24_Tracer_GuideNEEOPX PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_BINARY_DIR}/cuda)
+target_include_directories(Test24_Tracer_GuideNEEOPX PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include   ${CMAKE_CURRENT_BINARY_DIR}  ${CMAKE_CURRENT_SOURCE_DIR}/ext ${CMAKE_CURRENT_BINARY_DIR}/cuda)
 target_link_libraries(Test24_Tracer_GuideNEEOPX PUBLIC  TestLib Test24_Share)
 add_dependencies(Test24_Tracer_GuideNEEOPX Test24_Tracer_GuideNEEOPX_BUILD_KERNEL)
-set_target_properties(Test24_Tracer_GuideNEEOPX  Test24_Tracer_GuideNEEOPX_BUILD_KERNEL PROPERTIES  FOLDER Test24/Tracers/GuideNEEOPX )
+set_target_properties(Test24_Tracer_GuideNEEOPX  Test24_Tracer_GuideNEEOPX_BUILD_KERNEL PROPERTIES  FOLDER Test24/Tracer/GuideNEEOPX )

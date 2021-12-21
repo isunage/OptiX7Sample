@@ -27,7 +27,8 @@ private:
 public:
     struct UserData
     {
-        bool isSync;
+        bool     finished;
+        bool     isSync;
         CUstream stream;
     };
 

@@ -340,6 +340,16 @@ void Test24Application::InitScene()
         m_GASHandles["World"]->Build(m_Context->GetOPX7Handle().get(), accelBuildOptions);
         m_GASHandles["Light"]->Build(m_Context->GetOPX7Handle().get(), accelBuildOptions);
     }
+    {
+        for (auto& lightMesh : m_GASHandles["Light"]->GetMeshes()) {
+            if (test24::ChooseNEE(lightMesh)) {
+                lightMesh->GetUniqueResource()->variables.SetBool("useNEE", true);
+            }
+            else {
+                lightMesh->GetUniqueResource()->variables.SetBool("useNEE", false);
+            }
+        }
+    }
     m_IASHandles["TopLevel"] = std::make_shared<rtlib::ext::IASHandle>();
     {
         OptixAccelBuildOptions accelOptions = {};
@@ -401,6 +411,21 @@ void Test24Application::InitTracers()
             m_EventFlags
             );
         m_Tracers["DebugOPX"]->Initialize();
+    }    
+    /*      NEEOPX*/
+    {
+        m_Tracers["NEEOPX"] = std::make_shared<Test24NEEOPXTracer>(
+            m_Context,
+            m_Framebuffer,
+            m_CameraController,
+            m_TextureManager,
+            m_IASHandles["TopLevel"],
+            m_Materials,
+            m_BgLightColor,
+            m_EventFlags,
+            m_MaxTraceDepth
+            );
+        m_Tracers["NEEOPX"]->Initialize();
     }
     /*     PathOPX*/
     {
@@ -461,21 +486,6 @@ void Test24Application::InitTracers()
             m_MaxTraceDepth
             );
         m_Tracers["GuideWRSOPX"]->Initialize();
-    }
-    /*      NEEOPX*/
-    {
-        m_Tracers["NEEOPX"] = std::make_shared<Test24NEEOPXTracer>(
-            m_Context,
-            m_Framebuffer,
-            m_CameraController,
-            m_TextureManager,
-            m_IASHandles["TopLevel"],
-            m_Materials,
-            m_BgLightColor,
-            m_EventFlags,
-            m_MaxTraceDepth
-            );
-        m_Tracers["NEEOPX"]->Initialize();
     }
     /*   ReSTIROPX*/
     {
@@ -549,93 +559,126 @@ void Test24Application::RenderFrame(const std::string &name)
 void Test24Application::Launch()
 {
     m_LaunchTracerSet.insert(m_CurMainTraceName);
-    for (auto& name : m_LaunchTracerSet) {
-        if (name == "PathOPX"     )
-        {
-            Test24PathOPXTracer::UserData  userData = {};
-            userData.isSync = true;
-            userData.stream = nullptr;
-            m_Tracers[name]->Launch(m_FbWidth, m_FbHeight, &userData);
-            m_SamplePerAll  = m_Tracers[name]->GetVariables()->GetUInt32("SamplePerAll");
+    if (m_LaunchTracerSet.count("PathOPX")      > 0)
+    {
+        std::string name = "PathOPX";
+        Test24PathOPXTracer::UserData  userData = {};
+        userData.finished = false;
+        userData.isSync = true;
+        userData.stream = nullptr;
+        m_Tracers[name]->Launch(m_FbWidth, m_FbHeight, &userData);
+        m_SamplePerAll = m_Tracers[name]->GetVariables()->GetUInt32("SamplePerAll");
+        auto launched = m_Tracers[name]->GetVariables()->GetBool("Launched");
+        if (launched) {
+            m_EventFlags |= TEST24_EVENT_FLAG_LOCK;
         }
-        if (name == "NEEOPX"      ) {
-            Test24NEEOPXTracer::UserData userData = {};
-            userData.isSync = true;
-            userData.stream = nullptr;
-            m_Tracers[name]->Launch(m_FbWidth, m_FbHeight, &userData);
-            m_SamplePerAll  = m_Tracers[name]->GetVariables()->GetUInt32("SamplePerAll");
+        if (userData.finished) {
+            m_SamplePerAll = 0;
+            m_EventFlags |= TEST24_EVENT_FLAG_CHANGE_TRACE;
         }
-        if (name == "GuidePathOPX")
-        {
-            Test24GuidePathOPXTracer::UserData  userData = {};
-            userData.finished = false;
-            userData.isSync   = true;
-            userData.stream   = nullptr;
-            m_Tracers[name]->Launch(m_FbWidth, m_FbHeight, &userData);
-            m_SamplePerAll    = m_Tracers[name]->GetVariables()->GetUInt32("SamplePerAll");
-            auto launched     = m_Tracers[name]->GetVariables()->GetBool("Launched");
-            if (launched) {
-                m_EventFlags |= TEST24_EVENT_FLAG_LOCK;
-            }
-            if (userData.finished) {
-                m_CurMainTraceName = "PathOPX";
-                m_SamplePerAll     = 0;
-                m_EventFlags      |= TEST24_EVENT_FLAG_CHANGE_TRACE;
-            }
+    }
+    if (m_LaunchTracerSet.count("NEEOPX")       > 0) {
+        std::string name = "NEEOPX";
+        Test24NEEOPXTracer::UserData userData = {};
+        userData.isSync = true;
+        userData.stream = nullptr;
+        m_Tracers[name]->Launch(m_FbWidth, m_FbHeight, &userData);
+        m_SamplePerAll = m_Tracers[name]->GetVariables()->GetUInt32("SamplePerAll");
+        auto launched = m_Tracers[name]->GetVariables()->GetBool("Launched");
+        if (launched) {
+            m_EventFlags |= TEST24_EVENT_FLAG_LOCK;
         }
-        if (name == "GuideNEEOPX" )
-        {
-            Test24GuideNEEOPXTracer::UserData  userData = {};
-            userData.finished = false;
-            userData.isSync   = true;
-            userData.stream   = nullptr;
-            m_Tracers[name]->Launch(m_FbWidth, m_FbHeight, &userData);
-            m_SamplePerAll    = m_Tracers[name]->GetVariables()->GetUInt32("SamplePerAll");
-            auto launched     = m_Tracers[name]->GetVariables()->GetBool("Launched");
-            if (launched) {
-                m_EventFlags |= TEST24_EVENT_FLAG_LOCK;
-            }
-            if (userData.finished) {
-                m_CurMainTraceName = "PathOPX";
-                m_SamplePerAll = 0;
-                m_EventFlags  |= TEST24_EVENT_FLAG_CHANGE_TRACE;
-            }
+        if (userData.finished) {
+            m_SamplePerAll = 0;
+            m_EventFlags |= TEST24_EVENT_FLAG_CHANGE_TRACE;
         }
-        if (name == "GuideWRSOPX" )
-        {
-            Test24GuideWRSOPXTracer::UserData  userData = {};
-            userData.finished = false;
-            userData.isSync   = true;
-            userData.stream   = nullptr;
-            m_Tracers[name]->Launch(m_FbWidth, m_FbHeight, &userData);
-            m_SamplePerAll    = m_Tracers[name]->GetVariables()->GetUInt32("SamplePerAll");
-            auto launched     = m_Tracers[name]->GetVariables()->GetBool("Launched");
-            if (launched) {
-                m_EventFlags |= TEST24_EVENT_FLAG_LOCK;
-            }
-            if (userData.finished) {
-                m_CurMainTraceName = "PathOPX";
-                m_SamplePerAll = 0;
-                m_EventFlags |= TEST24_EVENT_FLAG_CHANGE_TRACE;
-            }
+    }
+    if (m_LaunchTracerSet.count("GuidePathOPX") > 0)
+    {
+        std::string name = "GuidePathOPX";
+        Test24GuidePathOPXTracer::UserData  userData = {};
+        userData.finished = false;
+        userData.isSync = true;
+        userData.stream = nullptr;
+        m_Tracers[name]->Launch(m_FbWidth, m_FbHeight, &userData);
+        m_SamplePerAll = m_Tracers[name]->GetVariables()->GetUInt32("SamplePerAll");
+        auto launched = m_Tracers[name]->GetVariables()->GetBool("Launched");
+        if (launched) {
+            m_EventFlags |= TEST24_EVENT_FLAG_LOCK;
         }
-        if (name == "ReSTIROPX"   )
-        {
-            Test24ReSTIROPXTracer::UserData  userData = {};
-            userData.isSync = true;
-            userData.stream = nullptr;
-            m_Tracers[name]->Launch(m_FbWidth, m_FbHeight, &userData);
-            m_SamplePerAll = m_Tracers[name]->GetVariables()->GetUInt32("SamplePerAll");
+        if (userData.finished) {
+            m_CurMainTraceName = "PathOPX";
+            m_SamplePerAll = 0;
+            m_EventFlags |= TEST24_EVENT_FLAG_CHANGE_TRACE;
         }
-        if (name == "DebugOPX"    ) {
-            Test24DebugOPXTracer::UserData userData = {};
-            userData.isSync            = true;
-            userData.stream            = nullptr;
-            m_Tracers[name]->Launch(m_FbWidth, m_FbHeight, &userData);
+    }
+    if (m_LaunchTracerSet.count("GuideNEEOPX")  > 0)
+    {
+        std::string name = "GuideNEEOPX";
+        Test24GuideNEEOPXTracer::UserData  userData = {};
+        userData.finished = false;
+        userData.isSync = true;
+        userData.stream = nullptr;
+        m_Tracers[name]->Launch(m_FbWidth, m_FbHeight, &userData);
+        m_SamplePerAll = m_Tracers[name]->GetVariables()->GetUInt32("SamplePerAll");
+        auto launched = m_Tracers[name]->GetVariables()->GetBool("Launched");
+        if (launched) {
+            m_EventFlags |= TEST24_EVENT_FLAG_LOCK;
         }
-        if (name == "TestGL"      ) {
-            m_Tracers[name]->Launch(m_FbWidth, m_FbHeight, nullptr);
+        if (userData.finished) {
+            std::string name = "PathOPX";
+            m_CurMainTraceName = "PathOPX";
+            m_SamplePerAll = 0;
+            m_EventFlags |= TEST24_EVENT_FLAG_CHANGE_TRACE;
         }
+    }
+    if (m_LaunchTracerSet.count("GuideWRSOPX")  > 0)
+    {
+        std::string name = "GuideWRSOPX";
+        Test24GuideWRSOPXTracer::UserData  userData = {};
+        userData.finished = false;
+        userData.isSync = true;
+        userData.stream = nullptr;
+        m_Tracers[name]->Launch(m_FbWidth, m_FbHeight, &userData);
+        m_SamplePerAll = m_Tracers[name]->GetVariables()->GetUInt32("SamplePerAll");
+        auto launched = m_Tracers[name]->GetVariables()->GetBool("Launched");
+        if (launched) {
+            m_EventFlags |= TEST24_EVENT_FLAG_LOCK;
+        }
+        if (userData.finished) {
+            m_CurMainTraceName = "PathOPX";
+            m_SamplePerAll = 0;
+            m_EventFlags |= TEST24_EVENT_FLAG_CHANGE_TRACE;
+        }
+    }
+    if (m_LaunchTracerSet.count("ReSTIROPX")    > 0)
+    {
+        std::string name = "ReSTIROPX";
+        Test24ReSTIROPXTracer::UserData  userData = {};
+        userData.isSync = true;
+        userData.stream = nullptr;
+        m_Tracers[name]->Launch(m_FbWidth, m_FbHeight, &userData);
+        m_SamplePerAll = m_Tracers[name]->GetVariables()->GetUInt32("SamplePerAll");
+        auto launched = m_Tracers[name]->GetVariables()->GetBool("Launched");
+        if (launched) {
+            m_EventFlags |= TEST24_EVENT_FLAG_LOCK;
+        }
+        if (userData.finished) {
+            m_CurMainTraceName = "PathOPX";
+            m_SamplePerAll = 0;
+            m_EventFlags |= TEST24_EVENT_FLAG_CHANGE_TRACE;
+        }
+    }
+    if (m_LaunchTracerSet.count("DebugOPX")     > 0) {
+        std::string name = "DebugOPX";
+        Test24DebugOPXTracer::UserData userData = {};
+        userData.isSync = true;
+        userData.stream = nullptr;
+        m_Tracers[name]->Launch(m_FbWidth, m_FbHeight, &userData);
+    }
+    if (m_LaunchTracerSet.count("TestGL")       > 0) {
+        std::string name = "TestGL";
+        m_Tracers[name]->Launch(m_FbWidth, m_FbHeight, nullptr);
     }
     m_LaunchTracerSet.clear();
 }

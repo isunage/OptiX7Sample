@@ -22,6 +22,7 @@ class Test24PathOPXTracer : public test::RTTracer
 public:
 	struct UserData
 	{
+		bool         finished;
 		bool         isSync;
 		CUstream     stream;
 	};

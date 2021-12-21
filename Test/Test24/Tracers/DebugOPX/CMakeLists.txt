@@ -16,6 +16,7 @@ configure_file(
 add_library(Test24_Tracer_DebugOPX STATIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include/DebugOPXTracer.h
     ${CMAKE_CURRENT_SOURCE_DIR}/cuda/RayTrace.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/Test24DebugOPXConfig.h.in
     ${CMAKE_CURRENT_BINARY_DIR}/Test24DebugOPXConfig.h
 
     ${CMAKE_CURRENT_SOURCE_DIR}/src/DebugOPXTracer.cpp
@@ -27,7 +28,7 @@ add_custom_command(TARGET Test24_Tracer_DebugOPX_BUILD_KERNEL POST_BUILD COMMAND
 
 rtlib_compile_ptx(Test24_Tracer_DebugOPX_BUILD_KERNEL ${TEST_TEST24_DEBUG_OPX_CUDA_PATH}/RayDebug.cu   ${TEST_TEST24_DEBUG_OPX_CUDA_PATH} )
 
-target_include_directories(Test24_Tracer_DebugOPX PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_BINARY_DIR}/cuda)
+target_include_directories(Test24_Tracer_DebugOPX PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include   ${CMAKE_CURRENT_BINARY_DIR}  ${CMAKE_CURRENT_BINARY_DIR}/cuda)
 target_link_libraries(Test24_Tracer_DebugOPX PUBLIC  TestLib Test24_Share)
 add_dependencies(Test24_Tracer_DebugOPX Test24_Tracer_DebugOPX_BUILD_KERNEL)
-set_target_properties(Test24_Tracer_DebugOPX  Test24_Tracer_DebugOPX_BUILD_KERNEL   PROPERTIES  FOLDER Test24/Tracers/DebugOPX)
+set_target_properties(Test24_Tracer_DebugOPX  Test24_Tracer_DebugOPX_BUILD_KERNEL   PROPERTIES  FOLDER Test24/Tracer/DebugOPX)

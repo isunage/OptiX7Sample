@@ -27,5 +27,5 @@ add_custom_command(TARGET Test24_Tracer_CallableOPX PRE_BUILD  COMMAND ${CMAKE_C
 add_custom_command(TARGET Test24_Tracer_CallableOPX POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/cuda/RayTrace.cu            ${TEST_TEST24_CALLABLE_OPX_CUDA_PATH}/RayTrace.cu           )
 add_custom_command(TARGET Test24_Tracer_CallableOPX POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/cuda/Callable.cu            ${TEST_TEST24_CALLABLE_OPX_CUDA_PATH}/Callable.cu           )
 
-target_include_directories(Test24_Tracer_CallableOPX PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include ${CMAKE_CURRENT_BINARY_DIR} PRIVATE ${TEST_TEST24_CALLABLE_OPX_CUDA_PATH})
+target_include_directories(Test24_Tracer_CallableOPX PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include   ${CMAKE_CURRENT_BINARY_DIR}  PRIVATE ${TEST_TEST24_CALLABLE_OPX_CUDA_PATH})
 target_link_libraries(Test24_Tracer_CallableOPX PUBLIC TestLib Test24_Share)

@@ -9,8 +9,7 @@
 #include <stack>
 #include <vector>
 #endif
-namespace test24_guide_path 
-{	
+namespace test24_guide_path {
 	enum   SpatialFilter
 	{
 		//Suitable in GPU

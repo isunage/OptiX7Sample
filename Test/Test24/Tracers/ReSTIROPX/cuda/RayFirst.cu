@@ -41,7 +41,7 @@ extern "C" __global__ void     __raygen__first() {
     const float3 w    = rgData->pinhole[FRAME_TYPE_CURRENT].w;
     unsigned int seed = params.seedBuffer[params.width * idx.y + idx.x];
     //Jitter ?(possibility of biass)
-#if 0
+#if RAY_TRACE_ENABLE_JITTER_SAMPLE
     rtlib::Xorshift32 xor32(seed);
     const float2 jitter = rtlib::random_float2(xor32);
     const float2 d = make_float2(

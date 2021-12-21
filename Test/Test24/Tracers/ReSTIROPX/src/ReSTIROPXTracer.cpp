@@ -100,10 +100,14 @@ Test24ReSTIROPXTracer::Test24ReSTIROPXTracer(
 	m_Impl = std::make_unique<Test24ReSTIROPXTracer::Impl>(
 		Context, Framebuffer, CameraController, TextureManager, TopLevelAS, Materials, BgLightColor,eventFlags
 		);
-	this->GetVariables()->SetUInt32( "SamplePerAll"   , 0);
+	//MOVABLE
+	this->GetVariables()->SetUInt32( "SampleForBudget", 1024);
+	this->GetVariables()->SetUInt32(    "SamplePerAll", 0);
 	this->GetVariables()->SetUInt32( "SamplePerLaunch", 1);
 	this->GetVariables()->SetUInt32(  "NumCandidates" , 32);
-	this->GetVariables()->SetBool(    "ReuseTemporal" , true);
+	this->GetVariables()->SetBool(           "Started", false);
+	this->GetVariables()->SetBool(          "Launched", false);
+	this->GetVariables()->SetBool(     "ReuseTemporal", true);
 	this->GetVariables()->SetBool(      "ReuseSpatial", true);
 	this->GetVariables()->SetUInt32(   "RangeSpatial" , 30);
 	this->GetVariables()->SetUInt32(  "SampleSpatial" , 5);
@@ -130,6 +134,13 @@ void Test24ReSTIROPXTracer::Launch(int width, int height, void* userData)
 	if (width != m_Impl->m_SharedFramebuffer->GetWidth() || height != m_Impl->m_SharedFramebuffer->GetHeight()) {
 		return;
 	}
+
+	if (GetVariables()->GetBool("Started")) {
+		GetVariables()->SetBool("Started", false);
+		GetVariables()->SetBool("Launched", true);
+		GetVariables()->SetUInt32("SamplePerAll", 0);
+	}
+
 
 	auto samplePerAll    = GetVariables()->GetUInt32("SamplePerAll");
 	auto samplePerLaunch = GetVariables()->GetUInt32("SamplePerLaunch");
@@ -234,6 +245,19 @@ void Test24ReSTIROPXTracer::Launch(int width, int height, void* userData)
 	this->m_Impl->m_Second.m_Params.cpuHandle[0].samplePerALL = samplePerAll;
 	GetVariables()->SetUInt32("SamplePerAll", samplePerAll);
 	std::swap(m_Impl->m_CurReservoirIdx, m_Impl->m_PrvReservoirIdx);
+
+	if (GetVariables()->GetBool("Launched")) {
+		auto sampleForBudget = GetVariables()->GetUInt32("SampleForBudget");
+		if (samplePerAll >= sampleForBudget) {
+			GetVariables()->SetBool("Launched", false);
+			GetVariables()->SetBool("Started", false);
+			GetVariables()->SetUInt32("SamplePerAll", 0);
+			pUserData->finished = true;
+		}
+		else {
+			pUserData->finished = false;
+		}
+	}
 }
 
 void Test24ReSTIROPXTracer::CleanUp()
@@ -656,18 +680,11 @@ void Test24ReSTIROPXTracer::InitShaderBindingTable()
 
 void Test24ReSTIROPXTracer::InitLight()
 {
-	auto ChooseNEE = [](const rtlib::ext::MeshPtr& mesh)->bool {
-		return true;
-	};
 	auto lightGASHandle = m_Impl->m_TopLevelAS->GetInstanceSets()[0]->GetInstance(1).baseGASHandle;
 	for (auto& mesh : lightGASHandle->GetMeshes())
 	{
 		//Select NEE Light
-		if (!ChooseNEE(mesh)) {
-			mesh->GetUniqueResource()->variables.SetBool("useNEE", false);
-		}
-		else {
-			mesh->GetUniqueResource()->variables.SetBool("useNEE", true);
+		if (mesh->GetUniqueResource()->variables.GetBool("useNEE")) {
 			std::cout << "Name: " << mesh->GetUniqueResource()->name << " LightCount: " << mesh->GetUniqueResource()->triIndBuffer.Size() << std::endl;
 			MeshLight meshLight = {};
 			if (!m_Impl->m_TextureManager->GetAsset(m_Impl->m_Materials[mesh->GetUniqueResource()->materials[0]].GetString("emitTex")).HasGpuComponent("CUDATexture")) {

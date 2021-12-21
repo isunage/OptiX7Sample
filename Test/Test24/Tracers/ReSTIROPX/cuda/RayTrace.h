@@ -1,6 +1,5 @@
 #ifndef RAY_TRACE_H
 #define RAY_TRACE_H
-#define RAY_TRACE_ENABLE_SAMPLE 1
 #include <cuda_runtime.h>
 #include <optix.h>
 #include <RTLib/math/Math.h>
@@ -79,7 +78,7 @@ namespace test24_restir
         };
 #ifdef __CUDACC__
         __forceinline__ __device__ float3 getEmissionColor(const float2& uv)const noexcept {
-#if !RAY_TRACE_ENABLE_SAMPLE
+#if !RAY_TRACE_ENABLE_TEXTURE_SAMPLE
             return this->emission;
 #else
             auto emitTC = tex2D<float4>(this->emissionTex, uv.x, uv.y);
@@ -183,7 +182,7 @@ namespace test24_restir
         float               refrInd;
 #ifdef __CUDACC__
         __forceinline__ __device__ float3 getDiffuseColor(const float2& uv)const noexcept {
-#if !RAY_TRACE_ENABLE_SAMPLE
+#if !RAY_TRACE_ENABLE_TEXTURE_SAMPLE
             return this->diffuse;
 #else
             auto diffTC = tex2D<float4>(this->diffuseTex, uv.x, uv.y);
@@ -193,7 +192,7 @@ namespace test24_restir
 #endif
         }
         __forceinline__ __device__ float3 getSpecularColor(const float2& uv)const noexcept {
-#if !RAY_TRACE_ENABLE_SAMPLE
+#if !RAY_TRACE_ENABLE_TEXTURE_SAMPLE
             return this->specular;
 #else
             auto specTC = tex2D<float4>(this->specularTex, uv.x, uv.y);
@@ -203,7 +202,7 @@ namespace test24_restir
 #endif
         }
         __forceinline__ __device__ float3 getEmissionColor(const float2& uv)const noexcept {
-#if !RAY_TRACE_ENABLE_SAMPLE
+#if !RAY_TRACE_ENABLE_TEXTURE_SAMPLE
             return this->emission;
 #else
             auto emitTC = tex2D<float4>(this->emissionTex, uv.x, uv.y);

@@ -1,5 +1,6 @@
 #ifndef TEST_TEST24_SHARE_H
 #define TEST_TEST24_SHARE_H
+#include <RTLib/ext/Mesh.h>
 #include <RTLib/ext/VariableMap.h>
 #include <RTLib/math/VectorFunction.h>
 enum Test24EventFlagBits : unsigned int
@@ -24,6 +25,7 @@ enum Test24EventFlag : unsigned int
 
 };
 namespace test24 {
-	auto SpecifyMaterialType(const rtlib::ext::VariableMap& material)->std::string;;
+	auto SpecifyMaterialType(const rtlib::ext::VariableMap& material)->std::string;
+	auto ChooseNEE(const rtlib::ext::MeshPtr& mesh)->bool;
 }
 #endif
