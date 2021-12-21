@@ -683,7 +683,7 @@ extern "C" __global__ void __closesthit__radiance_for_diffuse_pg_nee_with_nee_li
         auto f_a_y = 0.0f;
         auto lightDir_y = make_float3(0.0f);
         auto distance_y = 0.0f;
-        for (int i = 0; i < 32; ++i) {
+        for (int i = 0; i < params.numCandidates; ++i) {
             LightRec lRec = {};
             auto& light = params.light.data[xor32.next() % params.light.count];
             auto  distance = 0.0f;
@@ -829,7 +829,7 @@ extern "C" __global__ void __closesthit__radiance_for_diffuse_pg_nee_with_def_li
         auto f_a_y = 0.0f;
         auto lightDir_y = make_float3(0.0f);
         auto distance_y = 0.0f;
-        for (int i = 0; i < 32; ++i) {
+        for (int i = 0; i < params.numCandidates; ++i) {
             LightRec lRec = {};
             auto& light = params.light.data[xor32.next() % params.light.count];
             auto  distance = 0.0f;
@@ -1423,7 +1423,7 @@ extern "C" __global__ void __closesthit__radiance_for_phong_pg_nee_with_nee_ligh
             auto f_a_y = 0.0f;
             auto lightDir_y = make_float3(0.0f);
             auto distance_y = 0.0f;
-            for (int i = 0; i < 32; ++i) {
+            for (int i = 0; i < params.numCandidates; ++i) {
                 LightRec lRec = {};
                 auto& light = params.light.data[xor32.next() % params.light.count];
                 auto  distance = 0.0f;
@@ -1618,7 +1618,7 @@ extern "C" __global__ void __closesthit__radiance_for_phong_pg_nee_with_def_ligh
             auto f_a_y = 0.0f;
             auto lightDir_y = make_float3(0.0f);
             auto distance_y = 0.0f;
-            for (int i = 0; i < 32; ++i) {
+            for (int i = 0; i < params.numCandidates; ++i) {
                 LightRec lRec = {};
                 auto& light = params.light.data[xor32.next() % params.light.count];
                 auto  distance = 0.0f;

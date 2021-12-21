@@ -4,6 +4,7 @@
 #include <DebugOPXTracer.h>
 #include <PathOPXTracer.h>
 #include <NEEOPXTracer.h>
+#include <WRSOPXTracer.h>
 #include <GuidePathOPXTracer.h>
 #include < GuideWRSOPXTracer.h>
 #include < GuideNEEOPXTracer.h>
@@ -123,6 +124,7 @@ void Test24Application::InitBase()
     m_TracePublicNames.clear();
     m_TracePublicNames.push_back("TestGL");
     m_TracePublicNames.push_back("PathOPX");
+    m_TracePublicNames.push_back("WRSOPX");
     m_TracePublicNames.push_back("NEEOPX");
     m_TracePublicNames.push_back("GuidePathOPX");
     m_TracePublicNames.push_back("GuideNEEOPX");
@@ -412,6 +414,21 @@ void Test24Application::InitTracers()
             );
         m_Tracers["DebugOPX"]->Initialize();
     }    
+    /*      WRSOPX*/
+    {
+        m_Tracers["WRSOPX"] = std::make_shared<Test24WRSOPXTracer>(
+            m_Context,
+            m_Framebuffer,
+            m_CameraController,
+            m_TextureManager,
+            m_IASHandles["TopLevel"],
+            m_Materials,
+            m_BgLightColor,
+            m_EventFlags,
+            m_MaxTraceDepth
+            );
+        m_Tracers["WRSOPX"]->Initialize();
+    }
     /*      NEEOPX*/
     {
         m_Tracers["NEEOPX"] = std::make_shared<Test24NEEOPXTracer>(
@@ -580,6 +597,22 @@ void Test24Application::Launch()
     if (m_LaunchTracerSet.count("NEEOPX")       > 0) {
         std::string name = "NEEOPX";
         Test24NEEOPXTracer::UserData userData = {};
+        userData.isSync = true;
+        userData.stream = nullptr;
+        m_Tracers[name]->Launch(m_FbWidth, m_FbHeight, &userData);
+        m_SamplePerAll = m_Tracers[name]->GetVariables()->GetUInt32("SamplePerAll");
+        auto launched = m_Tracers[name]->GetVariables()->GetBool("Launched");
+        if (launched) {
+            m_EventFlags |= TEST24_EVENT_FLAG_LOCK;
+        }
+        if (userData.finished) {
+            m_SamplePerAll = 0;
+            m_EventFlags |= TEST24_EVENT_FLAG_CHANGE_TRACE;
+        }
+    }
+    if (m_LaunchTracerSet.count("WRSOPX")       > 0) {
+        std::string name = "WRSOPX";
+        Test24WRSOPXTracer::UserData userData = {};
         userData.isSync = true;
         userData.stream = nullptr;
         m_Tracers[name]->Launch(m_FbWidth, m_FbHeight, &userData);

@@ -1,6 +1,7 @@
 add_subdirectory(TestGL)
 add_subdirectory(DebugOPX)
 add_subdirectory(NEEOPX)
+add_subdirectory(WRSOPX)
 add_subdirectory(PathOPX)
 add_subdirectory(GuideNEEOPX)
 add_subdirectory(GuideWRSOPX)

@@ -15,6 +15,7 @@ target_link_libraries(Test24
     Test24_Tracer_DebugOPX 
     Test24_Tracer_PathOPX 
     Test24_Tracer_NEEOPX 
+    Test24_Tracer_WRSOPX
     Test24_Tracer_GuidePathOPX 
     Test24_Tracer_GuideNEEOPX 
     Test24_Tracer_GuideWRSOPX 

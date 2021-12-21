@@ -115,6 +115,7 @@ Test24GuideWRSOPXTracer::Test24GuideWRSOPXTracer(
 	GetVariables()->SetUInt32("SamplePerTmp"     , 0);
 	GetVariables()->SetUInt32("SamplePerLaunch"  , 1);
 	GetVariables()->SetUInt32("SampleForBudget"  , 1024);
+	GetVariables()->SetUInt32("NumCandidates"    , 32);
 	GetVariables()->SetUInt32("CurIteration"     , 0);
 	GetVariables()->SetUInt32("IterationForBuilt", 0);
 	GetVariables()->SetFloat1("RatioForBudget"   , 0.5f);
@@ -423,16 +424,17 @@ void Test24GuideWRSOPXTracer::InitLaunchParams()
 {
 	auto tlas = this->m_Impl->m_TopLevelAS.lock();
 	this->m_Impl->m_Params.Alloc(1);
-	this->m_Impl->m_Params.cpuHandle[0].gasHandle = tlas->GetHandle();
-	this->m_Impl->m_Params.cpuHandle[0].width = this->m_Impl->m_Framebuffer.lock()->GetWidth();
-	this->m_Impl->m_Params.cpuHandle[0].height = this->m_Impl->m_Framebuffer.lock()->GetHeight();
-	this->m_Impl->m_Params.cpuHandle[0].sdTree = this->m_Impl->m_STree->GetGpuHandle();
-	this->m_Impl->m_Params.cpuHandle[0].light = this->m_Impl->GetMeshLightList();
-	this->m_Impl->m_Params.cpuHandle[0].accumBuffer = this->m_Impl->m_Framebuffer.lock()->GetComponent<test::RTCUDABufferFBComponent<float3>>("RAccum")->GetHandle().getDevicePtr();
-	this->m_Impl->m_Params.cpuHandle[0].frameBuffer = nullptr;
-	this->m_Impl->m_Params.cpuHandle[0].seedBuffer = this->m_Impl->m_SeedBuffer.getDevicePtr();
-	this->m_Impl->m_Params.cpuHandle[0].maxTraceDepth = this->m_Impl->m_MaxTraceDepth;
-	this->m_Impl->m_Params.cpuHandle[0].samplePerLaunch = 1;
+	this->m_Impl->m_Params.cpuHandle[0].gasHandle       = tlas->GetHandle();
+	this->m_Impl->m_Params.cpuHandle[0].width           = this->m_Impl->m_Framebuffer.lock()->GetWidth();
+	this->m_Impl->m_Params.cpuHandle[0].height          = this->m_Impl->m_Framebuffer.lock()->GetHeight();
+	this->m_Impl->m_Params.cpuHandle[0].sdTree          = this->m_Impl->m_STree->GetGpuHandle();
+	this->m_Impl->m_Params.cpuHandle[0].light           = this->m_Impl->GetMeshLightList();
+	this->m_Impl->m_Params.cpuHandle[0].accumBuffer     = this->m_Impl->m_Framebuffer.lock()->GetComponent<test::RTCUDABufferFBComponent<float3>>("RAccum")->GetHandle().getDevicePtr();
+	this->m_Impl->m_Params.cpuHandle[0].frameBuffer     = nullptr;
+	this->m_Impl->m_Params.cpuHandle[0].seedBuffer      = this->m_Impl->m_SeedBuffer.getDevicePtr();
+	this->m_Impl->m_Params.cpuHandle[0].maxTraceDepth   = this->m_Impl->m_MaxTraceDepth;
+	this->m_Impl->m_Params.cpuHandle[0].numCandidates   = GetVariables()->GetUInt32("NumCandidates");
+	this->m_Impl->m_Params.cpuHandle[0].samplePerLaunch = GetVariables()->GetUInt32("SamplePerLaunch");
 	this->m_Impl->m_Params.Upload();
 }
 
@@ -549,7 +551,8 @@ void Test24GuideWRSOPXTracer::OnLaunchExecute(int width, int height, UserData* p
 	auto iterationForBuilt= GetVariables()->GetUInt32("IterationForBuilt");
 	auto samplePerAll     = GetVariables()->GetUInt32("SamplePerAll");
 	auto samplePerTmp     = GetVariables()->GetUInt32("SamplePerTmp");
-	auto samplePerLaunch  = GetVariables()->GetUInt32("SamplePerLaunch");	
+	auto samplePerLaunch  = GetVariables()->GetUInt32("SamplePerLaunch");
+	auto numCandidates    = GetVariables()->GetUInt32("NumCandidates");
 	this->m_Impl->m_Params.cpuHandle[0].width           = width;
 	this->m_Impl->m_Params.cpuHandle[0].height          = height;
 	this->m_Impl->m_Params.cpuHandle[0].sdTree          = this->m_Impl->m_STree->GetGpuHandle();
@@ -560,6 +563,7 @@ void Test24GuideWRSOPXTracer::OnLaunchExecute(int width, int height, UserData* p
 	this->m_Impl->m_Params.cpuHandle[0].isFinal         = this->m_Impl->m_SampleForPass >= this->m_Impl->m_SampleForRemain;
 	this->m_Impl->m_Params.cpuHandle[0].samplePerALL    = samplePerAll;
 	this->m_Impl->m_Params.cpuHandle[0].samplePerLaunch = samplePerLaunch;
+	this->m_Impl->m_Params.cpuHandle[0].numCandidates   = numCandidates;
 	cudaMemcpyAsync(this->m_Impl->m_Params.gpuHandle.getDevicePtr(), &this->m_Impl->m_Params.cpuHandle[0], sizeof(RayTraceParams), cudaMemcpyHostToDevice, pUserData->stream);
 	//cudaMemcpy(this->m_Impl->m_Params.gpuHandle.getDevicePtr(), &this->m_Impl->m_Params.cpuHandle[0], sizeof(RayTraceParams), cudaMemcpyHostToDevice);
 	this->m_Impl->m_Pipeline.launch(pUserData->stream, this->m_Impl->m_Params.gpuHandle.getDevicePtr(), this->m_Impl->m_ShaderBindingTable, width, height, 1);

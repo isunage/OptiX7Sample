@@ -5,6 +5,7 @@
 #include <Test24ReSTIROPXConfig.h>
 #include <Test24PathOPXConfig.h>
 #include <Test24NEEOPXConfig.h>
+#include <Test24WRSOPXConfig.h>
 #include <Test24GuidePathOPXConfig.h>
 #include <Test24GuideNEEOPXConfig.h>
 #include <Test24GuideWRSOPXConfig.h>
@@ -616,6 +617,87 @@ private:
     unsigned int m_SamplePerSave = 1000;
     std::string m_FilePath;
 };
+class       WRSTraceConfigGuiWindow : public TraceConfigGuiWindow
+{
+private:
+    using TracerVariableMap = std::unordered_map < std::string, std::shared_ptr<rtlib::ext::VariableMap>>;
+public:
+    WRSTraceConfigGuiWindow(const TracerVariableMap& tracerVariables_, const std::shared_ptr<test::RTFramebuffer>& framebuffer_, unsigned int& eventFlags_)noexcept : TraceConfigGuiWindow("WRSOPX", tracerVariables_, framebuffer_, eventFlags_), m_FilePath{}{}
+    virtual void DrawGui()override {
+        auto variable = GetVariable();
+        if (variable) {
+            int sampleForBudget   = variable->GetUInt32("SampleForBudget");
+            int samplePerLaunch   = variable->GetUInt32("SamplePerLaunch");
+            int numCandidates     = variable->GetUInt32("NumCandidates");
+
+            if (!HasEvent(TEST24_EVENT_FLAG_BIT_LOCK)) {
+                if (ImGui::InputInt("SampleForBudget", &sampleForBudget)) {
+                    variable->SetUInt32("SampleForBudget", sampleForBudget);
+                    SetEvent(TEST24_EVENT_FLAG_CHANGE_TRACE);
+                }
+                if (ImGui::SliderInt("SamplePerLaunch", &samplePerLaunch, 1, 100)) {
+                    variable->SetUInt32("SamplePerLaunch", samplePerLaunch);
+                    SetEvent(TEST24_EVENT_FLAG_CHANGE_TRACE);
+                }
+                if (ImGui::SliderInt("NumCandidates", &numCandidates, 1, 64)) {
+                    variable->SetUInt32("NumCandidates", numCandidates);
+                    SetEvent(TEST24_EVENT_FLAG_CHANGE_TRACE);
+                }
+            }
+            else {
+                ImGui::Text("  SamplePerBudget: %d", sampleForBudget);
+                ImGui::Text("  SamplePerLaunch: %d", samplePerLaunch);
+                ImGui::Text("    NumCandidates: %d", numCandidates);
+            }
+
+            int samplePerAll = variable->GetUInt32("SamplePerAll");
+
+            ImGui::Text("SamplePerAll: %d", samplePerAll);
+
+            char saveFilePath[256];
+            std::strncpy(saveFilePath, m_FilePath.c_str(), sizeof(saveFilePath) - 1);
+            if (ImGui::InputText("SaveFilepath", saveFilePath, sizeof(saveFilePath))) {
+                m_FilePath = std::string(saveFilePath);
+            }
+            int samplePerSave = m_SamplePerSave;
+            if (ImGui::InputInt("SamplePerSave", &samplePerSave)) {
+                m_SamplePerSave = std::max(1, samplePerSave);
+            }
+
+            bool isLaunched = variable->GetBool("Launched");
+            if (!isLaunched) {
+                if (ImGui::Button("Started")) {
+                    variable->SetBool("Started", true);
+                    SetEvent(TEST24_EVENT_FLAG_CHANGE_TRACE);
+                }
+                ImGui::SameLine();
+            }
+            bool pushSave = false;
+            if (ImGui::Button("Save")) {
+                pushSave = true;
+            }
+            bool saveIter = isLaunched && samplePerAll && ((samplePerAll % m_SamplePerSave)==0);
+            if (pushSave || saveIter) {
+                std::string filePathBase = std::string(TEST_TEST24_WRS_OPX_RSLT_PATH) + "/" + saveFilePath + "result_wrs_" + std::to_string(samplePerAll);
+                std::string filePathPng = filePathBase + ".png";
+                auto rTexture = GetFramebuffer()->GetComponent<test::RTGLTextureFBComponent<uchar4>>("RTexture");
+                if (test::SavePngImgFromGL(filePathPng.c_str(), rTexture->GetHandle())) {
+                    std::cout << "Save\n";
+                }
+                std::string filePathExr = filePathBase + ".exr";
+                auto rAccum = GetFramebuffer()->GetComponent<test::RTCUDABufferFBComponent<float3>>("RAccum");
+                if (test::SaveExrImgFromCUDA(filePathExr.c_str(), rAccum->GetHandle(), GetFramebuffer()->GetWidth(), GetFramebuffer()->GetHeight(), samplePerAll)) {
+                    std::cout << "Save\n";
+                }
+            }
+        }
+    }
+    virtual ~WRSTraceConfigGuiWindow()noexcept {}
+private:
+    unsigned int m_SamplePerSave = 1000;
+    std::string  m_FilePath;
+};
+
 class    ReSTIRTraceConfigGuiWindow : public TraceConfigGuiWindow
 {
 private:
@@ -934,6 +1016,7 @@ public:
             int samplePerLaunch   = variable->GetUInt32("SamplePerLaunch");
             auto ratioForBudget   = variable->GetFloat1("RatioForBudget");
             int iterationForBuilt = variable->GetUInt32("IterationForBuilt");
+            int numCandidates     = variable->GetUInt32("NumCandidates");
 
             if (!HasEvent(TEST24_EVENT_FLAG_BIT_LOCK)) {
                 if (ImGui::InputInt("SampleForBudget", &sampleForBudget)) {
@@ -944,20 +1027,25 @@ public:
                     variable->SetUInt32("SamplePerLaunch", samplePerLaunch);
                     SetEvent(TEST24_EVENT_FLAG_CHANGE_TRACE);
                 }
-                if (ImGui::SliderInt("IterationForBuilt", &iterationForBuilt, 1, 10)) {
+                if (ImGui::SliderInt("IterationForBuilt"   ,&iterationForBuilt, 1, 10)) {
                     variable->SetUInt32("IterationForBuilt", iterationForBuilt);
                     SetEvent(TEST24_EVENT_FLAG_CHANGE_TRACE);
                 }
-                if (ImGui::InputFloat("RatioForBudget", &ratioForBudget)) {
+                if (ImGui::InputFloat("RatioForBudget"  ,&ratioForBudget)) {
                     variable->SetFloat1("RatioForBudget", ratioForBudget);
+                    SetEvent(TEST24_EVENT_FLAG_CHANGE_TRACE);
+                }
+                if (ImGui::SliderInt("NumCandidates"   ,&numCandidates, 1, 64)) {
+                    variable->SetUInt32("NumCandidates", numCandidates);
                     SetEvent(TEST24_EVENT_FLAG_CHANGE_TRACE);
                 }
             }
             else {
-                ImGui::Text("  SamplePerBudget: %d", sampleForBudget);
-                ImGui::Text("  SamplePerLaunch: %d", samplePerLaunch);
-                ImGui::Text("   RatioForBudget: %f", ratioForBudget);
+                ImGui::Text("  SamplePerBudget: %d", sampleForBudget  );
+                ImGui::Text("  SamplePerLaunch: %d", samplePerLaunch  );
+                ImGui::Text("   RatioForBudget: %f", ratioForBudget   );
                 ImGui::Text("IterationForBuilt: %f", iterationForBuilt);
+                ImGui::Text("    NumCandidates: %d", numCandidates    );
             }
 
             int samplePerAll = variable->GetUInt32("SamplePerAll");
@@ -1072,6 +1160,11 @@ void  Test24GuiDelegate::Initialize()
              neeTcCnfgWindow->SetActive(false);
             if (mainTcCnfgWindow->AddTracerWindow(neeTcCnfgWindow->GetName(), neeTcCnfgWindow)) {
                 m_Gui->SetGuiWindow(neeTcCnfgWindow);
+            }
+            auto    wrsTcCnfgWindow = std::make_shared<    WRSTraceConfigGuiWindow>(m_TracerVariables, m_Framebuffer, m_EventFlags);
+             wrsTcCnfgWindow->SetActive(false);
+            if (mainTcCnfgWindow->AddTracerWindow(wrsTcCnfgWindow->GetName(), wrsTcCnfgWindow)) {
+                m_Gui->SetGuiWindow(wrsTcCnfgWindow);
             }
             auto restirTcCnfgWindow = std::make_shared<ReSTIRTraceConfigGuiWindow>( m_TracerVariables, m_Framebuffer, m_EventFlags);
             restirTcCnfgWindow->SetActive(false);
