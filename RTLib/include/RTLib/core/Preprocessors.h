@@ -1,6 +1,6 @@
 #ifndef RTLIB_PREPROCESSOR_H
 #define RTLIB_PREPROCESSOR_H
-#ifdef __CUDA_ARCH__
+#ifdef __CUDACC__
 #define RTLIB_DEVICE __device__
 #define RTLIB_HOST_DEVICE __host__ __device__
 #define RTLIB_INLINE __forceinline__

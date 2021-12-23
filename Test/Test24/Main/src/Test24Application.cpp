@@ -2,13 +2,14 @@
 #include <Test24Gui.h>
 #include <TestGLTracer.h>
 #include <DebugOPXTracer.h>
+#include <ReSTIROPXTracer.h>
 #include <PathOPXTracer.h>
 #include <NEEOPXTracer.h>
 #include <WRSOPXTracer.h>
+#include <GuideReSTIROPXTracer.h>
 #include <GuidePathOPXTracer.h>
-#include < GuideWRSOPXTracer.h>
-#include < GuideNEEOPXTracer.h>
-#include <   ReSTIROPXTracer.h>
+#include <GuideWRSOPXTracer.h>
+#include <GuideNEEOPXTracer.h>
 #include <Test24Config.h>
 #include <filesystem>
 Test24Application::Test24Application(int fbWidth, int fbHeight, std::string name) noexcept : test::RTApplication(name)
@@ -122,13 +123,14 @@ void Test24Application::InitBase()
     m_CurMainFrameName = "RFrame";
     //Public Tracers
     m_TracePublicNames.clear();
-    m_TracePublicNames.push_back("TestGL");
+    //m_TracePublicNames.push_back("TestGL");
     m_TracePublicNames.push_back("PathOPX");
     m_TracePublicNames.push_back("WRSOPX");
     m_TracePublicNames.push_back("NEEOPX");
-    m_TracePublicNames.push_back("GuidePathOPX");
-    m_TracePublicNames.push_back("GuideNEEOPX");
+    //m_TracePublicNames.push_back("GuidePathOPX");
+    //m_TracePublicNames.push_back("GuideNEEOPX");
     m_TracePublicNames.push_back("GuideWRSOPX");
+    m_TracePublicNames.push_back("GuideReSTIROPX");
     m_TracePublicNames.push_back("ReSTIROPX");
     m_TracePublicNames.push_back("DebugOPX");
     m_CurMainTraceName = m_TracePublicNames.front();
@@ -385,128 +387,46 @@ void Test24Application::FreeScene()
 
 void Test24Application::InitTracers()
 {
-    m_Tracers.reserve(8);
-    /*     TestGL */
+    m_Tracers.reserve(m_TracePublicNames.size());
+    auto tracePublicNameSet = std::unordered_set<std::string>(std::begin(m_TracePublicNames), std::end(m_TracePublicNames));
+    /*         TestGL*/
     {
-        m_Tracers["TestGL"] = std::make_shared<Test24TestGLTracer>(
-            m_FbWidth,
-            m_FbHeight,
-            m_Window,
-            m_ObjModelManager,
-            m_Framebuffer,
-            m_CameraController,
-            m_CurObjModelName,
-            m_EventFlags
-            );
-        m_Tracers["TestGL"]->Initialize();
+        std::string traceName = "TestGL";
+        if (tracePublicNameSet.count(traceName) > 0) {
+            m_Tracers[traceName] = std::make_shared<Test24TestGLTracer>(
+                m_FbWidth,
+                m_FbHeight,
+                m_Window,
+                m_ObjModelManager,
+                m_Framebuffer,
+                m_CameraController,
+                m_CurObjModelName,
+                m_EventFlags
+                );
+            m_Tracers[traceName]->Initialize();
+        }
     }
-    /*    DebugOPX*/
+    /*       DebugOPX*/
     {
-        m_Tracers["DebugOPX"] = std::make_shared<Test24DebugOPXTracer>(
-            m_Context,
-            m_Framebuffer,
-            m_CameraController,
-            m_TextureManager,
-            m_IASHandles["TopLevel"],
-            m_Materials,
-            m_BgLightColor,
-            m_EventFlags
-            );
-        m_Tracers["DebugOPX"]->Initialize();
-    }    
-    /*      WRSOPX*/
+        std::string traceName = "DebugOPX";
+        if (tracePublicNameSet.count(traceName) > 0) {
+            m_Tracers[traceName] = std::make_shared<Test24DebugOPXTracer>(
+                m_Context,
+                m_Framebuffer,
+                m_CameraController,
+                m_TextureManager,
+                m_IASHandles["TopLevel"],
+                m_Materials,
+                m_BgLightColor,
+                m_EventFlags
+                );
+            m_Tracers[traceName]->Initialize();
+        }
+    } 
+    /*      ReSTIROPX*/
     {
-        m_Tracers["WRSOPX"] = std::make_shared<Test24WRSOPXTracer>(
-            m_Context,
-            m_Framebuffer,
-            m_CameraController,
-            m_TextureManager,
-            m_IASHandles["TopLevel"],
-            m_Materials,
-            m_BgLightColor,
-            m_EventFlags,
-            m_MaxTraceDepth
-            );
-        m_Tracers["WRSOPX"]->Initialize();
-    }
-    /*      NEEOPX*/
-    {
-        m_Tracers["NEEOPX"] = std::make_shared<Test24NEEOPXTracer>(
-            m_Context,
-            m_Framebuffer,
-            m_CameraController,
-            m_TextureManager,
-            m_IASHandles["TopLevel"],
-            m_Materials,
-            m_BgLightColor,
-            m_EventFlags,
-            m_MaxTraceDepth
-            );
-        m_Tracers["NEEOPX"]->Initialize();
-    }
-    /*     PathOPX*/
-    {
-        m_Tracers["PathOPX"] = std::make_shared<Test24PathOPXTracer>(
-            m_Context,
-            m_Framebuffer,
-            m_CameraController,
-            m_TextureManager,
-            m_IASHandles["TopLevel"],
-            m_Materials,
-            m_BgLightColor,
-            m_EventFlags,
-            m_MaxTraceDepth
-            );
-        m_Tracers["PathOPX"]->Initialize();
-    }
-    /*GuidePathOPX*/
-    {
-        m_Tracers["GuidePathOPX"] = std::make_shared<Test24GuidePathOPXTracer>(
-            m_Context,
-            m_Framebuffer,
-            m_CameraController,
-            m_TextureManager,
-            m_IASHandles["TopLevel"],
-            m_Materials,
-            m_BgLightColor,
-            m_EventFlags,
-            m_MaxTraceDepth
-            );
-        m_Tracers["GuidePathOPX"]->Initialize();
-    }
-    /* GuideNEEOPX*/
-    {
-        m_Tracers["GuideNEEOPX"] = std::make_shared<Test24GuideNEEOPXTracer>(
-            m_Context,
-            m_Framebuffer,
-            m_CameraController,
-            m_TextureManager,
-            m_IASHandles["TopLevel"],
-            m_Materials,
-            m_BgLightColor,
-            m_EventFlags,
-            m_MaxTraceDepth
-            );
-        m_Tracers["GuideNEEOPX"]->Initialize();
-    }
-    /* GuideWRSOPX*/
-    {
-        m_Tracers["GuideWRSOPX"] = std::make_shared<Test24GuideWRSOPXTracer>(
-            m_Context,
-            m_Framebuffer,
-            m_CameraController,
-            m_TextureManager,
-            m_IASHandles["TopLevel"],
-            m_Materials,
-            m_BgLightColor,
-            m_EventFlags,
-            m_MaxTraceDepth
-            );
-        m_Tracers["GuideWRSOPX"]->Initialize();
-    }
-    /*   ReSTIROPX*/
-    {
-        m_Tracers["ReSTIROPX"] = std::make_shared<Test24ReSTIROPXTracer>(
+        std::string traceName = "ReSTIROPX";
+        m_Tracers[traceName] = std::make_shared<Test24ReSTIROPXTracer>(
             m_Context,
             m_Framebuffer,
             m_CameraController,
@@ -516,11 +436,125 @@ void Test24Application::InitTracers()
             m_BgLightColor,
             m_EventFlags
             );
-        m_Tracers["ReSTIROPX"]->Initialize();
+        m_Tracers[traceName]->Initialize();
+    }
+    /*         WRSOPX*/
+    {
+        std::string traceName = "WRSOPX";
+        if (tracePublicNameSet.count(traceName) > 0) {
+            m_Tracers[traceName] = std::make_shared<Test24WRSOPXTracer>(
+                m_Context,
+                m_Framebuffer,
+                m_CameraController,
+                m_TextureManager,
+                m_IASHandles["TopLevel"],
+                m_Materials,
+                m_BgLightColor,
+                m_EventFlags,
+                m_MaxTraceDepth
+                );
+            m_Tracers[traceName]->Initialize();
+        }
+    }
+    /*         NEEOPX*/
+    {
+        std::string traceName = "NEEOPX";
+        m_Tracers[traceName] = std::make_shared<Test24NEEOPXTracer>(
+            m_Context,
+            m_Framebuffer,
+            m_CameraController,
+            m_TextureManager,
+            m_IASHandles["TopLevel"],
+            m_Materials,
+            m_BgLightColor,
+            m_EventFlags,
+            m_MaxTraceDepth
+            );
+        m_Tracers[traceName]->Initialize();
+    }
+    /*        PathOPX*/
+    {
+        std::string traceName = "PathOPX";
+        m_Tracers[traceName] = std::make_shared<Test24PathOPXTracer>(
+            m_Context,
+            m_Framebuffer,
+            m_CameraController,
+            m_TextureManager,
+            m_IASHandles["TopLevel"],
+            m_Materials,
+            m_BgLightColor,
+            m_EventFlags,
+            m_MaxTraceDepth
+            );
+        m_Tracers[traceName]->Initialize();
+    }
+    /* GuideReSTIROPX*/
+    {
+        std::string traceName = "GuideReSTIROPX";
+        m_Tracers[traceName] = std::make_shared<Test24GuideReSTIROPXTracer>(
+            m_Context,
+            m_Framebuffer,
+            m_CameraController,
+            m_TextureManager,
+            m_IASHandles["TopLevel"],
+            m_Materials,
+            m_BgLightColor,
+            m_EventFlags,
+            m_MaxTraceDepth
+            );
+        m_Tracers[traceName]->Initialize();
+    }
+    /*    GuideWRSOPX*/
+    {
+        std::string traceName = "GuideWRSOPX";
+        m_Tracers[traceName] = std::make_shared<Test24GuideWRSOPXTracer>(
+            m_Context,
+            m_Framebuffer,
+            m_CameraController,
+            m_TextureManager,
+            m_IASHandles["TopLevel"],
+            m_Materials,
+            m_BgLightColor,
+            m_EventFlags,
+            m_MaxTraceDepth
+            );
+        m_Tracers[traceName]->Initialize();
+    }
+    /*    GuideNEEOPX*/
+    {
+        std::string traceName = "GuideNEEOPX";
+        m_Tracers[traceName] = std::make_shared<Test24GuideNEEOPXTracer>(
+            m_Context,
+            m_Framebuffer,
+            m_CameraController,
+            m_TextureManager,
+            m_IASHandles["TopLevel"],
+            m_Materials,
+            m_BgLightColor,
+            m_EventFlags,
+            m_MaxTraceDepth
+            );
+        m_Tracers[traceName]->Initialize();
+    }
+    /*   GuidePathOPX*/
+    {
+        std::string traceName = "GuidePathOPX";
+        m_Tracers[traceName] = std::make_shared<Test24GuidePathOPXTracer>(
+            m_Context,
+            m_Framebuffer,
+            m_CameraController,
+            m_TextureManager,
+            m_IASHandles["TopLevel"],
+            m_Materials,
+            m_BgLightColor,
+            m_EventFlags,
+            m_MaxTraceDepth
+            );
+        m_Tracers[traceName]->Initialize();
     }
     /*   Variables*/
     m_TracerVariables.clear();
-    m_TracerVariables.reserve(8);
+    m_TracerVariables.reserve(m_TracePublicNames.size());
     for (auto& [name, tracer]  : m_Tracers) {
         m_TracerVariables[name] = tracer->GetVariables();
     }
@@ -576,7 +610,7 @@ void Test24Application::RenderFrame(const std::string &name)
 void Test24Application::Launch()
 {
     m_LaunchTracerSet.insert(m_CurMainTraceName);
-    if (m_LaunchTracerSet.count("PathOPX")      > 0)
+    if (m_LaunchTracerSet.count("PathOPX")       > 0)
     {
         std::string name = "PathOPX";
         Test24PathOPXTracer::UserData  userData = {};
@@ -594,7 +628,7 @@ void Test24Application::Launch()
             m_EventFlags |= TEST24_EVENT_FLAG_CHANGE_TRACE;
         }
     }
-    if (m_LaunchTracerSet.count("NEEOPX")       > 0) {
+    if (m_LaunchTracerSet.count("NEEOPX")        > 0) {
         std::string name = "NEEOPX";
         Test24NEEOPXTracer::UserData userData = {};
         userData.isSync = true;
@@ -610,7 +644,7 @@ void Test24Application::Launch()
             m_EventFlags |= TEST24_EVENT_FLAG_CHANGE_TRACE;
         }
     }
-    if (m_LaunchTracerSet.count("WRSOPX")       > 0) {
+    if (m_LaunchTracerSet.count("WRSOPX")        > 0) {
         std::string name = "WRSOPX";
         Test24WRSOPXTracer::UserData userData = {};
         userData.isSync = true;
@@ -626,7 +660,7 @@ void Test24Application::Launch()
             m_EventFlags |= TEST24_EVENT_FLAG_CHANGE_TRACE;
         }
     }
-    if (m_LaunchTracerSet.count("GuidePathOPX") > 0)
+    if (m_LaunchTracerSet.count("GuidePathOPX")  > 0)
     {
         std::string name = "GuidePathOPX";
         Test24GuidePathOPXTracer::UserData  userData = {};
@@ -645,7 +679,7 @@ void Test24Application::Launch()
             m_EventFlags |= TEST24_EVENT_FLAG_CHANGE_TRACE;
         }
     }
-    if (m_LaunchTracerSet.count("GuideNEEOPX")  > 0)
+    if (m_LaunchTracerSet.count("GuideNEEOPX")   > 0)
     {
         std::string name = "GuideNEEOPX";
         Test24GuideNEEOPXTracer::UserData  userData = {};
@@ -665,7 +699,7 @@ void Test24Application::Launch()
             m_EventFlags |= TEST24_EVENT_FLAG_CHANGE_TRACE;
         }
     }
-    if (m_LaunchTracerSet.count("GuideWRSOPX")  > 0)
+    if (m_LaunchTracerSet.count("GuideWRSOPX")   > 0)
     {
         std::string name = "GuideWRSOPX";
         Test24GuideWRSOPXTracer::UserData  userData = {};
@@ -684,7 +718,26 @@ void Test24Application::Launch()
             m_EventFlags |= TEST24_EVENT_FLAG_CHANGE_TRACE;
         }
     }
-    if (m_LaunchTracerSet.count("ReSTIROPX")    > 0)
+    if (m_LaunchTracerSet.count("GuideReSTIROPX")> 0)
+    {
+        std::string name = "GuideReSTIROPX";
+        Test24GuideReSTIROPXTracer::UserData  userData = {};
+        userData.finished = false;
+        userData.isSync = true;
+        userData.stream = nullptr;
+        m_Tracers[name]->Launch(m_FbWidth, m_FbHeight, &userData);
+        m_SamplePerAll = m_Tracers[name]->GetVariables()->GetUInt32("SamplePerAll");
+        auto launched = m_Tracers[name]->GetVariables()->GetBool("Launched");
+        if (launched) {
+            m_EventFlags |= TEST24_EVENT_FLAG_LOCK;
+        }
+        if (userData.finished) {
+            m_CurMainTraceName = "PathOPX";
+            m_SamplePerAll = 0;
+            m_EventFlags |= TEST24_EVENT_FLAG_CHANGE_TRACE;
+        }
+    }
+    if (m_LaunchTracerSet.count("ReSTIROPX")     > 0)
     {
         std::string name = "ReSTIROPX";
         Test24ReSTIROPXTracer::UserData  userData = {};
@@ -702,14 +755,14 @@ void Test24Application::Launch()
             m_EventFlags |= TEST24_EVENT_FLAG_CHANGE_TRACE;
         }
     }
-    if (m_LaunchTracerSet.count("DebugOPX")     > 0) {
+    if (m_LaunchTracerSet.count("DebugOPX")      > 0) {
         std::string name = "DebugOPX";
         Test24DebugOPXTracer::UserData userData = {};
         userData.isSync = true;
         userData.stream = nullptr;
         m_Tracers[name]->Launch(m_FbWidth, m_FbHeight, &userData);
     }
-    if (m_LaunchTracerSet.count("TestGL")       > 0) {
+    if (m_LaunchTracerSet.count("TestGL")        > 0) {
         std::string name = "TestGL";
         m_Tracers[name]->Launch(m_FbWidth, m_FbHeight, nullptr);
     }

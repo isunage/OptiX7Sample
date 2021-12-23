@@ -6,6 +6,7 @@
 #include <Test24PathOPXConfig.h>
 #include <Test24NEEOPXConfig.h>
 #include <Test24WRSOPXConfig.h>
+#include <Test24GuideReSTIROPXConfig.h>
 #include <Test24GuidePathOPXConfig.h>
 #include <Test24GuideNEEOPXConfig.h>
 #include <Test24GuideWRSOPXConfig.h>
@@ -697,7 +698,6 @@ private:
     unsigned int m_SamplePerSave = 1000;
     std::string  m_FilePath;
 };
-
 class    ReSTIRTraceConfigGuiWindow : public TraceConfigGuiWindow
 {
 private:
@@ -820,7 +820,7 @@ private:
     unsigned int m_SamplePerSave = 1000;
     std::string m_FilePath;
 };
-class GuidePathTraceConfigGuiWindow : public TraceConfigGuiWindow
+class  GuidePathTraceConfigGuiWindow : public TraceConfigGuiWindow
 {
 private:
     using TracerVariableMap = std::unordered_map < std::string, std::shared_ptr<rtlib::ext::VariableMap>>;
@@ -1099,6 +1099,102 @@ private:
     unsigned int m_SamplePerSave = 1000;
     std::string  m_FilePath;
 };
+class  GuideReSTIRTraceConfigGuiWindow : public TraceConfigGuiWindow
+{
+private:
+    using TracerVariableMap = std::unordered_map < std::string, std::shared_ptr<rtlib::ext::VariableMap>>;
+public:
+    GuideReSTIRTraceConfigGuiWindow(const TracerVariableMap& tracerVariables_, const std::shared_ptr<test::RTFramebuffer>& framebuffer_, unsigned int& eventFlags_)noexcept : TraceConfigGuiWindow("GuideReSTIROPX", tracerVariables_, framebuffer_, eventFlags_), m_FilePath{}{}
+    virtual void DrawGui()override {
+        auto variable = GetVariable();
+        if (variable) {
+            int sampleForBudget = variable->GetUInt32("SampleForBudget");
+            int samplePerLaunch = variable->GetUInt32("SamplePerLaunch");
+            auto ratioForBudget = variable->GetFloat1("RatioForBudget");
+            int iterationForBuilt = variable->GetUInt32("IterationForBuilt");
+            int numCandidates = variable->GetUInt32("NumCandidates");
+
+            if (!HasEvent(TEST24_EVENT_FLAG_BIT_LOCK)) {
+                if (ImGui::InputInt("SampleForBudget", &sampleForBudget)) {
+                    variable->SetUInt32("SampleForBudget", sampleForBudget);
+                    SetEvent(TEST24_EVENT_FLAG_CHANGE_TRACE);
+                }
+                if (ImGui::SliderInt("SamplePerLaunch", &samplePerLaunch, 1, 100)) {
+                    variable->SetUInt32("SamplePerLaunch", samplePerLaunch);
+                    SetEvent(TEST24_EVENT_FLAG_CHANGE_TRACE);
+                }
+                if (ImGui::SliderInt("IterationForBuilt", &iterationForBuilt, 1, 10)) {
+                    variable->SetUInt32("IterationForBuilt", iterationForBuilt);
+                    SetEvent(TEST24_EVENT_FLAG_CHANGE_TRACE);
+                }
+                if (ImGui::InputFloat("RatioForBudget", &ratioForBudget)) {
+                    variable->SetFloat1("RatioForBudget", ratioForBudget);
+                    SetEvent(TEST24_EVENT_FLAG_CHANGE_TRACE);
+                }
+                if (ImGui::SliderInt("NumCandidates", &numCandidates, 1, 64)) {
+                    variable->SetUInt32("NumCandidates", numCandidates);
+                    SetEvent(TEST24_EVENT_FLAG_CHANGE_TRACE);
+                }
+            }
+            else {
+                ImGui::Text("  SamplePerBudget: %d", sampleForBudget);
+                ImGui::Text("  SamplePerLaunch: %d", samplePerLaunch);
+                ImGui::Text("   RatioForBudget: %f", ratioForBudget);
+                ImGui::Text("IterationForBuilt: %f", iterationForBuilt);
+                ImGui::Text("    NumCandidates: %d", numCandidates);
+            }
+
+            int samplePerAll = variable->GetUInt32("SamplePerAll");
+            int curIteration = variable->GetUInt32("CurIteration");
+            int samplePerTmp = variable->GetUInt32("SamplePerTmp");
+
+            ImGui::Text("SamplePerAll: %d", samplePerAll);
+            ImGui::Text("CurIteration: %d", curIteration);
+            ImGui::Text("SamplePerTmp: %d", samplePerTmp);
+
+            char saveFilePath[256];
+            std::strncpy(saveFilePath, m_FilePath.c_str(), sizeof(saveFilePath) - 1);
+            if (ImGui::InputText("SaveFilepath", saveFilePath, sizeof(saveFilePath))) {
+                m_FilePath = std::string(saveFilePath);
+            }
+            int samplePerSave = m_SamplePerSave;
+            if (ImGui::InputInt("SamplePerSave", &samplePerSave)) {
+                m_SamplePerSave = std::max(1, samplePerSave);
+            }
+
+            bool isLaunched = variable->GetBool("Launched");
+            if (!isLaunched) {
+                if (ImGui::Button("Started")) {
+                    variable->SetBool("Started", true);
+                    SetEvent(TEST24_EVENT_FLAG_CHANGE_TRACE);
+                }
+                ImGui::SameLine();
+            }
+            bool pushSave = false;
+            if (ImGui::Button("Save")) {
+                pushSave = true;
+            }
+            bool saveIter = isLaunched && samplePerAll && ((samplePerAll % m_SamplePerSave) == 0);
+            if (pushSave || saveIter) {
+                std::string filePathBase = std::string(TEST_TEST24_GUIDE_RESTIR_OPX_RSLT_PATH) + "/" + saveFilePath + "result_guide_restir_" + std::to_string(samplePerAll);
+                std::string filePathPng = filePathBase + ".png";
+                auto rTexture = GetFramebuffer()->GetComponent<test::RTGLTextureFBComponent<uchar4>>("RTexture");
+                if (test::SavePngImgFromGL(filePathPng.c_str(), rTexture->GetHandle())) {
+                    std::cout << "Save\n";
+                }
+                std::string filePathExr = filePathBase + ".exr";
+                auto rAccum = GetFramebuffer()->GetComponent<test::RTCUDABufferFBComponent<float3>>("RAccum");
+                if (test::SaveExrImgFromCUDA(filePathExr.c_str(), rAccum->GetHandle(), GetFramebuffer()->GetWidth(), GetFramebuffer()->GetHeight(), samplePerAll)) {
+                    std::cout << "Save\n";
+                }
+            }
+        }
+    }
+    virtual ~GuideReSTIRTraceConfigGuiWindow()noexcept {}
+private:
+    unsigned int m_SamplePerSave = 1000;
+    std::string  m_FilePath;
+};
 void  Test24GuiDelegate::Initialize()
 {
     m_Gui->Initialize();
@@ -1151,17 +1247,17 @@ void  Test24GuiDelegate::Initialize()
             m_Gui->SetGuiWindow(mainTcCnfgWindow);
             trcrItem->SetGuiMenuItem(std::make_shared<test:: RTGuiOpenWindowMenuItem>(mainTcCnfgWindow));
             trcrItem->SetGuiMenuItem(std::make_shared<test::RTGuiCloseWindowMenuItem>(mainTcCnfgWindow));
-            auto   pathTcCnfgWindow = std::make_shared<  PathTraceConfigGuiWindow>( m_TracerVariables, m_Framebuffer, m_EventFlags);
+            auto   pathTcCnfgWindow = std::make_shared<PathTraceConfigGuiWindow>( m_TracerVariables, m_Framebuffer, m_EventFlags);
             pathTcCnfgWindow->SetActive(false);
             if (mainTcCnfgWindow->AddTracerWindow(pathTcCnfgWindow->GetName(), pathTcCnfgWindow)) {
                 m_Gui->SetGuiWindow(pathTcCnfgWindow);
             }
-            auto    neeTcCnfgWindow = std::make_shared<    NEETraceConfigGuiWindow>(m_TracerVariables, m_Framebuffer, m_EventFlags);
+            auto    neeTcCnfgWindow = std::make_shared<NEETraceConfigGuiWindow>(m_TracerVariables, m_Framebuffer, m_EventFlags);
              neeTcCnfgWindow->SetActive(false);
             if (mainTcCnfgWindow->AddTracerWindow(neeTcCnfgWindow->GetName(), neeTcCnfgWindow)) {
                 m_Gui->SetGuiWindow(neeTcCnfgWindow);
             }
-            auto    wrsTcCnfgWindow = std::make_shared<    WRSTraceConfigGuiWindow>(m_TracerVariables, m_Framebuffer, m_EventFlags);
+            auto    wrsTcCnfgWindow = std::make_shared<WRSTraceConfigGuiWindow>(m_TracerVariables, m_Framebuffer, m_EventFlags);
              wrsTcCnfgWindow->SetActive(false);
             if (mainTcCnfgWindow->AddTracerWindow(wrsTcCnfgWindow->GetName(), wrsTcCnfgWindow)) {
                 m_Gui->SetGuiWindow(wrsTcCnfgWindow);
@@ -1185,6 +1281,11 @@ void  Test24GuiDelegate::Initialize()
             gdWRSTcCnfgWindow->SetActive(false);
             if (mainTcCnfgWindow->AddTracerWindow(gdWRSTcCnfgWindow->GetName(), gdWRSTcCnfgWindow)) {
                 m_Gui->SetGuiWindow(gdWRSTcCnfgWindow);
+            }
+            auto gdReSTIRTcCnfgWindow = std::make_shared<GuideReSTIRTraceConfigGuiWindow>(m_TracerVariables, m_Framebuffer, m_EventFlags);
+            gdReSTIRTcCnfgWindow->SetActive(false);
+            if (mainTcCnfgWindow->AddTracerWindow(gdReSTIRTcCnfgWindow->GetName(), gdReSTIRTcCnfgWindow)) {
+                m_Gui->SetGuiWindow(gdReSTIRTcCnfgWindow);
             }
         }
         // Input
