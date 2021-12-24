@@ -10,7 +10,7 @@ auto test24::SpecifyMaterialType(const rtlib::ext::VariableMap& material) -> std
 	auto illum = material.GetUInt32("illum");
 	if (illum == 7)
 	{
-		return "Diffuse";
+		return "Refraction";
 	}
 	else if (emitCol.x + emitCol.y + emitCol.z > 0.0f)
 	{

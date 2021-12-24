@@ -289,11 +289,11 @@ void Test24Application::InitScene()
 
     m_GASHandles["World"] = std::make_shared<rtlib::ext::GASHandle>();
     m_GASHandles["Light"] = std::make_shared<rtlib::ext::GASHandle>();
+
     {
         OptixAccelBuildOptions accelBuildOptions = {};
         accelBuildOptions.buildFlags = OPTIX_BUILD_FLAG_ALLOW_COMPACTION | OPTIX_BUILD_FLAG_PREFER_FAST_TRACE;
         accelBuildOptions.operation = OPTIX_BUILD_OPERATION_BUILD;
-
         {
             size_t materialOffset = 0;
             for (auto& [name, objModel] : m_ObjModelManager->GetAssets())
