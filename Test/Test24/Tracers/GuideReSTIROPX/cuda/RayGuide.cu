@@ -463,9 +463,10 @@ extern "C" __global__ void __closesthit__radiance_for_diffuse_nee() {
         auto  invAreaP = 0.0f;
         auto  lightDir = params.light.Sample(srec.position, lRec, distance, invAreaP, xor32);
         auto  ndl      = rtlib::dot(lightDir, srec.sNormal);
-        auto  emission = lRec.emission;
+        auto  lndl     = -rtlib::dot(lightDir, lRec.normal);
+        auto  emission = lRec.emission * static_cast<float>(lndl);
         auto  bsdf     = mrec.diffuse / RTLIB_M_PI;
-        auto  g        = ndl * fabsf(rtlib::dot(lightDir, lRec.normal)) /(distance * distance);
+        auto  g        = rtlib::max(ndl,0.0f) * rtlib::max(lndl,0.0f) /(distance * distance);
         auto  f        = emission * bsdf * g;
         auto  f_a      = (f.x + f.y + f.z) / 3.0f;
         auto  weight   = make_float3(0.0f);
@@ -622,10 +623,10 @@ extern "C" __global__ void __closesthit__radiance_for_diffuse_pg_nee() {
             auto  invAreaP = 0.0f;
             auto  lightDir = params.light.Sample(srec.position, lRec, distance, invAreaP, xor32);
             auto  ndl = rtlib::dot(lightDir, srec.sNormal);
-            auto  lndl = rtlib::dot(lightDir, lRec.normal);
-            auto  emission = lRec.emission * static_cast<float>(lndl < 0.0f);
+            auto  lndl = -rtlib::dot(lightDir, lRec.normal);
+            auto  emission = lRec.emission * static_cast<float>(lndl > 0.0f);
             auto  bsdf = mrec.diffuse * RTLIB_M_INV_PI;
-            auto  g = ndl * fabsf(lndl)/ (distance * distance);
+            auto  g = rtlib::max(ndl, 0.0f) * rtlib::max(lndl, 0.0f) / (distance * distance);
             auto  f = emission * bsdf * g;
             auto  f_a = (f.x + f.y + f.z) / 3.0f;
             if (resv.Update(lRec, f_a * invAreaP, rtlib::random_float1(xor32))) {
@@ -847,11 +848,11 @@ extern "C" __global__ void __closesthit__radiance_for_phong_pg_nee() {
                 auto  distance = 0.0f;
                 auto  invAreaP = 0.0f;
                 auto  lightDir = params.light.Sample(srec.position, lRec, distance, invAreaP, xor32);
-                auto  ndl  = rtlib::dot(lightDir, srec.sNormal);
-                auto  lndl = rtlib::dot(lightDir, lRec.normal);
-                auto  emission = lRec.emission * static_cast<float>(lndl <0.0f);
+                auto  ndl = rtlib::dot(lightDir, srec.sNormal);
+                auto  lndl = -rtlib::dot(lightDir, lRec.normal);
+                auto  emission = lRec.emission * static_cast<float>(lndl > 0.0f);
                 auto  bsdf = diffuseLobe;
-                auto  g = ndl * fabsf(lndl) / (distance * distance);
+                auto  g = rtlib::max(ndl, 0.0f) * rtlib::max(lndl, 0.0f) / (distance * distance);
                 auto  f = emission * bsdf * g;
                 auto  f_a = (f.x + f.y + f.z) / 3.0f;
                 if (resv.Update(lRec, f_a * invAreaP, rtlib::random_float1(xor32))) {
