@@ -1,4 +1,5 @@
 #include "..\include\Test24Application.h"
+#include <RTLib/ext/Utils.h>
 #include <Test24Gui.h>
 #include <TestGLTracer.h>
 #include <DebugOPXTracer.h>
@@ -213,6 +214,52 @@ void Test24Application::InitScene()
     //}
     if (m_ObjModelManager->LoadAsset("Bistro-Exterior", TEST_TEST24_DATA_PATH"/Models/Bistro/Exterior/exterior.obj")) {
         m_CurObjModelName = "Bistro-Exterior";
+        auto& [meshGroup,materials] = m_ObjModelManager->GetAsset(m_CurObjModelName);
+        auto  aabb = rtlib::utils::AABB();
+        for (auto& vertex : meshGroup->GetSharedResource()->vertexBuffer) {
+            aabb.Update(vertex);
+        }
+
+        auto uniqueResource = rtlib::ext::MeshUniqueResource::New();
+        size_t indOffset = meshGroup->GetSharedResource()->vertexBuffer.Size();
+
+        uniqueResource->name = "CustomRefractor";
+        uniqueResource->triIndBuffer.PushBack(make_uint3(indOffset + 0, indOffset + 2, indOffset + 1));
+        uniqueResource->triIndBuffer.PushBack(make_uint3(indOffset + 3, indOffset + 2, indOffset + 0));
+        uniqueResource->matIndBuffer.PushBack(0);
+        uniqueResource->matIndBuffer.PushBack(0);
+        uniqueResource->materials.resize(1);
+        uniqueResource->materials[0] = materials.size();
+        uniqueResource->variables.SetBool("hasLight", false);
+
+        meshGroup->GetSharedResource()->vertexBuffer.PushBack(make_float3(aabb.min.x, 250, aabb.min.z));
+        meshGroup->GetSharedResource()->vertexBuffer.PushBack(make_float3(aabb.max.x, 250, aabb.min.z));
+        meshGroup->GetSharedResource()->vertexBuffer.PushBack(make_float3(aabb.max.x, 250, aabb.max.z));
+        meshGroup->GetSharedResource()->vertexBuffer.PushBack(make_float3(aabb.min.x, 250, aabb.max.z));
+        meshGroup->GetSharedResource()->normalBuffer.PushBack(make_float3(0.0f, 1.0f, 0.0f));
+        meshGroup->GetSharedResource()->normalBuffer.PushBack(make_float3(0.0f, 1.0f, 0.0f));
+        meshGroup->GetSharedResource()->normalBuffer.PushBack(make_float3(0.0f, 1.0f, 0.0f));
+        meshGroup->GetSharedResource()->normalBuffer.PushBack(make_float3(0.0f, 1.0f, 0.0f));
+        meshGroup->GetSharedResource()->texCrdBuffer.PushBack(make_float2(0.0f, 0.0f));
+        meshGroup->GetSharedResource()->texCrdBuffer.PushBack(make_float2(1.0f, 0.0f));
+        meshGroup->GetSharedResource()->texCrdBuffer.PushBack(make_float2(1.0f, 1.0f));
+        meshGroup->GetSharedResource()->texCrdBuffer.PushBack(make_float2(0.0f, 1.0f));
+
+        materials.push_back(rtlib::ext::VariableMap());
+        materials.back().SetString("name"    , "CustomRefractor");
+        materials.back().SetUInt32("illum"   , 7);
+        materials.back().SetFloat3("diffCol" , {0.01f,0.01f,0.01f });
+        materials.back().SetFloat3("specCol" , { 0.3f, 0.3f, 0.3f });
+        materials.back().SetFloat3("emitCol" , { 0.0f, 0.0f, 0.0f });
+        materials.back().SetFloat3("tranCol" , { 0.1f, 0.1f, 0.1f });
+        materials.back().SetFloat1("refrIndx", 1.33f);
+        materials.back().SetString("diffTex" , "");
+        materials.back().SetString("specTex" , "");
+        materials.back().SetString("emitTex" , "");
+        materials.back().SetString("shinTex" , "");
+        materials.back().SetFloat1("shinness", 200.0f);
+
+        meshGroup->SetUniqueResource(uniqueResource->name,uniqueResource);
     }
     {
         size_t materialSize = 0;
