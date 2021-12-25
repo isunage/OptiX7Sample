@@ -131,7 +131,7 @@ void Test24Application::InitBase()
     //m_TracePublicNames.push_back("GuidePathOPX");
     //m_TracePublicNames.push_back("GuideNEEOPX");
     m_TracePublicNames.push_back("GuideWRSOPX");
-    m_TracePublicNames.push_back("GuideReSTIROPX");
+    //m_TracePublicNames.push_back("GuideReSTIROPX");
     m_TracePublicNames.push_back("ReSTIROPX");
     m_TracePublicNames.push_back("DebugOPX");
     m_CurMainTraceName = m_TracePublicNames.front();
@@ -212,54 +212,12 @@ void Test24Application::InitScene()
     //if (m_ObjModelManager->LoadAsset("CornellBox-Water", TEST_TEST24_DATA_PATH"/Models/CornellBox/CornellBox-Water.obj")) {
     //    m_CurObjModelName = "CornellBox-Water";
     //}
+    auto  mainAabb = rtlib::utils::AABB();
     if (m_ObjModelManager->LoadAsset("Bistro-Exterior", TEST_TEST24_DATA_PATH"/Models/Bistro/Exterior/exterior.obj")) {
         m_CurObjModelName = "Bistro-Exterior";
-        auto& [meshGroup,materials] = m_ObjModelManager->GetAsset(m_CurObjModelName);
-        auto  aabb = rtlib::utils::AABB();
-        for (auto& vertex : meshGroup->GetSharedResource()->vertexBuffer) {
-            aabb.Update(vertex);
-        }
-
-        auto uniqueResource = rtlib::ext::MeshUniqueResource::New();
-        size_t indOffset = meshGroup->GetSharedResource()->vertexBuffer.Size();
-
-        uniqueResource->name = "CustomRefractor";
-        uniqueResource->triIndBuffer.PushBack(make_uint3(indOffset + 0, indOffset + 2, indOffset + 1));
-        uniqueResource->triIndBuffer.PushBack(make_uint3(indOffset + 3, indOffset + 2, indOffset + 0));
-        uniqueResource->matIndBuffer.PushBack(0);
-        uniqueResource->matIndBuffer.PushBack(0);
-        uniqueResource->materials.resize(1);
-        uniqueResource->materials[0] = materials.size();
-        uniqueResource->variables.SetBool("hasLight", false);
-
-        meshGroup->GetSharedResource()->vertexBuffer.PushBack(make_float3(aabb.min.x, 250, aabb.min.z));
-        meshGroup->GetSharedResource()->vertexBuffer.PushBack(make_float3(aabb.max.x, 250, aabb.min.z));
-        meshGroup->GetSharedResource()->vertexBuffer.PushBack(make_float3(aabb.max.x, 250, aabb.max.z));
-        meshGroup->GetSharedResource()->vertexBuffer.PushBack(make_float3(aabb.min.x, 250, aabb.max.z));
-        meshGroup->GetSharedResource()->normalBuffer.PushBack(make_float3(0.0f, 1.0f, 0.0f));
-        meshGroup->GetSharedResource()->normalBuffer.PushBack(make_float3(0.0f, 1.0f, 0.0f));
-        meshGroup->GetSharedResource()->normalBuffer.PushBack(make_float3(0.0f, 1.0f, 0.0f));
-        meshGroup->GetSharedResource()->normalBuffer.PushBack(make_float3(0.0f, 1.0f, 0.0f));
-        meshGroup->GetSharedResource()->texCrdBuffer.PushBack(make_float2(0.0f, 0.0f));
-        meshGroup->GetSharedResource()->texCrdBuffer.PushBack(make_float2(1.0f, 0.0f));
-        meshGroup->GetSharedResource()->texCrdBuffer.PushBack(make_float2(1.0f, 1.0f));
-        meshGroup->GetSharedResource()->texCrdBuffer.PushBack(make_float2(0.0f, 1.0f));
-
-        materials.push_back(rtlib::ext::VariableMap());
-        materials.back().SetString("name"    , "CustomRefractor");
-        materials.back().SetUInt32("illum"   , 7);
-        materials.back().SetFloat3("diffCol" , {0.01f,0.01f,0.01f });
-        materials.back().SetFloat3("specCol" , { 0.3f, 0.3f, 0.3f });
-        materials.back().SetFloat3("emitCol" , { 0.0f, 0.0f, 0.0f });
-        materials.back().SetFloat3("tranCol" , { 0.1f, 0.1f, 0.1f });
-        materials.back().SetFloat1("refrIndx", 1.33f);
-        materials.back().SetString("diffTex" , "");
-        materials.back().SetString("specTex" , "");
-        materials.back().SetString("emitTex" , "");
-        materials.back().SetString("shinTex" , "");
-        materials.back().SetFloat1("shinness", 200.0f);
-
-        meshGroup->SetUniqueResource(uniqueResource->name,uniqueResource);
+    }
+    if (m_ObjModelManager->LoadAsset("Water", TEST_TEST24_DATA_PATH"/Models/CornellBox/water2.obj")) {
+        m_CurObjModelName = "Water";
     }
     {
         size_t materialSize = 0;
@@ -312,11 +270,7 @@ void Test24Application::InitScene()
                     {
                         std::cout << "EmitTex \"" << emitTexPath << "\" Not Found!\n";
                         material.SetString("emitTex", "");
-                    }
-                    else {
-                        if (material.GetFloat3("emitCol")[0] == 0.0f &&
-                            material.GetFloat3("emitCol")[1] == 0.0f &&
-                            material.GetFloat3("emitCol")[2] == 0.0f) {
+                        if ((material.GetFloat3("emitCol")[0]+ material.GetFloat3("emitCol")[1]+ material.GetFloat3("emitCol")[2])/3 < 0.1f) {
                             material.SetFloat3("emitCol", { 1.0f,1.0f,1.0f });
                         }
                     }
@@ -333,18 +287,16 @@ void Test24Application::InitScene()
             }
         }
     }
-
-    m_GASHandles["World"] = std::make_shared<rtlib::ext::GASHandle>();
     m_GASHandles["Light"] = std::make_shared<rtlib::ext::GASHandle>();
-
     {
         OptixAccelBuildOptions accelBuildOptions = {};
         accelBuildOptions.buildFlags = OPTIX_BUILD_FLAG_ALLOW_COMPACTION | OPTIX_BUILD_FLAG_PREFER_FAST_TRACE;
         accelBuildOptions.operation = OPTIX_BUILD_OPERATION_BUILD;
         {
             size_t materialOffset = 0;
-            for (auto& [name, objModel] : m_ObjModelManager->GetAssets())
+            for (auto& [objName, objModel] : m_ObjModelManager->GetAssets())
             {
+                m_GASHandles[objName] = std::make_shared<rtlib::ext::GASHandle>();
                 if (!objModel.meshGroup->GetSharedResource()->vertexBuffer.HasGpuComponent("CUDA"))
                 {
                     objModel.meshGroup->GetSharedResource()->vertexBuffer.AddGpuComponent<rtlib::ext::resources::CUDABufferComponent<float3>>("CUDA");
@@ -357,15 +309,15 @@ void Test24Application::InitScene()
                 {
                     objModel.meshGroup->GetSharedResource()->texCrdBuffer.AddGpuComponent<rtlib::ext::resources::CUDABufferComponent<float2>>("CUDA");
                 }
-                for (auto& [name, meshUniqueResource] : objModel.meshGroup->GetUniqueResources())
+                for (auto& [meshName, meshUniqueResource] : objModel.meshGroup->GetUniqueResources())
                 {
                     if (!meshUniqueResource->matIndBuffer.HasGpuComponent("CUDA"))
                     {
-                        meshUniqueResource->matIndBuffer.AddGpuComponent<rtlib::ext::resources::CUDABufferComponent<uint32_t>>("CUDA");
+                         meshUniqueResource->matIndBuffer.AddGpuComponent<rtlib::ext::resources::CUDABufferComponent<uint32_t>>("CUDA");
                     }
                     if (!meshUniqueResource->triIndBuffer.HasGpuComponent("CUDA"))
                     {
-                        meshUniqueResource->triIndBuffer.AddGpuComponent<rtlib::ext::resources::CUDABufferComponent<uint3>>("CUDA");
+                         meshUniqueResource->triIndBuffer.AddGpuComponent<rtlib::ext::resources::CUDABufferComponent<uint3>>("CUDA");
                     }
 
                     auto mesh = rtlib::ext::Mesh::New();
@@ -382,13 +334,13 @@ void Test24Application::InitScene()
                     }
                     else
                     {
-                        m_GASHandles["World"]->AddMesh(mesh);
+                        m_GASHandles[objName]->AddMesh(mesh);
                     }
                 }
                 materialOffset += objModel.materials.size();
+                m_GASHandles[objName]->Build(m_Context->GetOPX7Handle().get(), accelBuildOptions);
             }
         }
-        m_GASHandles["World"]->Build(m_Context->GetOPX7Handle().get(), accelBuildOptions);
         m_GASHandles["Light"]->Build(m_Context->GetOPX7Handle().get(), accelBuildOptions);
     }
     {
@@ -405,19 +357,65 @@ void Test24Application::InitScene()
     {
         OptixAccelBuildOptions accelOptions = {};
         accelOptions.buildFlags = OPTIX_BUILD_FLAG_ALLOW_COMPACTION | OPTIX_BUILD_FLAG_PREFER_FAST_TRACE;
-        accelOptions.operation = OPTIX_BUILD_OPERATION_BUILD;
+        accelOptions.operation  = OPTIX_BUILD_OPERATION_BUILD;
         //World
         auto worldInstance = rtlib::ext::Instance();
-        worldInstance.Init(m_GASHandles["World"]);
+        worldInstance.Init(m_GASHandles["Bistro-Exterior"]);
         worldInstance.SetSbtOffset(0);
         //Light
         auto lightInstance = rtlib::ext::Instance();
         lightInstance.Init(m_GASHandles["Light"]);
         lightInstance.SetSbtOffset(worldInstance.GetSbtCount() * TEST_TEST24_NUM_RAY_TYPE);
+        //New Water Scene
+        auto waterInstances= std::vector<rtlib::ext::Instance>();
+        {
+            auto worldAabb = rtlib::utils::AABB();
+            for (auto& vertex : m_ObjModelManager->GetAsset("Bistro-Exterior").meshGroup->GetSharedResource()->vertexBuffer) {
+                worldAabb.Update(vertex);
+            }
+            auto waterAabb = rtlib::utils::AABB();
+            for (auto& vertex : m_ObjModelManager->GetAsset("Water").meshGroup->GetSharedResource()->vertexBuffer) {
+                waterAabb.Update(vertex);
+            }
+            std::cout << "(" << waterAabb.min.x << "," << waterAabb.min.y << "," << waterAabb.min.z << ")" << std::endl;
+            std::cout << "(" << waterAabb.max.x << "," << waterAabb.max.y << "," << waterAabb.max.z << ")" << std::endl;
+            std::cout << "(" << worldAabb.min.x << "," << worldAabb.min.y << "," << worldAabb.min.z << ")" << std::endl;
+            std::cout << "(" << worldAabb.max.x << "," << worldAabb.max.y << "," << worldAabb.max.z << ")" << std::endl;
+
+            float3 worldOffset = worldAabb.min;
+            float3 worldSizes  = (worldAabb.max - worldAabb.min);
+
+            float3 waterOffset = waterAabb.min;
+            float3 waterSizes  = (waterAabb.max - waterAabb.min);
+
+            float3 waterScales = make_float3(100.0f, 100.0f, 100.0f);
+            uint2  waterCounts = make_uint2(worldSizes.x/(waterSizes.x* waterScales.x) +100, worldSizes.z / (waterSizes.z * waterScales.z) +100);
+
+            waterInstances.resize(waterCounts.x* waterCounts.y);
+            unsigned int idx = 0;
+            unsigned int sbtOffset = lightInstance.GetSbtOffset() + lightInstance.GetSbtCount() * TEST_TEST24_NUM_RAY_TYPE;
+            for (auto& waterInstance : waterInstances) {
+                waterInstance.Init(m_GASHandles["Water"]);
+                waterInstance.SetSbtOffset(sbtOffset);
+                float3 currentOffset = (make_float3(worldAabb.min.x,0.0f,worldAabb.min.z) - waterScales * waterAabb.min) + make_float3(waterScales.x*(idx%waterCounts.x),250.0f, waterScales.z * (idx / waterCounts.x));
+                float  transforms[12] = {
+                    waterScales.x,0.0f,0.0f,currentOffset.x,
+                    0.0f,waterScales.y,0.0f,currentOffset.y,
+                    0.0f,0.0f,waterScales.z,currentOffset.z
+                };
+                std::memcpy(waterInstance.instance.transform, transforms, sizeof(transforms));
+                sbtOffset+=waterInstance.GetSbtCount() * TEST_TEST24_NUM_RAY_TYPE;
+                idx++;
+            }
+        }
         //InstanceSet
         auto instanceSet = std::make_shared<rtlib::ext::InstanceSet>();
         instanceSet->SetInstance(worldInstance);
         instanceSet->SetInstance(lightInstance);
+
+        for (auto& waterInstance : waterInstances) {
+            instanceSet->SetInstance(waterInstance);
+        }
         instanceSet->Upload();
         //AddInstanceSet
         m_IASHandles["TopLevel"]->AddInstanceSet(instanceSet);

@@ -325,6 +325,7 @@ void Test24PathOPXTracer::Initialize()
 		{
 			for (auto& baseGASHandle : instanceSet->baseGASHandles)
 			{
+
 				for (auto& mesh : baseGASHandle->GetMeshes())
 				{
 					if (!mesh->GetSharedResource()->vertexBuffer.HasGpuComponent("CUDA")) {
@@ -345,7 +346,6 @@ void Test24PathOPXTracer::Initialize()
 					auto cudaTriIndBuffer = mesh->GetUniqueResource()->triIndBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<uint3>>("CUDA");
 					for (size_t i = 0; i < mesh->GetUniqueResource()->materials.size(); ++i)
 					{
-
 						auto materialId = mesh->GetUniqueResource()->materials[i];
 						auto& material = materials[materialId];
 						if (!this->m_Impl->m_TextureManager->GetAsset(material.GetString("diffTex")).HasGpuComponent("CUDATexture")) {
@@ -388,6 +388,7 @@ void Test24PathOPXTracer::Initialize()
 					sbtOffset += mesh->GetUniqueResource()->materials.size();
 				}
 			}
+
 		}
 	}
 	this->m_Impl->m_HGRecordBuffers.Upload();

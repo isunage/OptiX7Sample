@@ -10,7 +10,7 @@ set(RAY_TRACE_D_FILTER           DirectionalFilterNearest)
 # Specular�ʂɑ΂���WRS���s�����ADefault�ł͍s��Ȃ��i��ق�shinness�������Ȃ���΂ނ��땪�U�͑�������X���j
 set(RAY_TRACE_NEE_SPECULAR 0)
 # float�̎w����23->2^-23,2^-23,2^-23
-set(PATH_GUIDING_STREE_MAX_DEPTH 69)
+set(PATH_GUIDING_STREE_MAX_DEPTH 120)
 # float�̎w����23
 set(PATH_GUIDING_DTREE_MAX_DEPTH 24)
 set(PATH_GUIDING_LI_COSINE       1)

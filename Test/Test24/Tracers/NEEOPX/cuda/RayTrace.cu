@@ -417,13 +417,21 @@ extern "C" __global__ void __closesthit__radiance_for_refraction() {
     float3 specular = hgData->getSpecularColor(texCoord);
     float3 transmit = hgData->transmit;
     {
-        const auto reflectDir = rtlib::normalize(rtlib::reflect(rayDirection, normal));
-        float  cosine_i = -rtlib::dot(normal, rayDirection);
-        float  sine_o_2 = (1.0f - rtlib::pow2(cosine_i)) * rtlib::pow2(refInd);
-
+        float3 reflectDir = rtlib::normalize(rtlib::reflect(rayDirection, normal));
+        float  cosine_i   = -rtlib::dot(normal, rayDirection);
+        float  sine_o_2   = (1.0f - rtlib::pow2(cosine_i)) * rtlib::pow2(refInd);
+#if 0
         float  f0 = rtlib::pow2((1 - refInd) / (1 + refInd));
         float  fresnell = f0 + (1.0f - f0) * rtlib::pow5(1.0f - cosine_i);
-
+#else
+        float  fresnell = 0.0f;
+        {
+            float  cosine_o = sqrtf(rtlib::max(1.0f - sine_o_2, 0.0f));
+            float  r_p = (cosine_i - refInd * cosine_o) / (cosine_i + refInd * cosine_o);
+            float  r_s = (refInd * cosine_i - cosine_o) / (refInd * cosine_i + cosine_o);
+            fresnell = (r_p * r_p + r_s * r_s) / 2.0f;
+        }
+#endif
         if (rtlib::random_float1(0.0f, 1.0f, xor32) < fresnell || sine_o_2 > 1.0f) {
 
             //printf("reflect: %lf %lf %lf\n", reflectDir.x, reflectDir.y, reflectDir.z);

@@ -962,7 +962,7 @@ namespace test24_wrs_guide {
 				return;
 			}
 			size_t sTreeTh = std::sqrt(std::pow(2.0, iter) * samplePerPasses / 4.0f) * 4000;
-			m_CpuSTree.Refine(sTreeTh, 2000);
+			m_CpuSTree.Refine(sTreeTh, 4000);
 			for (int i = 0; i < m_CpuSTree.GetNumNodes(); ++i) {
 				if (m_CpuSTree.Node(i).isLeaf) {
 					m_CpuSTree.Node(i).dTree.Reset(m_MaxDTreeDepth, 0.01);
