@@ -212,12 +212,17 @@ void Test24Application::InitScene()
     //if (m_ObjModelManager->LoadAsset("CornellBox-Water", TEST_TEST24_DATA_PATH"/Models/CornellBox/CornellBox-Water.obj")) {
     //    m_CurObjModelName = "CornellBox-Water";
     //}
-    auto  mainAabb = rtlib::utils::AABB();
+    //auto  mainAabb = rtlib::utils::AABB();
     if (m_ObjModelManager->LoadAsset("Bistro-Exterior", TEST_TEST24_DATA_PATH"/Models/Bistro/Exterior/exterior.obj")) {
         m_CurObjModelName = "Bistro-Exterior";
     }
-    if (m_ObjModelManager->LoadAsset("Water", TEST_TEST24_DATA_PATH"/Models/CornellBox/water2.obj")) {
-        m_CurObjModelName = "Water";
+    if (m_ObjModelManager->LoadAsset("Water", TEST_TEST24_DATA_PATH"/Models/CornellBox/water2.obj")) 
+    {
+        for (auto& vertex : m_ObjModelManager->GetAsset("Water").meshGroup->GetSharedResource()->vertexBuffer)
+        {
+            vertex *= 100.0f;
+        }
+        /*m_CurObjModelName = "Water";*/
     }
     {
         size_t materialSize = 0;
@@ -360,17 +365,21 @@ void Test24Application::InitScene()
         accelOptions.operation  = OPTIX_BUILD_OPERATION_BUILD;
         //World
         auto worldInstance = rtlib::ext::Instance();
-        worldInstance.Init(m_GASHandles["Bistro-Exterior"]);
+        worldInstance.Init(m_GASHandles[m_CurObjModelName]);
         worldInstance.SetSbtOffset(0);
         //Light
         auto lightInstance = rtlib::ext::Instance();
         lightInstance.Init(m_GASHandles["Light"]);
         lightInstance.SetSbtOffset(worldInstance.GetSbtCount() * TEST_TEST24_NUM_RAY_TYPE);
+        //InstanceSet
+        auto instanceSet = std::make_shared<rtlib::ext::InstanceSet>();
+        instanceSet->SetInstance(worldInstance);
+        instanceSet->SetInstance(lightInstance);
         //New Water Scene
-        auto waterInstances= std::vector<rtlib::ext::Instance>();
+        auto waterInstances = std::vector<rtlib::ext::Instance>();
         {
             auto worldAabb = rtlib::utils::AABB();
-            for (auto& vertex : m_ObjModelManager->GetAsset("Bistro-Exterior").meshGroup->GetSharedResource()->vertexBuffer) {
+            for (auto& vertex : m_ObjModelManager->GetAsset(m_CurObjModelName).meshGroup->GetSharedResource()->vertexBuffer) {
                 worldAabb.Update(vertex);
             }
             auto waterAabb = rtlib::utils::AABB();
@@ -383,36 +392,30 @@ void Test24Application::InitScene()
             std::cout << "(" << worldAabb.max.x << "," << worldAabb.max.y << "," << worldAabb.max.z << ")" << std::endl;
 
             float3 worldOffset = worldAabb.min;
-            float3 worldSizes  = (worldAabb.max - worldAabb.min);
+            float3 worldSizes = (worldAabb.max - worldAabb.min);
 
             float3 waterOffset = waterAabb.min;
-            float3 waterSizes  = (waterAabb.max - waterAabb.min);
+            float3 waterSizes = (waterAabb.max - waterAabb.min);
 
-            float3 waterScales = make_float3(100.0f, 100.0f, 100.0f);
-            uint2  waterCounts = make_uint2(worldSizes.x/(waterSizes.x* waterScales.x) +100, worldSizes.z / (waterSizes.z * waterScales.z) +100);
+            uint2  waterCounts = make_uint2(worldSizes.x / (waterSizes.x) + 100, worldSizes.z / (waterSizes.z) + 100);
 
-            waterInstances.resize(waterCounts.x* waterCounts.y);
+            waterInstances.resize(waterCounts.x * waterCounts.y);
             unsigned int idx = 0;
             unsigned int sbtOffset = lightInstance.GetSbtOffset() + lightInstance.GetSbtCount() * TEST_TEST24_NUM_RAY_TYPE;
             for (auto& waterInstance : waterInstances) {
                 waterInstance.Init(m_GASHandles["Water"]);
                 waterInstance.SetSbtOffset(sbtOffset);
-                float3 currentOffset = (make_float3(worldAabb.min.x,0.0f,worldAabb.min.z) - waterScales * waterAabb.min) + make_float3(waterScales.x*(idx%waterCounts.x),250.0f, waterScales.z * (idx / waterCounts.x));
+                float3 currentOffset = (make_float3(worldAabb.min.x, 0.0f, worldAabb.min.z) - waterAabb.min) + make_float3(waterSizes.x * (idx % waterCounts.x), 250.0f, waterSizes.z * (idx / waterCounts.x));
                 float  transforms[12] = {
-                    waterScales.x,0.0f,0.0f,currentOffset.x,
-                    0.0f,waterScales.y,0.0f,currentOffset.y,
-                    0.0f,0.0f,waterScales.z,currentOffset.z
+                    1.0f,0.0f,0.0f,currentOffset.x,
+                    0.0f,1.0f,0.0f,currentOffset.y,
+                    0.0f,0.0f,1.0f,currentOffset.z
                 };
                 std::memcpy(waterInstance.instance.transform, transforms, sizeof(transforms));
-                sbtOffset+=waterInstance.GetSbtCount() * TEST_TEST24_NUM_RAY_TYPE;
+                sbtOffset += waterInstance.GetSbtCount() * TEST_TEST24_NUM_RAY_TYPE;
                 idx++;
             }
         }
-        //InstanceSet
-        auto instanceSet = std::make_shared<rtlib::ext::InstanceSet>();
-        instanceSet->SetInstance(worldInstance);
-        instanceSet->SetInstance(lightInstance);
-
         for (auto& waterInstance : waterInstances) {
             instanceSet->SetInstance(waterInstance);
         }

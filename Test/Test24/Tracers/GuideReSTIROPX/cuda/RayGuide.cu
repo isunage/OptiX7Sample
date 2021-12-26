@@ -75,7 +75,7 @@ static __forceinline__ __device__ SurfaceRec   getSurfaceRec(const SurfaceParame
     const float3 n0 = optixTransformNormalFromObjectToWorldSpace(rtlib::normalize(rtlib::cross(v1 - v0, v2 - v0)));
     srec.vNormal = n0;
     srec.sNormal = n0;
-    if (surfParams.normals) {
+    /*if (surfParams.normals) {
         const float3 nv0 = surfParams.normals[triIndex.x];
         const float3 nv1 = surfParams.normals[triIndex.y];
         const float3 nv2 = surfParams.normals[triIndex.z];
@@ -89,7 +89,7 @@ static __forceinline__ __device__ SurfaceRec   getSurfaceRec(const SurfaceParame
                 srec.vNormal = nv;
             }
         }
-    }
+    }*/
     const auto t0 = surfParams.texCoords[triIndex.x];
     const auto t1 = surfParams.texCoords[triIndex.y];
     const auto t2 = surfParams.texCoords[triIndex.z];

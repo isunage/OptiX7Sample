@@ -335,7 +335,7 @@ extern "C" __global__ void __closesthit__radiance_for_specular() {
     const float3 v1 = hgData->vertices[hgData->indices[primitiveID].y];
     const float3 v2 = hgData->vertices[hgData->indices[primitiveID].z];
     float3       n0 = optixTransformNormalFromObjectToWorldSpace(rtlib::normalize(rtlib::cross(v1 - v0, v2 - v0)));
-    if (hgData->normals) {
+    /*if (hgData->normals) {
         const float3 nv0 = hgData->normals[hgData->indices[primitiveID].x];
         const float3 nv1 = hgData->normals[hgData->indices[primitiveID].y];
         const float3 nv2 = hgData->normals[hgData->indices[primitiveID].z];
@@ -349,7 +349,7 @@ extern "C" __global__ void __closesthit__radiance_for_specular() {
                 n0 = nv;
             }
         }
-    }
+    }*/
     float3 normal = n0;
     const auto t0 = hgData->texCoords[hgData->indices[primitiveID].x];
     const auto t1 = hgData->texCoords[hgData->indices[primitiveID].y];
@@ -379,7 +379,7 @@ extern "C" __global__ void __closesthit__radiance_for_refraction() {
     const float3 v1 = hgData->vertices[hgData->indices[primitiveID].y];
     const float3 v2 = hgData->vertices[hgData->indices[primitiveID].z];
     float3       n0 = optixTransformNormalFromObjectToWorldSpace(rtlib::normalize(rtlib::cross(v1 - v0, v2 - v0)));
-    if (hgData->normals) {
+    /*if (hgData->normals) {
         const float3 nv0 = hgData->normals[hgData->indices[primitiveID].x];
         const float3 nv1 = hgData->normals[hgData->indices[primitiveID].y];
         const float3 nv2 = hgData->normals[hgData->indices[primitiveID].z];
@@ -393,7 +393,7 @@ extern "C" __global__ void __closesthit__radiance_for_refraction() {
                 n0 = nv;
             }
         }
-    }
+    }*/
     float3 normal = {};
     float  refInd = 0.0f;
     if (rtlib::dot(n0, rayDirection) < 0.0f) {

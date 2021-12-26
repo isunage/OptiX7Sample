@@ -343,26 +343,22 @@ extern "C" __global__ void __closesthit__radiance_for_specular()   {
     const float3 vn0          = hgData->vertices[hgData->indices[primitiveID].x];
     const float3 vn1          = hgData->vertices[hgData->indices[primitiveID].y];
     const float3 vn2          = hgData->vertices[hgData->indices[primitiveID].z];
-    const float3 v0           = optixTransformPointFromObjectToWorldSpace(vn0);
-    const float3 v1           = optixTransformPointFromObjectToWorldSpace(vn1);
-    const float3 v2           = optixTransformPointFromObjectToWorldSpace(vn2);
-    float3 n0           = optixTransformNormalFromObjectToWorldSpace(rtlib::normalize(rtlib::cross(vn1 - vn0, vn2 - vn0)));
-    if (hgData->normals) {
-        const float3 nv0 = hgData->normals[hgData->indices[primitiveID].x];
-        const float3 nv1 = hgData->normals[hgData->indices[primitiveID].y];
-        const float3 nv2 = hgData->normals[hgData->indices[primitiveID].z];
-        const bool isValidNv0 = !((nv0.x == 0.0f) && (nv0.y == 0.0f) && (nv0.z == 0.0f));
-        const bool isValidNv1 = !((nv1.x == 0.0f) && (nv1.y == 0.0f) && (nv1.z == 0.0f));
-        const bool isValidNv2 = !((nv2.x == 0.0f) && (nv2.y == 0.0f) && (nv2.z == 0.0f));
-        if (isValidNv0 && isValidNv1 && isValidNv2)
-        {
-            float3 nv = optixTransformNormalFromObjectToWorldSpace(rtlib::normalize((1.0f - barycentric.x - barycentric.y) * nv0 + barycentric.x * nv1 + barycentric.y * nv2));
-            if (rtlib::dot(nv, n0) > 0.0f) {
-                n0 = nv;
-            }
-        }
-    }
-    float3 normal = n0;
+    float3 nf = optixTransformNormalFromObjectToWorldSpace(rtlib::normalize(rtlib::cross(vn1 - vn0, vn2 - vn0)));
+    //float3 n0 = nf;
+    //if (hgData->normals) {
+    //    const float3 nv0 = hgData->normals[hgData->indices[primitiveID].x];
+    //    const float3 nv1 = hgData->normals[hgData->indices[primitiveID].y];
+    //    const float3 nv2 = hgData->normals[hgData->indices[primitiveID].z];
+    //    const bool isValidNv0 = !((nv0.x == 0.0f) && (nv0.y == 0.0f) && (nv0.z == 0.0f));
+    //    const bool isValidNv1 = !((nv1.x == 0.0f) && (nv1.y == 0.0f) && (nv1.z == 0.0f));
+    //    const bool isValidNv2 = !((nv2.x == 0.0f) && (nv2.y == 0.0f) && (nv2.z == 0.0f));
+    //    if (isValidNv0 && isValidNv1 && isValidNv2)
+    //    {
+    //        float3 nv = optixTransformNormalFromObjectToWorldSpace(rtlib::normalize((1.0f - barycentric.x - barycentric.y) * nv0 + barycentric.x * nv1 + barycentric.y * nv2));
+    //        n0 = nv;
+    //    }
+    //}
+    nf = faceForward(nf, make_float3(-rayDirection.x, -rayDirection.y, -rayDirection.z), nf);
     const auto t0 = hgData->texCoords[hgData->indices[primitiveID].x];
     const auto t1 = hgData->texCoords[hgData->indices[primitiveID].y];
     const auto t2 = hgData->texCoords[hgData->indices[primitiveID].z];
@@ -372,11 +368,11 @@ extern "C" __global__ void __closesthit__radiance_for_specular()   {
     prd->emitted     = make_float3(0.0f, 0.0f, 0.0f);
     prd->attenuation2= make_float3(0.0f, 0.0f, 0.0f);
     {
-        float3 specular       = hgData->getSpecularColor(texCoord);
-        const auto reflectDir = rtlib::normalize(rtlib::reflect(rayDirection, normal));
-
-        setRayOrigin(position);
-        setRayDirection(reflectDir);
+        float3 specular = hgData->getSpecularColor(texCoord);
+        const auto reflDirection = rtlib::normalize(rtlib::reflect(rayDirection, nf));
+        
+        setRayOrigin(position + 0.01f * nf);
+        setRayDirection(reflDirection);
 
         prd->attenuation *= specular;
         prd->countEmitted = true;
@@ -393,8 +389,8 @@ extern "C" __global__ void __closesthit__radiance_for_refraction(){
     const float3 v0           = optixTransformPointFromObjectToWorldSpace(vn0);
     const float3 v1           = optixTransformPointFromObjectToWorldSpace(vn1);
     const float3 v2           = optixTransformPointFromObjectToWorldSpace(vn2);
-    float3 n0           = optixTransformNormalFromObjectToWorldSpace(rtlib::normalize(rtlib::cross(vn1 - vn0, vn2 - vn0)));
-    if (hgData->normals) {
+    float3 n0                 = optixTransformNormalFromObjectToWorldSpace(rtlib::normalize(rtlib::cross(vn1 - vn0, vn2 - vn0)));
+    /*if (hgData->normals) {
         const float3 nv0      = hgData->normals[hgData->indices[primitiveID].x];
         const float3 nv1      = hgData->normals[hgData->indices[primitiveID].y];
         const float3 nv2      = hgData->normals[hgData->indices[primitiveID].z];
@@ -408,7 +404,7 @@ extern "C" __global__ void __closesthit__radiance_for_refraction(){
                 n0 = nv;
             }
         }
-    }
+    }*/
     float3 normal = {};
     float  refInd = 0.0f;
     //        ^ n0
@@ -440,7 +436,7 @@ extern "C" __global__ void __closesthit__radiance_for_refraction(){
         const auto reflectDir = rtlib::normalize(rtlib::reflect(rayDirection, normal));
         float  cosine_i       =-rtlib::dot(normal, rayDirection);
         float  sine_o_2       = (1.0f - rtlib::pow2(cosine_i)) * rtlib::pow2(refInd);
-#if 1
+#if 0
         float  f0 = rtlib::pow2((1 - refInd) / (1 + refInd));
         float  fresnell = f0 + (1.0f - f0) * rtlib::pow5(1.0f - cosine_i);
 #else
