@@ -527,6 +527,7 @@ public:
             }
             bool saveIter = isLaunched && samplePerAll && ((samplePerAll % m_SamplePerSave)==0);
             if (pushSave || saveIter) {
+                std::cout << "GuidPathTrace Save: " << samplePerAll << std::endl;
                 std::string filePathBase = std::string(TEST_TEST24_PATH_OPX_RSLT_PATH) + "/" + saveFilePath + "result_path_" + std::to_string(samplePerAll);
                 std::string filePathPng = filePathBase + ".png";
                 auto rTexture = GetFramebuffer()->GetComponent<test::RTGLTextureFBComponent<uchar4>>("RTexture");
@@ -894,6 +895,7 @@ public:
             }
             bool saveIter = isLaunched && samplePerAll && ((samplePerAll % m_SamplePerSave)==0);
             if (pushSave || saveIter){
+                std::cout << "GuidePathTrace Save: " << samplePerAll << std::endl;
                 std::string filePathBase = std::string(TEST_TEST24_GUIDE_PATH_OPX_RSLT_PATH) + "/" + saveFilePath + "result_guide_path_" + std::to_string(samplePerAll);
                 std::string filePathPng = filePathBase + ".png";
                 auto rTexture = GetFramebuffer()->GetComponent<test::RTGLTextureFBComponent<uchar4>>("RTexture");

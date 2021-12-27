@@ -362,10 +362,8 @@ extern "C" __global__ void __closesthit__radiance_for_specular() {
     {
         float3 specular = hgData->getSpecularColor(texCoord);
         const auto reflectDir = rtlib::normalize(rtlib::reflect(rayDirection, normal));
-
         setRayOrigin(position);
         setRayDirection(reflectDir);
-
         prd->attenuation *= specular;
         prd->countEmitted = true;
     }

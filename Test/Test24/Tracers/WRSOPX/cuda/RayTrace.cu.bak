@@ -135,9 +135,13 @@ extern "C" __global__ void __raygen__def() {
         prd.countEmitted = true;
         prd.done = false;
         prd.seed = seed;
+        int depth = 0;
+        if (depth >= params.maxTraceDepth) {
+            prd.done = true;
+        }
         float t_min = 0.01f;
         float t_max = 1e16f;
-        int depth = 1;
+        depth++;
         for (;;) {
             if (depth >= params.maxTraceDepth) {
                 prd.done = true;
@@ -148,6 +152,7 @@ extern "C" __global__ void __raygen__def() {
             if (prd.done || isnan(rayDirection.x) || isnan(rayDirection.y) || isnan(rayDirection.z)) {
                 break;
             }
+            t_max = 1e16f;
             depth++;
         }
         seed = prd.seed;
@@ -198,7 +203,7 @@ extern "C" __global__ void __closesthit__radiance_for_diffuse_nee_with_nee_light
 
     RadiancePRD* prd = getRadiancePRD();
     float3 prvAttenuation = prd->attenuation;
-    prd->emitted = emission * prvAttenuation * static_cast<float>(prd->countEmitted) * static_cast<float>(rtlib::dot(n0, rayDirection) < 0.0f);
+    prd->emitted = emission * prvAttenuation * static_cast<float>(prd->countEmitted);
     if (prd->done) {
         prd->radiance = make_float3(0.0f);
         return;
@@ -211,7 +216,7 @@ extern "C" __global__ void __closesthit__radiance_for_diffuse_nee_with_nee_light
         setRayDirection(newDirection);
 
         prd->attenuation *= diffuse;
-        prd->countEmitted = true;
+        prd->countEmitted = false;
     }
     {
         Reservoir<LightRec> resv = {};
@@ -220,9 +225,8 @@ extern "C" __global__ void __closesthit__radiance_for_diffuse_nee_with_nee_light
         auto lightDir_y = make_float3(0.0f);
         auto distance_y = 0.0f;
         for (int i = 0; i < params.numCandidates; ++i) {
-            LightRec lRec  = {};
-            auto  lightId  = rtlib::random_float1(0.0f, 1.0f, xor32) * static_cast<float>(params.light.count);
-            auto& light    = params.light.data[static_cast<unsigned int>(lightId)];
+            LightRec lRec = {};
+            auto& light = params.light.data[xor32.next() % params.light.count];
             auto  distance = 0.0f;
             auto  invAreaP = 0.0f;
             auto  lightDir = light.Sample(position, lRec, distance, invAreaP, xor32);
@@ -274,7 +278,7 @@ extern "C" __global__ void __closesthit__radiance_for_diffuse_nee_with_def_light
 
     RadiancePRD* prd = getRadiancePRD();
     float3 prvAttenuation = prd->attenuation;
-    prd->emitted = emission * prvAttenuation * static_cast<float>(rtlib::dot(n0, rayDirection) < 0.0f);
+    prd->emitted = emission * prvAttenuation;
     if (prd->done) {
         prd->radiance = make_float3(0.0f);
         return;
@@ -296,9 +300,8 @@ extern "C" __global__ void __closesthit__radiance_for_diffuse_nee_with_def_light
         auto lightDir_y = make_float3(0.0f);
         auto distance_y = 0.0f;
         for (int i = 0; i < params.numCandidates; ++i) {
-            LightRec lRec  = {};
-            auto  lightId  = rtlib::random_float1(0.0f, 1.0f, xor32) * static_cast<float>(params.light.count);
-            auto& light    = params.light.data[static_cast<unsigned int>(lightId)];
+            LightRec lRec = {};
+            auto& light = params.light.data[xor32.next() % params.light.count];
             auto  distance = 0.0f;
             auto  invAreaP = 0.0f;
             auto  lightDir = light.Sample(position, lRec, distance, invAreaP, xor32);
@@ -346,7 +349,7 @@ extern "C" __global__ void __closesthit__radiance_for_diffuse_def() {
     const float3 position = optixGetWorldRayOrigin() + optixGetRayTmax() * rayDirection;
     RadiancePRD* prd = getRadiancePRD();
     float3 prvAttenuation = prd->attenuation;
-    prd->emitted = emission * prvAttenuation * static_cast<float>(rtlib::dot(n0, rayDirection) < 0.0f);
+    prd->emitted = emission * prvAttenuation;
     prd->attenuation2 = make_float3(0.0f, 0.0f, 0.0f);
     rtlib::Xorshift32 xor32(prd->seed);
     {
@@ -475,7 +478,7 @@ extern "C" __global__ void __closesthit__radiance_for_refraction() {
         if (rtlib::random_float1(0.0f, 1.0f, xor32) < fresnell || sine_o_2 > 1.0f) {
 
             //printf("reflect: %lf %lf %lf\n", reflectDir.x, reflectDir.y, reflectDir.z);
-            setRayOrigin(position + 0.01f * normal);
+            setRayOrigin(position + 0.001f * normal);
             setRayDirection(reflectDir);
             prd->attenuation *= specular;
         }
