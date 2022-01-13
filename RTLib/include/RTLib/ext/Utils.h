@@ -176,6 +176,10 @@ namespace rtlib{
                     this->Update(vertex);
                 }
             }
+            auto GetArea()const noexcept -> float {
+                float3 range = max - min;
+                return 2.0f * (range.x * range.y + range.y * range.z + range.z * range.x);
+            }
             void Update(const float3& vertex)noexcept{
                 min = rtlib::min(min,vertex);
                 max = rtlib::max(max,vertex);

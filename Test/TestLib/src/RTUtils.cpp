@@ -38,17 +38,18 @@ auto test::LoadImgFromPathAsUcharData(const std::string& filePath, int& width, i
 auto test::LoadImgFromPathAsFloatData(const std::string& filePath, int& width, int& height, int& comp, int requestComp) -> std::unique_ptr<float[]>
 {
 	std::filesystem::path path(filePath);
-	if (path.extension() == ".png" || path.extension() == ".jpg" || path.extension() == ".jpeg" || path.extension() == ".bmp")
+	if (path.extension() == ".hdr")
 	{
 		int t_w, t_h, t_c;
 		std::string pathString = path.string();
 		auto pixels = stbi_loadf(pathString.c_str(), &t_w, &t_h, &t_c, requestComp);
 		if (pixels) {
-			auto img = std::unique_ptr<float[]>(new float[t_w * t_h * t_c]);
-			std::memcpy(img.get(), pixels, sizeof(float) * t_w * t_h * t_c);
-			width    = t_w;
-			height   = t_h;
-			comp     = t_c;
+			size_t imgSize = (size_t)t_w * t_h * t_c;
+			auto img = std::unique_ptr<float[]>(new float[imgSize]);
+			std::memcpy(img.get(), pixels, sizeof(float) * imgSize);
+			width = t_w;
+			height = t_h;
+			comp = t_c;
 			stbi_image_free(pixels);
 			return std::move(img);
 		}
@@ -57,7 +58,33 @@ auto test::LoadImgFromPathAsFloatData(const std::string& filePath, int& width, i
 			return nullptr;
 		}
 	}
-	else {
+	else if (path.extension() == ".exr") {
+		std::string pathString = path.string();
+		float*       out;
+		const  char* err = nullptr;
+		int    ret = LoadEXR(&out, &width, &height, pathString.c_str(), &err);
+		if (ret != TINYEXR_SUCCESS)
+		{
+			if (err) {
+				comp = 0;
+				std::cerr << err << std::endl;
+				FreeEXRErrorMessage(err);
+				return nullptr;
+			}
+			return nullptr;
+		}
+		else {
+			comp = requestComp;
+			size_t imgSize = (size_t)width * height;
+			auto img = std::unique_ptr<float[]>(new float[imgSize * requestComp]);
+			for (size_t i = 0; i < imgSize; ++i)
+			{
+				std::memcpy(&img[requestComp * i], &out[4 * i], sizeof(float) * requestComp);
+			}
+			free(out);
+			return std::move(img);
+		}
+	}else {
 		return nullptr;
 	}
 }
@@ -110,10 +137,8 @@ bool test::SavePngImgFromGL(  const char* filename, const rtlib::GLTexture2D<uch
 	return stbi_write_png(filename, width, height, 4, imageData.data(), width * 4);
 }
 
-bool test::SaveExrImgFromCUDA(const char* filename, const rtlib::CUDABuffer<float3>& buffer, size_t width, size_t height, size_t numSample)
+bool test::SaveExrImgFromData(const char* filename, const float3* data, size_t width, size_t height, size_t numSample)
 {
-	std::vector<float3> img;
-	buffer.download(img);
 	EXRHeader header;
 	InitEXRHeader(&header);
 	EXRImage  image;
@@ -128,9 +153,9 @@ bool test::SaveExrImgFromCUDA(const char* filename, const rtlib::CUDABuffer<floa
 	{
 		for (int i = 0; i < width; ++i)
 		{
-			images[0][width * j + i] = img[width * (height - 1 - j) + i].x / static_cast<float>(numSample);
-			images[1][width * j + i] = img[width * (height - 1 - j) + i].y / static_cast<float>(numSample);
-			images[2][width * j + i] = img[width * (height - 1 - j) + i].z / static_cast<float>(numSample);
+			images[0][width * j + i] = data[width * (height - 1 - j) + i].x / static_cast<float>(numSample);
+			images[1][width * j + i] = data[width * (height - 1 - j) + i].y / static_cast<float>(numSample);
+			images[2][width * j + i] = data[width * (height - 1 - j) + i].z / static_cast<float>(numSample);
 		}
 	}
 	float* image_ptr[3];
@@ -165,3 +190,11 @@ bool test::SaveExrImgFromCUDA(const char* filename, const rtlib::CUDABuffer<floa
 	}
 	return true;
 }
+
+bool test::SaveExrImgFromCUDA(const char* filename, const rtlib::CUDABuffer<float3>& buffer, size_t width, size_t height, size_t numSample)
+{
+	std::vector<float3> img;
+	buffer.download(img);
+	return test::SaveExrImgFromData(filename, img.data(), width, height, numSample);
+}
+

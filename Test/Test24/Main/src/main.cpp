@@ -21,7 +21,7 @@ void TestMatrixCalc() {
 }
 int main(int argc, const char* argv[])
 {
-	auto app = Test24Application::New(800, 600, "Test24Application");
+	auto app = Test24Application::New(1024, 1024, "Test24Application");
 	return app->Run(argc,argv);
 
 	return 0;

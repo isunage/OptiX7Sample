@@ -1,4 +1,5 @@
 #include <TestLib/RTAssets.h>
+#include <RTLib/ext/Utils.h>
 #include <tiny_obj_loader.h>
 #include <nlohmann/json.hpp>
 #include <unordered_map>
@@ -239,6 +240,9 @@ bool test::RTObjModelAssetManager::LoadAsset(const std::string& keyName, const s
             }
             if (!materials[i].emissive_texname.empty()) {
                 phongMaterials[i].SetString("emitTex", mtlBaseDir.string() + "\\" + materials[i].emissive_texname);
+                if ((phongMaterials[i].GetFloat3("emitCol")[0] + phongMaterials[i].GetFloat3("emitCol")[1] + phongMaterials[i].GetFloat3("emitCol")[2]) / 3 < 0.1f) {
+                    phongMaterials[i].SetFloat3("emitCol", { 1.0f,1.0f,1.0f });
+                }
             }
             else {
                 phongMaterials[i].SetString("emitTex", "");
@@ -251,8 +255,75 @@ bool test::RTObjModelAssetManager::LoadAsset(const std::string& keyName, const s
             }
             phongMaterials[i].SetFloat1("shinness", materials[i].shininess);
             phongMaterials[i].SetFloat1("refrIndx", materials[i].ior);
+
+            auto emitCol = phongMaterials[i].GetFloat3As<float3>("emitCol");
+            //emitCol = 0.0f -> Surface
+            if (emitCol.x + emitCol.y + emitCol.z > 0.0f || phongMaterials[i].GetString("emitTex")!="") {
+                phongMaterials[i].SetUInt32("illum", 2);
+            }
         }
     }
+    m_ObjModels[keyName] = { meshGroup,std::move(phongMaterials) };
+    m_ObjModels[keyName].SplitLight();
+    m_ObjModels[keyName].InitAABB();
+    return true;
+}
+
+void test::RTObjModelAssetManager::FreeAsset(const std::string& keyName)
+{
+    m_ObjModels.erase(keyName);
+}
+
+auto test::RTObjModelAssetManager::GetAsset(const std::string& keyName) const -> const RTObjModel&
+{
+    // TODO: return �X�e�[�g�����g�������ɑ}�����܂�
+    return m_ObjModels.at(keyName);
+}
+
+auto test::RTObjModelAssetManager::GetAsset(const std::string& keyName) -> RTObjModel&
+{
+    // TODO: return �X�e�[�g�����g�������ɑ}�����܂�
+    return m_ObjModels.at(keyName);
+}
+
+auto test::RTObjModelAssetManager::PopAsset(const std::string& keyName) -> RTObjModel
+{
+    if (HasAsset(keyName)) {
+        auto objModel = m_ObjModels.at(keyName);
+        m_ObjModels.erase(keyName);
+        return std::move(objModel);
+    }
+    return {};
+}
+
+bool test::RTObjModelAssetManager::HasAsset(const std::string& keyName) const noexcept
+{
+    return m_ObjModels.count(keyName)!=0;
+}
+
+auto test::RTObjModelAssetManager::GetAssets() const -> const std::unordered_map<std::string, RTObjModel>&
+{
+    // TODO: return �X�e�[�g�����g�������ɑ}�����܂�
+    return m_ObjModels;
+}
+
+auto test::RTObjModelAssetManager::GetAssets()       ->       std::unordered_map<std::string, RTObjModel>&
+{
+    // TODO: return �X�e�[�g�����g�������ɑ}�����܂�
+    return m_ObjModels;
+}
+
+void test::RTObjModelAssetManager::Reset()
+{
+    m_ObjModels.clear();
+}
+
+test::RTObjModelAssetManager::~RTObjModelAssetManager() {
+    Reset();
+}
+
+void test::RTObjModel::SplitLight()
+{
     {
         auto splitMeshGroup = rtlib::ext::MeshGroup::New();
         splitMeshGroup->SetSharedResource(meshGroup->GetSharedResource());
@@ -260,8 +331,8 @@ bool test::RTObjModelAssetManager::LoadAsset(const std::string& keyName, const s
         {
             std::unordered_set<bool> materialEmitSet = {};
             for (auto& matIdx : uniqueResource->materials) {
-                auto material = phongMaterials[matIdx];
-                auto emitCol  = material.GetFloat3As<float3>("emitCol");
+                auto material = materials[matIdx];
+                auto emitCol = material.GetFloat3As<float3>("emitCol");
                 if (emitCol.x + emitCol.y + emitCol.z > 0.0f) {
                     materialEmitSet.insert(true);
                 }
@@ -273,7 +344,7 @@ bool test::RTObjModelAssetManager::LoadAsset(const std::string& keyName, const s
                 splitMeshGroup->SetUniqueResource(name, uniqueResource);
             }
             else if (materialEmitSet.count(true) > 0) {
-                uniqueResource->variables.SetBool("hasLight",true);
+                uniqueResource->variables.SetBool("hasLight", true);
             }
             else
             {
@@ -284,17 +355,17 @@ bool test::RTObjModelAssetManager::LoadAsset(const std::string& keyName, const s
         for (auto& [name, uniqueResource] : splitMeshGroup->GetUniqueResources())
         {
             meshGroup->RemoveMesh(name);
-            auto newSurfMatIndMap           = std::unordered_map<uint32_t, uint32_t>();
-            auto newEmitMatIndMap           = std::unordered_map<uint32_t, uint32_t>();
-            auto newSurfUniqueResource      = rtlib::ext::MeshUniqueResource::New();
-            auto newEmitUniqueResource      = rtlib::ext::MeshUniqueResource::New();
-            newSurfUniqueResource->name     = uniqueResource->name + ".Surface";
+            auto newSurfMatIndMap = std::unordered_map<uint32_t, uint32_t>();
+            auto newEmitMatIndMap = std::unordered_map<uint32_t, uint32_t>();
+            auto newSurfUniqueResource = rtlib::ext::MeshUniqueResource::New();
+            auto newEmitUniqueResource = rtlib::ext::MeshUniqueResource::New();
+            newSurfUniqueResource->name = uniqueResource->name + ".Surface";
             newSurfUniqueResource->variables.SetBool("hasLight", false);
-            newEmitUniqueResource->name     = uniqueResource->name + ".Emission";
+            newEmitUniqueResource->name = uniqueResource->name + ".Emission";
             newEmitUniqueResource->variables.SetBool("hasLight", true);
-            for (auto i = 0; i < uniqueResource->matIndBuffer.Size();++i) {
+            for (auto i = 0; i < uniqueResource->matIndBuffer.Size(); ++i) {
                 auto  matIndex = uniqueResource->matIndBuffer[i];
-                auto& material = phongMaterials[uniqueResource->materials[matIndex]];
+                auto& material = materials[uniqueResource->materials[matIndex]];
                 auto emitCol   = material.GetFloat3As<float3>("emitCol");
                 //emitCol = 0.0f -> Surface
                 if (emitCol.x + emitCol.y + emitCol.z > 0.0f) {
@@ -327,7 +398,7 @@ bool test::RTObjModelAssetManager::LoadAsset(const std::string& keyName, const s
         splitMeshGroup->SetSharedResource(meshGroup->GetSharedResource());
         for (auto& [name, uniqueResource] : meshGroup->GetUniqueResources())
         {
-            if (uniqueResource->variables.GetBool("hasLight") && uniqueResource->materials.size()>1) {
+            if (uniqueResource->variables.GetBool("hasLight") && uniqueResource->materials.size() > 1) {
                 splitMeshGroup->SetUniqueResource(name, uniqueResource);
             }
         }
@@ -339,7 +410,7 @@ bool test::RTObjModelAssetManager::LoadAsset(const std::string& keyName, const s
             for (auto i = 0; i < uniqueResource->materials.size(); ++i)
             {
                 newEmitUniqueResources[i] = rtlib::ext::MeshUniqueResource::New();
-                newEmitUniqueResources[i]->name     = uniqueResource->name + "." + std::to_string(i);
+                newEmitUniqueResources[i]->name = uniqueResource->name + "." + std::to_string(i);
                 newEmitUniqueResources[i]->materials.push_back(uniqueResource->materials[i]);
                 newEmitUniqueResources[i]->variables.SetBool("hasLight", true);
             }
@@ -354,49 +425,26 @@ bool test::RTObjModelAssetManager::LoadAsset(const std::string& keyName, const s
             }
         }
     }
-    m_ObjModels[keyName] = { meshGroup,std::move(phongMaterials) };
-    return true;
 }
 
-void test::RTObjModelAssetManager::FreeAsset(const std::string& keyName)
+void test::RTObjModel::InitAABB()
 {
-    m_ObjModels.erase(keyName);
-}
-
-auto test::RTObjModelAssetManager::GetAsset(const std::string& keyName) const -> const RTObjModel&
-{
-    // TODO: return �X�e�[�g�����g�������ɑ}�����܂�
-    return m_ObjModels.at(keyName);
-}
-
-auto test::RTObjModelAssetManager::GetAsset(const std::string& keyName) -> RTObjModel&
-{
-    // TODO: return �X�e�[�g�����g�������ɑ}�����܂�
-    return m_ObjModels.at(keyName);
-}
-
-bool test::RTObjModelAssetManager::HasAsset(const std::string& keyName) const noexcept
-{
-    return m_ObjModels.count(keyName)!=0;
-}
-
-auto test::RTObjModelAssetManager::GetAssets() const -> const std::unordered_map<std::string, RTObjModel>&
-{
-    // TODO: return �X�e�[�g�����g�������ɑ}�����܂�
-    return m_ObjModels;
-}
-
-auto test::RTObjModelAssetManager::GetAssets()       ->       std::unordered_map<std::string, RTObjModel>&
-{
-    // TODO: return �X�e�[�g�����g�������ɑ}�����܂�
-    return m_ObjModels;
-}
-
-void test::RTObjModelAssetManager::Reset()
-{
-    m_ObjModels.clear();
-}
-
-test::RTObjModelAssetManager::~RTObjModelAssetManager() {
-    Reset();
+    for (auto& [name, uniqueResource] : meshGroup->GetUniqueResources())
+    {
+        rtlib::utils::AABB aabb;
+        for (auto& triIdx : uniqueResource->triIndBuffer) {
+            aabb.Update(meshGroup->GetSharedResource()->vertexBuffer[triIdx.x]);
+            aabb.Update(meshGroup->GetSharedResource()->vertexBuffer[triIdx.y]);
+            aabb.Update(meshGroup->GetSharedResource()->vertexBuffer[triIdx.z]);
+        }
+        uniqueResource->variables.SetFloat3From("aabb.min", aabb.min);
+        uniqueResource->variables.SetFloat3From("aabb.max", aabb.max);
+    }
+    //AABB
+    rtlib::utils::AABB aabb;
+    for (auto& vertex : meshGroup->GetSharedResource()->vertexBuffer) {
+        aabb.Update(vertex);
+    }
+    meshGroup->GetSharedResource()->variables.SetFloat3From("aabb.min", aabb.min);
+    meshGroup->GetSharedResource()->variables.SetFloat3From("aabb.max", aabb.max);
 }

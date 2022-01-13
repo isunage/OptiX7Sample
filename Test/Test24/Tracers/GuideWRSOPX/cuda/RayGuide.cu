@@ -2,6 +2,8 @@
 #include "RayTrace.h"
 #include "PathGuiding.h"
 using namespace test24_wrs_guide;
+#define RAY_TRACE_USE_VERTEX_NORMAL 0
+#define RAY_TRACE_USE_FRESNELL 1
 struct RadiancePRD {
     DTreeWrapper* dTree;
     float3        dTreeVoxelSize;
@@ -282,7 +284,7 @@ extern "C" __global__ void __raygen__pg_nee() {
         prd.seed = seed;
         int depth = 0;
         for (;;) {
-            if (depth >= params.maxTraceDepth-1) {
+            if (depth >= params.maxTraceDepth) {
                 prd.done = true;
             }
             traceRadiance(params.gasHandle, rayOrigin, rayDirection, 0.01f, 1e16f, &prd);
@@ -459,14 +461,16 @@ extern "C" __global__ void __closesthit__radiance_for_diffuse_nee() {
 
     {
         LightRec lRec = {};
-        auto& light = params.light.data[xor32.next() % params.light.count];
+        int   lightIdx = rtlib::random_float1(xor32) * static_cast<float>(params.light.count);
+        auto& light    = params.light.data[lightIdx];
         auto  distance = 0.0f;
         auto  invAreaP = 0.0f;
         auto  lightDir = light.Sample(position, lRec, distance, invAreaP, xor32);
-        auto  ndl      = rtlib::dot(lightDir, normal);
+        auto  ndl = rtlib::max( rtlib::dot(lightDir,      normal), 0.0f);
+        auto lndl = rtlib::max(-rtlib::dot(lightDir, lRec.normal), 0.0f);
         auto  emission = lRec.emission;
-        auto  bsdf     = diffuse / RTLIB_M_PI;
-        auto  g        = ndl * fabsf(rtlib::dot(lightDir, lRec.normal)) /(distance * distance);
+        auto  bsdf = diffuse * RTLIB_M_INV_PI;
+        auto  g        = ndl * lndl /(distance * distance);
         invAreaP      *= static_cast<float>(params.light.count);
         auto  f        = emission * bsdf * g;
         auto  f_a      = (f.x + f.y + f.z) / 3.0f;
@@ -508,7 +512,9 @@ extern "C" __global__ void __closesthit__radiance_for_diffuse_pg_def() {
     const auto position = optixGetWorldRayOrigin() + distance * rayDirection;
     auto  dTreeVoxelSize= make_float3(0.0f);
     const auto dTree    = params.sdTree.GetDTreeWrapper(position, dTreeVoxelSize);
-
+    if (!dTree) {
+        printf("dTree is Null\n");
+    }        
     float3 newDirection1= make_float3(0.0f);
     float3 newDirection2= make_float3(0.0f);
     float  cosine1      = 0.0f;
@@ -591,7 +597,7 @@ extern "C" __global__ void __closesthit__radiance_for_diffuse_pg_nee_with_nee_li
     const auto emission = hgData->getEmissionColor(texCoord);
 
     const auto distance  = optixGetRayTmax();
-    const auto position  = optixGetWorldRayOrigin() + distance * rayDirection;
+    const auto position  = optixGetWorldRayOrigin() + distance * rayDirection + 0.01f * normal;
     auto  dTreeVoxelSize = make_float3(0.0f);
     const auto dTree     = params.sdTree.GetDTreeWrapper(position, dTreeVoxelSize);
 
@@ -658,14 +664,16 @@ extern "C" __global__ void __closesthit__radiance_for_diffuse_pg_nee_with_nee_li
     {
 #if 0  
         LightRec lRec = {};
-        auto& light = params.light.data[xor32.next() % params.light.count];
+        int   lightIdx = rtlib::random_float1(xor32) * static_cast<float>(params.light.count);
+        auto& light    = params.light.data[lightIdx]; 
         auto  distance = 0.0f;
         auto  invAreaP = 0.0f;
         auto  lightDir = light.Sample(position, lRec, distance, invAreaP, xor32);
-        auto  ndl = rtlib::dot(lightDir, normal);
+        auto  ndl = rtlib::max( rtlib::dot(lightDir,      normal), 0.0f);
+        auto lndl = rtlib::max(-rtlib::dot(lightDir, lRec.normal), 0.0f);        
         auto  emission = lRec.emission;
         auto  bsdf = diffuse * RTLIB_M_INV_PI;
-        auto  g = ndl * fabsf(rtlib::dot(lightDir, lRec.normal)) / (distance * distance);
+        auto  g = ndl * lndl/ (distance * distance);
         invAreaP *= static_cast<float>(params.light.count);
         auto  f = emission * bsdf * g;
         auto  f_a = (f.x + f.y + f.z) / 3.0f;
@@ -685,15 +693,16 @@ extern "C" __global__ void __closesthit__radiance_for_diffuse_pg_nee_with_nee_li
         auto distance_y = 0.0f;
         for (int i = 0; i < params.numCandidates; ++i) {
             LightRec lRec = {};
-            auto& light = params.light.data[xor32.next() % params.light.count];
+            int   lightIdx = rtlib::random_float1(xor32) * static_cast<float>(params.light.count);
+            auto& light    = params.light.data[lightIdx];
             auto  distance = 0.0f;
             auto  invAreaP = 0.0f;
             auto  lightDir = light.Sample(position, lRec, distance, invAreaP, xor32);
-            auto  ndl = rtlib::dot(lightDir, normal);
-            auto lndl = -rtlib::dot(lightDir, lRec.normal);
+            auto  ndl      = rtlib::dot(lightDir,      normal);
+            auto lndl      =-rtlib::dot(lightDir, lRec.normal);
             auto  emission = lRec.emission * static_cast<float>(lndl > 0.0f);
-            auto  bsdf = diffuse * RTLIB_M_INV_PI;
-            auto  g = rtlib::max(ndl, 0.0f) * rtlib::max(lndl, 0.0f) / (distance * distance);
+            auto  bsdf     = diffuse * RTLIB_M_INV_PI;
+            auto  g        = rtlib::max(ndl, 0.0f) * rtlib::max(lndl, 0.0f) / (distance * distance);
             invAreaP *= static_cast<float>(params.light.count);
             auto  f = emission * bsdf * g;
             auto  f_a = (f.x + f.y + f.z) / 3.0f;
@@ -705,7 +714,7 @@ extern "C" __global__ void __closesthit__radiance_for_diffuse_pg_nee_with_nee_li
             }
         }
         if (resv.w_sum > 0.0f && f_a_y > 0.0f) {
-            const bool occluded = traceOccluded(params.gasHandle, position, lightDir_y, 0.01f, distance_y - 0.01f);
+            const bool occluded = traceOccluded(params.gasHandle, position, lightDir_y, 0.0f, distance_y - 0.01f);
             resv.w = occluded ? 0.0f : (resv.w_sum / (f_a_y * static_cast<float>(resv.m)));
         }
         auto  weight = f_y * resv.w;
@@ -737,8 +746,8 @@ extern "C" __global__ void __closesthit__radiance_for_diffuse_pg_nee_with_def_li
     const auto diffuse = hgData->getDiffuseColor(texCoord);
     const auto emission = hgData->getEmissionColor(texCoord);
 
-    const auto distance = optixGetRayTmax();
-    const auto position = optixGetWorldRayOrigin() + distance * rayDirection;
+    const auto distance  = optixGetRayTmax();
+    const auto position  = optixGetWorldRayOrigin() + distance * rayDirection + 0.01f * normal;
     auto  dTreeVoxelSize = make_float3(0.0f);
     const auto dTree = params.sdTree.GetDTreeWrapper(position, dTreeVoxelSize);
 
@@ -805,14 +814,16 @@ extern "C" __global__ void __closesthit__radiance_for_diffuse_pg_nee_with_def_li
     {
 #if 0  
         LightRec lRec = {};
-        auto& light = params.light.data[xor32.next() % params.light.count];
+        int   lightIdx = rtlib::random_float1(xor32) * static_cast<float>(params.light.count);
+        auto& light    = params.light.data[lightIdx];
         auto  distance = 0.0f;
         auto  invAreaP = 0.0f;
         auto  lightDir = light.Sample(position, lRec, distance, invAreaP, xor32);
-        auto  ndl = rtlib::dot(lightDir, normal);
+        auto  ndl = rtlib::max(rtlib::dot(lightDir, normal), 0.0f);
+        auto lndl = rtlib::max(-rtlib::dot(lightDir, lRec.normal), 0.0f);
         auto  emission = lRec.emission;
         auto  bsdf = diffuse * RTLIB_M_INV_PI;
-        auto  g = ndl * fabsf(rtlib::dot(lightDir, lRec.normal)) / (distance * distance);
+        auto  g = ndl * lndl / (distance * distance);
         invAreaP *= static_cast<float>(params.light.count);
         auto  f = emission * bsdf * g;
         auto  f_a = (f.x + f.y + f.z) / 3.0f;
@@ -831,8 +842,9 @@ extern "C" __global__ void __closesthit__radiance_for_diffuse_pg_nee_with_def_li
         auto lightDir_y = make_float3(0.0f);
         auto distance_y = 0.0f;
         for (int i = 0; i < params.numCandidates; ++i) {
-            LightRec lRec = {};
-            auto& light = params.light.data[xor32.next() % params.light.count];
+            LightRec lRec  = {};
+            int   lightIdx = rtlib::random_float1(xor32) * static_cast<float>(params.light.count);
+            auto& light    = params.light.data[lightIdx];
             auto  distance = 0.0f;
             auto  invAreaP = 0.0f;
             auto  lightDir = light.Sample(position, lRec, distance, invAreaP, xor32);
@@ -852,7 +864,7 @@ extern "C" __global__ void __closesthit__radiance_for_diffuse_pg_nee_with_def_li
             }
         }
         if (resv.w_sum > 0.0f && f_a_y > 0.0f) {
-            const bool occluded = traceOccluded(params.gasHandle, position, lightDir_y, 0.01f, distance_y - 0.01f);
+            const bool occluded = traceOccluded(params.gasHandle, position, lightDir_y, 0.0f, distance_y - 0.01f);
             resv.w = occluded ? 0.0f : (resv.w_sum / (f_a_y * static_cast<float>(resv.m)));
         }
         auto  weight = f_y * resv.w;
@@ -874,7 +886,8 @@ extern "C" __global__ void __closesthit__radiance_for_specular() {
     const float3 v1 = hgData->vertices[hgData->indices[primitiveID].y];
     const float3 v2 = hgData->vertices[hgData->indices[primitiveID].z];
     float3       n0 = optixTransformNormalFromObjectToWorldSpace(rtlib::normalize(rtlib::cross(v1 - v0, v2 - v0)));
-   /* if (hgData->normals) {
+#if RAY_TRACE_USE_VERTEX_NORMAL
+    if (hgData->normals) {
         const float3 nv0 = hgData->normals[hgData->indices[primitiveID].x];
         const float3 nv1 = hgData->normals[hgData->indices[primitiveID].y];
         const float3 nv2 = hgData->normals[hgData->indices[primitiveID].z];
@@ -888,8 +901,9 @@ extern "C" __global__ void __closesthit__radiance_for_specular() {
                 n0 = nv;
             }
         }
-    }*/
-    float3 normal = n0;
+    }
+#endif
+    float3 normal = faceForward(n0, make_float3(-rayDirection.x, -rayDirection.y, -rayDirection.z), n0);
     const auto t0 = hgData->texCoords[hgData->indices[primitiveID].x];
     const auto t1 = hgData->texCoords[hgData->indices[primitiveID].y];
     const auto t2 = hgData->texCoords[hgData->indices[primitiveID].z];
@@ -907,8 +921,8 @@ extern "C" __global__ void __closesthit__radiance_for_specular() {
         prd->woPdf = 0.0f;
         prd->dTreePdf = 0.0f;
         prd->bsdfPdf = std::fabsf(cosine);
-
-        setRayOrigin(position);
+        
+        setRayOrigin(position+ 0.01f * normal);
         setRayDirection(reflectDir);
         prd->cosine = cosine;
 
@@ -928,7 +942,8 @@ extern "C" __global__ void __closesthit__radiance_for_refraction() {
     const float3 v1 = hgData->vertices[hgData->indices[primitiveID].y];
     const float3 v2 = hgData->vertices[hgData->indices[primitiveID].z];
     float3       n0 = optixTransformNormalFromObjectToWorldSpace(rtlib::normalize(rtlib::cross(v1 - v0, v2 - v0)));
-    /*if (hgData->normals) {
+#if RAY_TRACE_USE_VERTEX_NORMAL
+    if (hgData->normals) {
         const float3 nv0 = hgData->normals[hgData->indices[primitiveID].x];
         const float3 nv1 = hgData->normals[hgData->indices[primitiveID].y];
         const float3 nv2 = hgData->normals[hgData->indices[primitiveID].z];
@@ -941,8 +956,9 @@ extern "C" __global__ void __closesthit__radiance_for_refraction() {
             if (rtlib::dot(nv, n0) > 0.0f) {
                 n0 = nv;
             }
-        }*/
-    /*}*/
+        }
+    }
+#endif
     float3 normal = {};
     float  refInd   = 0.0f;
     if (rtlib::dot(n0, rayDirection) < 0.0f) {
@@ -967,10 +983,10 @@ extern "C" __global__ void __closesthit__radiance_for_refraction() {
     float3 specular = hgData->getSpecularColor(texCoord);
     float3 transmit = hgData->transmit;
     {
-        float3 reflectDir = rtlib::normalize(rtlib::reflect(rayDirection, normal));
+        const auto reflectDir = rtlib::normalize(rtlib::reflect(rayDirection, normal));
         float  cosine_i   = -rtlib::dot(normal, rayDirection);
         float  sine_o_2   = (1.0f - rtlib::pow2(cosine_i)) * rtlib::pow2(refInd);
-#if 0
+#if !RAY_TRACE_USE_FRESNELL
         float  f0 = rtlib::pow2((1 - refInd) / (1 + refInd));
         float  fresnell = f0 + (1.0f - f0) * rtlib::pow5(1.0f - cosine_i);
 #else
@@ -987,7 +1003,7 @@ extern "C" __global__ void __closesthit__radiance_for_refraction() {
             prd->woPdf   = prd->dTreePdf = 0.0f;
             prd->bsdfPdf = std::fabsf(cosine);
             //printf("reflect: %lf %lf %lf\n", reflectDir.x, reflectDir.y, reflectDir.z);
-            setRayOrigin(position + 0.001f * normal);
+            setRayOrigin(position + 0.01f * normal);
             setRayDirection(reflectDir);
             prd->cosine = cosine;
             prd->bsdfVal = specular;
@@ -1001,15 +1017,15 @@ extern "C" __global__ void __closesthit__radiance_for_refraction() {
             prd->woPdf        = prd->dTreePdf = 0.0f;
             prd->bsdfPdf      = std::fabsf(cosine);
             //printf("refract: %lf %lf %lf\n", refractDir.x, refractDir.y, refractDir.z);
-            setRayOrigin(position - 0.001f * normal);
+            setRayOrigin(position - 0.01f * normal);
             setRayDirection(refractDir);
             prd->cosine = cosine;
             prd->bsdfVal = make_float3(1.0f);
             prd->throughPut *= prd->bsdfVal;
         }
+    	prd->countEmitted = true;	
         prd->isDelta = true;
     }
-    prd->countEmitted = true;
     prd->seed = xor32.m_seed;
 }
 //emission
@@ -1020,8 +1036,7 @@ extern "C" __global__ void __closesthit__radiance_for_emission() {
     const float3 v0 = hgData->vertices[hgData->indices[primitiveID].x];
     const float3 v1 = hgData->vertices[hgData->indices[primitiveID].y];
     const float3 v2 = hgData->vertices[hgData->indices[primitiveID].z];
-    const float3 n0 = rtlib::normalize(rtlib::cross(v1 - v0, v2 - v0));
-    // const float3 normal = faceForward(n0, make_float3(-rayDirection.x, -rayDirection.y, -rayDirection.z), n0);
+    const float3 n0 = optixTransformNormalFromObjectToWorldSpace(rtlib::normalize(rtlib::cross(v1 - v0, v2 - v0)));
     const float2 barycentric = optixGetTriangleBarycentrics();
     const auto t0 = hgData->texCoords[hgData->indices[primitiveID].x];
     const auto t1 = hgData->texCoords[hgData->indices[primitiveID].y];
@@ -1047,8 +1062,7 @@ extern "C" __global__ void __closesthit__radiance_for_emission_with_nee_light() 
     const float3 v0 = hgData->vertices[hgData->indices[primitiveID].x];
     const float3 v1 = hgData->vertices[hgData->indices[primitiveID].y];
     const float3 v2 = hgData->vertices[hgData->indices[primitiveID].z];
-    const float3 n0 = rtlib::normalize(rtlib::cross(v1 - v0, v2 - v0));
-   // const float3 normal = faceForward(n0, make_float3(-rayDirection.x, -rayDirection.y, -rayDirection.z), n0);
+    const float3 n0 = optixTransformNormalFromObjectToWorldSpace(rtlib::normalize(rtlib::cross(v1 - v0, v2 - v0)));
     const float2 barycentric = optixGetTriangleBarycentrics();
     const auto t0 = hgData->texCoords[hgData->indices[primitiveID].x];
     const auto t1 = hgData->texCoords[hgData->indices[primitiveID].y];
@@ -1074,8 +1088,7 @@ extern "C" __global__ void __closesthit__radiance_for_emission_with_def_light() 
     const float3 v0 = hgData->vertices[hgData->indices[primitiveID].x];
     const float3 v1 = hgData->vertices[hgData->indices[primitiveID].y];
     const float3 v2 = hgData->vertices[hgData->indices[primitiveID].z];
-    const float3 n0 = rtlib::normalize(rtlib::cross(v1 - v0, v2 - v0));
-    // const float3 normal = faceForward(n0, make_float3(-rayDirection.x, -rayDirection.y, -rayDirection.z), n0);
+    const float3 n0 = optixTransformNormalFromObjectToWorldSpace(rtlib::normalize(rtlib::cross(v1 - v0, v2 - v0)));
     const float2 barycentric = optixGetTriangleBarycentrics();
     const auto t0 = hgData->texCoords[hgData->indices[primitiveID].x];
     const auto t1 = hgData->texCoords[hgData->indices[primitiveID].y];
@@ -1103,34 +1116,31 @@ extern "C" __global__ void __closesthit__radiance_for_phong_def() {
     auto* hgData = reinterpret_cast<HitgroupData*>(optixGetSbtDataPointer());
     const float3 rayDirection = optixGetWorldRayDirection();
     const int    primitiveID = optixGetPrimitiveIndex();
-
     const float3 v0 = hgData->vertices[hgData->indices[primitiveID].x];
     const float3 v1 = hgData->vertices[hgData->indices[primitiveID].y];
     const float3 v2 = hgData->vertices[hgData->indices[primitiveID].z];
-
     const float3 n0 = optixTransformNormalFromObjectToWorldSpace(rtlib::normalize(rtlib::cross(v1 - v0, v2 - v0)));
     const float3 normal = faceForward(n0, make_float3(-rayDirection.x, -rayDirection.y, -rayDirection.z), n0);
-
+    
     const float2 barycentric = optixGetTriangleBarycentrics();
-    const auto t0 = hgData->texCoords[hgData->indices[primitiveID].x];
-    const auto t1 = hgData->texCoords[hgData->indices[primitiveID].y];
-    const auto t2 = hgData->texCoords[hgData->indices[primitiveID].z];
+    const auto t0            = hgData->texCoords[hgData->indices[primitiveID].x];
+    const auto t1            = hgData->texCoords[hgData->indices[primitiveID].y];
+    const auto t2            = hgData->texCoords[hgData->indices[primitiveID].z];
+    const auto texCoord      = (1.0f - barycentric.x - barycentric.y) * t0 + barycentric.x * t1 + barycentric.y * t2;
+    const auto position      = optixGetWorldRayOrigin() + optixGetRayTmax() * rayDirection;
+    const auto reflectDir    = rtlib::normalize(rtlib::reflect(rayDirection, normal));
 
-    const auto reflectDir = rtlib::normalize(rtlib::reflect(rayDirection, normal));
-
-    const auto texCoord = (1.0f - barycentric.x - barycentric.y) * t0 + barycentric.x * t1 + barycentric.y * t2;
-    const auto diffuse = hgData->getDiffuseColor(texCoord);
+    const auto diffuse  = hgData->getDiffuseColor(texCoord);
     const auto specular = hgData->getSpecularColor(texCoord);
     const auto shinness = hgData->shinness;
     const auto emission = hgData->getEmissionColor(texCoord);
     const auto distance = optixGetRayTmax();
-    const float3 position = optixGetWorldRayOrigin() + distance * rayDirection;
+    
     RadiancePRD* prd = getRadiancePRD();
 
     prd->dTree    = nullptr;
     prd->radiance = emission * prd->throughPut;
     prd->distance = distance;
-
     rtlib::Xorshift32 xor32(prd->seed);
 
     auto  newDirection = make_float3(0.0f);
@@ -1409,14 +1419,16 @@ extern "C" __global__ void __closesthit__radiance_for_phong_pg_nee_with_nee_ligh
             const auto  diffuseLobe = diffuse / (a_diffuse * RTLIB_M_PI);
 #if 0  
             LightRec lRec = {};
-            auto& light = params.light.data[xor32.next() % params.light.count];
+            int   lightIdx = rtlib::random_float1(xor32) * static_cast<float>(params.light.count);
+            auto& light    = params.light.data[lightIdx];            
             auto  distance = 0.0f;
             auto  invAreaP = 0.0f;
             auto  lightDir = light.Sample(position, lRec, distance, invAreaP, xor32);
             auto  ndl = rtlib::dot(lightDir, normal);
+            auto  lndl=-rtlib::dot(lightDir, lRec.normal);
             auto  emission = lRec.emission;
             auto  bsdf = diffuseLobe;
-            auto  g = ndl * fabsf(rtlib::dot(lightDir, lRec.normal)) / (distance * distance);
+            auto  g = rtlib::max(ndl,0.0f) * rtlib::max(lndl,0.0f) / (distance * distance);
             invAreaP *= static_cast<float>(params.light.count);
             auto  f = emission * bsdf * g;
             auto  f_a = (f.x + f.y + f.z) / 3.0f;
@@ -1436,7 +1448,8 @@ extern "C" __global__ void __closesthit__radiance_for_phong_pg_nee_with_nee_ligh
             auto distance_y = 0.0f;
             for (int i = 0; i < params.numCandidates; ++i) {
                 LightRec lRec = {};
-                auto& light = params.light.data[xor32.next() % params.light.count];
+            	int   lightIdx = rtlib::random_float1(xor32) * static_cast<float>(params.light.count);
+           		auto& light    = params.light.data[lightIdx];
                 auto  distance = 0.0f;
                 auto  invAreaP = 0.0f;
                 auto  lightDir = light.Sample(position, lRec, distance, invAreaP, xor32);
@@ -1605,14 +1618,16 @@ extern "C" __global__ void __closesthit__radiance_for_phong_pg_nee_with_def_ligh
             const auto  diffuseLobe = diffuse / (a_diffuse * RTLIB_M_PI);
 #if 0
             LightRec lRec = {};
-            auto& light    = params.light.data[xor32.next() % params.light.count];
+            int   lightIdx = rtlib::random_float1(xor32) * static_cast<float>(params.light.count);
+            auto& light    = params.light.data[lightIdx];            
             auto  distance = 0.0f;
             auto  invAreaP = 0.0f;
             auto  lightDir = light.Sample(position, lRec, distance, invAreaP, xor32);
             auto  ndl      = rtlib::dot(lightDir, normal);
+            auto  lndl     =-rtlib::dot(lightDir, lRec.normal);
             auto  emission = lRec.emission;
             auto  bsdf     = diffuseLobe;
-            auto  g        = ndl * fabsf(rtlib::dot(lightDir, lRec.normal)) / (distance * distance);
+            auto  g        = rtlib::max(ndl,0.0f) * rtlib::max(lndl,0.0f) / (distance * distance);
             invAreaP      *= static_cast<float>(params.light.count);
             auto  f        = emission * bsdf * g;
             auto  f_a      = (f.x + f.y + f.z) / 3.0f;
@@ -1632,15 +1647,16 @@ extern "C" __global__ void __closesthit__radiance_for_phong_pg_nee_with_def_ligh
             auto distance_y = 0.0f;
             for (int i = 0; i < params.numCandidates; ++i) {
                 LightRec lRec = {};
-                auto& light = params.light.data[xor32.next() % params.light.count];
+            	int   lightIdx = rtlib::random_float1(xor32) * static_cast<float>(params.light.count);
+                auto& light    = params.light.data[lightIdx];
                 auto  distance = 0.0f;
                 auto  invAreaP = 0.0f;
                 auto  lightDir = light.Sample(position, lRec, distance, invAreaP, xor32);
                 auto  ndl = rtlib::dot(lightDir, normal);
-                auto ldnl = rtlib::dot(lightDir, lRec.normal);
-                auto  emission = lRec.emission * static_cast<float>(ldnl<0.0f);
+                auto lndl =-rtlib::dot(lightDir, lRec.normal);
+                auto  emission = lRec.emission * static_cast<float>(lndl<0.0f);
                 auto  bsdf = diffuseLobe;
-                auto  g = ndl * fabsf(ldnl) / (distance * distance);
+                auto  g    = rtlib::max(ndl,0.0f) * rtlib::max(lndl,0.0f) / (distance * distance);
                 invAreaP *= static_cast<float>(params.light.count);
                 auto  f = emission * bsdf * g;
                 auto  f_a = (f.x + f.y + f.z) / 3.0f;

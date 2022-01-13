@@ -10,7 +10,7 @@ set(RAY_TRACE_D_FILTER           DirectionalFilterNearest)
 # Specular�ʂɑ΂���ReSTIR���s�����ADefault�ł͍s��Ȃ��i��ق�shinness�������Ȃ���΂ނ��땪�U�͑�������X���j
 set(RAY_TRACE_NEE_SPECULAR 0)
 # float�̎w����23->2^-23,2^-23,2^-23
-set(PATH_GUIDING_STREE_MAX_DEPTH 69)
+set(PATH_GUIDING_STREE_MAX_DEPTH 120)
 # float�̎w����23
 set(PATH_GUIDING_DTREE_MAX_DEPTH 24)
 set(PATH_GUIDING_LI_COSINE       1)
@@ -33,12 +33,7 @@ add_library(Test24_Tracer_GuideReSTIROPX STATIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include/GuideReSTIROPXTracer.h
     ${CMAKE_CURRENT_SOURCE_DIR}/ext/RTPathGuidingUtils.h
     ${CMAKE_CURRENT_SOURCE_DIR}/cuda/RayTrace.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/cuda/Callable.h
     ${CMAKE_CURRENT_SOURCE_DIR}/cuda/PathGuiding.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/cuda/Reservoir.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/cuda/LightUtils.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/cuda/SurfaceParameters.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/cuda/MaterialParameters.h
     ${CMAKE_CURRENT_SOURCE_DIR}/Test24GuideReSTIROPXConfig.h.in
     ${CMAKE_CURRENT_BINARY_DIR}/Test24GuideReSTIROPXConfig.h
     ${TEST_TEST24_GUIDE_RESTIR_OPX_CUDA_PATH}/PathGuidingConfig.h
@@ -49,14 +44,9 @@ add_library(Test24_Tracer_GuideReSTIROPX STATIC
 )
 
 add_custom_target (Test24_Tracer_GuideReSTIROPX_BUILD_KERNEL)
-add_custom_command(TARGET Test24_Tracer_GuideReSTIROPX_BUILD_KERNEL PRE_BUILD  COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/cuda/RayTrace.h           ${TEST_TEST24_GUIDE_RESTIR_OPX_CUDA_PATH}/RayTrace.h            )
-add_custom_command(TARGET Test24_Tracer_GuideReSTIROPX_BUILD_KERNEL PRE_BUILD  COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/cuda/Callable.h           ${TEST_TEST24_GUIDE_RESTIR_OPX_CUDA_PATH}/Callable.h            )
-add_custom_command(TARGET Test24_Tracer_GuideReSTIROPX_BUILD_KERNEL PRE_BUILD  COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/cuda/PathGuiding.h        ${TEST_TEST24_GUIDE_RESTIR_OPX_CUDA_PATH}/PathGuiding.h         )
-add_custom_command(TARGET Test24_Tracer_GuideReSTIROPX_BUILD_KERNEL PRE_BUILD  COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/cuda/Reservoir.h          ${TEST_TEST24_GUIDE_RESTIR_OPX_CUDA_PATH}/Reservoir.h           )
-add_custom_command(TARGET Test24_Tracer_GuideReSTIROPX_BUILD_KERNEL PRE_BUILD  COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/cuda/SurfaceParameters.h  ${TEST_TEST24_GUIDE_RESTIR_OPX_CUDA_PATH}/SurfaceParameters.h   )
-add_custom_command(TARGET Test24_Tracer_GuideReSTIROPX_BUILD_KERNEL PRE_BUILD  COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/cuda/MaterialParameters.h ${TEST_TEST24_GUIDE_RESTIR_OPX_CUDA_PATH}/MaterialParameters.h  )
-add_custom_command(TARGET Test24_Tracer_GuideReSTIROPX_BUILD_KERNEL PRE_BUILD  COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/cuda/LightUtils.h         ${TEST_TEST24_GUIDE_RESTIR_OPX_CUDA_PATH}/LightUtils.h          )
-add_custom_command(TARGET Test24_Tracer_GuideReSTIROPX_BUILD_KERNEL POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/cuda/RayGuide.cu          ${TEST_TEST24_GUIDE_RESTIR_OPX_CUDA_PATH}/RayGuide.cu           )
+add_custom_command(TARGET Test24_Tracer_GuideReSTIROPX_BUILD_KERNEL PRE_BUILD  COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/cuda/RayTrace.h     ${TEST_TEST24_GUIDE_RESTIR_OPX_CUDA_PATH}/RayTrace.h )
+add_custom_command(TARGET Test24_Tracer_GuideReSTIROPX_BUILD_KERNEL PRE_BUILD  COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/cuda/PathGuiding.h  ${TEST_TEST24_GUIDE_RESTIR_OPX_CUDA_PATH}/PathGuiding.h )
+add_custom_command(TARGET Test24_Tracer_GuideReSTIROPX_BUILD_KERNEL POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/cuda/RayGuide.cu    ${TEST_TEST24_GUIDE_RESTIR_OPX_CUDA_PATH}/RayGuide.cu)
 
 rtlib_compile_ptx(Test24_Tracer_GuideReSTIROPX_BUILD_KERNEL ${TEST_TEST24_GUIDE_RESTIR_OPX_CUDA_PATH}/RayGuide.cu   ${TEST_TEST24_GUIDE_RESTIR_OPX_CUDA_PATH} )
 

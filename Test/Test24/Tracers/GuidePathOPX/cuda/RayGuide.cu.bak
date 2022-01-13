@@ -1,8 +1,6 @@
 #define __CUDACC__
 #include "RayTrace.h"
 #include "PathGuiding.h"
-#define  RAY_TRACE_USE_VERTEX_NORMAL 0
-#define  RAY_TRACE_USE_FRESNELL 1
 using namespace test24_guide_path;
 struct RadiancePRD {
     DTreeWrapper* dTree;
@@ -477,9 +475,8 @@ extern "C" __global__ void __closesthit__radiance_for_diffuse_nee() {
 
     prd->seed = xor32.m_seed;
 }
-extern "C" __global__ void __closesthit__radiance_for_diffuse_pg_def() {    
-	auto* hgData = reinterpret_cast<HitgroupData*>(optixGetSbtDataPointer());
-	const float3 rayDirection = optixGetWorldRayDirection();
+extern "C" __global__ void __closesthit__radiance_for_diffuse_pg_def() {    auto* hgData = reinterpret_cast<HitgroupData*>(optixGetSbtDataPointer());
+    const float3 rayDirection = optixGetWorldRayDirection();
     const int    primitiveID = optixGetPrimitiveIndex();
 
     const float3 v0 = hgData->vertices[hgData->indices[primitiveID].x];
@@ -500,9 +497,8 @@ extern "C" __global__ void __closesthit__radiance_for_diffuse_pg_def() {
 
     const auto distance = optixGetRayTmax();
     const auto position = optixGetWorldRayOrigin() + distance * rayDirection;
-    const auto rayOrigin= position + 0.01f * normal;
     auto  dTreeVoxelSize= make_float3(0.0f);
-    const auto dTree    = params.sdTree.GetDTreeWrapper(rayOrigin, dTreeVoxelSize);
+    const auto dTree    = params.sdTree.GetDTreeWrapper(position, dTreeVoxelSize);
     if (!dTree) {
         printf("dTree is Null\n");
     }
@@ -521,7 +517,7 @@ extern "C" __global__ void __closesthit__radiance_for_diffuse_pg_def() {
     prd->isDelta        = false;
     rtlib::Xorshift32 xor32(prd->seed);
 
-    setRayOrigin(rayOrigin);
+    setRayOrigin(position);
     if(params.isBuilt){
         newDirection1 = dTree->Sample(xor32);
         cosine1 = rtlib::dot(normal, newDirection1);
@@ -786,8 +782,7 @@ extern "C" __global__ void __closesthit__radiance_for_specular() {
     const float3 v1 = hgData->vertices[hgData->indices[primitiveID].y];
     const float3 v2 = hgData->vertices[hgData->indices[primitiveID].z];
     float3       n0 = optixTransformNormalFromObjectToWorldSpace(rtlib::normalize(rtlib::cross(v1 - v0, v2 - v0)));
-#if RAY_TRACE_USE_VERTEX_NORMAL
-    if (hgData->normals) {
+    /*if (hgData->normals) {
         const float3 nv0 = hgData->normals[hgData->indices[primitiveID].x];
         const float3 nv1 = hgData->normals[hgData->indices[primitiveID].y];
         const float3 nv2 = hgData->normals[hgData->indices[primitiveID].z];
@@ -801,8 +796,7 @@ extern "C" __global__ void __closesthit__radiance_for_specular() {
                 n0 = nv;
             }
         }
-    }
-#endif
+    }*/
     float3 normal = faceForward(n0, make_float3(-rayDirection.x, -rayDirection.y, -rayDirection.z), n0);
     const auto t0 = hgData->texCoords[hgData->indices[primitiveID].x];
     const auto t1 = hgData->texCoords[hgData->indices[primitiveID].y];
@@ -842,8 +836,7 @@ extern "C" __global__ void __closesthit__radiance_for_refraction() {
     const float3 v1 = hgData->vertices[hgData->indices[primitiveID].y];
     const float3 v2 = hgData->vertices[hgData->indices[primitiveID].z];
     float3       n0 = optixTransformNormalFromObjectToWorldSpace(rtlib::normalize(rtlib::cross(v1 - v0, v2 - v0)));
-#if RAY_TRACE_USE_VERTEX_NORMAL
-    if (hgData->normals) {
+    /*if (hgData->normals) {
         const float3 nv0 = hgData->normals[hgData->indices[primitiveID].x];
         const float3 nv1 = hgData->normals[hgData->indices[primitiveID].y];
         const float3 nv2 = hgData->normals[hgData->indices[primitiveID].z];
@@ -857,8 +850,7 @@ extern "C" __global__ void __closesthit__radiance_for_refraction() {
                 n0 = nv;
             }
         }
-    }
-#endif
+    }*/
     float3 normal = {};
     float  refInd   = 0.0f;
     if (rtlib::dot(n0, rayDirection) < 0.0f) {
@@ -886,7 +878,7 @@ extern "C" __global__ void __closesthit__radiance_for_refraction() {
         const auto reflectDir = rtlib::normalize(rtlib::reflect(rayDirection, normal));
         float  cosine_i   = -rtlib::dot(normal, rayDirection);
         float  sine_o_2   = (1.0f - rtlib::pow2(cosine_i)) * rtlib::pow2(refInd);
-#if !RAY_TRACE_USE_FRESNELL
+#if 0
         float  f0 = rtlib::pow2((1 - refInd) / (1 + refInd));
         float  fresnell = f0 + (1.0f - f0) * rtlib::pow5(1.0f - cosine_i);
 #else

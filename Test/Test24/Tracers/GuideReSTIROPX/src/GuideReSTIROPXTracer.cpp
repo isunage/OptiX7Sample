@@ -44,8 +44,9 @@ struct Test24GuideReSTIROPXTracer::Impl {
 	auto GetMeshLightList()const noexcept -> MeshLightList
 	{
 		MeshLightList list;
-		list.data = m_MeshLights.gpuHandle.getDevicePtr();
-		list.count = m_MeshLights.cpuHandle.size();
+		list.data    = m_MeshLights.gpuHandle.getDevicePtr();
+		list.indices = m_MeshLightIndices.gpuHandle.getDevicePtr();
+		list.count   = m_MeshLightIndices.cpuHandle.size();
 		return list;
 	}
 
@@ -75,7 +76,8 @@ struct Test24GuideReSTIROPXTracer::Impl {
 	rtlib::CUDAUploadBuffer<HitGRecord> m_HGRecordBuffers;
 	rtlib::CUDAUploadBuffer<RayTraceParams> m_Params;
 	rtlib::CUDABuffer<unsigned int> m_SeedBuffer;
-	rtlib::CUDAUploadBuffer<MeshLight> m_MeshLights;
+	rtlib::CUDAUploadBuffer<unsigned int> m_MeshLightIndices;
+	rtlib::CUDAUploadBuffer<MeshLight>    m_MeshLights;
 	std::shared_ptr<RTSTreeWrapper> m_STree = nullptr;
 	unsigned int m_LightHgRecIndex = 0;
 	unsigned int m_SamplePerAll    = 0;
@@ -211,6 +213,19 @@ Test24GuideReSTIROPXTracer::~Test24GuideReSTIROPXTracer() {
 void Test24GuideReSTIROPXTracer::InitLight()
 {
 	auto lightGASHandle = m_Impl->m_TopLevelAS.lock()->GetInstanceSets()[0]->GetInstance(1).baseGASHandle;
+	float minArea = FLT_MAX;
+	for (auto& mesh : lightGASHandle->GetMeshes())
+	{
+		//Select NEE Light
+		if (mesh->GetUniqueResource()->variables.GetBool("useNEE")) {
+			auto aabbMin = mesh->GetUniqueResource()->variables.GetFloat3As<float3>("aabb.min");
+			auto aabbMax = mesh->GetUniqueResource()->variables.GetFloat3As<float3>("aabb.max");
+			auto aabb = rtlib::utils::AABB(aabbMin, aabbMax);
+			auto aabbArea = aabb.GetArea();
+			minArea = std::min(aabbArea, minArea);
+		}
+	}
+	auto idxCount = 0;
 	for (auto& mesh : lightGASHandle->GetMeshes())
 	{
 		//Select NEE Light
@@ -220,18 +235,45 @@ void Test24GuideReSTIROPXTracer::InitLight()
 			if (!m_Impl->m_TextureManager.lock()->GetAsset(m_Impl->m_Materials[mesh->GetUniqueResource()->materials[0]].GetString("emitTex")).HasGpuComponent("CUDATexture")) {
 				this->m_Impl->m_TextureManager.lock()->GetAsset(m_Impl->m_Materials[mesh->GetUniqueResource()->materials[0]].GetString("emitTex")).AddGpuComponent<rtlib::ext::resources::CUDATextureImage2DComponent<uchar4>>("CUDATexture");
 			}
-			meshLight.emission = m_Impl->m_Materials[mesh->GetUniqueResource()->materials[0]].GetFloat3As<float3>("emitCol");
+			meshLight.emission    = m_Impl->m_Materials[mesh->GetUniqueResource()->materials[0]].GetFloat3As<float3>("emitCol");
 			meshLight.emissionTex = m_Impl->m_TextureManager.lock()->GetAsset(m_Impl->m_Materials[mesh->GetUniqueResource()->materials[0]].GetString("emitTex")).GetGpuComponent<rtlib::ext::resources::CUDATextureImage2DComponent<uchar4>>("CUDATexture")->GetHandle().getHandle();
-			meshLight.vertices = mesh->GetSharedResource()->vertexBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float3>>("CUDA")->GetHandle().getDevicePtr();
-			meshLight.normals = mesh->GetSharedResource()->normalBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float3>>("CUDA")->GetHandle().getDevicePtr();
-			meshLight.texCoords = mesh->GetSharedResource()->texCrdBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float2>>("CUDA")->GetHandle().getDevicePtr();
-			meshLight.indices = mesh->GetUniqueResource()->triIndBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<uint3>>("CUDA")->GetHandle().getDevicePtr();
-			meshLight.indCount = mesh->GetUniqueResource()->triIndBuffer.Size();
+			meshLight.vertices    = mesh->GetSharedResource()->vertexBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float3>>("CUDA")->GetHandle().getDevicePtr();
+			meshLight.normals     = mesh->GetSharedResource()->normalBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float3>>("CUDA")->GetHandle().getDevicePtr();
+			meshLight.texCoords   = mesh->GetSharedResource()->texCrdBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float2>>("CUDA")->GetHandle().getDevicePtr();
+			meshLight.indices     = mesh->GetUniqueResource()->triIndBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<uint3>>("CUDA")->GetHandle().getDevicePtr();
+			meshLight.indCount    = mesh->GetUniqueResource()->triIndBuffer.Size();
+			auto aabbMin          = mesh->GetUniqueResource()->variables.GetFloat3As<float3>("aabb.min");
+			auto aabbMax          = mesh->GetUniqueResource()->variables.GetFloat3As<float3>("aabb.max");
+			auto aabb             = rtlib::utils::AABB(aabbMin, aabbMax);
+			auto aabbArea         = aabb.GetArea();
+			auto aabbCount        = std::max(static_cast<int>(std::sqrt(aabbArea / minArea)), 1);
+			mesh->GetUniqueResource()->variables.SetUInt32("tmpNumLightCount", aabbCount);
+			idxCount += aabbCount;
+			std::cout << "Count: " << aabbCount << std::endl;
 			m_Impl->m_MeshLights.cpuHandle.push_back(meshLight);
+		}
+	}
+	m_Impl->m_MeshLightIndices.cpuHandle.reserve(idxCount);
+	{
+		size_t idx = 0;
+		for (auto& mesh : lightGASHandle->GetMeshes())
+		{
+			//Select NEE Light
+			if (mesh->GetUniqueResource()->variables.GetBool("useNEE")) {
+				auto aabbCount = mesh->GetUniqueResource()->variables.GetUInt32("tmpNumLightCount");
+				m_Impl->m_MeshLights.cpuHandle[idx].invProb = static_cast<float>(idxCount) / static_cast<float>(aabbCount);
+				for (auto i = 0; i < aabbCount; ++i) {
+					m_Impl->m_MeshLightIndices.cpuHandle.push_back(idx);
+				}
+				idx++;
+			}
 		}
 	}
 	m_Impl->m_MeshLights.Alloc();
 	m_Impl->m_MeshLights.Upload();
+	m_Impl->m_MeshLightIndices.Alloc();
+	m_Impl->m_MeshLightIndices.Upload();
+
 }
 
 void Test24GuideReSTIROPXTracer::InitPipeline()
@@ -279,9 +321,12 @@ void Test24GuideReSTIROPXTracer::InitPipeline()
 	m_Impl->m_RGProgramGroups["Guide.Guiding.NEE"] = m_Impl->m_Pipeline.createRaygenPG({ m_Impl->m_Modules["RayGuide"], RTLIB_RAYGEN_PROGRAM_STR(pg_nee) });
 	m_Impl->m_MSProgramGroups["Guide.Radiance"] = m_Impl->m_Pipeline.createMissPG({ m_Impl->m_Modules["RayGuide"], RTLIB_MISS_PROGRAM_STR(radiance) });
 	m_Impl->m_MSProgramGroups["Guide.Occluded"] = m_Impl->m_Pipeline.createMissPG({ m_Impl->m_Modules["RayGuide"], RTLIB_MISS_PROGRAM_STR(occluded) });
-	m_Impl->m_HGProgramGroups["Guide.Radiance.Diffuse.Guiding.NEE"] = m_Impl->m_Pipeline.createHitgroupPG({ m_Impl->m_Modules["RayGuide"], RTLIB_CLOSESTHIT_PROGRAM_STR(radiance_for_diffuse_pg_nee) }, {}, {});
-	m_Impl->m_HGProgramGroups["Guide.Radiance.Phong.Guiding.NEE"]   = m_Impl->m_Pipeline.createHitgroupPG({ m_Impl->m_Modules["RayGuide"], RTLIB_CLOSESTHIT_PROGRAM_STR(radiance_for_phong_pg_nee) }, {}, {});
-	m_Impl->m_HGProgramGroups["Guide.Radiance.Emission"] = m_Impl->m_Pipeline.createHitgroupPG({ m_Impl->m_Modules["RayGuide"], RTLIB_CLOSESTHIT_PROGRAM_STR(radiance_for_emission) }, {}, {});
+	m_Impl->m_HGProgramGroups["Guide.Radiance.Diffuse.Guiding.NEE.NEE"] = m_Impl->m_Pipeline.createHitgroupPG({ m_Impl->m_Modules["RayGuide"], RTLIB_CLOSESTHIT_PROGRAM_STR(radiance_for_diffuse_pg_nee_with_nee_light) }, {}, {});
+	m_Impl->m_HGProgramGroups["Guide.Radiance.Diffuse.Guiding.NEE.Default"] = m_Impl->m_Pipeline.createHitgroupPG({ m_Impl->m_Modules["RayGuide"], RTLIB_CLOSESTHIT_PROGRAM_STR(radiance_for_diffuse_pg_nee_with_def_light) }, {}, {});
+	m_Impl->m_HGProgramGroups["Guide.Radiance.Phong.Guiding.NEE.NEE"] = m_Impl->m_Pipeline.createHitgroupPG({ m_Impl->m_Modules["RayGuide"], RTLIB_CLOSESTHIT_PROGRAM_STR(radiance_for_phong_pg_nee_with_nee_light) }, {}, {});
+	m_Impl->m_HGProgramGroups["Guide.Radiance.Phong.Guiding.NEE.Default"] = m_Impl->m_Pipeline.createHitgroupPG({ m_Impl->m_Modules["RayGuide"], RTLIB_CLOSESTHIT_PROGRAM_STR(radiance_for_phong_pg_nee_with_def_light) }, {}, {});
+	m_Impl->m_HGProgramGroups["Guide.Radiance.Emission.NEE"] = m_Impl->m_Pipeline.createHitgroupPG({ m_Impl->m_Modules["RayGuide"], RTLIB_CLOSESTHIT_PROGRAM_STR(radiance_for_emission_with_nee_light) }, {}, {});
+	m_Impl->m_HGProgramGroups["Guide.Radiance.Emission.Default"] = m_Impl->m_Pipeline.createHitgroupPG({ m_Impl->m_Modules["RayGuide"], RTLIB_CLOSESTHIT_PROGRAM_STR(radiance_for_emission_with_def_light) }, {}, {});
 	m_Impl->m_HGProgramGroups["Guide.Radiance.Specular"] = m_Impl->m_Pipeline.createHitgroupPG({ m_Impl->m_Modules["RayGuide"], RTLIB_CLOSESTHIT_PROGRAM_STR(radiance_for_specular) }, {}, {});
 	m_Impl->m_HGProgramGroups["Guide.Radiance.Refraction"] = m_Impl->m_Pipeline.createHitgroupPG({ m_Impl->m_Modules["RayGuide"], RTLIB_CLOSESTHIT_PROGRAM_STR(radiance_for_refraction) }, {}, {});
 	m_Impl->m_HGProgramGroups["Guide.Occluded"] = m_Impl->m_Pipeline.createHitgroupPG({ m_Impl->m_Modules["RayGuide"], RTLIB_CLOSESTHIT_PROGRAM_STR(occluded) }, {}, {});
@@ -357,21 +402,19 @@ void Test24GuideReSTIROPXTracer::InitShaderBindingTable()
 						}
 						HitgroupData radianceHgData = {};
 						{
-							
-							radianceHgData.surfParams.vertices   = cudaVertexBuffer->GetHandle().getDevicePtr();
-							radianceHgData.surfParams.normals    = cudaNormalBuffer->GetHandle().getDevicePtr();
-							radianceHgData.surfParams.texCoords  = cudaTexCrdBuffer->GetHandle().getDevicePtr();
-							radianceHgData.surfParams.indices    = cudaTriIndBuffer->GetHandle().getDevicePtr();
-							radianceHgData.matParams.flags       = 0;
-							radianceHgData.matParams.diffuseTex  = this->m_Impl->m_TextureManager.lock()->GetAsset(material.GetString("diffTex")).GetGpuComponent<rtlib::ext::resources::CUDATextureImage2DComponent<uchar4>>("CUDATexture")->GetHandle().getHandle();
-							radianceHgData.matParams.specularTex = this->m_Impl->m_TextureManager.lock()->GetAsset(material.GetString("specTex")).GetGpuComponent<rtlib::ext::resources::CUDATextureImage2DComponent<uchar4>>("CUDATexture")->GetHandle().getHandle();
-							radianceHgData.matParams.emissionTex = this->m_Impl->m_TextureManager.lock()->GetAsset(material.GetString("emitTex")).GetGpuComponent<rtlib::ext::resources::CUDATextureImage2DComponent<uchar4>>("CUDATexture")->GetHandle().getHandle();
-							radianceHgData.matParams.diffuseCol  = material.GetFloat3As<float3>("diffCol");
-							radianceHgData.matParams.specularCol = material.GetFloat3As<float3>("specCol");
-							radianceHgData.matParams.emissionCol = material.GetFloat3As<float3>("emitCol");
-							radianceHgData.matParams.shinness    = material.GetFloat1("shinness");
-							radianceHgData.matParams.transmit    = material.GetFloat3As<float3>("tranCol");
-							radianceHgData.matParams.refrInd     = material.GetFloat1("refrIndx");
+							radianceHgData.vertices = cudaVertexBuffer->GetHandle().getDevicePtr();
+							radianceHgData.normals = cudaNormalBuffer->GetHandle().getDevicePtr();
+							radianceHgData.texCoords = cudaTexCrdBuffer->GetHandle().getDevicePtr();
+							radianceHgData.indices = cudaTriIndBuffer->GetHandle().getDevicePtr();
+							radianceHgData.diffuseTex = this->m_Impl->m_TextureManager.lock()->GetAsset(material.GetString("diffTex")).GetGpuComponent<rtlib::ext::resources::CUDATextureImage2DComponent<uchar4>>("CUDATexture")->GetHandle().getHandle();
+							radianceHgData.specularTex = this->m_Impl->m_TextureManager.lock()->GetAsset(material.GetString("specTex")).GetGpuComponent<rtlib::ext::resources::CUDATextureImage2DComponent<uchar4>>("CUDATexture")->GetHandle().getHandle();
+							radianceHgData.emissionTex = this->m_Impl->m_TextureManager.lock()->GetAsset(material.GetString("emitTex")).GetGpuComponent<rtlib::ext::resources::CUDATextureImage2DComponent<uchar4>>("CUDATexture")->GetHandle().getHandle();
+							radianceHgData.diffuse = material.GetFloat3As<float3>("diffCol");
+							radianceHgData.specular = material.GetFloat3As<float3>("specCol");
+							radianceHgData.emission = material.GetFloat3As<float3>("emitCol");
+							radianceHgData.shinness = material.GetFloat1("shinness");
+							radianceHgData.transmit = material.GetFloat3As<float3>("tranCol");
+							radianceHgData.refrInd = material.GetFloat1("refrIndx");
 						}
 						if (material.GetString("name") == "light")
 						{
@@ -383,32 +426,24 @@ void Test24GuideReSTIROPXTracer::InitShaderBindingTable()
 							typeString += ".Guiding.NEE";
 							if (mesh->GetUniqueResource()->variables.GetBool("hasLight") && mesh->GetUniqueResource()->variables.GetBool("useNEE"))
 							{
-								radianceHgData.matParams.flags |= MATERIAL_FLAG_USE_NEE_BIT;
+								typeString += ".NEE";
+							}
+							else
+							{
+								typeString += ".Default";
 							}
 						}
 						if (typeString == "Emission")
 						{
 							if (mesh->GetUniqueResource()->variables.GetBool("hasLight") && mesh->GetUniqueResource()->variables.GetBool("useNEE"))
 							{
-								radianceHgData.matParams.flags |= MATERIAL_FLAG_USE_NEE_BIT;
+								typeString += ".NEE";
+							}
+							else
+							{
+								typeString += ".Default";
 							}
 						}
-						if (typeString == "Diffuse") {
-							radianceHgData.matParams.type = MATERIAL_TYPE_DIFFUSE;
-						}
-						if (typeString == "Phong") {
-							radianceHgData.matParams.type = MATERIAL_TYPE_PHONG;
-						}
-						if (typeString == "Specular") {
-							radianceHgData.matParams.type = MATERIAL_TYPE_SPECULAR;
-						}
-						if (typeString == "Refraction") {
-							radianceHgData.matParams.type = MATERIAL_TYPE_REFRACTION;
-						}
-						if (typeString == "Emission") {
-							radianceHgData.matParams.type = MATERIAL_TYPE_EMISSION;
-						}
-						
 						this->m_Impl->m_HGRecordBuffers.cpuHandle[RAY_TYPE_COUNT * sbtOffset + RAY_TYPE_COUNT * i + RAY_TYPE_RADIANCE] = this->m_Impl->m_HGProgramGroups[std::string("Guide.Radiance.") + typeString].getSBTRecord<HitgroupData>(radianceHgData);
 						this->m_Impl->m_HGRecordBuffers.cpuHandle[RAY_TYPE_COUNT * sbtOffset + RAY_TYPE_COUNT * i + RAY_TYPE_OCCLUSION] = this->m_Impl->m_HGProgramGroups["Guide.Occluded"].getSBTRecord<HitgroupData>({});
 					}

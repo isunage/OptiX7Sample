@@ -96,7 +96,7 @@ Test24NEEOPXTracer::Test24NEEOPXTracer(
 
 	GetVariables()->SetBool("Started", false);
 	GetVariables()->SetBool("Launched", false);
-
+	GetVariables()->SetFloat1("Epsilon", 0.01f);
 	GetVariables()->SetUInt32("SampleForBudget", 1024);
 	GetVariables()->SetUInt32("SamplePerAll",0);
 	GetVariables()->SetUInt32("SamplePerLaunch",1);
@@ -124,13 +124,17 @@ void Test24NEEOPXTracer::Launch(int width, int height, void* pdata)
 	}
 	
 	if (GetVariables()->GetBool("Started")) {
+
+		std::vector<float3> zeroAccumValues(this->m_Impl->m_Framebuffer.lock()->GetWidth() * this->m_Impl->m_Framebuffer.lock()->GetHeight(), make_float3(0.0f));
+		cudaMemcpy(m_Impl->m_Framebuffer.lock()->GetComponent<test::RTCUDABufferFBComponent<float3>>("RAccum")->GetHandle().getDevicePtr(), zeroAccumValues.data(), sizeof(float3) * this->m_Impl->m_Framebuffer.lock()->GetWidth() * this->m_Impl->m_Framebuffer.lock()->GetHeight(), cudaMemcpyHostToDevice);
 		GetVariables()->SetBool("Started", false);
 		GetVariables()->SetBool("Launched", true);
 		GetVariables()->SetUInt32("SamplePerAll", 0);
 	}
 
-	 auto samplePerAll    = GetVariables()->GetUInt32("SamplePerAll");
-	 auto samplePerLaunch = GetVariables()->GetUInt32("SamplePerLaunch");
+	auto samplePerAll    = GetVariables()->GetUInt32("SamplePerAll");
+	auto samplePerLaunch = GetVariables()->GetUInt32("SamplePerLaunch");
+	auto epsilon         = GetVariables()->GetFloat1("Epsilon");
 	this->m_Impl->m_Params.cpuHandle[0].width = width;
 	this->m_Impl->m_Params.cpuHandle[0].height = height;
 	this->m_Impl->m_Params.cpuHandle[0].accumBuffer = m_Impl->m_Framebuffer.lock()->GetComponent<test::RTCUDABufferFBComponent<float3>>("RAccum")->GetHandle().getDevicePtr();
@@ -197,7 +201,7 @@ void Test24NEEOPXTracer::Update()
 		GetVariables()->SetUInt32("SamplePerAll", 0);
 	}
 	auto samplePerAll=GetVariables()->GetUInt32("SamplePerAll");
-	bool shouldRegen = ((samplePerAll + this->m_Impl->m_Params.cpuHandle[0].samplePerLaunch) / 1024 != samplePerAll / 1024);
+	bool shouldRegen = ((samplePerAll + this->m_Impl->m_Params.cpuHandle[0].samplePerLaunch) / 64 != samplePerAll / 64);
 	if (((this->m_Impl->m_EventFlags & TEST24_EVENT_FLAG_RESIZE_FRAME) == TEST24_EVENT_FLAG_RESIZE_FRAME) || shouldRegen)
 	{
 		std::cout << "Regen!\n";
@@ -233,13 +237,13 @@ void Test24NEEOPXTracer::InitLight()
 			if (!m_Impl->m_TextureManager.lock()->GetAsset(m_Impl->m_Materials[mesh->GetUniqueResource()->materials[0]].GetString("emitTex")).HasGpuComponent("CUDATexture")) {
 				this->m_Impl->m_TextureManager.lock()->GetAsset(m_Impl->m_Materials[mesh->GetUniqueResource()->materials[0]].GetString("emitTex")).AddGpuComponent<rtlib::ext::resources::CUDATextureImage2DComponent<uchar4>>("CUDATexture");
 			}
-			meshLight.emission = m_Impl->m_Materials[mesh->GetUniqueResource()->materials[0]].GetFloat3As<float3>("emitCol");
+			meshLight.emission    = m_Impl->m_Materials[mesh->GetUniqueResource()->materials[0]].GetFloat3As<float3>("emitCol");
 			meshLight.emissionTex = m_Impl->m_TextureManager.lock()->GetAsset(m_Impl->m_Materials[mesh->GetUniqueResource()->materials[0]].GetString("emitTex")).GetGpuComponent<rtlib::ext::resources::CUDATextureImage2DComponent<uchar4>>("CUDATexture")->GetHandle().getHandle();
-			meshLight.vertices = mesh->GetSharedResource()->vertexBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float3>>("CUDA")->GetHandle().getDevicePtr();
-			meshLight.normals = mesh->GetSharedResource()->normalBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float3>>("CUDA")->GetHandle().getDevicePtr();
-			meshLight.texCoords = mesh->GetSharedResource()->texCrdBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float2>>("CUDA")->GetHandle().getDevicePtr();
-			meshLight.indices = mesh->GetUniqueResource()->triIndBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<uint3>>("CUDA")->GetHandle().getDevicePtr();
-			meshLight.indCount = mesh->GetUniqueResource()->triIndBuffer.Size();
+			meshLight.vertices    = mesh->GetSharedResource()->vertexBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float3>>("CUDA")->GetHandle().getDevicePtr();
+			meshLight.normals     = mesh->GetSharedResource()->normalBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float3>>("CUDA")->GetHandle().getDevicePtr();
+			meshLight.texCoords   = mesh->GetSharedResource()->texCrdBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float2>>("CUDA")->GetHandle().getDevicePtr();
+			meshLight.indices     = mesh->GetUniqueResource()->triIndBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<uint3>>("CUDA")->GetHandle().getDevicePtr();
+			meshLight.indCount    = mesh->GetUniqueResource()->triIndBuffer.Size();
 			m_Impl->m_MeshLights.cpuHandle.push_back(meshLight);
 		}
 	}
@@ -447,7 +451,6 @@ void Test24NEEOPXTracer::InitLaunchParams()
 	this->m_Impl->m_Params.cpuHandle[0].maxTraceDepth = this->m_Impl->m_MaxTraceDepth;
 	this->m_Impl->m_Params.cpuHandle[0].samplePerALL    = GetVariables()->GetUInt32("SamplePerAll"   );
 	this->m_Impl->m_Params.cpuHandle[0].samplePerLaunch = GetVariables()->GetUInt32("SamplePerLaunch");
-
 	this->m_Impl->m_Params.Upload();
 }
 

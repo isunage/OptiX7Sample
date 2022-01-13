@@ -8,20 +8,20 @@ auto test24::SpecifyMaterialType(const rtlib::ext::VariableMap& material) -> std
 	auto refrIndx = material.GetFloat1("refrIndx");
 	auto shinness = material.GetFloat1("shinness");
 	auto illum = material.GetUInt32("illum");
-	if (illum == 7)
-	{
-		return "Refraction";
-	}
-	else if (emitCol.x + emitCol.y + emitCol.z > 0.0f)
+	if (emitCol.x + emitCol.y + emitCol.z > 0.0f)
 	{
 		return "Emission";
 	}
-	else
+	else if (illum == 7)
 	{
+		return "Refraction";
+	}
+	else {
 		return "Diffuse";
 	}
 }
 
 auto test24::ChooseNEE(const rtlib::ext::MeshPtr& mesh) -> bool {
-	return true;
+	return mesh->GetUniqueResource()->triIndBuffer.Size() > 50;
+	//return true;
 }

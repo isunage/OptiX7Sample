@@ -117,6 +117,8 @@ void Test24PathOPXTracer::Initialize()
 	 }
 
 	 if (GetVariables()->GetBool("Started")) {
+		 std::vector<float3> zeroAccumValues(this->m_Impl->m_Framebuffer->GetWidth() * this->m_Impl->m_Framebuffer->GetHeight(), make_float3(0.0f));
+		 cudaMemcpy(m_Impl->m_Framebuffer->GetComponent<test::RTCUDABufferFBComponent<float3>>("RAccum")->GetHandle().getDevicePtr(), zeroAccumValues.data(), sizeof(float3) * this->m_Impl->m_Framebuffer->GetWidth() * this->m_Impl->m_Framebuffer->GetHeight(), cudaMemcpyHostToDevice);
 		 GetVariables()->SetBool("Started" , false);
 		 GetVariables()->SetBool("Launched", true);
 		 GetVariables()->SetUInt32("SamplePerAll", 0);

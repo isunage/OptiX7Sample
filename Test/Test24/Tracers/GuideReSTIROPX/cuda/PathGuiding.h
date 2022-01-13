@@ -11,14 +11,14 @@
 #endif
 namespace test24_restir_guide
 {
-	enum SpatialFilter
+	enum   SpatialFilter
 	{
 		//Suitable in GPU
 		SpatialFilterNearest,
 		//Too Slow in GPU
 		SpatialFilterBox,
 	};
-	enum DirectionalFilter
+	enum   DirectionalFilter
 	{
 		//Suitable in GPU
 		DirectionalFilterNearest,
@@ -867,5 +867,4 @@ namespace test24_restir_guide
 		}
 	};
 }
-
 #endif

@@ -12,6 +12,7 @@
 #include <GuideWRSOPXTracer.h>
 #include <GuideNEEOPXTracer.h>
 #include <Test24Config.h>
+#include <random>
 #include <filesystem>
 Test24Application::Test24Application(int fbWidth, int fbHeight, std::string name) noexcept : test::RTApplication(name)
 {
@@ -131,7 +132,7 @@ void Test24Application::InitBase()
     m_TracePublicNames.push_back("GuidePathOPX");
     m_TracePublicNames.push_back("GuideNEEOPX");
     m_TracePublicNames.push_back("GuideWRSOPX");
-    //m_TracePublicNames.push_back("GuideReSTIROPX");
+    m_TracePublicNames.push_back("GuideReSTIROPX");
     m_TracePublicNames.push_back("ReSTIROPX");
     m_TracePublicNames.push_back("DebugOPX");
     m_CurMainTraceName = m_TracePublicNames.front();
@@ -210,17 +211,47 @@ void Test24Application::RenderGui()
 void Test24Application::InitScene()
 {
     //if (m_ObjModelManager->LoadAsset("CornellBox-Water", TEST_TEST24_DATA_PATH"/Models/CornellBox/CornellBox-Water.obj")) {
+    //    m_ObjModelManager->GetAsset("CornellBox-Water").meshGroup->RemoveMesh("light");
     //    m_CurObjModelName = "CornellBox-Water";
     //}
-    //auto  mainAabb = rtlib::utils::AABB();
+    /*{
+        size_t N = 100;
+        std::mt19937 mt(0);
+        std::uniform_real_distribution<float> uni(-1.0f, 1.0f);
+        for (size_t i = 0; i < N; ++i)
+        {
+            auto center = make_float3(uni(mt), 1.3f, uni(mt));
+            if (m_ObjModelManager->LoadAsset("Sphere"+std::to_string(i), TEST_TEST24_DATA_PATH"/Models/Sphere/sphere.obj")) {
+                auto& [meshGroup, materials] = m_ObjModelManager->GetAsset("Sphere" + std::to_string(i));
+                for (auto& vertex : meshGroup->GetSharedResource()->vertexBuffer) {
+                    vertex = vertex * 0.005f + center;
+                }
+                materials[0].SetFloat3From("emitCol", make_float3(uni(mt)/2.0f+0.5f, uni(mt) / 2.0f + 0.5f, uni(mt) / 2.0f + 0.5f));
+            }
+        }
+    }*/
+    auto  mainAabb = rtlib::utils::AABB();
     if (m_ObjModelManager->LoadAsset("Bistro-Exterior", TEST_TEST24_DATA_PATH"/Models/Bistro/Exterior/exterior.obj")) {
         m_CurObjModelName = "Bistro-Exterior";
+    }
+    if (m_ObjModelManager->LoadAsset("Sphere", TEST_TEST24_DATA_PATH"/Models/Sphere/sphere.obj")) {
+        auto& materials = m_ObjModelManager->GetAsset("Sphere").materials;
+        materials[0].SetUInt32("illum"   , 7);
+        materials[0].SetFloat1("refrIndx", 1.5f);
+        materials[0].SetFloat3("specCol" , std::array<float, 3>{1.0f, 1.0f, 1.0f});
+        materials[0].SetFloat3("emitCol" , std::array<float, 3>{0.0f, 0.0f, 0.0f});
+        auto& meshGroup = m_ObjModelManager->GetAsset("Sphere").meshGroup;
+        for (auto& vertex : m_ObjModelManager->GetAsset("Sphere").meshGroup->GetSharedResource()->vertexBuffer)
+        {
+            vertex = 80.f * vertex + make_float3(-678.892 ,127.788 ,- 128.837);
+        }
+        m_ObjModelManager->GetAsset("Sphere").InitAABB();
     }
     //if (m_ObjModelManager->LoadAsset("Water", TEST_TEST24_DATA_PATH"/Models/CornellBox/water2.obj")) 
     //{
     //    for (auto& vertex : m_ObjModelManager->GetAsset("Water").meshGroup->GetSharedResource()->vertexBuffer)
     //    {
-    //        vertex *= 100.0f;
+    //        vertex *= 25.0f;
     //    }
     //    /*m_CurObjModelName = "Water";*/
     //}
@@ -275,9 +306,6 @@ void Test24Application::InitScene()
                     {
                         std::cout << "EmitTex \"" << emitTexPath << "\" Not Found!\n";
                         material.SetString("emitTex", "");
-                        if ((material.GetFloat3("emitCol")[0]+ material.GetFloat3("emitCol")[1]+ material.GetFloat3("emitCol")[2])/3 < 0.1f) {
-                            material.SetFloat3("emitCol", { 1.0f,1.0f,1.0f });
-                        }
                     }
 
                 }
@@ -343,7 +371,9 @@ void Test24Application::InitScene()
                     }
                 }
                 materialOffset += objModel.materials.size();
-                m_GASHandles[objName]->Build(m_Context->GetOPX7Handle().get(), accelBuildOptions);
+                if (!m_GASHandles[objName]->GetMeshes().empty()) {
+                    m_GASHandles[objName]->Build(m_Context->GetOPX7Handle().get(), accelBuildOptions);
+                }
             }
         }
         m_GASHandles["Light"]->Build(m_Context->GetOPX7Handle().get(), accelBuildOptions);
@@ -352,6 +382,10 @@ void Test24Application::InitScene()
         for (auto& lightMesh : m_GASHandles["Light"]->GetMeshes()) {
             if (test24::ChooseNEE(lightMesh)) {
                 lightMesh->GetUniqueResource()->variables.SetBool("useNEE", true);
+                auto aabbMin = lightMesh->GetUniqueResource()->variables.GetFloat3As<float3>("aabb.min");
+                auto aabbMax = lightMesh->GetUniqueResource()->variables.GetFloat3As<float3>("aabb.max");
+                auto aabb    = rtlib::utils::AABB(aabbMin, aabbMax);
+                std::cout << lightMesh->GetUniqueResource()->name << ": " << aabb.GetArea() <<"\n";
             }
             else {
                 lightMesh->GetUniqueResource()->variables.SetBool("useNEE", false);
@@ -362,63 +396,71 @@ void Test24Application::InitScene()
     {
         OptixAccelBuildOptions accelOptions = {};
         accelOptions.buildFlags = OPTIX_BUILD_FLAG_ALLOW_COMPACTION | OPTIX_BUILD_FLAG_PREFER_FAST_TRACE;
-        accelOptions.operation  = OPTIX_BUILD_OPERATION_BUILD;
+        accelOptions.operation = OPTIX_BUILD_OPERATION_BUILD;
+        //InstanceSet
+        auto instanceSet = std::make_shared<rtlib::ext::InstanceSet>();
+        //
+        unsigned int sbtOffset = 0;
         //World
         auto worldInstance = rtlib::ext::Instance();
         worldInstance.Init(m_GASHandles[m_CurObjModelName]);
-        worldInstance.SetSbtOffset(0);
+        worldInstance.SetSbtOffset(sbtOffset);
+        instanceSet->SetInstance(worldInstance);
+        sbtOffset += worldInstance.GetSbtCount() * TEST_TEST24_NUM_RAY_TYPE;
         //Light
         auto lightInstance = rtlib::ext::Instance();
         lightInstance.Init(m_GASHandles["Light"]);
-        lightInstance.SetSbtOffset(worldInstance.GetSbtCount() * TEST_TEST24_NUM_RAY_TYPE);
-        //InstanceSet
-        auto instanceSet = std::make_shared<rtlib::ext::InstanceSet>();
-        instanceSet->SetInstance(worldInstance);
+        lightInstance.SetSbtOffset(sbtOffset);
         instanceSet->SetInstance(lightInstance);
-        //New Water Scene
-        //auto waterInstances = std::vector<rtlib::ext::Instance>();
-        //{
-        //    auto worldAabb = rtlib::utils::AABB();
-        //    for (auto& vertex : m_ObjModelManager->GetAsset(m_CurObjModelName).meshGroup->GetSharedResource()->vertexBuffer) {
-        //        worldAabb.Update(vertex);
-        //    }
-        //    auto waterAabb = rtlib::utils::AABB();
-        //    for (auto& vertex : m_ObjModelManager->GetAsset("Water").meshGroup->GetSharedResource()->vertexBuffer) {
-        //        waterAabb.Update(vertex);
-        //    }
-        //    std::cout << "(" << waterAabb.min.x << "," << waterAabb.min.y << "," << waterAabb.min.z << ")" << std::endl;
-        //    std::cout << "(" << waterAabb.max.x << "," << waterAabb.max.y << "," << waterAabb.max.z << ")" << std::endl;
-        //    std::cout << "(" << worldAabb.min.x << "," << worldAabb.min.y << "," << worldAabb.min.z << ")" << std::endl;
-        //    std::cout << "(" << worldAabb.max.x << "," << worldAabb.max.y << "," << worldAabb.max.z << ")" << std::endl;
+        sbtOffset += lightInstance.GetSbtCount() * TEST_TEST24_NUM_RAY_TYPE;
+        do{
+            //New Water Scene
+            auto waterInstances = std::vector<rtlib::ext::Instance>();
+            if (!m_ObjModelManager->HasAsset("Water")) {
+                break;
+            }
+            {
+                auto worldAabb = rtlib::utils::AABB();
+                for (auto& vertex : m_ObjModelManager->GetAsset(m_CurObjModelName).meshGroup->GetSharedResource()->vertexBuffer) {
+                    worldAabb.Update(vertex);
+                }
+                auto waterAabb = rtlib::utils::AABB();
+                for (auto& vertex : m_ObjModelManager->GetAsset("Water").meshGroup->GetSharedResource()->vertexBuffer) {
+                    waterAabb.Update(vertex);
+                }
+                std::cout << "(" << waterAabb.min.x << "," << waterAabb.min.y << "," << waterAabb.min.z << ")" << std::endl;
+                std::cout << "(" << waterAabb.max.x << "," << waterAabb.max.y << "," << waterAabb.max.z << ")" << std::endl;
+                std::cout << "(" << worldAabb.min.x << "," << worldAabb.min.y << "," << worldAabb.min.z << ")" << std::endl;
+                std::cout << "(" << worldAabb.max.x << "," << worldAabb.max.y << "," << worldAabb.max.z << ")" << std::endl;
 
-        //    float3 worldOffset = worldAabb.min;
-        //    float3 worldSizes = (worldAabb.max - worldAabb.min);
+                float3 worldOffset = worldAabb.min;
+                float3 worldSizes = (worldAabb.max - worldAabb.min);
 
-        //    float3 waterOffset = waterAabb.min;
-        //    float3 waterSizes = (waterAabb.max - waterAabb.min);
+                float3 waterOffset = waterAabb.min;
+                float3 waterSizes = (waterAabb.max - waterAabb.min);
 
-        //    uint2  waterCounts = make_uint2(worldSizes.x / (waterSizes.x) + 100, worldSizes.z / (waterSizes.z) + 100);
+                uint2  waterCounts = make_uint2(worldSizes.x / (waterSizes.x) + 100, worldSizes.z / (waterSizes.z) + 100);
 
-        //    waterInstances.resize(waterCounts.x * waterCounts.y);
-        //    unsigned int idx = 0;
-        //    unsigned int sbtOffset = lightInstance.GetSbtOffset() + lightInstance.GetSbtCount() * TEST_TEST24_NUM_RAY_TYPE;
-        //    for (auto& waterInstance : waterInstances) {
-        //        waterInstance.Init(m_GASHandles["Water"]);
-        //        waterInstance.SetSbtOffset(sbtOffset);
-        //        float3 currentOffset = (make_float3(worldAabb.min.x, 0.0f, worldAabb.min.z) - waterAabb.min) + make_float3(waterSizes.x * (idx % waterCounts.x), 100.0f, waterSizes.z * (idx / waterCounts.x));
-        //        float  transforms[12] = {
-        //            1.0f,0.0f,0.0f,currentOffset.x,
-        //            0.0f,1.0f,0.0f,currentOffset.y,
-        //            0.0f,0.0f,1.0f,currentOffset.z
-        //        };
-        //        std::memcpy(waterInstance.instance.transform, transforms, sizeof(transforms));
-        //        sbtOffset += waterInstance.GetSbtCount() * TEST_TEST24_NUM_RAY_TYPE;
-        //        idx++;
-        //    }
-        //}
-        //for (auto& waterInstance : waterInstances) {
-        //    instanceSet->SetInstance(waterInstance);
-        //}
+                waterInstances.resize(waterCounts.x * waterCounts.y);
+                unsigned int idx = 0;
+                for (auto& waterInstance : waterInstances) {
+                    waterInstance.Init(m_GASHandles["Water"]);
+                    waterInstance.SetSbtOffset(sbtOffset);
+                    float3 currentOffset = (make_float3(worldAabb.min.x, 0.0f, worldAabb.min.z) - waterAabb.min) + make_float3(waterSizes.x * (idx % waterCounts.x), 100.0f, waterSizes.z * (idx / waterCounts.x));
+                    float  transforms[12] = {
+                        1.0f,0.0f,0.0f,currentOffset.x,
+                        0.0f,1.0f,0.0f,currentOffset.y,
+                        0.0f,0.0f,1.0f,currentOffset.z
+                    };
+                    std::memcpy(waterInstance.instance.transform, transforms, sizeof(transforms));
+                    sbtOffset += waterInstance.GetSbtCount() * TEST_TEST24_NUM_RAY_TYPE;
+                    idx++;
+                }
+            }
+            for (auto& waterInstance : waterInstances) {
+                instanceSet->SetInstance(waterInstance);
+            }
+        } while (0);
         instanceSet->Upload();
         //AddInstanceSet
         m_IASHandles["TopLevel"]->AddInstanceSet(instanceSet);
@@ -667,7 +709,7 @@ void Test24Application::Launch()
         userData.stream = nullptr;
         m_Tracers[name]->Launch(m_FbWidth, m_FbHeight, &userData);
         m_SamplePerAll = m_Tracers[name]->GetVariables()->GetUInt32("SamplePerAll");
-        auto launched = m_Tracers[name]->GetVariables()->GetBool("Launched");
+        auto launched  = m_Tracers[name]->GetVariables()->GetBool("Launched");
         if (launched) {
             m_EventFlags |= TEST24_EVENT_FLAG_LOCK;
         }
@@ -683,7 +725,7 @@ void Test24Application::Launch()
         userData.stream = nullptr;
         m_Tracers[name]->Launch(m_FbWidth, m_FbHeight, &userData);
         m_SamplePerAll = m_Tracers[name]->GetVariables()->GetUInt32("SamplePerAll");
-        auto launched = m_Tracers[name]->GetVariables()->GetBool("Launched");
+        auto launched  = m_Tracers[name]->GetVariables()->GetBool("Launched");
         if (launched) {
             m_EventFlags |= TEST24_EVENT_FLAG_LOCK;
         }

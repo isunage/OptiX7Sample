@@ -41,10 +41,11 @@ add_subdirectory(Test22)
 add_subdirectory(Test23)
 add_subdirectory(Test24)
 ## practical path guiding(Muller2017)
-add_subdirectory(TestPathGuiding)
+add_subdirectory(TestPathGuiding )
 add_subdirectory(TestPathGuiding2)
 add_subdirectory(TestPathGuiding3)
-## Update: Mesh Light
 add_subdirectory(TestPathGuiding4)
+## Update: Mesh Light
+add_subdirectory(TestImageConverter)
 ## ReSTIR                (NVIDIA)
 ## ReSTIR-GI             (NVIDIA)

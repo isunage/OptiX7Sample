@@ -29,6 +29,8 @@ namespace test {
 	struct RTObjModel {
 		rtlib::ext::MeshGroupPtr             meshGroup;
 		std::vector<rtlib::ext::VariableMap> materials;
+		void SplitLight();
+		void   InitAABB();
 	};
 	class  RTObjModelAssetManager
 	{
@@ -37,6 +39,7 @@ namespace test {
 		void FreeAsset(const std::string& keyName);
 		auto  GetAsset(const std::string& keyName)const -> const RTObjModel&;
 		auto  GetAsset(const std::string& keyName)->RTObjModel&;
+		auto  PopAsset(const std::string& keyName)->RTObjModel;
 		auto  GetAssets()const -> const std::unordered_map<std::string, RTObjModel>&;
 		auto  GetAssets()      ->       std::unordered_map<std::string, RTObjModel>&;
 		bool  HasAsset(const std::string& keyName)const noexcept;

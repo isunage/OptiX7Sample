@@ -42,7 +42,7 @@ static __forceinline__ __device__ float3 faceForward(const float3& n, const floa
 static __forceinline__ __device__ void*  unpackPointer(unsigned int p0, unsigned int p1) {
     return reinterpret_cast<void*>(rtlib::to_combine(p0, p1));
 }
-static __forceinline__ __device__ void   packPointer(void* ptr,unsigned int& p0, unsigned int& p1) {
+static __forceinline__ __device__ void     packPointer(void* ptr,unsigned int& p0, unsigned int& p1) {
     const unsigned long long llv = reinterpret_cast<const unsigned long long>(ptr);
     p0 = rtlib::to_upper(llv);
     p1 = rtlib::to_lower(llv);
@@ -51,7 +51,7 @@ static __forceinline__ __device__ float3 unpackFloat3(unsigned int p0, unsigned 
 {
     return make_float3(__uint_as_float(p0),__uint_as_float(p1),__uint_as_float(p2));
 }
-static __forceinline__ __device__ void   packFloat3(const float3& v,unsigned int& p0, unsigned& p1,unsigned int& p2)
+static __forceinline__ __device__ void     packFloat3(const float3& v,unsigned int& p0, unsigned& p1,unsigned int& p2)
 {
     p0 = __float_as_uint(v.x);
     p1 = __float_as_uint(v.y);
@@ -124,7 +124,7 @@ extern "C" __global__ void __raygen__def(){
         const float2 d      = make_float2(
             ((2.0f * static_cast<float>(idx.x) + jitter.x) / static_cast<float>(dim.x)) - 1.0,
             ((2.0f * static_cast<float>(idx.y) + jitter.y) / static_cast<float>(dim.y)) - 1.0);
-        seed                = xor32.m_seed;
+        seed = xor32.m_seed;
         float3 rayOrigin    = rgData->eye;
         float3 rayDirection = rtlib::normalize(d.x * u + d.y * v + w);
         RadiancePRD prd;
@@ -135,13 +135,9 @@ extern "C" __global__ void __raygen__def(){
         prd.countEmitted    = true;
         prd.done            = false;
         prd.seed            = seed;
-        int depth = 0;
-        if (depth >= params.maxTraceDepth) {
-            prd.done = true;
-        }
         float t_min = 0.01f;
         float t_max = 1e16f;
-        depth++;
+        int depth = 1;
         for (;;) {
             if (depth >= params.maxTraceDepth) {
                 prd.done = true;
@@ -152,7 +148,6 @@ extern "C" __global__ void __raygen__def(){
             if (prd.done || isnan(rayDirection.x) || isnan(rayDirection.y) || isnan(rayDirection.z)) {
                 break;
             }
-            t_max = 1e16f;
             depth++;
         }
         seed = prd.seed;
@@ -183,36 +178,34 @@ extern "C" __global__ void __miss__occluded() {
 extern "C" __global__ void __closesthit__radiance_for_diffuse_nee_with_nee_light(){
 
     auto*        hgData       = reinterpret_cast<HitgroupData*>(optixGetSbtDataPointer());
-    const float3 rayDirection = optixGetWorldRayDirection();
+    const auto rayDirection = optixGetWorldRayDirection();
     const int    primitiveID  = optixGetPrimitiveIndex();    
-    const float3 v0 = hgData->vertices[hgData->indices[primitiveID].x];
-    const float3 v1 = hgData->vertices[hgData->indices[primitiveID].y];
-    const float3 v2 = hgData->vertices[hgData->indices[primitiveID].z];
-    const float3 n0 = optixTransformNormalFromObjectToWorldSpace(rtlib::normalize(rtlib::cross(v1 - v0, v2 - v0)));
-	const float3 normal       = faceForward(n0, make_float3(-rayDirection.x,-rayDirection.y,-rayDirection.z), n0);
-    const float2 barycentric  = optixGetTriangleBarycentrics();
+    const auto v0 = hgData->vertices[hgData->indices[primitiveID].x];
+    const auto v1 = hgData->vertices[hgData->indices[primitiveID].y];
+    const auto v2 = hgData->vertices[hgData->indices[primitiveID].z];
+    const auto n0 = optixTransformNormalFromObjectToWorldSpace(rtlib::normalize(rtlib::cross(v1 - v0, v2 - v0)));
+    const auto normal = faceForward(n0, make_float3(-rayDirection.x, -rayDirection.y, -rayDirection.z), n0);
+    const auto barycentric = optixGetTriangleBarycentrics();
     const auto t0             = hgData->texCoords[hgData->indices[primitiveID].x];
     const auto t1             = hgData->texCoords[hgData->indices[primitiveID].y];
     const auto t2             = hgData->texCoords[hgData->indices[primitiveID].z];
     const auto texCoord       = (1.0f - barycentric.x - barycentric.y) * t0 + barycentric.x * t1 + barycentric.y * t2;
-
     const auto diffuse        = hgData->getDiffuseColor(texCoord);
     const auto emission       = hgData->getEmissionColor(texCoord);
-
-    const float3 position     = optixGetWorldRayOrigin() + optixGetRayTmax() * rayDirection;
-
+    const auto position = optixGetWorldRayOrigin() + optixGetRayTmax() * rayDirection;
     RadiancePRD* prd          = getRadiancePRD();
     float3 prvAttenuation     = prd->attenuation;
-    prd->emitted              = emission * prvAttenuation* static_cast<float>(prd->countEmitted);
+    prd->emitted              = emission * prvAttenuation* static_cast<float>(prd->countEmitted) * static_cast<float>(rtlib::dot(n0, rayDirection) < 0.0f);
+    prd->radiance             = make_float3(0.0f);
+    prd->attenuation2         = make_float3(0.0f);
     if (prd->done) {
-        prd->radiance = make_float3(0.0f);
         return;
     }
     rtlib::Xorshift32 xor32(prd->seed);
     {
         float3 newDirection = sampleCosinePDF(normal,xor32);
 
-        setRayOrigin(position);
+        setRayOrigin(position+0.01f*normal);
         setRayDirection(newDirection);
 
         prd->attenuation   *= diffuse;
@@ -220,33 +213,33 @@ extern "C" __global__ void __closesthit__radiance_for_diffuse_nee_with_nee_light
     }
     {
         LightRec lRec  = {};
-        auto& light    = params.light.data[xor32.next() % params.light.count];
-        auto  lightDir = light.Sample(position, lRec, xor32);
+		auto  lightId  = rtlib::random_float1(0.0f, 1.0f, xor32) * static_cast<float>(params.light.count);
+        auto& light    = params.light.data[static_cast<unsigned int>(lightId)];
+        auto  lightDir = light.Sample(position, lRec, xor32); 
         auto  ndl      = rtlib::dot(lightDir, normal);
         float weight   = 0.0f;
         if (ndl > 0.0f && lRec.invPdf > 0.0f) {
-            const bool occluded = traceOccluded(params.gasHandle, position, lightDir, 0.001f, lRec.distance - 0.001f);
+            const bool occluded = traceOccluded(params.gasHandle, position + 0.01f * normal, lightDir, 0.0f, lRec.distance - 0.01f);
             if (!occluded) {
                 weight    = ndl * lRec.invPdf;
             }
         }
         prd->attenuation2 = prvAttenuation * diffuse/RTLIB_M_PI;
         prd->radiance     = lRec.emission * weight * static_cast<float>(params.light.count);
-        
     }
     prd->seed = xor32.m_seed;
 }
 extern "C" __global__ void __closesthit__radiance_for_diffuse_nee_with_def_light() {
 
     auto* hgData = reinterpret_cast<HitgroupData*>(optixGetSbtDataPointer());
-    const float3 rayDirection = optixGetWorldRayDirection();
+    const auto rayDirection = optixGetWorldRayDirection();
     const int    primitiveID = optixGetPrimitiveIndex();
-    const float3 v0 = hgData->vertices[hgData->indices[primitiveID].x];
-    const float3 v1 = hgData->vertices[hgData->indices[primitiveID].y];
-    const float3 v2 = hgData->vertices[hgData->indices[primitiveID].z];
-    const float3 n0 = optixTransformNormalFromObjectToWorldSpace(rtlib::normalize(rtlib::cross(v1 - v0, v2 - v0)));
-    const float3 normal = faceForward(n0, make_float3(-rayDirection.x, -rayDirection.y, -rayDirection.z), n0);
-    const float2 barycentric = optixGetTriangleBarycentrics();
+    const auto v0 = hgData->vertices[hgData->indices[primitiveID].x];
+    const auto v1 = hgData->vertices[hgData->indices[primitiveID].y];
+    const auto v2 = hgData->vertices[hgData->indices[primitiveID].z];
+    const auto n0 = optixTransformNormalFromObjectToWorldSpace(rtlib::normalize(rtlib::cross(v1 - v0, v2 - v0)));
+    const auto normal = faceForward(n0, make_float3(-rayDirection.x, -rayDirection.y, -rayDirection.z), n0);
+    const auto barycentric = optixGetTriangleBarycentrics();
     const auto t0 = hgData->texCoords[hgData->indices[primitiveID].x];
     const auto t1 = hgData->texCoords[hgData->indices[primitiveID].y];
     const auto t2 = hgData->texCoords[hgData->indices[primitiveID].z];
@@ -259,16 +252,17 @@ extern "C" __global__ void __closesthit__radiance_for_diffuse_nee_with_def_light
 
     RadiancePRD* prd = getRadiancePRD();
     float3 prvAttenuation = prd->attenuation;
-    prd->emitted = emission * prvAttenuation;
+    prd->emitted      = emission * prvAttenuation * static_cast<float>(rtlib::dot(n0, rayDirection) < 0.0f);
+    prd->radiance     = make_float3(0.0f);
+    prd->attenuation2 = make_float3(0.0f);
     if (prd->done) {
-        prd->radiance = make_float3(0.0f);
         return;
     }
     rtlib::Xorshift32 xor32(prd->seed);
     {
         float3 newDirection = sampleCosinePDF(normal, xor32);
 
-        setRayOrigin(position);
+        setRayOrigin(position + 0.01f * normal);
         setRayDirection(newDirection);
 
         prd->attenuation *= diffuse;
@@ -276,12 +270,13 @@ extern "C" __global__ void __closesthit__radiance_for_diffuse_nee_with_def_light
     }
     {
         LightRec lRec = {};
-        auto& light = params.light.data[xor32.next() % params.light.count];
+        auto  lightId  = rtlib::random_float1(0.0f, 1.0f, xor32) * static_cast<float>(params.light.count);
+        auto& light    = params.light.data[static_cast<unsigned int>(lightId)];        
         auto  lightDir = light.Sample(position, lRec, xor32);
         auto  ndl = rtlib::dot(lightDir, normal);
         float weight = 0.0f;
         if (ndl > 0.0f && lRec.invPdf > 0.0f) {
-            const bool occluded = traceOccluded(params.gasHandle, position, lightDir, 0.001f, lRec.distance - 0.001f);
+            const bool occluded = traceOccluded(params.gasHandle, position + 0.01f * normal, lightDir, 0.0f, lRec.distance - 0.01f);
             if (!occluded) {
                 weight = ndl * lRec.invPdf;
             }
@@ -297,10 +292,10 @@ extern "C" __global__ void __closesthit__radiance_for_diffuse_def(){
     auto*        hgData       = reinterpret_cast<HitgroupData*>(optixGetSbtDataPointer());
     const float3 rayDirection = optixGetWorldRayDirection();
     const int    primitiveID  = optixGetPrimitiveIndex();    
-    const float3 v0           = hgData->vertices[hgData->indices[primitiveID].x];
-    const float3 v1           = hgData->vertices[hgData->indices[primitiveID].y];
-    const float3 v2           = hgData->vertices[hgData->indices[primitiveID].z];
-    const float3 n0           = optixTransformNormalFromObjectToWorldSpace(rtlib::normalize(rtlib::cross(v1 - v0, v2 - v0)));
+    const float3 v0 = hgData->vertices[hgData->indices[primitiveID].x];
+    const float3 v1 = hgData->vertices[hgData->indices[primitiveID].y];
+    const float3 v2 = hgData->vertices[hgData->indices[primitiveID].z];
+    const float3 n0 = optixTransformNormalFromObjectToWorldSpace(rtlib::normalize(rtlib::cross(v1 - v0, v2 - v0)));
     const float3 normal       = faceForward(n0, make_float3(-rayDirection.x,-rayDirection.y,-rayDirection.z), n0);
     const float2 barycentric  = optixGetTriangleBarycentrics();
     const auto t0             = hgData->texCoords[hgData->indices[primitiveID].x];
@@ -312,13 +307,14 @@ extern "C" __global__ void __closesthit__radiance_for_diffuse_def(){
     const float3 position     = optixGetWorldRayOrigin() + optixGetRayTmax() * rayDirection;
     RadiancePRD* prd          = getRadiancePRD();
     float3 prvAttenuation     = prd->attenuation;
-    prd->emitted              = emission * prvAttenuation;
-    prd->attenuation2         = make_float3(0.0f, 0.0f, 0.0f);
+    prd->emitted              = emission * prvAttenuation * static_cast<float>(rtlib::dot(n0, rayDirection) < 0.0f);
+    prd->radiance             = make_float3(0.0f);
+    prd->attenuation2         = make_float3(0.0f);
     rtlib::Xorshift32 xor32(prd->seed);
     {
         float3 newDirection = sampleCosinePDF(normal, xor32);
 
-        setRayOrigin(position);
+        setRayOrigin(position+0.01f*normal);
         setRayDirection(newDirection);
 
         prd->attenuation    *= diffuse;
@@ -331,40 +327,41 @@ extern "C" __global__ void __closesthit__radiance_for_specular()   {
     const float3 rayDirection = optixGetWorldRayDirection();
     const int    primitiveID  = optixGetPrimitiveIndex();
     const float2 barycentric  = optixGetTriangleBarycentrics();
-    const float3 vn0          = hgData->vertices[hgData->indices[primitiveID].x];
-    const float3 vn1          = hgData->vertices[hgData->indices[primitiveID].y];
-    const float3 vn2          = hgData->vertices[hgData->indices[primitiveID].z];
-    float3 nf = optixTransformNormalFromObjectToWorldSpace(rtlib::normalize(rtlib::cross(vn1 - vn0, vn2 - vn0)));
-    //float3 n0 = nf;
-    //if (hgData->normals) {
-    //    const float3 nv0 = hgData->normals[hgData->indices[primitiveID].x];
-    //    const float3 nv1 = hgData->normals[hgData->indices[primitiveID].y];
-    //    const float3 nv2 = hgData->normals[hgData->indices[primitiveID].z];
-    //    const bool isValidNv0 = !((nv0.x == 0.0f) && (nv0.y == 0.0f) && (nv0.z == 0.0f));
-    //    const bool isValidNv1 = !((nv1.x == 0.0f) && (nv1.y == 0.0f) && (nv1.z == 0.0f));
-    //    const bool isValidNv2 = !((nv2.x == 0.0f) && (nv2.y == 0.0f) && (nv2.z == 0.0f));
-    //    if (isValidNv0 && isValidNv1 && isValidNv2)
-    //    {
-    //        float3 nv = optixTransformNormalFromObjectToWorldSpace(rtlib::normalize((1.0f - barycentric.x - barycentric.y) * nv0 + barycentric.x * nv1 + barycentric.y * nv2));
-    //        n0 = nv;
-    //    }
-    //}
-    nf = faceForward(nf, make_float3(-rayDirection.x, -rayDirection.y, -rayDirection.z), nf);
+    const float3 v0 = hgData->vertices[hgData->indices[primitiveID].x];
+    const float3 v1 = hgData->vertices[hgData->indices[primitiveID].y];
+    const float3 v2 = hgData->vertices[hgData->indices[primitiveID].z];
+    float3       n0 = optixTransformNormalFromObjectToWorldSpace(rtlib::normalize(rtlib::cross(v1 - v0, v2 - v0)));
+    /*if (hgData->normals) {
+        const float3 nv0 = hgData->normals[hgData->indices[primitiveID].x];
+        const float3 nv1 = hgData->normals[hgData->indices[primitiveID].y];
+        const float3 nv2 = hgData->normals[hgData->indices[primitiveID].z];
+        const bool isValidNv0 = !((nv0.x == 0.0f) && (nv0.y == 0.0f) && (nv0.z == 0.0f));
+        const bool isValidNv1 = !((nv1.x == 0.0f) && (nv1.y == 0.0f) && (nv1.z == 0.0f));
+        const bool isValidNv2 = !((nv2.x == 0.0f) && (nv2.y == 0.0f) && (nv2.z == 0.0f));
+        if (isValidNv0 && isValidNv1 && isValidNv2)
+        {
+            float3 nv = optixTransformNormalFromObjectToWorldSpace(rtlib::normalize((1.0f - barycentric.x - barycentric.y) * nv0 + barycentric.x * nv1 + barycentric.y * nv2));
+            if (rtlib::dot(nv, n0) > 0.0f) {
+                n0 = nv;
+            }
+        }
+    }*/
+    float3 normal = faceForward(n0, make_float3(-rayDirection.x, -rayDirection.y, -rayDirection.z), n0);
     const auto t0 = hgData->texCoords[hgData->indices[primitiveID].x];
     const auto t1 = hgData->texCoords[hgData->indices[primitiveID].y];
     const auto t2 = hgData->texCoords[hgData->indices[primitiveID].z];
     const auto texCoord = (1.0f - barycentric.x - barycentric.y) * t0 + barycentric.x * t1 + barycentric.y * t2;
     const float3 position = optixGetWorldRayOrigin() + optixGetRayTmax() * rayDirection;
-    RadiancePRD* prd = getRadiancePRD();
-    prd->emitted     = make_float3(0.0f, 0.0f, 0.0f);
-    prd->attenuation2= make_float3(0.0f, 0.0f, 0.0f);
+    RadiancePRD* prd  = getRadiancePRD();
+    prd->emitted      = make_float3(0.0f, 0.0f, 0.0f);
+    prd->radiance     = make_float3(0.0f);
+    prd->attenuation2 = make_float3(0.0f);
     {
-        float3 specular = hgData->getSpecularColor(texCoord);
-        const auto reflDirection = rtlib::normalize(rtlib::reflect(rayDirection, nf));
-        
-        setRayOrigin(position + 0.01f * nf);
-        setRayDirection(reflDirection);
-
+        float3 specular       = hgData->getSpecularColor(texCoord);
+        const auto reflectDir = rtlib::normalize(rtlib::reflect(rayDirection, normal));
+        setRayOrigin(position + 0.01f * normal);
+        setRayDirection(reflectDir);
+        prd->distance = optixGetRayTmax();
         prd->attenuation *= specular;
         prd->countEmitted = true;
     }
@@ -374,17 +371,14 @@ extern "C" __global__ void __closesthit__radiance_for_refraction(){
     const float3 rayDirection = optixGetWorldRayDirection();
     const int    primitiveID  = optixGetPrimitiveIndex();
     const float2 barycentric  = optixGetTriangleBarycentrics();
-    const float3 vn0          = hgData->vertices[hgData->indices[primitiveID].x];
-    const float3 vn1          = hgData->vertices[hgData->indices[primitiveID].y];
-    const float3 vn2          = hgData->vertices[hgData->indices[primitiveID].z];
-    const float3 v0           = optixTransformPointFromObjectToWorldSpace(vn0);
-    const float3 v1           = optixTransformPointFromObjectToWorldSpace(vn1);
-    const float3 v2           = optixTransformPointFromObjectToWorldSpace(vn2);
-    float3 n0                 = optixTransformNormalFromObjectToWorldSpace(rtlib::normalize(rtlib::cross(vn1 - vn0, vn2 - vn0)));
+    const float3 v0 = hgData->vertices[hgData->indices[primitiveID].x];
+    const float3 v1 = hgData->vertices[hgData->indices[primitiveID].y];
+    const float3 v2 = hgData->vertices[hgData->indices[primitiveID].z];
+    float3 n0 = optixTransformNormalFromObjectToWorldSpace(rtlib::normalize(rtlib::cross(v1 - v0, v2 - v0)));
     /*if (hgData->normals) {
-        const float3 nv0      = hgData->normals[hgData->indices[primitiveID].x];
-        const float3 nv1      = hgData->normals[hgData->indices[primitiveID].y];
-        const float3 nv2      = hgData->normals[hgData->indices[primitiveID].z];
+        const float3 nv0 = hgData->normals[hgData->indices[primitiveID].x];
+        const float3 nv1 = hgData->normals[hgData->indices[primitiveID].y];
+        const float3 nv2 = hgData->normals[hgData->indices[primitiveID].z];
         const bool isValidNv0 = !((nv0.x == 0.0f) && (nv0.y == 0.0f) && (nv0.z == 0.0f));
         const bool isValidNv1 = !((nv1.x == 0.0f) && (nv1.y == 0.0f) && (nv1.z == 0.0f));
         const bool isValidNv2 = !((nv2.x == 0.0f) && (nv2.y == 0.0f) && (nv2.z == 0.0f));
@@ -398,11 +392,6 @@ extern "C" __global__ void __closesthit__radiance_for_refraction(){
     }*/
     float3 normal = {};
     float  refInd = 0.0f;
-    //        ^ n0
-    //   1=out|
-    //        |
-    //---------------
-    //1.33=in
     if (rtlib::dot(n0,rayDirection)<0.0f) {
         normal      = n0;
         refInd      = 1.0f / hgData->refrInd; 
@@ -418,7 +407,8 @@ extern "C" __global__ void __closesthit__radiance_for_refraction(){
     const float3 position = optixGetWorldRayOrigin() + optixGetRayTmax() * rayDirection;
     RadiancePRD* prd      = getRadiancePRD();
     prd->emitted          = make_float3(0.0f, 0.0f, 0.0f);
-    prd->attenuation2     = make_float3(0.0f, 0.0f, 0.0f);
+    prd->radiance         = make_float3(0.0f);
+    prd->attenuation2     = make_float3(0.0f);
     rtlib::Xorshift32 xor32(prd->seed);
     float3 diffuse        = hgData->getDiffuseColor(texCoord);
     float3 specular       = hgData->getSpecularColor(texCoord);
@@ -442,7 +432,7 @@ extern "C" __global__ void __closesthit__radiance_for_refraction(){
         if (rtlib::random_float1(0.0f, 1.0f, xor32) < fresnell || sine_o_2 > 1.0f) {
 
             //printf("reflect: %lf %lf %lf\n", reflectDir.x, reflectDir.y, reflectDir.z);
-            setRayOrigin(position+0.01f * normal);
+            setRayOrigin(position + 0.01f * normal);
             setRayDirection(reflectDir);
             prd->attenuation *= specular;
         }
@@ -463,47 +453,41 @@ extern "C" __global__ void __closesthit__radiance_for_emission_with_nee_light(){
     auto* hgData = reinterpret_cast<HitgroupData*>(optixGetSbtDataPointer());
     const float3 rayDirection = optixGetWorldRayDirection();
     const int    primitiveID  = optixGetPrimitiveIndex();
-    const float3 vn0 = hgData->vertices[hgData->indices[primitiveID].x];
-    const float3 vn1 = hgData->vertices[hgData->indices[primitiveID].y];
-    const float3 vn2 = hgData->vertices[hgData->indices[primitiveID].z];
-    const float3 v0 = optixTransformPointFromObjectToWorldSpace(vn0);
-    const float3 v1 = optixTransformPointFromObjectToWorldSpace(vn1);
-    const float3 v2 = optixTransformPointFromObjectToWorldSpace(vn2);
-    const float3 n0 = optixTransformNormalFromObjectToWorldSpace(rtlib::normalize(rtlib::cross(vn1 - vn0, vn2 - vn0)));
+    const float3 v0 = hgData->vertices[hgData->indices[primitiveID].x];
+    const float3 v1 = hgData->vertices[hgData->indices[primitiveID].y];
+    const float3 v2 = hgData->vertices[hgData->indices[primitiveID].z];
+    const float3 n0 = optixTransformNormalFromObjectToWorldSpace(rtlib::normalize(rtlib::cross(v1 - v0, v2 - v0)));    
     const float2 barycentric = optixGetTriangleBarycentrics();
-    const auto t0         = hgData->texCoords[hgData->indices[primitiveID].x];
-    const auto t1         = hgData->texCoords[hgData->indices[primitiveID].y];
-    const auto t2         = hgData->texCoords[hgData->indices[primitiveID].z];
-    const auto texCoord   = (1.0f - barycentric.x - barycentric.y) * t0 + barycentric.x * t1 + barycentric.y * t2;
+    const auto t0 = hgData->texCoords[hgData->indices[primitiveID].x];
+    const auto t1 = hgData->texCoords[hgData->indices[primitiveID].y];
+    const auto t2 = hgData->texCoords[hgData->indices[primitiveID].z];
+    const auto texCoord = (1.0f - barycentric.x - barycentric.y) * t0 + barycentric.x * t1 + barycentric.y * t2;
     const float3 position = optixGetWorldRayOrigin() + optixGetRayTmax() * rayDirection;
-    RadiancePRD* prd      = getRadiancePRD();
+    RadiancePRD* prd = getRadiancePRD();
     if (prd->countEmitted && rtlib::dot(n0,rayDirection)<0.0f) {
-        prd->emitted  = hgData->getEmissionColor(texCoord) * prd->attenuation;
+        prd->emitted = hgData->getEmissionColor(texCoord) * prd->attenuation;
     }
     else {
-        prd->emitted  = make_float3(0.0f);
+        prd->emitted = make_float3(0.0f);
     }
     prd->radiance     = make_float3(0.0f);
+    prd->attenuation2 = make_float3(0.0f);
     prd->countEmitted = false;
     prd->done         = true;
 }
 extern "C" __global__ void __closesthit__radiance_for_emission_with_def_light() {
     auto* hgData = reinterpret_cast<HitgroupData*>(optixGetSbtDataPointer());
     const float3 rayDirection = optixGetWorldRayDirection();
-    const int    primitiveID = optixGetPrimitiveIndex();
-    const float3 vn0 = hgData->vertices[hgData->indices[primitiveID].x];
-    const float3 vn1 = hgData->vertices[hgData->indices[primitiveID].y];
-    const float3 vn2 = hgData->vertices[hgData->indices[primitiveID].z];
-    const float3 v0 = optixTransformPointFromObjectToWorldSpace(vn0);
-    const float3 v1 = optixTransformPointFromObjectToWorldSpace(vn1);
-    const float3 v2 = optixTransformPointFromObjectToWorldSpace(vn2);
-    const float3 n0 = optixTransformNormalFromObjectToWorldSpace(rtlib::normalize(rtlib::cross(vn1 - vn0, vn2 - vn0)));
+    const int    primitiveID  = optixGetPrimitiveIndex();
+    const float3 v0 = hgData->vertices[hgData->indices[primitiveID].x];
+    const float3 v1 = hgData->vertices[hgData->indices[primitiveID].y];
+    const float3 v2 = hgData->vertices[hgData->indices[primitiveID].z];
+    const float3 n0 = optixTransformNormalFromObjectToWorldSpace(rtlib::normalize(rtlib::cross(v1 - v0, v2 - v0)));
     const float2 barycentric = optixGetTriangleBarycentrics();
     const auto t0 = hgData->texCoords[hgData->indices[primitiveID].x];
     const auto t1 = hgData->texCoords[hgData->indices[primitiveID].y];
     const auto t2 = hgData->texCoords[hgData->indices[primitiveID].z];
     const auto texCoord = (1.0f - barycentric.x - barycentric.y) * t0 + barycentric.x * t1 + barycentric.y * t2;
-    const float3 position = optixGetWorldRayOrigin() + optixGetRayTmax() * rayDirection;
     RadiancePRD* prd = getRadiancePRD();
     if (rtlib::dot(n0, rayDirection) < 0.0f) {
         prd->emitted = hgData->getEmissionColor(texCoord) * prd->attenuation;
@@ -511,21 +495,19 @@ extern "C" __global__ void __closesthit__radiance_for_emission_with_def_light() 
     else {
         prd->emitted = make_float3(0.0f);
     }
-    prd->radiance = make_float3(0.0f);
+    prd->radiance     = make_float3(0.0f);
+    prd->attenuation2 = make_float3(0.0f);
     prd->countEmitted = false;
-    prd->done = true;
+    prd->done         = true;
 }
 extern "C" __global__ void __closesthit__radiance_for_emission() {
     auto* hgData = reinterpret_cast<HitgroupData*>(optixGetSbtDataPointer());
     const float3 rayDirection = optixGetWorldRayDirection();
     const int    primitiveID = optixGetPrimitiveIndex();
-    const float3 vn0 = hgData->vertices[hgData->indices[primitiveID].x];
-    const float3 vn1 = hgData->vertices[hgData->indices[primitiveID].y];
-    const float3 vn2 = hgData->vertices[hgData->indices[primitiveID].z];
-    const float3 v0 = optixTransformPointFromObjectToWorldSpace(vn0);
-    const float3 v1 = optixTransformPointFromObjectToWorldSpace(vn1);
-    const float3 v2 = optixTransformPointFromObjectToWorldSpace(vn2);
-    const float3 n0 = optixTransformNormalFromObjectToWorldSpace(rtlib::normalize(rtlib::cross(vn1 - vn0, vn2 - vn0)));
+    const float3 v0 = hgData->vertices[hgData->indices[primitiveID].x];
+    const float3 v1 = hgData->vertices[hgData->indices[primitiveID].y];
+    const float3 v2 = hgData->vertices[hgData->indices[primitiveID].z];
+    const float3 n0 = optixTransformNormalFromObjectToWorldSpace(rtlib::normalize(rtlib::cross(v1 - v0, v2 - v0)));
     const float2 barycentric = optixGetTriangleBarycentrics();
     const auto t0 = hgData->texCoords[hgData->indices[primitiveID].x];
     const auto t1 = hgData->texCoords[hgData->indices[primitiveID].y];
@@ -534,26 +516,24 @@ extern "C" __global__ void __closesthit__radiance_for_emission() {
     const float3 position = optixGetWorldRayOrigin() + optixGetRayTmax() * rayDirection;
     RadiancePRD* prd = getRadiancePRD();
     if (rtlib::dot(n0, rayDirection) < 0.0f) {
-        prd->emitted = hgData->getEmissionColor(texCoord) * prd->attenuation;
+        prd->emitted  = hgData->getEmissionColor(texCoord) * prd->attenuation;
     }
     else {
-        prd->emitted = make_float3(0.0f);
+        prd->emitted  = make_float3(0.0f);
     }
-    prd->radiance = make_float3(0.0f);
+    prd->radiance     = make_float3(0.0f);
+    prd->attenuation2 = make_float3(0.0f);
     prd->countEmitted = false;
     prd->done = true;
 }
-extern "C" __global__ void __closesthit__radiance_for_phong_nee_with_nee_light()   {
-    auto*        hgData         = reinterpret_cast<HitgroupData*>(optixGetSbtDataPointer());
+extern "C" __global__ void __closesthit__radiance_for_phong_nee_with_nee_light(){
+    auto* hgData = reinterpret_cast<HitgroupData*>(optixGetSbtDataPointer());
     const float3 rayDirection   = optixGetWorldRayDirection();
-    const int    primitiveID    = optixGetPrimitiveIndex();
-    const float3 vn0          = hgData->vertices[hgData->indices[primitiveID].x];
-    const float3 vn1          = hgData->vertices[hgData->indices[primitiveID].y];
-    const float3 vn2          = hgData->vertices[hgData->indices[primitiveID].z];
-    const float3 v0           = optixTransformPointFromObjectToWorldSpace(vn0);
-    const float3 v1           = optixTransformPointFromObjectToWorldSpace(vn1);
-    const float3 v2           = optixTransformPointFromObjectToWorldSpace(vn2);
-    const float3 n0           = optixTransformNormalFromObjectToWorldSpace(rtlib::normalize(rtlib::cross(vn1 - vn0, vn2 - vn0)));
+    const int    primitiveID = optixGetPrimitiveIndex();
+    const float3 v0 = hgData->vertices[hgData->indices[primitiveID].x];
+    const float3 v1 = hgData->vertices[hgData->indices[primitiveID].y];
+    const float3 v2 = hgData->vertices[hgData->indices[primitiveID].z];
+    const float3 n0 = optixTransformNormalFromObjectToWorldSpace(rtlib::normalize(rtlib::cross(v1 - v0, v2 - v0)));
     const float3 normal         = faceForward(n0, make_float3(-rayDirection.x,-rayDirection.y,-rayDirection.z), n0);
     const float2 barycentric    = optixGetTriangleBarycentrics();
     const auto t0               = hgData->texCoords[hgData->indices[primitiveID].x];
@@ -568,8 +548,9 @@ extern "C" __global__ void __closesthit__radiance_for_phong_nee_with_nee_light()
     const auto shinness         = hgData->shinness;
     RadiancePRD* prd            = getRadiancePRD();
     const float3 prvAttenuation = prd->attenuation;
-    prd->emitted                = emission * prvAttenuation * static_cast<float>(prd->countEmitted);
+    prd->emitted = emission * prvAttenuation * static_cast<float>(prd->countEmitted) * static_cast<float>(rtlib::dot(n0, rayDirection) < 0.0f);
     prd->radiance               = make_float3(0.0f);
+    prd->attenuation2           = make_float3(0.0f);
     if (prd->done) {
         return;
     }
@@ -649,13 +630,10 @@ extern "C" __global__ void __closesthit__radiance_for_phong_nee_with_def_light()
     auto* hgData = reinterpret_cast<HitgroupData*>(optixGetSbtDataPointer());
     const float3 rayDirection = optixGetWorldRayDirection();
     const int    primitiveID = optixGetPrimitiveIndex();
-    const float3 vn0          = hgData->vertices[hgData->indices[primitiveID].x];
-    const float3 vn1          = hgData->vertices[hgData->indices[primitiveID].y];
-    const float3 vn2          = hgData->vertices[hgData->indices[primitiveID].z];
-    const float3 v0           = optixTransformPointFromObjectToWorldSpace(vn0);
-    const float3 v1           = optixTransformPointFromObjectToWorldSpace(vn1);
-    const float3 v2           = optixTransformPointFromObjectToWorldSpace(vn2);
-    const float3 n0           = optixTransformNormalFromObjectToWorldSpace(rtlib::normalize(rtlib::cross(vn1 - vn0, vn2 - vn0)));
+    const float3 v0 = hgData->vertices[hgData->indices[primitiveID].x];
+    const float3 v1 = hgData->vertices[hgData->indices[primitiveID].y];
+    const float3 v2 = hgData->vertices[hgData->indices[primitiveID].z];
+    const float3 n0 = optixTransformNormalFromObjectToWorldSpace(rtlib::normalize(rtlib::cross(v1 - v0, v2 - v0)));
     const float3 normal = faceForward(n0, make_float3(-rayDirection.x, -rayDirection.y, -rayDirection.z), n0);
     const float2 barycentric = optixGetTriangleBarycentrics();
     const auto t0 = hgData->texCoords[hgData->indices[primitiveID].x];
@@ -670,8 +648,9 @@ extern "C" __global__ void __closesthit__radiance_for_phong_nee_with_def_light()
     const auto shinness = hgData->shinness;
     RadiancePRD* prd = getRadiancePRD();
     const float3 prvAttenuation = prd->attenuation;
-    prd->emitted = emission * prvAttenuation;
+    prd->emitted = emission * prvAttenuation * static_cast<float>(rtlib::dot(n0, rayDirection) < 0.0f);
     prd->radiance = make_float3(0.0f);
+    prd->attenuation2 = make_float3(0.0f);
     if (prd->done) {
         return;
     }
@@ -740,7 +719,7 @@ extern "C" __global__ void __closesthit__radiance_for_phong_nee_with_def_light()
             prd->done = true;
         }
 
-        setRayOrigin(position);
+        setRayOrigin(position + 0.01f * normal);
         setRayDirection(newDirection);
 
         prd->attenuation *= weight;
@@ -749,17 +728,14 @@ extern "C" __global__ void __closesthit__radiance_for_phong_nee_with_def_light()
 }
 extern "C" __global__ void __closesthit__radiance_for_phong_def() {
     auto*        hgData       = reinterpret_cast<HitgroupData*>(optixGetSbtDataPointer());
-    const float3 rayDirection = optixGetWorldRayDirection();
+    const auto rayDirection = optixGetWorldRayDirection();
     const int    primitiveID  = optixGetPrimitiveIndex();    
-    const float3 vn0          = hgData->vertices[hgData->indices[primitiveID].x];
-    const float3 vn1          = hgData->vertices[hgData->indices[primitiveID].y];
-    const float3 vn2          = hgData->vertices[hgData->indices[primitiveID].z];
-    const float3 v0           = optixTransformPointFromObjectToWorldSpace(vn0);
-    const float3 v1           = optixTransformPointFromObjectToWorldSpace(vn1);
-    const float3 v2           = optixTransformPointFromObjectToWorldSpace(vn2);
-    const float3 n0           = optixTransformNormalFromObjectToWorldSpace(rtlib::normalize(rtlib::cross(vn1 - vn0, vn2 - vn0)));
-    const float3 normal       = faceForward(n0, make_float3(-rayDirection.x,-rayDirection.y,-rayDirection.z), n0);
-    const float2 barycentric  = optixGetTriangleBarycentrics();
+    const auto v0 = hgData->vertices[hgData->indices[primitiveID].x];
+    const auto v1 = hgData->vertices[hgData->indices[primitiveID].y];
+    const auto v2 = hgData->vertices[hgData->indices[primitiveID].z];
+    const auto n0 = optixTransformNormalFromObjectToWorldSpace(rtlib::normalize(rtlib::cross(v1 - v0, v2 - v0)));
+    const auto normal = faceForward(n0, make_float3(-rayDirection.x, -rayDirection.y, -rayDirection.z), n0);
+    const auto barycentric = optixGetTriangleBarycentrics();
     const auto t0             = hgData->texCoords[hgData->indices[primitiveID].x];
     const auto t1             = hgData->texCoords[hgData->indices[primitiveID].y];
     const auto t2             = hgData->texCoords[hgData->indices[primitiveID].z];
@@ -769,10 +745,11 @@ extern "C" __global__ void __closesthit__radiance_for_phong_def() {
     const auto emission       = hgData->getEmissionColor(texCoord);
     const auto reflectDir     = rtlib::normalize(rtlib::reflect(rayDirection, normal));
     const auto shinness       = hgData->shinness;
-    const float3 position     = optixGetWorldRayOrigin() + optixGetRayTmax() * rayDirection;
+    const auto position   = optixGetWorldRayOrigin() + optixGetRayTmax() * rayDirection;
     RadiancePRD* prd          = getRadiancePRD();
-    const float3 prvAttenuation = prd->attenuation;
-    prd->emitted              = emission * prvAttenuation ;
+    const auto prvAttenuation = prd->attenuation;
+    prd->emitted              = emission * prvAttenuation * static_cast<float>(rtlib::dot(n0, rayDirection) < 0.0f);
+    prd->radiance             = make_float3(0.0f, 0.0f, 0.0f);
     prd->attenuation2         = make_float3(0.0f, 0.0f, 0.0f);
     rtlib::Xorshift32 xor32(prd->seed);
     {
@@ -791,7 +768,7 @@ extern "C" __global__ void __closesthit__radiance_for_phong_def() {
             newDirection = samplePhongPDF(reflectDir, shinness, xor32);
             weight = specular * fabsf(rtlib::dot(newDirection, normal)) / a_specular;
         }
-        setRayOrigin(position);
+        setRayOrigin(position+ 0.01f * normal);
         setRayDirection(newDirection);
         prd->attenuation *= weight;
         prd->countEmitted     = true;

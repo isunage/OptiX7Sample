@@ -48,11 +48,11 @@ struct Test24WRSOPXTracer::Impl {
 		return list;
 	}
 
-	std::weak_ptr<test::RTContext> m_Context;
-	std::weak_ptr<test::RTFramebuffer> m_Framebuffer;
-	std::weak_ptr<rtlib::ext::CameraController> m_CameraController;
-	std::weak_ptr<test::RTTextureAssetManager>  m_TextureManager;
-	std::weak_ptr<rtlib::ext::IASHandle> m_TopLevelAS;
+	std::shared_ptr<test::RTContext> m_Context;
+	std::shared_ptr<test::RTFramebuffer> m_Framebuffer;
+	std::shared_ptr<rtlib::ext::CameraController> m_CameraController;
+	std::shared_ptr<test::RTTextureAssetManager>  m_TextureManager;
+	std::shared_ptr<rtlib::ext::IASHandle> m_TopLevelAS;
 	const std::vector<rtlib::ext::VariableMap>& m_Materials;
 	const float3& m_BgLightColor;
 	const unsigned int& m_EventFlags;
@@ -120,11 +120,14 @@ void Test24WRSOPXTracer::Launch(int width, int height, void* pdata)
 	{
 		return;
 	}
-	if (width != m_Impl->m_Framebuffer.lock()->GetWidth() || height != m_Impl->m_Framebuffer.lock()->GetHeight()) {
+	if (width != m_Impl->m_Framebuffer->GetWidth() || height != m_Impl->m_Framebuffer->GetHeight()) {
 		return;
 	}
 	
 	if (GetVariables()->GetBool("Started")) {
+
+		std::vector<float3> zeroAccumValues(this->m_Impl->m_Framebuffer->GetWidth() * this->m_Impl->m_Framebuffer->GetHeight(), make_float3(0.0f));
+		cudaMemcpy(m_Impl->m_Framebuffer->GetComponent<test::RTCUDABufferFBComponent<float3>>("RAccum")->GetHandle().getDevicePtr(), zeroAccumValues.data(), sizeof(float3) * this->m_Impl->m_Framebuffer->GetWidth() * this->m_Impl->m_Framebuffer->GetHeight(), cudaMemcpyHostToDevice);
 		GetVariables()->SetBool("Started", false);
 		GetVariables()->SetBool("Launched", true);
 		GetVariables()->SetUInt32("SamplePerAll", 0);
@@ -136,8 +139,8 @@ void Test24WRSOPXTracer::Launch(int width, int height, void* pdata)
 
 	this->m_Impl->m_Params.cpuHandle[0].width           = width;
 	this->m_Impl->m_Params.cpuHandle[0].height          = height;
-	this->m_Impl->m_Params.cpuHandle[0].accumBuffer     = this->m_Impl->m_Framebuffer.lock()->GetComponent<test::RTCUDABufferFBComponent<float3>>("RAccum")->GetHandle().getDevicePtr();
-	this->m_Impl->m_Params.cpuHandle[0].frameBuffer     = this->m_Impl->m_Framebuffer.lock()->GetComponent<test::RTCUGLBufferFBComponent<uchar4>>("RFrame")->GetHandle().map();
+	this->m_Impl->m_Params.cpuHandle[0].accumBuffer     = this->m_Impl->m_Framebuffer->GetComponent<test::RTCUDABufferFBComponent<float3>>("RAccum")->GetHandle().getDevicePtr();
+	this->m_Impl->m_Params.cpuHandle[0].frameBuffer     = this->m_Impl->m_Framebuffer->GetComponent<test::RTCUGLBufferFBComponent<uchar4>>("RFrame")->GetHandle().map();
 	this->m_Impl->m_Params.cpuHandle[0].seedBuffer      = this->m_Impl->m_SeedBuffer.getDevicePtr();
 	this->m_Impl->m_Params.cpuHandle[0].isBuilt         = false;
 	this->m_Impl->m_Params.cpuHandle[0].samplePerALL    = samplePerAll;
@@ -150,7 +153,7 @@ void Test24WRSOPXTracer::Launch(int width, int height, void* pdata)
 	{
 		RTLIB_CU_CHECK(cuStreamSynchronize(pUserData->stream));
 	}
-	m_Impl->m_Framebuffer.lock()->GetComponent<test::RTCUGLBufferFBComponent<uchar4>>("RFrame")->GetHandle().unmap();
+	m_Impl->m_Framebuffer->GetComponent<test::RTCUGLBufferFBComponent<uchar4>>("RFrame")->GetHandle().unmap();
 	samplePerAll += samplePerLaunch;
 	this->m_Impl->m_Params.cpuHandle[0].samplePerALL = samplePerAll;  
 	GetVariables()->SetUInt32("SamplePerAll",samplePerAll);
@@ -184,8 +187,8 @@ void Test24WRSOPXTracer::Update()
 {
 	if ((this->m_Impl->m_EventFlags & TEST24_EVENT_FLAG_UPDATE_CAMERA) == TEST24_EVENT_FLAG_UPDATE_CAMERA)
 	{
-		float aspect = static_cast<float>(m_Impl->m_Framebuffer.lock()->GetWidth()) / static_cast<float>(m_Impl->m_Framebuffer.lock()->GetHeight());
-		this->m_Impl->m_Camera = this->m_Impl->m_CameraController.lock()->GetCamera(aspect);
+		float aspect = static_cast<float>(m_Impl->m_Framebuffer->GetWidth()) / static_cast<float>(m_Impl->m_Framebuffer->GetHeight());
+		this->m_Impl->m_Camera = this->m_Impl->m_CameraController->GetCamera(aspect);
 		this->m_Impl->m_RGRecordBuffer.cpuHandle[0].data.eye = this->m_Impl->m_Camera.getEye();
 		auto [u, v, w] = this->m_Impl->m_Camera.getUVW();
 		this->m_Impl->m_RGRecordBuffer.cpuHandle[0].data.u = u;
@@ -195,22 +198,22 @@ void Test24WRSOPXTracer::Update()
 	}
 	if ((this->m_Impl->m_EventFlags & TEST24_EVENT_FLAG_FLUSH_FRAME) == TEST24_EVENT_FLAG_FLUSH_FRAME)
 	{
-		std::vector<float3> zeroAccumValues(this->m_Impl->m_Framebuffer.lock()->GetWidth() * this->m_Impl->m_Framebuffer.lock()->GetHeight(), make_float3(0.0f));
-		cudaMemcpy(m_Impl->m_Framebuffer.lock()->GetComponent<test::RTCUDABufferFBComponent<float3>>("RAccum")->GetHandle().getDevicePtr(), zeroAccumValues.data(), sizeof(float3) * this->m_Impl->m_Framebuffer.lock()->GetWidth() * this->m_Impl->m_Framebuffer.lock()->GetHeight(), cudaMemcpyHostToDevice);
+		std::vector<float3> zeroAccumValues(this->m_Impl->m_Framebuffer->GetWidth() * this->m_Impl->m_Framebuffer->GetHeight(), make_float3(0.0f));
+		cudaMemcpy(m_Impl->m_Framebuffer->GetComponent<test::RTCUDABufferFBComponent<float3>>("RAccum")->GetHandle().getDevicePtr(), zeroAccumValues.data(), sizeof(float3) * this->m_Impl->m_Framebuffer->GetWidth() * this->m_Impl->m_Framebuffer->GetHeight(), cudaMemcpyHostToDevice);
 		this->m_Impl->m_Params.cpuHandle[0].maxTraceDepth = this->m_Impl->m_MaxTraceDepth;
 		this->m_Impl->m_Params.cpuHandle[0].samplePerALL  = 0;
 		GetVariables()->SetUInt32("SamplePerAll", 0);
 	}
 	auto samplePerAll=GetVariables()->GetUInt32("SamplePerAll");
-	bool shouldRegen = ((samplePerAll + this->m_Impl->m_Params.cpuHandle[0].samplePerLaunch) / 1024 != samplePerAll / 1024);
+	bool shouldRegen = ((samplePerAll + this->m_Impl->m_Params.cpuHandle[0].samplePerLaunch) / 64 != samplePerAll / 64);
 	if (((this->m_Impl->m_EventFlags & TEST24_EVENT_FLAG_RESIZE_FRAME) == TEST24_EVENT_FLAG_RESIZE_FRAME) || shouldRegen)
 	{
 		std::cout << "Regen!\n";
-		std::vector<unsigned int> seedData(this->m_Impl->m_Framebuffer.lock()->GetWidth() * this->m_Impl->m_Framebuffer.lock()->GetHeight());
+		std::vector<unsigned int> seedData(this->m_Impl->m_Framebuffer->GetWidth() * this->m_Impl->m_Framebuffer->GetHeight());
 		std::random_device rd;
 		std::mt19937 mt(rd());
 		std::generate(seedData.begin(), seedData.end(), mt);
-		this->m_Impl->m_SeedBuffer.resize(this->m_Impl->m_Framebuffer.lock()->GetWidth() * this->m_Impl->m_Framebuffer.lock()->GetHeight());
+		this->m_Impl->m_SeedBuffer.resize(this->m_Impl->m_Framebuffer->GetWidth() * this->m_Impl->m_Framebuffer->GetHeight());
 		this->m_Impl->m_SeedBuffer.upload(seedData);
 	}
 	if ((this->m_Impl->m_EventFlags & TEST24_EVENT_FLAG_UPDATE_LIGHT) == TEST24_EVENT_FLAG_UPDATE_LIGHT)
@@ -227,18 +230,18 @@ Test24WRSOPXTracer::~Test24WRSOPXTracer() {
 
 void Test24WRSOPXTracer::InitLight()
 {
-	auto lightGASHandle = m_Impl->m_TopLevelAS.lock()->GetInstanceSets()[0]->GetInstance(1).baseGASHandle;
+	auto lightGASHandle = m_Impl->m_TopLevelAS->GetInstanceSets()[0]->GetInstance(1).baseGASHandle;
 	for (auto& mesh : lightGASHandle->GetMeshes())
 	{
 		//Select WRS Light
 		if (mesh->GetUniqueResource()->variables.GetBool("useNEE")) {
 			std::cout << "Name: " << mesh->GetUniqueResource()->name << " LightCount: " << mesh->GetUniqueResource()->triIndBuffer.Size() << std::endl;
 			MeshLight meshLight = {};
-			if (!m_Impl->m_TextureManager.lock()->GetAsset(m_Impl->m_Materials[mesh->GetUniqueResource()->materials[0]].GetString("emitTex")).HasGpuComponent("CUDATexture")) {
-				this->m_Impl->m_TextureManager.lock()->GetAsset(m_Impl->m_Materials[mesh->GetUniqueResource()->materials[0]].GetString("emitTex")).AddGpuComponent<rtlib::ext::resources::CUDATextureImage2DComponent<uchar4>>("CUDATexture");
+			if (!m_Impl->m_TextureManager->GetAsset(m_Impl->m_Materials[mesh->GetUniqueResource()->materials[0]].GetString("emitTex")).HasGpuComponent("CUDATexture")) {
+				this->m_Impl->m_TextureManager->GetAsset(m_Impl->m_Materials[mesh->GetUniqueResource()->materials[0]].GetString("emitTex")).AddGpuComponent<rtlib::ext::resources::CUDATextureImage2DComponent<uchar4>>("CUDATexture");
 			}
 			meshLight.emission = m_Impl->m_Materials[mesh->GetUniqueResource()->materials[0]].GetFloat3As<float3>("emitCol");
-			meshLight.emissionTex = m_Impl->m_TextureManager.lock()->GetAsset(m_Impl->m_Materials[mesh->GetUniqueResource()->materials[0]].GetString("emitTex")).GetGpuComponent<rtlib::ext::resources::CUDATextureImage2DComponent<uchar4>>("CUDATexture")->GetHandle().getHandle();
+			meshLight.emissionTex = m_Impl->m_TextureManager->GetAsset(m_Impl->m_Materials[mesh->GetUniqueResource()->materials[0]].GetString("emitTex")).GetGpuComponent<rtlib::ext::resources::CUDATextureImage2DComponent<uchar4>>("CUDATexture")->GetHandle().getHandle();
 			meshLight.vertices = mesh->GetSharedResource()->vertexBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float3>>("CUDA")->GetHandle().getDevicePtr();
 			meshLight.normals = mesh->GetSharedResource()->normalBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float3>>("CUDA")->GetHandle().getDevicePtr();
 			meshLight.texCoords = mesh->GetSharedResource()->texCrdBuffer.GetGpuComponent<rtlib::ext::resources::CUDABufferComponent<float2>>("CUDA")->GetHandle().getDevicePtr();
@@ -290,7 +293,7 @@ void Test24WRSOPXTracer::InitPipeline()
 #endif
 	}
 	traceModuleOptions.maxRegisterCount = OPTIX_COMPILE_DEFAULT_MAX_REGISTER_COUNT;
-	this->m_Impl->m_Pipeline                                                           = this->m_Impl->m_Context.lock()->GetOPX7Handle()->createPipeline(traceCompileOptions);
+	this->m_Impl->m_Pipeline                                                           = this->m_Impl->m_Context->GetOPX7Handle()->createPipeline(traceCompileOptions);
 	this->m_Impl->m_Modules[std::string("RayTrace")]                                   = this->m_Impl->m_Pipeline.createModule(rayTracePtxData, traceModuleOptions);
 	this->m_Impl->m_RGProgramGroups[std::string("Trace.Default")]                      = this->m_Impl->m_Pipeline.createRaygenPG({ this->m_Impl->m_Modules["RayTrace"], RTLIB_RAYGEN_PROGRAM_STR(def) });
 	this->m_Impl->m_MSProgramGroups[std::string("Trace.Radiance")]                     = this->m_Impl->m_Pipeline.createMissPG({ this->m_Impl->m_Modules["RayTrace"], RTLIB_MISS_PROGRAM_STR(radiance) });
@@ -309,7 +312,7 @@ void Test24WRSOPXTracer::InitPipeline()
 
 void Test24WRSOPXTracer::InitFrameResources()
 {
-	std::vector<unsigned int> seedData(this->m_Impl->m_Framebuffer.lock()->GetWidth() * this->m_Impl->m_Framebuffer.lock()->GetHeight());
+	std::vector<unsigned int> seedData(this->m_Impl->m_Framebuffer->GetWidth() * this->m_Impl->m_Framebuffer->GetHeight());
 	std::random_device rd;
 	std::mt19937 mt(rd());
 	std::generate(seedData.begin(), seedData.end(), mt);
@@ -318,9 +321,9 @@ void Test24WRSOPXTracer::InitFrameResources()
 
 void Test24WRSOPXTracer::InitShaderBindingTable()
 {
-	float aspect = static_cast<float>(m_Impl->m_Framebuffer.lock()->GetWidth()) / static_cast<float>(m_Impl->m_Framebuffer.lock()->GetHeight());
+	float aspect = static_cast<float>(m_Impl->m_Framebuffer->GetWidth()) / static_cast<float>(m_Impl->m_Framebuffer->GetHeight());
 	auto tlas = this->m_Impl->m_TopLevelAS;
-	this->m_Impl->m_Camera = this->m_Impl->m_CameraController.lock()->GetCamera(aspect);
+	this->m_Impl->m_Camera = this->m_Impl->m_CameraController->GetCamera(aspect);
 	auto& materials = this->m_Impl->m_Materials;
 	this->m_Impl->m_RGRecordBuffer.Alloc(1);
 	this->m_Impl->m_RGRecordBuffer.cpuHandle[0] = this->m_Impl->m_RGProgramGroups["Trace.Default"].getSBTRecord<RayGenData>();
@@ -335,10 +338,10 @@ void Test24WRSOPXTracer::InitShaderBindingTable()
 	this->m_Impl->m_MSRecordBuffers.cpuHandle[RAY_TYPE_RADIANCE].data.bgColor = make_float4(this->m_Impl->m_BgLightColor, 1.0f);
 	this->m_Impl->m_MSRecordBuffers.cpuHandle[RAY_TYPE_OCCLUSION] = this->m_Impl->m_MSProgramGroups["Trace.Occluded"].getSBTRecord<MissData>();
 	this->m_Impl->m_MSRecordBuffers.Upload();
-	this->m_Impl->m_HGRecordBuffers.Alloc(tlas.lock()->GetSbtCount() * RAY_TYPE_COUNT);
+	this->m_Impl->m_HGRecordBuffers.Alloc(tlas->GetSbtCount() * RAY_TYPE_COUNT);
 	{
 		size_t sbtOffset = 0;
-		for (auto& instanceSet : tlas.lock()->GetInstanceSets())
+		for (auto& instanceSet : tlas->GetInstanceSets())
 		{
 			for (auto& baseGASHandle : instanceSet->baseGASHandles)
 			{
@@ -365,14 +368,14 @@ void Test24WRSOPXTracer::InitShaderBindingTable()
 
 						auto materialId = mesh->GetUniqueResource()->materials[i];
 						auto& material = materials[materialId];
-						if (!this->m_Impl->m_TextureManager.lock()->GetAsset(material.GetString("diffTex")).HasGpuComponent("CUDATexture")) {
-							this->m_Impl->m_TextureManager.lock()->GetAsset(material.GetString("diffTex")).AddGpuComponent<rtlib::ext::resources::CUDATextureImage2DComponent<uchar4>>("CUDATexture");
+						if (!this->m_Impl->m_TextureManager->GetAsset(material.GetString("diffTex")).HasGpuComponent("CUDATexture")) {
+							this->m_Impl->m_TextureManager->GetAsset(material.GetString("diffTex")).AddGpuComponent<rtlib::ext::resources::CUDATextureImage2DComponent<uchar4>>("CUDATexture");
 						}
-						if (!this->m_Impl->m_TextureManager.lock()->GetAsset(material.GetString("specTex")).HasGpuComponent("CUDATexture")) {
-							this->m_Impl->m_TextureManager.lock()->GetAsset(material.GetString("specTex")).AddGpuComponent<rtlib::ext::resources::CUDATextureImage2DComponent<uchar4>>("CUDATexture");
+						if (!this->m_Impl->m_TextureManager->GetAsset(material.GetString("specTex")).HasGpuComponent("CUDATexture")) {
+							this->m_Impl->m_TextureManager->GetAsset(material.GetString("specTex")).AddGpuComponent<rtlib::ext::resources::CUDATextureImage2DComponent<uchar4>>("CUDATexture");
 						}
-						if (!this->m_Impl->m_TextureManager.lock()->GetAsset(material.GetString("emitTex")).HasGpuComponent("CUDATexture")) {
-							this->m_Impl->m_TextureManager.lock()->GetAsset(material.GetString("emitTex")).AddGpuComponent<rtlib::ext::resources::CUDATextureImage2DComponent<uchar4>>("CUDATexture");
+						if (!this->m_Impl->m_TextureManager->GetAsset(material.GetString("emitTex")).HasGpuComponent("CUDATexture")) {
+							this->m_Impl->m_TextureManager->GetAsset(material.GetString("emitTex")).AddGpuComponent<rtlib::ext::resources::CUDATextureImage2DComponent<uchar4>>("CUDATexture");
 						}
 						HitgroupData radianceHgData = {};
 						{
@@ -380,9 +383,9 @@ void Test24WRSOPXTracer::InitShaderBindingTable()
 							radianceHgData.normals = cudaNormalBuffer->GetHandle().getDevicePtr();
 							radianceHgData.texCoords = cudaTexCrdBuffer->GetHandle().getDevicePtr();
 							radianceHgData.indices = cudaTriIndBuffer->GetHandle().getDevicePtr();
-							radianceHgData.diffuseTex = this->m_Impl->m_TextureManager.lock()->GetAsset(material.GetString("diffTex")).GetGpuComponent<rtlib::ext::resources::CUDATextureImage2DComponent<uchar4>>("CUDATexture")->GetHandle().getHandle();
-							radianceHgData.specularTex = this->m_Impl->m_TextureManager.lock()->GetAsset(material.GetString("specTex")).GetGpuComponent<rtlib::ext::resources::CUDATextureImage2DComponent<uchar4>>("CUDATexture")->GetHandle().getHandle();
-							radianceHgData.emissionTex = this->m_Impl->m_TextureManager.lock()->GetAsset(material.GetString("emitTex")).GetGpuComponent<rtlib::ext::resources::CUDATextureImage2DComponent<uchar4>>("CUDATexture")->GetHandle().getHandle();
+							radianceHgData.diffuseTex = this->m_Impl->m_TextureManager->GetAsset(material.GetString("diffTex")).GetGpuComponent<rtlib::ext::resources::CUDATextureImage2DComponent<uchar4>>("CUDATexture")->GetHandle().getHandle();
+							radianceHgData.specularTex = this->m_Impl->m_TextureManager->GetAsset(material.GetString("specTex")).GetGpuComponent<rtlib::ext::resources::CUDATextureImage2DComponent<uchar4>>("CUDATexture")->GetHandle().getHandle();
+							radianceHgData.emissionTex = this->m_Impl->m_TextureManager->GetAsset(material.GetString("emitTex")).GetGpuComponent<rtlib::ext::resources::CUDATextureImage2DComponent<uchar4>>("CUDATexture")->GetHandle().getHandle();
 							radianceHgData.diffuse = material.GetFloat3As<float3>("diffCol");
 							radianceHgData.specular = material.GetFloat3As<float3>("specCol");
 							radianceHgData.emission = material.GetFloat3As<float3>("emitCol");
@@ -440,11 +443,11 @@ void Test24WRSOPXTracer::InitLaunchParams()
 {
 	auto tlas = this->m_Impl->m_TopLevelAS;
 	this->m_Impl->m_Params.Alloc(1);
-	this->m_Impl->m_Params.cpuHandle[0].gasHandle       = tlas.lock()->GetHandle();
-	this->m_Impl->m_Params.cpuHandle[0].width           = this->m_Impl->m_Framebuffer.lock()->GetWidth();
-	this->m_Impl->m_Params.cpuHandle[0].height          = this->m_Impl->m_Framebuffer.lock()->GetHeight();
+	this->m_Impl->m_Params.cpuHandle[0].gasHandle       = tlas->GetHandle();
+	this->m_Impl->m_Params.cpuHandle[0].width           = this->m_Impl->m_Framebuffer->GetWidth();
+	this->m_Impl->m_Params.cpuHandle[0].height          = this->m_Impl->m_Framebuffer->GetHeight();
 	this->m_Impl->m_Params.cpuHandle[0].light           = this->m_Impl->GetMeshLightList();
-	this->m_Impl->m_Params.cpuHandle[0].accumBuffer     = this->m_Impl->m_Framebuffer.lock()->GetComponent<test::RTCUDABufferFBComponent<float3>>("RAccum")->GetHandle().getDevicePtr();
+	this->m_Impl->m_Params.cpuHandle[0].accumBuffer     = this->m_Impl->m_Framebuffer->GetComponent<test::RTCUDABufferFBComponent<float3>>("RAccum")->GetHandle().getDevicePtr();
 	this->m_Impl->m_Params.cpuHandle[0].frameBuffer     = nullptr;
 	this->m_Impl->m_Params.cpuHandle[0].seedBuffer      = this->m_Impl->m_SeedBuffer.getDevicePtr();
 	this->m_Impl->m_Params.cpuHandle[0].isBuilt         = false;

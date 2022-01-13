@@ -225,7 +225,9 @@ class         CameraConfigGuiWindow :public test::RTGuiWindow{
 public:
 
     explicit CameraConfigGuiWindow(GLFWwindow* window_, const std::shared_ptr<test::RTFramebuffer>& framebuffer_, const std::shared_ptr<rtlib::ext::CameraController>& cameraController_, unsigned int& eventFlags_)noexcept :
-        test::RTGuiWindow("CameraConfig", ImGuiWindowFlags_MenuBar), m_Window{ window_ }, cameraController{ cameraController_ }, eventFlags{ eventFlags_ }, framebuffer{ framebuffer_ }, m_FilePath{ "" }{}
+        test::RTGuiWindow("CameraConfig", ImGuiWindowFlags_MenuBar), m_Window{ window_ }, cameraController{ cameraController_ }, eventFlags{ eventFlags_ }, framebuffer{ framebuffer_ }, m_FilePath{ "" }{
+        glfwGetWindowSize(m_Window, &m_Width, &m_Height);
+    }
     virtual void DrawGui()override {
         auto camera = cameraController->GetCamera((float)framebuffer->GetWidth() / (float)framebuffer->GetHeight());
         auto eye    = camera.getEye();
@@ -238,6 +240,13 @@ public:
         auto speed = cameraController->GetMovementSpeed();
         auto sense = cameraController->GetMouseSensitivity();
         if(!HasEvent(TEST24_EVENT_FLAG_BIT_LOCK)){
+            if (ImGui::InputInt("Width: ", &m_Width)) {
+            }
+            if (ImGui::InputInt("Height: ",&m_Height)) {
+            }
+            if (ImGui::Button("Resize")) {
+                SetEvent(TEST24_EVENT_FLAG_UPDATE_CAMERA | TEST24_EVENT_FLAG_BIT_RESIZE_FRAME);
+            }
             if (ImGui::InputFloat3("Eye", arr_eye)) {
                 camera.setEye(make_float3(arr_eye[0],arr_eye[1],arr_eye[2]));
                 SetEvent(TEST24_EVENT_FLAG_UPDATE_CAMERA);
@@ -259,6 +268,9 @@ public:
             }
             if (ImGui::InputFloat("Speed", &speed)) {
                 cameraController->SetMovementSpeed(speed);
+            }
+            if (HasEvent(TEST24_EVENT_FLAG_BIT_RESIZE_FRAME)) {
+                glfwSetWindowSize(m_Window, m_Width, m_Height);
             }
             if (HasEvent(TEST24_EVENT_FLAG_BIT_UPDATE_CAMERA)) {
                 cameraController->SetCamera(camera);
@@ -354,11 +366,12 @@ private:
     {
         eventFlags |= eventFlag;
     }
-
     GLFWwindow* m_Window;
     std::string m_FilePath;
     std::shared_ptr<test::RTFramebuffer> framebuffer;
     std::shared_ptr<rtlib::ext::CameraController> cameraController;
+    int m_Width;
+    int m_Height;
     unsigned int& eventFlags;
 };
 class          LightConfigGuiWindow: public test::RTGuiWindow {
@@ -1037,7 +1050,7 @@ public:
                     variable->SetFloat1("RatioForBudget", ratioForBudget);
                     SetEvent(TEST24_EVENT_FLAG_CHANGE_TRACE);
                 }
-                if (ImGui::SliderInt("NumCandidates"   ,&numCandidates, 1, 64)) {
+                if (ImGui::InputInt("NumCandidates"   ,&numCandidates)) {
                     variable->SetUInt32("NumCandidates", numCandidates);
                     SetEvent(TEST24_EVENT_FLAG_CHANGE_TRACE);
                 }

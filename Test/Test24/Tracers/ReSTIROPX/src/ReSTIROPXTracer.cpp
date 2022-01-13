@@ -136,6 +136,7 @@ void Test24ReSTIROPXTracer::Launch(int width, int height, void* userData)
 	}
 
 	if (GetVariables()->GetBool("Started")) {
+
 		GetVariables()->SetBool("Started", false);
 		GetVariables()->SetBool("Launched", true);
 		GetVariables()->SetUInt32("SamplePerAll", 0);

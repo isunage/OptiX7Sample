@@ -106,9 +106,9 @@ namespace test24_nee
         float3 data;
     };
     struct RayTraceParams {
-        uchar4* frameBuffer;
-        float3* accumBuffer;
-        unsigned int* seedBuffer;
+        uchar4*                frameBuffer;
+        float3*                accumBuffer;
+        unsigned int*          seedBuffer;
         unsigned int           width;
         unsigned int           height;
         unsigned int           samplePerLaunch;
