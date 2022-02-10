@@ -178,6 +178,20 @@ namespace test24_nee_guide {
 		auto Node(size_t idx) noexcept -> RTDTreeNode& {
 			return m_Nodes[idx];
 		}
+		void SetGpuHandle(const DTree& dTree)
+		{
+			m_Area              = dTree.area;
+			m_Sum               = dTree.sum;
+			m_StatisticalWeight = dTree.statisticalWeight;
+		}
+		auto GetGpuHandle()const noexcept ->DTree {
+			auto dTree = DTree();
+			dTree.area = m_Area;
+			dTree.sum  = m_Sum;
+			dTree.statisticalWeight = m_StatisticalWeight;
+			dTree.nodes = nullptr;
+			return dTree;
+		}
 	private:
 		std::vector<RTDTreeNode> m_Nodes;
 		float                    m_Area;
@@ -294,6 +308,23 @@ namespace test24_nee_guide {
 			}
 			jsonFile << "}";
 		}
+		void SetGpuHandle(const STreeNode& sTreeNode)noexcept
+		{
+			isLeaf = sTreeNode.IsLeaf();
+			axis   = sTreeNode.axis;
+			children[0] = sTreeNode.children[0];
+			children[1] = sTreeNode.children[1];
+		}
+		auto GetGpuHandle()const noexcept -> STreeNode
+		{
+			STreeNode sTreeNode;
+			sTreeNode.axis = axis;
+			sTreeNode.children[0] = children[0];
+			sTreeNode.children[1] = children[1];
+			sTreeNode.dTree       = nullptr;
+			return sTreeNode;
+		} 
+
 		RTDTreeWrapper           dTree;
 		bool                     isLeaf;
 		unsigned char            axis;
@@ -454,17 +485,13 @@ namespace test24_nee_guide {
 				size_t dTreeNodeOffsetBuilding = 0;
 				size_t dTreeNodeOffsetSampling = 0;
 				for (size_t i = 0; i < gpuSTreeNodeCnt; ++i) {
-					sTreeNodes[i].axis        = m_CpuSTree.Node(i).axis;
-					sTreeNodes[i].children[0] = m_CpuSTree.Node(i).children[0];
-					sTreeNodes[i].children[1] = m_CpuSTree.Node(i).children[1];
+					sTreeNodes[i] = m_CpuSTree.Node(i).GetGpuHandle();
 					if (m_CpuSTree.Node(i).isLeaf) {
 						//DTREE
 						sTreeNodes[i].dTree   = m_GpuDTreeWrappers.getDevicePtr() + dTreeIndex;
 						//Optimizer
 						//BUILDING
-						dTreeWrappers[dTreeIndex].building.area              = m_CpuSTree.Node(i).dTree.building.GetArea();
-						dTreeWrappers[dTreeIndex].building.sum               = m_CpuSTree.Node(i).dTree.building.GetSum();
-						dTreeWrappers[dTreeIndex].building.statisticalWeight = m_CpuSTree.Node(i).dTree.building.GetStatisticalWeight();
+						dTreeWrappers[dTreeIndex].building       = m_CpuSTree.Node(i).dTree.building.GetGpuHandle();
 						dTreeWrappers[dTreeIndex].building.nodes             = m_GpuDTreeNodesBuilding.getDevicePtr() + dTreeNodeOffsetBuilding;
 						for (size_t j = 0; j < m_CpuSTree.Node(i).dTree.building.GetNumNodes(); ++j) {
 							//SUM
@@ -472,9 +499,7 @@ namespace test24_nee_guide {
 						}
 						dTreeNodeOffsetBuilding += m_CpuSTree.Node(i).dTree.building.GetNumNodes();
 						//SAMPLING
-						dTreeWrappers[dTreeIndex].sampling.area              = m_CpuSTree.Node(i).dTree.sampling.GetArea();
-						dTreeWrappers[dTreeIndex].sampling.sum               = m_CpuSTree.Node(i).dTree.sampling.GetSum();
-						dTreeWrappers[dTreeIndex].sampling.statisticalWeight = m_CpuSTree.Node(i).dTree.sampling.GetStatisticalWeight();
+						dTreeWrappers[dTreeIndex].sampling       = m_CpuSTree.Node(i).dTree.sampling.GetGpuHandle();
 						dTreeWrappers[dTreeIndex].sampling.nodes             = m_GpuDTreeNodesSampling.getDevicePtr() + dTreeNodeOffsetSampling;
 						for (size_t j = 0; j < m_CpuSTree.Node(i).dTree.sampling.GetNumNodes(); ++j) {
 							//SUMS
@@ -520,8 +545,7 @@ namespace test24_nee_guide {
 				size_t cpuDTreeNodeOffsetBuilding = 0;
 				for (size_t i = 0; i < gpuSTreeNodeCnt; ++i) {
 					if (m_CpuSTree.Node(i).isLeaf) {
-						m_CpuSTree.Node(i).dTree.building.SetSum(dTreeWrappers[cpuDTreeIndex].building.sum);
-						m_CpuSTree.Node(i).dTree.building.SetStatisticalWeight(dTreeWrappers[cpuDTreeIndex].building.statisticalWeight);
+						m_CpuSTree.Node(i).dTree.building.SetGpuHandle(dTreeWrappers[cpuDTreeIndex].building);
 						for (size_t j = 0; j < m_CpuSTree.Node(i).dTree.building.GetNumNodes(); ++j) {
 							//SUMS
 							m_CpuSTree.Node(i).dTree.building.Node(j) = dTreeNodesBuilding[cpuDTreeNodeOffsetBuilding + j];
@@ -864,21 +888,12 @@ namespace test24_nee_guide {
 				size_t dTreeNodeOffsetBuilding = 0;
 				size_t dTreeNodeOffsetSampling = 0;
 				for (size_t i = 0; i < gpuSTreeNodeCnt; ++i) {
-					sTreeNodes[i].children[0] = m_CpuSTree.Node(i).children[0];
-					sTreeNodes[i].children[1] = m_CpuSTree.Node(i).children[1];
-					sTreeNodes[i].children[2] = m_CpuSTree.Node(i).children[2];
-					sTreeNodes[i].children[3] = m_CpuSTree.Node(i).children[3];
-					sTreeNodes[i].children[4] = m_CpuSTree.Node(i).children[4];
-					sTreeNodes[i].children[5] = m_CpuSTree.Node(i).children[5];
-					sTreeNodes[i].children[6] = m_CpuSTree.Node(i).children[6];
-					sTreeNodes[i].children[7] = m_CpuSTree.Node(i).children[7];
+					sTreeNodes[i] = m_CpuSTree.Node(i).GetGpuHandle();
 					if (m_CpuSTree.Node(i).isLeaf) {
 						//DTREE
 						sTreeNodes[i].dTree = m_GpuDTreeWrappers.getDevicePtr() + dTreeIndex;
 						//BUILDING
-						dTreeWrappers[dTreeIndex].building.area              = m_CpuSTree.Node(i).dTree.building.GetArea();
-						dTreeWrappers[dTreeIndex].building.sum               = m_CpuSTree.Node(i).dTree.building.GetSum();
-						dTreeWrappers[dTreeIndex].building.statisticalWeight = m_CpuSTree.Node(i).dTree.building.GetStatisticalWeight();
+						dTreeWrappers[dTreeIndex].building       = m_CpuSTree.Node(i).dTree.building.GetGpuHandle();
 						dTreeWrappers[dTreeIndex].building.nodes             = m_GpuDTreeNodesBuilding.getDevicePtr() + dTreeNodeOffsetBuilding;
 						for (size_t j = 0; j < m_CpuSTree.Node(i).dTree.building.GetNumNodes(); ++j) {
 							//SUM
@@ -886,9 +901,7 @@ namespace test24_nee_guide {
 						}
 						dTreeNodeOffsetBuilding += m_CpuSTree.Node(i).dTree.building.GetNumNodes();
 						//SAMPLING
-						dTreeWrappers[dTreeIndex].sampling.area = m_CpuSTree.Node(i).dTree.sampling.GetArea();
-						dTreeWrappers[dTreeIndex].sampling.sum = m_CpuSTree.Node(i).dTree.sampling.GetSum();
-						dTreeWrappers[dTreeIndex].sampling.statisticalWeight = m_CpuSTree.Node(i).dTree.sampling.GetStatisticalWeight();
+						dTreeWrappers[dTreeIndex].sampling       = m_CpuSTree.Node(i).dTree.sampling.GetGpuHandle();
 						dTreeWrappers[dTreeIndex].sampling.nodes = m_GpuDTreeNodesSampling.getDevicePtr() + dTreeNodeOffsetSampling;
 						for (size_t j = 0; j < m_CpuSTree.Node(i).dTree.sampling.GetNumNodes(); ++j) {
 							//SUMS
@@ -934,8 +947,7 @@ namespace test24_nee_guide {
 				size_t cpuDTreeNodeOffsetBuilding = 0;
 				for (size_t i = 0; i < gpuSTreeNodeCnt; ++i) {
 					if (m_CpuSTree.Node(i).isLeaf) {
-						m_CpuSTree.Node(i).dTree.building.SetSum(dTreeWrappers[cpuDTreeIndex].building.sum);
-						m_CpuSTree.Node(i).dTree.building.SetStatisticalWeight(dTreeWrappers[cpuDTreeIndex].building.statisticalWeight);
+						m_CpuSTree.Node(i).dTree.building.SetGpuHandle(dTreeWrappers[cpuDTreeIndex].building);
 						for (size_t j = 0; j < m_CpuSTree.Node(i).dTree.building.GetNumNodes(); ++j) {
 							//SUMS
 							m_CpuSTree.Node(i).dTree.building.Node(j) = dTreeNodesBuilding[cpuDTreeNodeOffsetBuilding + j];
@@ -962,7 +974,7 @@ namespace test24_nee_guide {
 				return;
 			}
 			size_t sTreeTh = std::sqrt(std::pow(2.0, iter) * samplePerPasses / 4.0f) * 4000;
-			m_CpuSTree.Refine(sTreeTh, 2000);
+			m_CpuSTree.Refine(sTreeTh, 4000);
 			for (int i = 0; i < m_CpuSTree.GetNumNodes(); ++i) {
 				if (m_CpuSTree.Node(i).isLeaf) {
 					m_CpuSTree.Node(i).dTree.Reset(m_MaxDTreeDepth, 0.01);
