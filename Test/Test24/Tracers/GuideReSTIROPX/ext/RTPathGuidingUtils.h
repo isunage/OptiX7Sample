@@ -731,6 +731,32 @@ namespace test24_restir_guide {
 		}
 		void Dump(std::fstream& jsonFile, size_t sTreeNodeIdx, const std::vector<RTSTreeNode2>& nodes)const noexcept {
 		}
+		void SetGpuHandle(const STreeNode2& sTreeNode)noexcept
+		{
+			isLeaf = sTreeNode.IsLeaf();
+			children[0] = sTreeNode.children[0];
+			children[1] = sTreeNode.children[1];
+			children[2] = sTreeNode.children[2];
+			children[3] = sTreeNode.children[3];
+			children[4] = sTreeNode.children[4];
+			children[5] = sTreeNode.children[5];
+			children[6] = sTreeNode.children[6];
+			children[7] = sTreeNode.children[7];
+		}
+		auto GetGpuHandle()const noexcept -> STreeNode2
+		{
+			STreeNode2 sTreeNode;
+			sTreeNode.children[0] = children[0];
+			sTreeNode.children[1] = children[1];
+			sTreeNode.children[2] = children[2];
+			sTreeNode.children[3] = children[3];
+			sTreeNode.children[4] = children[4];
+			sTreeNode.children[5] = children[5];
+			sTreeNode.children[6] = children[6];
+			sTreeNode.children[7] = children[7];
+			sTreeNode.dTree = nullptr;
+			return sTreeNode;
+		}
 		RTDTreeWrapper           dTree;
 		bool                     isLeaf;
 		unsigned int             children[8];
