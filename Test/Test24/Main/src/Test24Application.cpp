@@ -10,6 +10,7 @@
 #include <GuideReSTIROPXTracer.h>
 #include <GuidePathOPXTracer.h>
 #include <GuideWRSOPXTracer.h>
+#include <GuideWRS2OPXTracer.h>
 #include <GuideNEEOPXTracer.h>
 #include <Test24Config.h>
 #include <random>
@@ -131,7 +132,7 @@ void Test24Application::InitBase()
     m_TracePublicNames.push_back("NEEOPX");
     m_TracePublicNames.push_back("GuidePathOPX");
     m_TracePublicNames.push_back("GuideNEEOPX");
-    m_TracePublicNames.push_back("GuideWRSOPX");
+    m_TracePublicNames.push_back("GuideWRS2OPX");
     m_TracePublicNames.push_back("GuideReSTIROPX");
     m_TracePublicNames.push_back("ReSTIROPX");
     m_TracePublicNames.push_back("DebugOPX");
@@ -610,6 +611,22 @@ void Test24Application::InitTracers()
             );
         m_Tracers[traceName]->Initialize();
     }
+    /*    GuideWRS2OPX*/
+    {
+        std::string traceName = "GuideWRS2OPX";
+        m_Tracers[traceName] = std::make_shared<Test24GuideWRS2OPXTracer>(
+            m_Context,
+            m_Framebuffer,
+            m_CameraController,
+            m_TextureManager,
+            m_IASHandles["TopLevel"],
+            m_Materials,
+            m_BgLightColor,
+            m_EventFlags,
+            m_MaxTraceDepth
+            );
+        m_Tracers[traceName]->Initialize();
+    }
     /*    GuideNEEOPX*/
     {
         std::string traceName = "GuideNEEOPX";
@@ -789,10 +806,10 @@ void Test24Application::Launch()
             m_EventFlags |= TEST24_EVENT_FLAG_CHANGE_TRACE;
         }
     }
-    if (m_LaunchTracerSet.count("GuideWRSOPX")   > 0)
+    if (m_LaunchTracerSet.count("GuideWRS2OPX")   > 0)
     {
-        std::string name = "GuideWRSOPX";
-        Test24GuideWRSOPXTracer::UserData  userData = {};
+        std::string name = "GuideWRS2OPX";
+        Test24GuideWRS2OPXTracer::UserData  userData = {};
         userData.finished = false;
         userData.isSync = true;
         userData.stream = nullptr;
