@@ -145,6 +145,110 @@ static void TestPathGuide()
 	res /= N;
 	std::cout << res << "\n";
 }
+static void TestPathGuide2()
+{
+	constexpr size_t N = 10000;
+	std::random_device rnd;
+	std::mt19937 mt(rnd());
+	rtlib::Xorshift32 xor32(mt());
+	std::vector<DTreeNode> nodes = {};
+	int index = 0;
+	nodes.emplace_back();
+	nodes[index].sums[0] = 5266.26;
+	nodes[index].sums[1] = 0;
+	nodes[index].sums[2] = 1724.18;
+	nodes[index].sums[3] = 0;
+	nodes[index].children[0] = 1;//1
+	nodes[index].children[1] = 2;//0
+	nodes[index].children[2] = 3;//0.7
+	nodes[index].children[3] = 4;//0
+	++index;//1->OK
+	nodes.emplace_back();
+	nodes[index].sums[0] = 1598.15;
+	nodes[index].sums[1] = 3537.22;
+	nodes[index].sums[2] = 95.4294;
+	nodes[index].sums[3] = 35.4652;
+	nodes[index].children[0] = 0;
+	nodes[index].children[1] = 0;
+	nodes[index].children[2] = 0;
+	nodes[index].children[3] = 0;
+	++index;//2->0
+	nodes.emplace_back();
+	nodes[index].sums[0] = 0;
+	nodes[index].sums[1] = 0;
+	nodes[index].sums[2] = 0;
+	nodes[index].sums[3] = 0;
+	nodes[index].children[0] = 0;
+	nodes[index].children[1] = 0;
+	nodes[index].children[2] = 0;
+	nodes[index].children[3] = 0;
+	++index;//3->OK
+	nodes.emplace_back();
+	nodes[index].sums[0] = 112.208;
+	nodes[index].sums[1] = 72.1011;
+	nodes[index].sums[2] = 849.374;
+	nodes[index].sums[3] = 690.493;
+	nodes[index].children[0] = 5;
+	nodes[index].children[1] = 6;
+	nodes[index].children[2] = 7;
+	nodes[index].children[3] = 8;
+	++index;//4->OK
+	nodes.emplace_back();
+	nodes[index].sums[0] = 0;
+	nodes[index].sums[1] = 0;
+	nodes[index].sums[2] = 0;
+	nodes[index].sums[3] = 0;
+	nodes[index].children[0] = 0;
+	nodes[index].children[1] = 0;
+	nodes[index].children[2] = 0;
+	nodes[index].children[3] = 0;
+	++index;//5->OK
+	nodes.emplace_back();
+	nodes[index].sums[0] = 69.0228;
+	nodes[index].sums[1] = 43.1848;
+	nodes[index].sums[2] = 0;
+	nodes[index].sums[3] = 0;
+	nodes[index].children[0] = 0;
+	nodes[index].children[1] = 0;
+	nodes[index].children[2] = 0;
+	nodes[index].children[3] = 0;
+	++index;//6->OK
+	nodes.emplace_back();
+	nodes[index].sums[0] = 72.1011;
+	nodes[index].sums[1] = 0;
+	nodes[index].sums[2] = 0;
+	nodes[index].sums[3] = 0;
+	nodes[index].children[0] = 0;
+	nodes[index].children[1] = 0;
+	nodes[index].children[2] = 0;
+	nodes[index].children[3] = 0;
+	++index;//7->OK
+	nodes.emplace_back();
+	nodes[index].sums[0] = 409.951;
+	nodes[index].sums[1] = 71.4979;
+	nodes[index].sums[2] = 131.178;
+	nodes[index].sums[3] = 236.747;
+	nodes[index].children[0] = 0;
+	nodes[index].children[1] = 0;
+	nodes[index].children[2] = 0;
+	nodes[index].children[3] = 0;
+	++index;//8->OK
+	nodes.emplace_back();
+	nodes[index].sums[0] = 225.099;
+	nodes[index].sums[1] = 87.5592;
+	nodes[index].sums[2] = 221.741;
+	nodes[index].sums[3] = 156.094;
+	nodes[index].children[0] = 0;
+	nodes[index].children[1] = 0;
+	nodes[index].children[2] = 0;
+	nodes[index].children[3] = 0;
+	for (int i = 0; i < 1000; ++i) {
+		auto pdf_value1 = 0.0f;
+		auto direction  = nodes[0].SampleAndPdf(xor32, nodes.data(), pdf_value1);
+		auto pdf_value2 = nodes[0].Pdf(direction, nodes.data());
+		std::cout << pdf_value1 << ":" << pdf_value2 << std::endl;
+	}
+}
 class Test20Application {
 private:
 	static inline constexpr std::array<float,3> kDefaultLightColor          = {10.0f,10.0f,10.0f};
@@ -1583,6 +1687,6 @@ void  Test20Main() {
 	app.CleanUp();
 }
 int main() {
-	//TestPathGuide();
-	Test20Main();
+	TestPathGuide2();
+	//Test20Main();
 }

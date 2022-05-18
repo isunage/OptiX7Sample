@@ -4,11 +4,13 @@
 #include <RayTrace.h>
 #include <fstream>
 #include <random>
+#include <chrono>
 using namespace std::string_literals;
 using namespace test24_restir_guide;
 using RayGRecord = rtlib::SBTRecord<RayGenData>;
 using MissRecord = rtlib::SBTRecord<MissData>;
 using HitGRecord = rtlib::SBTRecord<HitgroupData>;
+using RTSTreeWrapperT = RTSTreeWrapperType<decltype(RayTraceParams::sdTree)>;
 // RTTracer ����Čp������܂���
 struct Test24GuideReSTIROPXTracer::Impl {
 	Impl(
@@ -78,7 +80,7 @@ struct Test24GuideReSTIROPXTracer::Impl {
 	rtlib::CUDABuffer<unsigned int> m_SeedBuffer;
 	rtlib::CUDAUploadBuffer<unsigned int> m_MeshLightIndices;
 	rtlib::CUDAUploadBuffer<MeshLight>    m_MeshLights;
-	std::shared_ptr<RTSTreeWrapper> m_STree = nullptr;
+	std::shared_ptr<RTSTreeWrapperT> m_STree = nullptr;
 	unsigned int m_LightHgRecIndex = 0;
 	unsigned int m_SamplePerAll    = 0;
 	unsigned int m_SamplePerTmp    = 0;
@@ -144,10 +146,13 @@ void Test24GuideReSTIROPXTracer::Launch(int width, int height, void* pdata)
 	if (width != this->m_Impl->m_Framebuffer.lock()->GetWidth() || height != this->m_Impl->m_Framebuffer.lock()->GetHeight()) {
 		return;
 	}
+	auto begin = std::chrono::system_clock::now();
 	if (this->OnLaunchBegin  (width, height, pUserData)) {
 		this->OnLaunchExecute(width, height, pUserData);
 		this->OnLaunchEnd(    width, height, pUserData);
 	}
+	auto end = std::chrono::system_clock::now();
+	std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << "ms" << std::endl;
 }
 
 void Test24GuideReSTIROPXTracer::CleanUp()
@@ -503,7 +508,7 @@ void Test24GuideReSTIROPXTracer::InitSdTree()
 
 	}
 
-	m_Impl->m_STree = std::make_shared<RTSTreeWrapper>(worldAABB.min, worldAABB.max, 20);
+	m_Impl->m_STree = std::make_shared<RTSTreeWrapperT>(worldAABB.min, worldAABB.max, 20);
 	m_Impl->m_STree->Upload();
 
 }
@@ -589,6 +594,7 @@ bool Test24GuideReSTIROPXTracer::OnLaunchBegin(int width, int height, UserData* 
 
 void Test24GuideReSTIROPXTracer::OnLaunchExecute(int width, int height, UserData* pUserData)
 {
+    
 	auto curIteration     = GetVariables()->GetUInt32("CurIteration");
 	auto iterationForBuilt= GetVariables()->GetUInt32("IterationForBuilt");
 	auto samplePerAll     = GetVariables()->GetUInt32("SamplePerAll");

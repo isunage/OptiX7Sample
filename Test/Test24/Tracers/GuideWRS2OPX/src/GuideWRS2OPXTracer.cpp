@@ -4,11 +4,13 @@
 #include <RayTrace.h>
 #include <fstream>
 #include <random>
+#include <chrono>
 using namespace std::string_literals;
 using namespace test24_wrs2_guide;
 using RayGRecord = rtlib::SBTRecord<RayGenData>;
 using MissRecord = rtlib::SBTRecord<MissData>;
 using HitGRecord = rtlib::SBTRecord<HitgroupData>;
+using STreeWrapperT = RTSTreeWrapperType<decltype(RayTraceParams::sdTree)>;
 // RTTracer ����Čp������܂���
 struct Test24GuideWRS2OPXTracer::Impl {
 	Impl(
@@ -76,7 +78,7 @@ struct Test24GuideWRS2OPXTracer::Impl {
 	rtlib::CUDAUploadBuffer<RayTraceParams> m_Params;
 	rtlib::CUDABuffer<unsigned int> m_SeedBuffer;
 	rtlib::CUDAUploadBuffer<MeshLight> m_MeshLights;
-	std::shared_ptr<RTSTreeWrapper> m_STree = nullptr;
+	std::shared_ptr<STreeWrapperT> m_STree = nullptr;
 	unsigned int m_LightHgRecIndex = 0;
 	unsigned int m_SamplePerAll    = 0;
 	unsigned int m_SamplePerTmp    = 0;
@@ -142,11 +144,15 @@ void Test24GuideWRS2OPXTracer::Launch(int width, int height, void* pdata)
 	if (width != this->m_Impl->m_Framebuffer.lock()->GetWidth() || height != this->m_Impl->m_Framebuffer.lock()->GetHeight()) {
 		return;
 	}
+	auto begin = std::chrono::system_clock::now();
 	if (this->OnLaunchBegin  (width, height, pUserData)) {
 		this->OnLaunchExecute(width, height, pUserData);
-		this->OnLaunchEnd(    width, height, pUserData);
+		this->OnLaunchEnd    (width, height, pUserData);
 	}
+	auto end = std::chrono::system_clock::now();
+	std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << "ms" << std::endl;
 }
+
 
 void Test24GuideWRS2OPXTracer::CleanUp()
 {
@@ -278,9 +284,11 @@ void Test24GuideWRS2OPXTracer::InitPipeline()
 	m_Impl->m_RGProgramGroups["Guide.Guiding.Default"] = m_Impl->m_Pipeline.createRaygenPG({ m_Impl->m_Modules["RayGuide"], RTLIB_RAYGEN_PROGRAM_STR(pg_def) });
 	m_Impl->m_RGProgramGroups["Guide.Guiding.NEE"] = m_Impl->m_Pipeline.createRaygenPG({ m_Impl->m_Modules["RayGuide"], RTLIB_RAYGEN_PROGRAM_STR(pg_nee) });
 	m_Impl->m_MSProgramGroups["Guide.Radiance"] = m_Impl->m_Pipeline.createMissPG({ m_Impl->m_Modules["RayGuide"], RTLIB_MISS_PROGRAM_STR(radiance) });
-	m_Impl->m_MSProgramGroups["Guide.Occluded"] = m_Impl->m_Pipeline.createMissPG({ m_Impl->m_Modules["RayGuide"], RTLIB_MISS_PROGRAM_STR(occluded) });
+	m_Impl->m_MSProgramGroups["Guide.Occluded"] = m_Impl->m_Pipeline.createMissPG({ m_Impl->m_Modules["RayGuide"], RTLIB_MISS_PROGRAM_STR(occluded) }); 
+	m_Impl->m_HGProgramGroups["Guide.Radiance.Diffuse.Guiding.Default"] = m_Impl->m_Pipeline.createHitgroupPG({ m_Impl->m_Modules["RayGuide"], RTLIB_CLOSESTHIT_PROGRAM_STR(radiance_for_diffuse_pg_def) }, {}, {});
 	m_Impl->m_HGProgramGroups["Guide.Radiance.Diffuse.Guiding.NEE.NEE"] = m_Impl->m_Pipeline.createHitgroupPG({ m_Impl->m_Modules["RayGuide"], RTLIB_CLOSESTHIT_PROGRAM_STR(radiance_for_diffuse_pg_nee_with_nee_light) }, {}, {});
 	m_Impl->m_HGProgramGroups["Guide.Radiance.Diffuse.Guiding.NEE.Default"] = m_Impl->m_Pipeline.createHitgroupPG({ m_Impl->m_Modules["RayGuide"], RTLIB_CLOSESTHIT_PROGRAM_STR(radiance_for_diffuse_pg_nee_with_def_light) }, {}, {});
+	m_Impl->m_HGProgramGroups["Guide.Radiance.Phong.Guiding.Default"] = m_Impl->m_Pipeline.createHitgroupPG({ m_Impl->m_Modules["RayGuide"], RTLIB_CLOSESTHIT_PROGRAM_STR(radiance_for_phong_pg_def) }, {}, {});
 	m_Impl->m_HGProgramGroups["Guide.Radiance.Phong.Guiding.NEE.NEE"] = m_Impl->m_Pipeline.createHitgroupPG({ m_Impl->m_Modules["RayGuide"], RTLIB_CLOSESTHIT_PROGRAM_STR(radiance_for_phong_pg_nee_with_nee_light) }, {}, {});
 	m_Impl->m_HGProgramGroups["Guide.Radiance.Phong.Guiding.NEE.Default"] = m_Impl->m_Pipeline.createHitgroupPG({ m_Impl->m_Modules["RayGuide"], RTLIB_CLOSESTHIT_PROGRAM_STR(radiance_for_phong_pg_nee_with_def_light) }, {}, {});
 	m_Impl->m_HGProgramGroups["Guide.Radiance.Emission.NEE"] = m_Impl->m_Pipeline.createHitgroupPG({ m_Impl->m_Modules["RayGuide"], RTLIB_CLOSESTHIT_PROGRAM_STR(radiance_for_emission_with_nee_light) }, {}, {});
@@ -350,29 +358,29 @@ void Test24GuideWRS2OPXTracer::InitShaderBindingTable()
 						auto materialId = mesh->GetUniqueResource()->materials[i];
 						auto& material = materials[materialId];
 						if (!this->m_Impl->m_TextureManager.lock()->GetAsset(material.GetString("diffTex")).HasGpuComponent("CUDATexture")) {
-							this->m_Impl->m_TextureManager.lock()->GetAsset(material.GetString("diffTex")).AddGpuComponent<rtlib::ext::resources::CUDATextureImage2DComponent<uchar4>>("CUDATexture");
+						 	 this->m_Impl->m_TextureManager.lock()->GetAsset(material.GetString("diffTex")).AddGpuComponent<rtlib::ext::resources::CUDATextureImage2DComponent<uchar4>>("CUDATexture");
 						}
 						if (!this->m_Impl->m_TextureManager.lock()->GetAsset(material.GetString("specTex")).HasGpuComponent("CUDATexture")) {
-							this->m_Impl->m_TextureManager.lock()->GetAsset(material.GetString("specTex")).AddGpuComponent<rtlib::ext::resources::CUDATextureImage2DComponent<uchar4>>("CUDATexture");
+							 this->m_Impl->m_TextureManager.lock()->GetAsset(material.GetString("specTex")).AddGpuComponent<rtlib::ext::resources::CUDATextureImage2DComponent<uchar4>>("CUDATexture");
 						}
 						if (!this->m_Impl->m_TextureManager.lock()->GetAsset(material.GetString("emitTex")).HasGpuComponent("CUDATexture")) {
-							this->m_Impl->m_TextureManager.lock()->GetAsset(material.GetString("emitTex")).AddGpuComponent<rtlib::ext::resources::CUDATextureImage2DComponent<uchar4>>("CUDATexture");
+							 this->m_Impl->m_TextureManager.lock()->GetAsset(material.GetString("emitTex")).AddGpuComponent<rtlib::ext::resources::CUDATextureImage2DComponent<uchar4>>("CUDATexture");
 						}
 						HitgroupData radianceHgData = {};
 						{
-							radianceHgData.vertices = cudaVertexBuffer->GetHandle().getDevicePtr();
-							radianceHgData.normals = cudaNormalBuffer->GetHandle().getDevicePtr();
-							radianceHgData.texCoords = cudaTexCrdBuffer->GetHandle().getDevicePtr();
-							radianceHgData.indices = cudaTriIndBuffer->GetHandle().getDevicePtr();
-							radianceHgData.diffuseTex = this->m_Impl->m_TextureManager.lock()->GetAsset(material.GetString("diffTex")).GetGpuComponent<rtlib::ext::resources::CUDATextureImage2DComponent<uchar4>>("CUDATexture")->GetHandle().getHandle();
+							radianceHgData.vertices    = cudaVertexBuffer->GetHandle().getDevicePtr();
+							radianceHgData.normals     = cudaNormalBuffer->GetHandle().getDevicePtr();
+							radianceHgData.texCoords   = cudaTexCrdBuffer->GetHandle().getDevicePtr();
+							radianceHgData.indices     = cudaTriIndBuffer->GetHandle().getDevicePtr();
+							radianceHgData.diffuseTex  = this->m_Impl->m_TextureManager.lock()->GetAsset(material.GetString("diffTex")).GetGpuComponent<rtlib::ext::resources::CUDATextureImage2DComponent<uchar4>>("CUDATexture")->GetHandle().getHandle();
 							radianceHgData.specularTex = this->m_Impl->m_TextureManager.lock()->GetAsset(material.GetString("specTex")).GetGpuComponent<rtlib::ext::resources::CUDATextureImage2DComponent<uchar4>>("CUDATexture")->GetHandle().getHandle();
 							radianceHgData.emissionTex = this->m_Impl->m_TextureManager.lock()->GetAsset(material.GetString("emitTex")).GetGpuComponent<rtlib::ext::resources::CUDATextureImage2DComponent<uchar4>>("CUDATexture")->GetHandle().getHandle();
-							radianceHgData.diffuse = material.GetFloat3As<float3>("diffCol");
-							radianceHgData.specular = material.GetFloat3As<float3>("specCol");
-							radianceHgData.emission = material.GetFloat3As<float3>("emitCol");
-							radianceHgData.shinness = material.GetFloat1("shinness");
-							radianceHgData.transmit = material.GetFloat3As<float3>("tranCol");
-							radianceHgData.refrInd = material.GetFloat1("refrIndx");
+							radianceHgData.diffuse     = material.GetFloat3As<float3>("diffCol");
+							radianceHgData.specular    = material.GetFloat3As<float3>("specCol");
+							radianceHgData.emission    = material.GetFloat3As<float3>("emitCol");
+							radianceHgData.shinness    = material.GetFloat1("shinness");
+							radianceHgData.transmit    = material.GetFloat3As<float3>("tranCol");
+							radianceHgData.refrInd     = material.GetFloat1("refrIndx");
 						}
 						if (material.GetString("name") == "light")
 						{
@@ -381,14 +389,26 @@ void Test24GuideWRS2OPXTracer::InitShaderBindingTable()
 						std::string typeString = test24::SpecifyMaterialType(material);
 						if (typeString == "Phong" || typeString == "Diffuse")
 						{
-							typeString += ".Guiding.NEE";
-							if (mesh->GetUniqueResource()->variables.GetBool("hasLight") && mesh->GetUniqueResource()->variables.GetBool("useNEE"))
-							{
-								typeString += ".NEE";
+							bool useWRS = true;
+							if (mesh->GetUniqueResource()->variables.HasBool("useWRS")) {
+								if (!mesh->GetUniqueResource()->variables.GetBool("useWRS"))
+								{
+									useWRS = false;
+								}
 							}
-							else
-							{
-								typeString += ".Default";
+							if (useWRS) {
+								typeString += ".Guiding.NEE";
+								if (mesh->GetUniqueResource()->variables.GetBool("hasLight") && mesh->GetUniqueResource()->variables.GetBool("useNEE"))
+								{
+									typeString += ".NEE";
+								}
+								else
+								{
+									typeString += ".Default";
+								}
+							}
+							else {
+								typeString += ".Guiding.Default";
 							}
 						}
 						if (typeString == "Emission")
@@ -461,7 +481,7 @@ void Test24GuideWRS2OPXTracer::InitSdTree()
 
 	}
 
-	m_Impl->m_STree = std::make_shared<RTSTreeWrapper>(worldAABB.min, worldAABB.max, 20);
+	m_Impl->m_STree = std::make_shared<STreeWrapperT>(worldAABB.min, worldAABB.max, 25);
 	m_Impl->m_STree->Upload();
 
 }

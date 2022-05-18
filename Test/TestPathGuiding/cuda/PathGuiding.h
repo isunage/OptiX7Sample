@@ -97,6 +97,72 @@ struct DTreeNode {
 		return;
 	}
 	template<typename RNG>
+	RTLIB_INLINE RTLIB_HOST_DEVICE auto SampleAndPdf(RNG& rng, const DTreeNode* nodes, float& pdf_value)const noexcept -> float2 {
+		const DTreeNode* cur = this;
+		int    depth = 1;
+		float2 result = make_float2(0.0f);
+		double size = 1.0f;
+		pdf_value = 1.0f;
+		for (;;) {
+			int   idx = 0;
+			float topLeft  = cur->sums[0];
+			float topRight = cur->sums[1];
+			float partial  = cur->sums[0] + cur->sums[2];
+			float total    = cur->GetSumOfAll();
+#if 0
+			float mulOfSum = cur->sums[0] * cur->sums[1] * cur->sums[2] * cur->sums[3];
+			//if( total <=0.0f){
+			if (mulOfSum <= 0.0f)
+#else
+			if (total <= 0.0f)
+#endif
+			{
+				printf("Bug!\n");
+				result += rtlib::random_float2(rng) * size;
+				break;
+			}
+			//(s0+s2)/(s0+s1+s2+s3)
+			float boundary = partial / total;
+			auto  origin = make_float2(0.0f);
+			float sample = rtlib::random_float1(rng);
+			if (sample < boundary)
+			{
+				sample /= boundary;
+				boundary = topLeft / partial;
+			}
+			else
+			{
+				partial = total - partial;
+				origin.x = 0.5f;
+				sample = (sample - boundary) / (1.0f - boundary);
+				boundary = topRight / partial;
+				idx |= (1 << 0);
+			}
+
+			if (sample < boundary)
+			{
+				sample /= boundary;
+			}
+			else
+			{
+				origin.y = 0.5f;
+				sample = (sample - boundary) / (1.0f - boundary);
+				idx |= (1 << 1);
+			}
+			pdf_value *= (4.0f * cur->sums[idx] / total);
+			if (cur->IsLeaf(idx))
+			{
+				result += size * (origin + 0.5f * rtlib::random_float2(rng));
+				break;
+			}
+			result += size * origin;
+			size *= 0.5f;
+			cur = &nodes[cur->children[idx]];
+			++depth;
+		}
+		return result;
+	}
+	template<typename RNG>
 	RTLIB_INLINE RTLIB_HOST_DEVICE auto Sample(RNG& rng, const DTreeNode* nodes)const noexcept -> float2 {
 		const DTreeNode* cur = this;
 		int    depth = 1;
@@ -310,6 +376,16 @@ struct DTree {
 			}
 		}
 	}
+
+	template<typename RNG>
+	RTLIB_INLINE RTLIB_HOST_DEVICE auto  SampleAndPdf(RNG& rng, float& pdf_value)const noexcept -> float2 {
+		if (GetMean() <= 0.0f) {
+			pdf_value  = 1.0f / (4.0f * RTLIB_M_PI);
+			return rtlib::random_float2(rng);
+		}
+		pdf_value     /= (4.0f * RTLIB_M_PI);
+		return rtlib::clamp(nodes[0].Sample(rng, nodes), make_float2(0.0f), make_float2(1.0f));
+	}
 	template<typename RNG>
 	RTLIB_INLINE RTLIB_HOST_DEVICE auto  Sample(RNG& rng)const noexcept -> float2 {
 		if (GetMean() <= 0.0f) {
@@ -343,6 +419,10 @@ struct DTreeWrapper {
 			float irradiance = rec.radiance / rec.woPdf;
 			building.RecordIrradiance(rtlib::dir_to_canonical(rec.direction), irradiance, rec.statisticalWeight);
 		}
+	}
+	template<typename RNG>
+	RTLIB_INLINE RTLIB_HOST_DEVICE auto  SampleAndPdf(RNG& rng,float& pdf_value)const noexcept -> float3 {
+		return rtlib::canonical_to_dir(sampling.SampleAndPdf(rng,pdf_value));
 	}
 	template<typename RNG>
 	RTLIB_INLINE RTLIB_HOST_DEVICE auto  Sample(RNG& rng)const noexcept -> float3 {

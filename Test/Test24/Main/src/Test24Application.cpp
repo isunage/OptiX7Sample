@@ -211,26 +211,6 @@ void Test24Application::RenderGui()
 
 void Test24Application::InitScene()
 {
-    //if (m_ObjModelManager->LoadAsset("CornellBox-Water", TEST_TEST24_DATA_PATH"/Models/CornellBox/CornellBox-Water.obj")) {
-    //    m_ObjModelManager->GetAsset("CornellBox-Water").meshGroup->RemoveMesh("light");
-    //    m_CurObjModelName = "CornellBox-Water";
-    //}
-    /*{
-        size_t N = 100;
-        std::mt19937 mt(0);
-        std::uniform_real_distribution<float> uni(-1.0f, 1.0f);
-        for (size_t i = 0; i < N; ++i)
-        {
-            auto center = make_float3(uni(mt), 1.3f, uni(mt));
-            if (m_ObjModelManager->LoadAsset("Sphere"+std::to_string(i), TEST_TEST24_DATA_PATH"/Models/Sphere/sphere.obj")) {
-                auto& [meshGroup, materials] = m_ObjModelManager->GetAsset("Sphere" + std::to_string(i));
-                for (auto& vertex : meshGroup->GetSharedResource()->vertexBuffer) {
-                    vertex = vertex * 0.005f + center;
-                }
-                materials[0].SetFloat3From("emitCol", make_float3(uni(mt)/2.0f+0.5f, uni(mt) / 2.0f + 0.5f, uni(mt) / 2.0f + 0.5f));
-            }
-        }
-    }*/
     auto  mainAabb = rtlib::utils::AABB();
     if (m_ObjModelManager->LoadAsset("Bistro-Exterior", TEST_TEST24_DATA_PATH"/Models/Bistro/Exterior/exterior.obj")) {
         m_CurObjModelName = "Bistro-Exterior";
@@ -248,14 +228,6 @@ void Test24Application::InitScene()
         }
         m_ObjModelManager->GetAsset("Sphere").InitAABB();
     }
-    //if (m_ObjModelManager->LoadAsset("Water", TEST_TEST24_DATA_PATH"/Models/CornellBox/water2.obj")) 
-    //{
-    //    for (auto& vertex : m_ObjModelManager->GetAsset("Water").meshGroup->GetSharedResource()->vertexBuffer)
-    //    {
-    //        vertex *= 25.0f;
-    //    }
-    //    /*m_CurObjModelName = "Water";*/
-    //}
     {
         size_t materialSize = 0;
         for (auto& [name, objModel] : m_ObjModelManager->GetAssets())
@@ -321,11 +293,11 @@ void Test24Application::InitScene()
             }
         }
     }
-    m_GASHandles["Light"] = std::make_shared<rtlib::ext::GASHandle>();
+    m_GASHandles["Light"]    = std::make_shared<rtlib::ext::GASHandle>();
     {
         OptixAccelBuildOptions accelBuildOptions = {};
         accelBuildOptions.buildFlags = OPTIX_BUILD_FLAG_ALLOW_COMPACTION | OPTIX_BUILD_FLAG_PREFER_FAST_TRACE;
-        accelBuildOptions.operation = OPTIX_BUILD_OPERATION_BUILD;
+        accelBuildOptions.operation  = OPTIX_BUILD_OPERATION_BUILD;
         {
             size_t materialOffset = 0;
             for (auto& [objName, objModel] : m_ObjModelManager->GetAssets())
@@ -468,6 +440,7 @@ void Test24Application::InitScene()
         //Build
         m_IASHandles["TopLevel"]->Build(m_Context->GetOPX7Handle().get(), accelOptions);
     }
+
 }
 
 void Test24Application::FreeScene()
@@ -526,7 +499,7 @@ void Test24Application::InitTracers()
             m_Materials,
             m_BgLightColor,
             m_EventFlags
-            );
+        );
         m_Tracers[traceName]->Initialize();
     }
     /*         WRSOPX*/

@@ -153,7 +153,7 @@ namespace test24_restir_guide
         unsigned int maxTraceDepth;
         unsigned int numCandidates;
         OptixTraversableHandle gasHandle;
-        STree sdTree;
+        STree2 sdTree;
         MeshLightList light;
         bool isBuilt;
         bool isFinal;
@@ -171,7 +171,7 @@ namespace test24_restir_guide
         unsigned int width;
         unsigned int height;
         OptixTraversableHandle gasHandle;
-        STree sdTree;
+        STree2 sdTree;
         MeshLightList light;
     };
     struct RayGenData

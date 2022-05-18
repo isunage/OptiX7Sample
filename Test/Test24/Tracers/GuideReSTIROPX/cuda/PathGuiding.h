@@ -784,6 +784,145 @@ namespace test24_restir_guide
 		float3 aabbMax;
 		float fraction;
 	};
+	struct STreeNode3
+	{
+		RTLIB_INLINE RTLIB_HOST_DEVICE auto GetNodeIdx(float3 &p) const noexcept -> unsigned int
+		{
+			return children[GetChildIdx(p)];
+		}
+		RTLIB_INLINE RTLIB_HOST_DEVICE auto GetChildIdx(float3 &p) const noexcept -> int
+		{
+			int i_x = 4.0f * p.x;//00,01,10,11
+			int i_y = 4.0f * p.y;//00,01,10,11
+			int i_z = 4.0f * p.z;//00,01,10,11
+			p *= 4.0f;
+			p -= make_float3((float)i_x, (float)i_y, (float)i_z);
+			return i_x + (1 << 2) * i_y + (1 << 4) * i_z;
+		}
+		RTLIB_INLINE RTLIB_HOST_DEVICE bool IsLeaf() const noexcept
+		{
+			return dTree != nullptr;
+		}
+		RTLIB_INLINE RTLIB_HOST_DEVICE auto GetDTreeWrapper(float3 &p, float3 &size, const STreeNode3 *nodes) const noexcept -> DTreeWrapper *
+		{
+			const STreeNode3 *cur = this;
+			int idx = cur->GetChildIdx(p);
+			while (!cur->IsLeaf())
+			{
+				size /= 4.0f;
+				cur = &nodes[cur->children[idx]];
+				idx = cur->GetChildIdx(p);
+			}
+			return cur->dTree;
+		}
+		RTLIB_INLINE RTLIB_HOST_DEVICE auto GetDTreeWrapper() const noexcept -> DTreeWrapper *
+		{
+			return dTree;
+		}
+		template <DirectionalFilter dFilter>
+		RTLIB_INLINE RTLIB_DEVICE void Record(const float3 &min1, const float3 &max1, float3 min2, float3 size2, const DTreeRecord &rec, STreeNode3 *nodes) noexcept
+		{
+			struct StackNode
+			{
+				STreeNode3 *curNode;
+				float3 min2;
+				float3 size2;
+			};
+			StackNode stackNodes[7 * PATH_GUIDING_STREE_MAX_DEPTH] = {};
+			int stackNodeSize = 1;
+			const int stackNodeCapacity = 7 * PATH_GUIDING_STREE_MAX_DEPTH;
+			stackNodes[0].curNode = this;
+			stackNodes[0].min2 = min2;
+			stackNodes[0].size2 = size2;
+			while (stackNodeSize > 0)
+			{
+				auto top = stackNodes[stackNodeSize - 1];
+				stackNodeSize--;
+				float w = ComputeOverlappingVolume(min1, max1, top.min2, top.min2 + top.size2);
+				if (w > 0.0f)
+				{
+					if (top.curNode->IsLeaf())
+					{
+						top.curNode->dTree->Record<dFilter>({rec.direction, rec.radiance, rec.product, rec.woPdf, rec.bsdfPdf, rec.dTreePdf, rec.statisticalWeight * w, rec.isDelta});
+					}
+					else if (stackNodeSize < stackNodeCapacity)
+					{
+						float3 t_size2 = top.size2;
+						t_size2 /= 4.0f;
+						for (int i = 0; i < 64; ++i)
+						{
+							float3 t_min2 = top.min2;
+							if (i & 1)
+							{
+								t_min2.x += t_size2.x;
+							}
+							if (i & 2)
+							{
+								t_min2.y += 2.0f*t_size2.x;
+							}
+							if (i & 4)
+							{
+								t_min2.y += t_size2.y;
+							}
+							if (i & 8)
+							{
+								t_min2.y += 2.0f*t_size2.y;
+							}
+							if (i & 16)
+							{
+								t_min2.z += t_size2.z;
+							}
+							if (i & 32)
+							{
+								t_min2.z += 2.0f*t_size2.z;
+							}
+							stackNodes[stackNodeSize + i].curNode = &nodes[top.curNode->children[i]];
+							stackNodes[stackNodeSize + i].min2 = t_min2;
+							stackNodes[stackNodeSize + i].size2 = t_size2;
+						}
+						stackNodeSize += 64;
+					}
+				}
+			}
+		}
+		RTLIB_INLINE RTLIB_HOST_DEVICE static auto ComputeOverlappingVolume(const float3 &min1, const float3 &max1, const float3 &min2, const float3 &max2) noexcept -> float
+		{
+			float lengths[3] = {
+				fmaxf(fminf(max1.x, max2.x) - fmaxf(min1.x, min2.x), 0.0f),
+				fmaxf(fminf(max1.y, max2.y) - fmaxf(min1.y, min2.y), 0.0f),
+				fmaxf(fminf(max1.z, max2.z) - fmaxf(min1.z, min2.z), 0.0f)};
+			return lengths[0] * lengths[1] * lengths[2];
+		}
+		unsigned int children[64];
+		DTreeWrapper *dTree;
+	};
+	struct STree3
+	{
+		RTLIB_INLINE RTLIB_HOST_DEVICE auto GetDTreeWrapper(float3 p, float3 &size) const noexcept -> DTreeWrapper *
+		{
+			size = aabbMax - aabbMin;
+			p = p - aabbMin;
+			p /= size;
+			return nodes[0].GetDTreeWrapper(p, size, nodes);
+		}
+		RTLIB_INLINE RTLIB_HOST_DEVICE auto GetDTreeWrapper(float3 p) const noexcept -> DTreeWrapper *
+		{
+			float3 size;
+			return GetDTreeWrapper(p, size);
+		}
+		template <DirectionalFilter dFilter>
+		RTLIB_INLINE RTLIB_DEVICE void Record(const float3 &p, const float3 &dVoxelSize, DTreeRecord rec)
+		{
+			float volume = dVoxelSize.x * dVoxelSize.y * dVoxelSize.z;
+			rec.statisticalWeight /= volume;
+			nodes[0].Record<dFilter>(p - dVoxelSize * 0.5f, p + dVoxelSize * 0.5f, aabbMin, aabbMax - aabbMin, rec, nodes);
+		}
+		STreeNode3 *nodes;
+		float3 aabbMin;
+		float3 aabbMax;
+		float fraction;
+	};
+	
 	struct TraceVertex
 	{
 		template <SpatialFilter sFilter>

@@ -2,6 +2,7 @@
 #include <RayTrace.h>
 #include <fstream>
 #include <random>
+#include <chrono>
 using namespace std::string_literals;
 using namespace test24_wrs;
 using RayGRecord = rtlib::SBTRecord<RayGenData>;
@@ -123,7 +124,8 @@ void Test24WRSOPXTracer::Launch(int width, int height, void* pdata)
 	if (width != m_Impl->m_Framebuffer->GetWidth() || height != m_Impl->m_Framebuffer->GetHeight()) {
 		return;
 	}
-	
+
+	auto begin = std::chrono::system_clock::now();
 	if (GetVariables()->GetBool("Started")) {
 
 		std::vector<float3> zeroAccumValues(this->m_Impl->m_Framebuffer->GetWidth() * this->m_Impl->m_Framebuffer->GetHeight(), make_float3(0.0f));
@@ -171,6 +173,8 @@ void Test24WRSOPXTracer::Launch(int width, int height, void* pdata)
 			pUserData->finished = false;
 		}
 	}
+	auto end = std::chrono::system_clock::now();
+	std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << "ms" << std::endl;
 }
 
 void Test24WRSOPXTracer::CleanUp()
@@ -298,8 +302,10 @@ void Test24WRSOPXTracer::InitPipeline()
 	this->m_Impl->m_RGProgramGroups[std::string("Trace.Default")]                      = this->m_Impl->m_Pipeline.createRaygenPG({ this->m_Impl->m_Modules["RayTrace"], RTLIB_RAYGEN_PROGRAM_STR(def) });
 	this->m_Impl->m_MSProgramGroups[std::string("Trace.Radiance")]                     = this->m_Impl->m_Pipeline.createMissPG({ this->m_Impl->m_Modules["RayTrace"], RTLIB_MISS_PROGRAM_STR(radiance) });
 	this->m_Impl->m_MSProgramGroups[std::string("Trace.Occluded")]                     = this->m_Impl->m_Pipeline.createMissPG({ this->m_Impl->m_Modules["RayTrace"], RTLIB_MISS_PROGRAM_STR(occluded) });
+	this->m_Impl->m_HGProgramGroups[std::string("Trace.Radiance.Diffuse.Default")]     = this->m_Impl->m_Pipeline.createHitgroupPG({ this->m_Impl->m_Modules["RayTrace"], RTLIB_CLOSESTHIT_PROGRAM_STR(radiance_for_diffuse_def) }, {}, {});
 	this->m_Impl->m_HGProgramGroups[std::string("Trace.Radiance.Diffuse.NEE.Default")] = this->m_Impl->m_Pipeline.createHitgroupPG({ this->m_Impl->m_Modules["RayTrace"], RTLIB_CLOSESTHIT_PROGRAM_STR(radiance_for_diffuse_nee_with_def_light) }, {}, {});
 	this->m_Impl->m_HGProgramGroups[std::string("Trace.Radiance.Diffuse.NEE.NEE")]     = this->m_Impl->m_Pipeline.createHitgroupPG({ this->m_Impl->m_Modules["RayTrace"], RTLIB_CLOSESTHIT_PROGRAM_STR(radiance_for_diffuse_nee_with_nee_light) }, {}, {});
+	this->m_Impl->m_HGProgramGroups[std::string("Trace.Radiance.Phong.Default")]       = this->m_Impl->m_Pipeline.createHitgroupPG({ this->m_Impl->m_Modules["RayTrace"], RTLIB_CLOSESTHIT_PROGRAM_STR(radiance_for_phong_def) }, {}, {});
 	this->m_Impl->m_HGProgramGroups[std::string("Trace.Radiance.Phong.NEE.Default")]   = this->m_Impl->m_Pipeline.createHitgroupPG({ this->m_Impl->m_Modules["RayTrace"], RTLIB_CLOSESTHIT_PROGRAM_STR(radiance_for_phong_nee_with_def_light) }  , {}, {});
 	this->m_Impl->m_HGProgramGroups[std::string("Trace.Radiance.Phong.NEE.NEE")]       = this->m_Impl->m_Pipeline.createHitgroupPG({ this->m_Impl->m_Modules["RayTrace"], RTLIB_CLOSESTHIT_PROGRAM_STR(radiance_for_phong_nee_with_nee_light) }  , {}, {});
 	this->m_Impl->m_HGProgramGroups[std::string("Trace.Radiance.Emission.Default")]    = this->m_Impl->m_Pipeline.createHitgroupPG({ this->m_Impl->m_Modules["RayTrace"], RTLIB_CLOSESTHIT_PROGRAM_STR(radiance_for_emission_with_def_light) }   , {}, {});
@@ -400,15 +406,28 @@ void Test24WRSOPXTracer::InitShaderBindingTable()
 						std::string typeString = test24::SpecifyMaterialType(material);
 						if (typeString == "Phong" || typeString == "Diffuse")
 						{
-							typeString += ".NEE";
-							if (mesh->GetUniqueResource()->variables.GetBool("hasLight") && mesh->GetUniqueResource()->variables.GetBool("useNEE"))
-							{
-								typeString += ".NEE";
+							bool useWRS = true;
+							if (mesh->GetUniqueResource()->variables.HasBool("useWRS")) {
+								if (!mesh->GetUniqueResource()->variables.GetBool("useWRS"))
+								{
+									useWRS = false;
+								}
 							}
-							else
-							{
+							if (useWRS) {
+								typeString += ".NEE";
+								if (mesh->GetUniqueResource()->variables.GetBool("hasLight") && mesh->GetUniqueResource()->variables.GetBool("useNEE"))
+								{
+									typeString += ".NEE";
+								}
+								else
+								{
+									typeString += ".Default";
+								}
+							}
+							else {
 								typeString += ".Default";
 							}
+							
 						}
 						if (typeString == "Emission")
 						{

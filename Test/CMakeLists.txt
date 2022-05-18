@@ -40,6 +40,7 @@ add_subdirectory(Test22)
 ## Scene Modifier
 add_subdirectory(Test23)
 add_subdirectory(Test24)
+add_subdirectory(Test25)
 ## practical path guiding(Muller2017)
 add_subdirectory(TestPathGuiding )
 add_subdirectory(TestPathGuiding2)

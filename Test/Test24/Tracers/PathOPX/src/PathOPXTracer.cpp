@@ -2,6 +2,7 @@
 #include <RayTrace.h>
 #include <fstream>
 #include <random>
+#include <chrono>
 using namespace std::string_literals;
 using namespace test24_path;
 

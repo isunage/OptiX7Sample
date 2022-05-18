@@ -5,7 +5,7 @@ using namespace test24_wrs2_guide;
 #define RAY_TRACE_USE_VERTEX_NORMAL 0
 #define RAY_TRACE_USE_FRESNELL 1
 struct RadiancePRD {
-    DTreeWrapper3* dTree;
+    DTreeWrapper* dTree;
     float3        dTreeVoxelSize;
     float3        radiance;
     float3        bsdfVal;
@@ -45,64 +45,32 @@ static __forceinline__ __device__ float        getValPhongPDF(const float3& dire
 static __forceinline__ __device__ float3       faceForward(const float3& n, const float3& i, const float3& nref) {
     return copysignf(1.0f, rtlib::dot(n, i)) * nref;
 }
-static __forceinline__ __device__ void*        unpackPointer(unsigned int p0, unsigned int p1) {
-    return reinterpret_cast<void*>(rtlib::to_combine(p0, p1));
-}
-static __forceinline__ __device__ void         packPointer(void* ptr, unsigned int& p0, unsigned int& p1) {
-    const unsigned long long llv = reinterpret_cast<const unsigned long long>(ptr);
-    p0 = rtlib::to_upper(llv);
-    p1 = rtlib::to_lower(llv);
-}
-static __forceinline__ __device__ float3       unpackFloat3(unsigned int p0, unsigned p1, unsigned int p2)
-{
-    return make_float3(__uint_as_float(p0), __uint_as_float(p1), __uint_as_float(p2));
-}
-static __forceinline__ __device__ void         packFloat3(const float3& v, unsigned int& p0, unsigned& p1, unsigned int& p2)
-{
-    p0 = __float_as_uint(v.x);
-    p1 = __float_as_uint(v.y);
-    p2 = __float_as_uint(v.z);
-}
 static __forceinline__ __device__ RadiancePRD* getRadiancePRD() {
-    unsigned int p0 = optixGetPayload_0();
-    unsigned int p1 = optixGetPayload_1();
-    return static_cast<RadiancePRD*>(unpackPointer(p0, p1));
+    return rtlib::GetGlobalPayloadPointer<6, RadiancePRD>();
 }
 static __forceinline__ __device__ void         setRadiancePRD(RadiancePRD* prd) {
-    unsigned int p0;
-    unsigned int p1;
-    packPointer(static_cast<void*>(prd), p0, p1);
-    optixSetPayload_0(p0);
-    optixSetPayload_1(p1);
+    rtlib::SetGlobalPayloadPointer<6>(prd);
 }
 static __forceinline__ __device__ void         setRayOrigin(const float3& origin) {
-    unsigned int p2, p3, p4;
-    packFloat3(origin, p2, p3, p4);
-    optixSetPayload_2(p2);
-    optixSetPayload_3(p3);
-    optixSetPayload_4(p4);
+    rtlib::SetGlobalPayloadFloat3< 0>(origin);
 }
 static __forceinline__ __device__ void         setRayDirection(const float3& direction) {
-    unsigned int p5, p6, p7;
-    packFloat3(direction, p5, p6, p7);
-    optixSetPayload_5(p5);
-    optixSetPayload_6(p6);
-    optixSetPayload_7(p7);
+    rtlib::SetGlobalPayloadFloat3< 3>(direction);
 }
 static __forceinline__ __device__ void         setPayloadOccluded(bool occluded) {
     optixSetPayload_0(static_cast<unsigned int>(occluded));
 }
 static __forceinline__ __device__ void         traceRadiance(OptixTraversableHandle handle,float3& rayOrigin,float3& rayDirection,float tmin, float tmax, RadiancePRD* prd) {
-    unsigned int p0, p1, p2, p3, p4, p5, p6, p7;
-    packPointer(prd, p0, p1);
-    optixTrace(handle, rayOrigin, rayDirection, tmin, tmax, 0.0f, OptixVisibilityMask(255), OPTIX_RAY_FLAG_NONE, RAY_TYPE_RADIANCE, RAY_TYPE_COUNT, RAY_TYPE_RADIANCE, p0, p1, p2, p3, p4, p5, p6, p7);
-    rayOrigin    = unpackFloat3(p2, p3, p4);
-    rayDirection = unpackFloat3(p5, p6, p7);
+    rtlib::Payload<8> payload;
+    payload.SetPointer<6>(prd);
+    rtlib::Trace(handle, rayOrigin, rayDirection, tmin, tmax, 0.0f, OptixVisibilityMask(255), OPTIX_RAY_FLAG_NONE, RAY_TYPE_RADIANCE, RAY_TYPE_COUNT, RAY_TYPE_RADIANCE, payload);
+    rayOrigin    = payload.GetFloat3<0>();
+    rayDirection = payload.GetFloat3<3>();
 }
 static __forceinline__ __device__ bool         traceOccluded(OptixTraversableHandle handle,const float3& rayOrigin,const float3& rayDirection,float tmin, float tmax) {
-    unsigned int occluded = false;
-    optixTrace(handle, rayOrigin, rayDirection, tmin, tmax, 0.0f, OptixVisibilityMask(255), OPTIX_RAY_FLAG_TERMINATE_ON_FIRST_HIT, RAY_TYPE_OCCLUSION, RAY_TYPE_COUNT, RAY_TYPE_OCCLUSION, occluded);
-    return occluded;
+    rtlib::Payload<1> payload = {false};
+    rtlib::Trace(handle, rayOrigin, rayDirection, tmin, tmax, 0.0f, OptixVisibilityMask(255), OPTIX_RAY_FLAG_TERMINATE_ON_FIRST_HIT, RAY_TYPE_OCCLUSION, RAY_TYPE_COUNT, RAY_TYPE_OCCLUSION, payload);
+    return payload.GetUInt<0>();
 }
 extern "C" __global__ void __raygen__def() {
 
@@ -474,7 +442,7 @@ extern "C" __global__ void __closesthit__radiance_for_diffuse_nee() {
         auto  g        = ndl * lndl /(distance * distance);
         invAreaP      *= static_cast<float>(params.light.count);
         auto  f        = emission * bsdf * g;
-        auto  f_a      = (f.x + f.y + f.z) / 3.0f;
+        auto  f_a      = rtlib::to_average_rgb(f);
         auto  weight   = make_float3(0.0f);
         if (f_a > 0.0f && invAreaP > 0.0f) {
             const bool occluded = traceOccluded(params.gasHandle, position, lightDir, 0.01f, distance - 0.01f);
@@ -551,7 +519,7 @@ extern "C" __global__ void __closesthit__radiance_for_diffuse_pg_def() {
 
     const float rnd          = rtlib::random_float1(xor32);
     const auto  newDirection = rnd < params.sdTree.fraction ? newDirection1 : newDirection2;
-    const auto  cosine       = rnd < params.sdTree.fraction ? cosine1 : cosine2;
+    const auto  cosine       = rnd < params.sdTree.fraction ? cosine1       : cosine2;
     const auto  bsdfPdf      = rtlib::max(cosine / RTLIB_M_PI, 0.0f);
     //両方とも正なら
     if (params.isBuilt) {
@@ -639,11 +607,10 @@ extern "C" __global__ void __closesthit__radiance_for_diffuse_pg_nee_with_nee_li
         }
     }
 
-    const float rnd = rtlib::random_float1(xor32);
+    const float rnd          = rtlib::random_float1(xor32);
     const auto  newDirection = rnd < params.sdTree.fraction ? newDirection1 : newDirection2;
-    const auto  cosine  = rnd < params.sdTree.fraction ? cosine1 : cosine2;
-    const auto  bsdfPdf = rtlib::max(cosine / RTLIB_M_PI, 0.0f);
-    //両方とも正なら
+    const auto  cosine       = rnd < params.sdTree.fraction ? cosine1       : cosine2;
+    const auto  bsdfPdf      = rtlib::max(cosine / RTLIB_M_PI, 0.0f);
     if (params.isBuilt) {
         const auto  dTreePdf = rtlib::max(dTree->Pdf(newDirection), 0.0f);
         const auto  woPdf    = params.sdTree.fraction * bsdfPdf + (1.0f- params.sdTree.fraction) * dTreePdf;
@@ -677,7 +644,7 @@ extern "C" __global__ void __closesthit__radiance_for_diffuse_pg_nee_with_nee_li
         auto  g = ndl * lndl/ (distance * distance);
         invAreaP *= static_cast<float>(params.light.count);
         auto  f = emission * bsdf * g;
-        auto  f_a = (f.x + f.y + f.z) / 3.0f;
+        auto  f_a = rtlib::to_average_rgb(f);
         auto  weight = make_float3(0.0f);
         if (f_a > 0.0f && invAreaP > 0.0f) {
             const bool occluded = traceOccluded(params.gasHandle, position, lightDir, 0.01f, distance - 0.01f);
@@ -704,13 +671,13 @@ extern "C" __global__ void __closesthit__radiance_for_diffuse_pg_nee_with_nee_li
             auto  emission = lRec.emission * static_cast<float>(lndl > 0.0f);
             auto  bsdf     = diffuse * RTLIB_M_INV_PI;
             auto  g        = rtlib::max(ndl, 0.0f) * rtlib::max(lndl, 0.0f) / (distance * distance);
-            auto  v        = (1.0f - 0.5f * dTree->InvDistance(lightDir));
+           /* auto  v = traceOccluded(params.gasHandle, position, lightDir, 0.01f, distance - 0.01f);*/
             invAreaP      *= static_cast<float>(params.light.count);
-            auto  f        = emission * bsdf * g * v;
-            auto  f_a      = (f.x + f.y + f.z) / 3.0f;
+            auto  f        = emission * bsdf * g /** static_cast<float>(!v)*/;
+            auto  f_a      = rtlib::to_average_rgb(f);
             if (resv.Update(lRec, f_a * invAreaP, rtlib::random_float1(xor32))) {
-                f_y = f;
-                f_a_y = f_a;
+                f_y        = f;
+                f_a_y      = f_a;
                 lightDir_y = lightDir;
                 distance_y = distance;
             }
@@ -718,9 +685,6 @@ extern "C" __global__ void __closesthit__radiance_for_diffuse_pg_nee_with_nee_li
         if (resv.w_sum > 0.0f && f_a_y > 0.0f) {
             const bool occluded = traceOccluded(params.gasHandle, position, lightDir_y, 0.0f, distance_y - 0.01f);
             resv.w = occluded ? 0.0f : (resv.w_sum / (f_a_y * static_cast<float>(resv.m)));
-            if (!params.isFinal) {
-                dTree->Record(lightDir_y, static_cast<float>(occluded), 1.0f);
-            }
         }
         auto  weight = f_y * resv.w;
         prd->radiance += prvThroughPut * weight;
@@ -778,8 +742,7 @@ extern "C" __global__ void __closesthit__radiance_for_diffuse_pg_nee_with_def_li
     setRayOrigin(position);
     if (params.isBuilt) {
         newDirection1 = dTree->Sample(xor32);
-        cosine1 = rtlib::dot(normal, newDirection1);
-
+        cosine1       = rtlib::dot(normal, newDirection1);
         if (isnan(newDirection1.x) || isnan(newDirection1.y) || isnan(newDirection1.z)) {
             printf("newDirection1 is nan: new Direction1 = (%f, %f, %f) normal = (%f, %f, %f) n0 = (%f, %f, %f)\n", newDirection1.x, newDirection1.y, newDirection1.z, normal.x, normal.y, normal.z, n0.x, n0.y, n0.z);
         }
@@ -831,7 +794,7 @@ extern "C" __global__ void __closesthit__radiance_for_diffuse_pg_nee_with_def_li
         auto  g = ndl * lndl / (distance * distance);
         invAreaP *= static_cast<float>(params.light.count);
         auto  f = emission * bsdf * g;
-        auto  f_a = (f.x + f.y + f.z) / 3.0f;
+        auto  f_a = rtlib::to_average_rgb(f);
         auto  weight = make_float3(0.0f);
         if (f_a > 0.0f && invAreaP > 0.0f) {
             const bool occluded = traceOccluded(params.gasHandle, position, lightDir, 0.01f, distance - 0.01f);
@@ -842,10 +805,10 @@ extern "C" __global__ void __closesthit__radiance_for_diffuse_pg_nee_with_def_li
         prd->radiance += prvThroughPut * weight;
 #else 
         Reservoir<LightRec> resv = {};
-        auto f_y = make_float3(0.0f);
-        auto f_a_y = 0.0f;
-        auto lightDir_y = make_float3(0.0f);
-        auto distance_y = 0.0f;
+        auto f_y           = make_float3(0.0f);
+        auto f_a_y         = 0.0f;
+        auto lightDir_y    = make_float3(0.0f);
+        auto distance_y    = 0.0f;
         for (int i = 0; i < params.numCandidates; ++i) {
             LightRec lRec  = {};
             int   lightIdx = rtlib::random_float1(xor32) * static_cast<float>(params.light.count);
@@ -853,18 +816,18 @@ extern "C" __global__ void __closesthit__radiance_for_diffuse_pg_nee_with_def_li
             auto  distance = 0.0f;
             auto  invAreaP = 0.0f;
             auto  lightDir = light.Sample(position, lRec, distance, invAreaP, xor32);
-            auto  ndl = rtlib::dot(lightDir, normal);
-            auto lndl =-rtlib::dot(lightDir, lRec.normal);
+            auto  ndl      = rtlib::dot(lightDir, normal);
+            auto lndl      =-rtlib::dot(lightDir, lRec.normal);
             auto  emission = lRec.emission * static_cast<float>(lndl > 0.0f);
-            auto  v = (1.0f - 0.5f * dTree->InvDistance(lightDir));
-            auto  bsdf = diffuse*RTLIB_M_INV_PI;
-            auto  g = rtlib::max(ndl, 0.0f) * rtlib::max(lndl, 0.0f) / (distance * distance);
-            invAreaP *= static_cast<float>(params.light.count);
-            auto  f = emission * bsdf * g * v;
-            auto  f_a = (f.x + f.y + f.z) / 3.0f;
+            auto  bsdf     = diffuse*RTLIB_M_INV_PI;
+            auto  g        = rtlib::max(ndl, 0.0f) * rtlib::max(lndl, 0.0f) / (distance * distance);
+            //auto  v        = traceOccluded(params.gasHandle, position, lightDir, 0.01f, distance - 0.01f);
+            invAreaP      *= static_cast<float>(params.light.count);
+            auto  f        = emission * bsdf * g/* * static_cast<float>(!v)*/;
+            auto  f_a      = rtlib::to_average_rgb(f);
             if (resv.Update(lRec, f_a * invAreaP, rtlib::random_float1(xor32))) {
-                f_y = f;
-                f_a_y = f_a;
+                f_y        = f;
+                f_a_y      = f_a;
                 lightDir_y = lightDir;
                 distance_y = distance;
             }
@@ -872,9 +835,6 @@ extern "C" __global__ void __closesthit__radiance_for_diffuse_pg_nee_with_def_li
         if (resv.w_sum > 0.0f && f_a_y > 0.0f) {
             const bool occluded = traceOccluded(params.gasHandle, position, lightDir_y, 0.0f, distance_y - 0.01f);
             resv.w = occluded ? 0.0f : (resv.w_sum / (f_a_y * static_cast<float>(resv.m)));
-            if (!params.isFinal) {
-                dTree->Record(lightDir_y, static_cast<float>(occluded), 1.0f);
-            }
         }
         auto  weight = f_y * resv.w;
         prd->radiance += prvThroughPut * weight;
@@ -1440,7 +1400,7 @@ extern "C" __global__ void __closesthit__radiance_for_phong_pg_nee_with_nee_ligh
             auto  g = rtlib::max(ndl,0.0f) * rtlib::max(lndl,0.0f) / (distance * distance);
             invAreaP *= static_cast<float>(params.light.count);
             auto  f = emission * bsdf * g;
-            auto  f_a = (f.x + f.y + f.z) / 3.0f;
+            auto  f_a = rtlib::to_average_rgb(f);
             auto  weight = make_float3(0.0f);
             if (f_a > 0.0f && invAreaP > 0.0f) {
                 const bool occluded = traceOccluded(params.gasHandle, position, lightDir, 0.01f, distance - 0.01f);
@@ -1469,7 +1429,7 @@ extern "C" __global__ void __closesthit__radiance_for_phong_pg_nee_with_nee_ligh
                 auto  g = rtlib::max(ndl, 0.0f) * rtlib::max(lndl, 0.0f) / (distance * distance);
                 invAreaP *= static_cast<float>(params.light.count);
                 auto  f = emission * bsdf * g;
-                auto  f_a = (f.x + f.y + f.z) / 3.0f;
+                auto  f_a = rtlib::to_average_rgb(f);
                 if (resv.Update(lRec, f_a * invAreaP, rtlib::random_float1(xor32))) {
                     f_y = f;
                     f_a_y = f_a;
@@ -1592,10 +1552,10 @@ extern "C" __global__ void __closesthit__radiance_for_phong_pg_nee_with_def_ligh
         newDirection3 = samplePhongPDF(reflectDir, shinness, xor32);
         cosine3 = rtlib::dot(normal, newDirection3);
     }
-    const auto  a_diffuse = (diffuse.x + diffuse.y + diffuse.z) / 3.0f;
+    const auto  a_diffuse  = (diffuse.x + diffuse.y + diffuse.z) / 3.0f;
     const auto  a_specular = (specular.x + specular.y + specular.z) / 3.0f;
-    const float rnd1 = rtlib::random_float1(xor32);
-    const float rnd2 = rtlib::random_float1(xor32);
+    const float rnd1       = rtlib::random_float1(xor32);
+    const float rnd2       = rtlib::random_float1(xor32);
 
     if (rnd1 < a_diffuse) {
         const auto  newDirection = rnd2 < params.sdTree.fraction ? newDirection1 : newDirection2;
@@ -1615,12 +1575,12 @@ extern "C" __global__ void __closesthit__radiance_for_phong_pg_nee_with_def_ligh
             setRayDirection(newDirection);
         }
         else {
-            prd->bsdfVal = (diffuse / (RTLIB_M_PI * a_diffuse));
-            prd->bsdfPdf = fabsf(cosine2) / RTLIB_M_PI;
-            prd->dTreePdf = 0.0f;
-            prd->woPdf = prd->bsdfPdf;
+            prd->bsdfVal     = (diffuse / (RTLIB_M_PI * a_diffuse));
+            prd->bsdfPdf     = fabsf(cosine2) / RTLIB_M_PI;
+            prd->dTreePdf    = 0.0f;
+            prd->woPdf       = prd->bsdfPdf;
             prd->throughPut *= (diffuse / a_diffuse);
-            prd->cosine = cosine2;
+            prd->cosine      = cosine2;
             setRayDirection(newDirection2);
         }
         {
@@ -1639,7 +1599,7 @@ extern "C" __global__ void __closesthit__radiance_for_phong_pg_nee_with_def_ligh
             auto  g        = rtlib::max(ndl,0.0f) * rtlib::max(lndl,0.0f) / (distance * distance);
             invAreaP      *= static_cast<float>(params.light.count);
             auto  f        = emission * bsdf * g;
-            auto  f_a      = (f.x + f.y + f.z) / 3.0f;
+            auto  f_a      = rtlib::to_average_rgb(f);
             auto  weight   = make_float3(0.0f);
             if (f_a > 0.0f && invAreaP > 0.0f) {
                 const bool occluded = traceOccluded(params.gasHandle, position, lightDir, 0.01f, distance - 0.01f);
@@ -1668,7 +1628,7 @@ extern "C" __global__ void __closesthit__radiance_for_phong_pg_nee_with_def_ligh
                 auto  g    = rtlib::max(ndl,0.0f) * rtlib::max(lndl,0.0f) / (distance * distance);
                 invAreaP *= static_cast<float>(params.light.count);
                 auto  f = emission * bsdf * g;
-                auto  f_a = (f.x + f.y + f.z) / 3.0f;
+                auto  f_a = rtlib::to_average_rgb(f);
                 if (resv.Update(lRec, f_a * invAreaP, rtlib::random_float1(xor32))) {
                     f_y = f;
                     f_a_y = f_a;

@@ -11,6 +11,7 @@
 #include <string>
 #include <unordered_map>
 namespace test {
+	//LOAD 直後は
 	class  RTTextureAssetManager
 	{
 	public:

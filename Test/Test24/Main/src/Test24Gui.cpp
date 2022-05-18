@@ -15,7 +15,7 @@
 #include <chrono>
 #include <random>
 using namespace std::string_literals;
-class       ObjModelConfigGuiWindow : public test::RTGuiWindow
+class       ObjModelConfigGuiWindow    : public test::RTGuiWindow
 {
 public:
     ObjModelConfigGuiWindow(const std::shared_ptr<test::RTFramebuffer>& framebuffer_, const std::shared_ptr<test::RTObjModelAssetManager>& objModelManager_, std::unordered_set<std::string>& launchTracerSet_, std::string& objModelname) :
@@ -101,7 +101,7 @@ public:
     std::unordered_set<std::string> m_RemoveNameSet;
     std::string m_LoadFilePath;
 };
-class      MainTraceConfigGuiWindow : public test::RTGuiWindow
+class      MainTraceConfigGuiWindow    : public test::RTGuiWindow
 {
 public:
     explicit MainTraceConfigGuiWindow(const std::vector<std::string>& tracePublicNames, std::string& traceName,unsigned int& maxTraceDepth_, unsigned int& samplePerLaunch_, unsigned int& eventFlags_)noexcept :
@@ -179,7 +179,7 @@ private:
     unsigned int&                   eventFlags;
     bool                            isFirst;
 };
-class      MainFrameConfigGuiWindow : public test::RTGuiWindow
+class      MainFrameConfigGuiWindow    : public test::RTGuiWindow
 {
 public:
     explicit MainFrameConfigGuiWindow(const std::vector<std::string>& framePublicNames, std::string& frameName)noexcept :
@@ -222,7 +222,7 @@ private:
     size_t       curFrameIdx;
     bool         isFirst;
 };
-class         CameraConfigGuiWindow :public test::RTGuiWindow{
+class         CameraConfigGuiWindow    : public test::RTGuiWindow {
 public:
 
     explicit CameraConfigGuiWindow(GLFWwindow* window_, const std::shared_ptr<test::RTFramebuffer>& framebuffer_, const std::shared_ptr<rtlib::ext::CameraController>& cameraController_, unsigned int& eventFlags_)noexcept :
@@ -375,7 +375,7 @@ private:
     int m_Height;
     unsigned int& eventFlags;
 };
-class          LightConfigGuiWindow: public test::RTGuiWindow {
+class          LightConfigGuiWindow    : public test::RTGuiWindow {
 public:
     LightConfigGuiWindow(
         float3& bgLightColor,
@@ -407,7 +407,7 @@ private:
     float3& m_BgLightColor;
     unsigned int&   m_EventFlags;
 };
-class          InputConfigGuiWindow : public test::RTGuiWindow {
+class          InputConfigGuiWindow    : public test::RTGuiWindow {
 public:
     InputConfigGuiWindow(
         const std::array<float, 2>& curCursorPos,
@@ -446,7 +446,7 @@ private:
     const float& m_CurFrameTime;
     const float& m_DelFrameTime;
 };
-class          TraceConfigGuiWindow:public test::RTGuiWindow {
+class          TraceConfigGuiWindow    : public test::RTGuiWindow {
 private:
     using TracerVariableMap = std::unordered_map < std::string, std::shared_ptr<rtlib::ext::VariableMap>>;
 public:
@@ -488,7 +488,7 @@ private:
     const TracerVariableMap&           tracerVariables;
     unsigned int&                           eventFlags;
 };
-class      PathTraceConfigGuiWindow : public TraceConfigGuiWindow
+class      PathTraceConfigGuiWindow    : public TraceConfigGuiWindow
 {
 private:
     using TracerVariableMap = std::unordered_map < std::string, std::shared_ptr<rtlib::ext::VariableMap>>;
@@ -561,7 +561,7 @@ private:
     unsigned int m_SamplePerSave = 1000;
     std::string  m_FilePath;
 };
-class       NEETraceConfigGuiWindow : public TraceConfigGuiWindow
+class       NEETraceConfigGuiWindow    : public TraceConfigGuiWindow
 {
 private:
     using TracerVariableMap = std::unordered_map < std::string, std::shared_ptr<rtlib::ext::VariableMap>>;
@@ -633,7 +633,7 @@ private:
     unsigned int m_SamplePerSave = 1000;
     std::string m_FilePath;
 };
-class       WRSTraceConfigGuiWindow : public TraceConfigGuiWindow
+class       WRSTraceConfigGuiWindow    : public TraceConfigGuiWindow
 {
 private:
     using TracerVariableMap = std::unordered_map < std::string, std::shared_ptr<rtlib::ext::VariableMap>>;
@@ -655,7 +655,7 @@ public:
                     variable->SetUInt32("SamplePerLaunch", samplePerLaunch);
                     SetEvent(TEST24_EVENT_FLAG_CHANGE_TRACE);
                 }
-                if (ImGui::SliderInt("NumCandidates", &numCandidates, 1, 64)) {
+                if (ImGui::InputInt("NumCandidates", &numCandidates)) {
                     variable->SetUInt32("NumCandidates", numCandidates);
                     SetEvent(TEST24_EVENT_FLAG_CHANGE_TRACE);
                 }
@@ -713,7 +713,7 @@ private:
     unsigned int m_SamplePerSave = 1000;
     std::string  m_FilePath;
 };
-class    ReSTIRTraceConfigGuiWindow : public TraceConfigGuiWindow
+class    ReSTIRTraceConfigGuiWindow    : public TraceConfigGuiWindow
 {
 private:
     using TracerVariableMap = std::unordered_map < std::string, std::shared_ptr<rtlib::ext::VariableMap>>;
@@ -835,7 +835,7 @@ private:
     unsigned int m_SamplePerSave = 1000;
     std::string m_FilePath;
 };
-class  GuidePathTraceConfigGuiWindow : public TraceConfigGuiWindow
+class  GuidePathTraceConfigGuiWindow   : public TraceConfigGuiWindow
 {
 private:
     using TracerVariableMap = std::unordered_map < std::string, std::shared_ptr<rtlib::ext::VariableMap>>;
@@ -929,7 +929,7 @@ private:
     unsigned int m_SamplePerSave = 1000;
     std::string  m_FilePath;
 };
-class  GuideNEETraceConfigGuiWindow : public TraceConfigGuiWindow
+class  GuideNEETraceConfigGuiWindow    : public TraceConfigGuiWindow
 {
 private:
     using TracerVariableMap = std::unordered_map < std::string, std::shared_ptr<rtlib::ext::VariableMap>>;
@@ -1019,7 +1019,7 @@ private:
     unsigned int m_SamplePerSave = 1000;
     std::string  m_FilePath;
 };
-class  GuideWRSTraceConfigGuiWindow : public TraceConfigGuiWindow
+class  GuideWRSTraceConfigGuiWindow    : public TraceConfigGuiWindow
 {
 private:
     using TracerVariableMap = std::unordered_map < std::string, std::shared_ptr<rtlib::ext::VariableMap>>;
@@ -1115,7 +1115,7 @@ private:
     unsigned int m_SamplePerSave = 1000;
     std::string  m_FilePath;
 };
-class  GuideWRS2TraceConfigGuiWindow : public TraceConfigGuiWindow
+class  GuideWRS2TraceConfigGuiWindow   : public TraceConfigGuiWindow
 {
 private:
     using TracerVariableMap = std::unordered_map <std::string, std::shared_ptr<rtlib::ext::VariableMap>>;

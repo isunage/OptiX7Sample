@@ -31,7 +31,9 @@ ${CMAKE_CURRENT_SOURCE_DIR}/include/RTLib/core/GL.h
 ${CMAKE_CURRENT_SOURCE_DIR}/include/RTLib/core/Exceptions.h
 ${CMAKE_CURRENT_SOURCE_DIR}/include/RTLib/core/PixelFormat.h
 ${CMAKE_CURRENT_SOURCE_DIR}/include/RTLib/core/TypeTraits.h
+${CMAKE_CURRENT_SOURCE_DIR}/include/RTLib/core/Payload.h
 ${CMAKE_CURRENT_SOURCE_DIR}/include/RTLib/math/Math.h
+${CMAKE_CURRENT_SOURCE_DIR}/include/RTLib/math/Hash.h
 ${CMAKE_CURRENT_SOURCE_DIR}/include/RTLib/math/Random.h
 ${CMAKE_CURRENT_SOURCE_DIR}/include/RTLib/math/Matrix.h
 ${CMAKE_CURRENT_SOURCE_DIR}/include/RTLib/math/VectorFunction.h

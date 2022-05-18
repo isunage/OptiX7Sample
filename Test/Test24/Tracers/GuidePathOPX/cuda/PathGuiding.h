@@ -155,11 +155,13 @@ namespace test24_guide_path
 			};
 			return lengths[0] * lengths[1];
 		}
+
 		template<typename RNG>
-		RTLIB_INLINE RTLIB_HOST_DEVICE auto Sample(RNG& rng, const DTreeNode* nodes)const noexcept -> float2 {
+		RTLIB_INLINE RTLIB_HOST_DEVICE auto SampleAndPdf(RNG& rng, const DTreeNode* nodes, float& pdf_value)const noexcept -> float2 {
 			const DTreeNode* cur = this;
 			float2 result = make_float2(0.0f);
-			double size = 1.0f;
+			pdf_value     = 1.0f;
+			double size   = 1.0f;
 			for (;;) {
 				int   idx = 0;
 				float topLeft = cur->sums[0];
@@ -172,6 +174,56 @@ namespace test24_guide_path
 				float boundary = partial / total;
 				auto  origin = make_float2(0.0f);
 				float sample = rtlib::random_float1(rng);
+
+				if (sample < boundary)
+				{
+					sample = sample / boundary;
+					boundary = topLeft / partial;
+				}
+				else
+				{
+					partial = total - partial;
+					origin.x = 0.5f;
+					sample = (sample - boundary) / (1.0f - boundary);
+					boundary = topRight / partial;
+					idx |= (1 << 0);
+				}
+				if (sample >= boundary) {
+					origin.y = 0.5f;
+					idx |= (1 << 1);
+				}
+				pdf_value *= (4.0f * cur->sums[idx] / total);
+				result += size * origin;
+				size *= 0.5f;
+
+				if (cur->IsLeaf(idx) || cur->sums[idx] <= 0.0f)
+				{
+					result += size * rtlib::random_float2(rng);
+					break;
+				}
+
+				cur = &nodes[cur->children[idx]];
+			}
+			return result;
+		}
+
+		template<typename RNG>
+		RTLIB_INLINE RTLIB_HOST_DEVICE auto Sample(RNG& rng, const DTreeNode* nodes)const noexcept -> float2 {
+			const DTreeNode* cur = this;
+			float2 result = make_float2(0.0f);
+			double size = 1.0f;
+			for (;;) {
+				int   idx      = 0;
+				float topLeft  = cur->sums[0];
+				float topRight = cur->sums[1];
+				float partial  = cur->sums[0] + cur->sums[2];
+				float total    = cur->GetSumOfAll();
+				//use Two RND Value
+				//use Signle RND Value
+				//(s0+s2)/(s0+s1+s2+s3)
+				float boundary = partial / total;
+				auto  origin   = make_float2(0.0f);
+				float sample   = rtlib::random_float1(rng);
 
 				if (sample < boundary)
 				{
@@ -204,6 +256,7 @@ namespace test24_guide_path
 			}
 			return result;
 		}
+
 		RTLIB_INLINE RTLIB_HOST_DEVICE auto Pdf(float2& p, const DTreeNode* nodes)const noexcept -> float
 		{
 
@@ -392,13 +445,21 @@ namespace test24_guide_path
 			Impl<dFilter>::RecordIrradiance(*this, p, irradiance, statisticalWeight);
 		}
 		template<typename RNG>
-		RTLIB_INLINE RTLIB_HOST_DEVICE auto  Sample(RNG& rng)const noexcept -> float2 {
+		RTLIB_INLINE RTLIB_HOST_DEVICE auto SampleAndPdf(RNG& rng, float& pdf_value)const noexcept -> float2 {
+			if (GetMean() <= 0.0f) {
+				pdf_value = 1.0f / (4.0f * RTLIB_M_PI);
+				return rtlib::random_float2(rng);
+			}
+			return rtlib::clamp(nodes[0].SampleAndPdf(rng, nodes, pdf_value), make_float2(0.0f), make_float2(1.0f));
+		}
+		template<typename RNG>
+		RTLIB_INLINE RTLIB_HOST_DEVICE auto Sample(RNG& rng)const noexcept -> float2 {
 			if (GetMean() <= 0.0f) {
 				return rtlib::random_float2(rng);
 			}
 			return rtlib::clamp(nodes[0].Sample(rng, nodes), make_float2(0.0f), make_float2(1.0f));
 		}
-		RTLIB_INLINE RTLIB_HOST_DEVICE auto  Pdf(float2 p)const noexcept -> float {
+		RTLIB_INLINE RTLIB_HOST_DEVICE auto Pdf(float2 p)const noexcept -> float {
 			if (GetMean() <= 0.0f) {
 				return 1.0f / (4.0f * RTLIB_M_PI);
 			}
@@ -427,6 +488,10 @@ namespace test24_guide_path
 				float irradiance = rec.radiance / rec.woPdf;
 				building.RecordIrradiance<dFilter>(rtlib::dir_to_canonical(rec.direction), irradiance, rec.statisticalWeight);
 			}
+		}
+		template<typename RNG>
+		RTLIB_INLINE RTLIB_HOST_DEVICE auto  SampleAndPdf(RNG& rng, float& pdf_value)const noexcept -> float3 {
+			return rtlib::canonical_to_dir(sampling.SampleAndPdf(rng, pdf_value));
 		}
 		template<typename RNG>
 		RTLIB_INLINE RTLIB_HOST_DEVICE auto  Sample(RNG& rng)const noexcept -> float3 {
@@ -701,17 +766,19 @@ namespace test24_guide_path
 			if (!dTree) {
 				return;
 			}
-			bool isValidRadiance = (isfinite(radiance.x) && radiance.x >= 0.0f) &&
+			bool isValidRadiance = 
+				(isfinite(radiance.x) && radiance.x >= 0.0f) &&
 				(isfinite(radiance.y) && radiance.y >= 0.0f) &&
 				(isfinite(radiance.z) && radiance.z >= 0.0f);
-			bool isValidBsdfVal = (isfinite(bsdfVal.x) && bsdfVal.x >= 0.0f) &&
+			bool isValidBsdfVal = 
+				(isfinite(bsdfVal.x) && bsdfVal.x >= 0.0f) &&
 				(isfinite(bsdfVal.y) && bsdfVal.y >= 0.0f) &&
 				(isfinite(bsdfVal.z) && bsdfVal.z >= 0.0f);
 			if (woPdf <= 0.0f || !isValidRadiance || !isValidBsdfVal)
 			{
 				return;
 			}
-			auto localRadiance = make_float3(0.0f);
+			auto localRadiance  = make_float3(0.0f);
 			if (throughPut.x * woPdf > 1e-4f) {
 				localRadiance.x = radiance.x / throughPut.x;
 			}
@@ -725,9 +792,9 @@ namespace test24_guide_path
 			localRadiance *= fabsf(cosine);
 #endif
 			//printf("localRadiance=(%f,%f,%f)\n",localRadiance.x,localRadiance.y,localRadiance.z);
-			float3 product = localRadiance * bsdfVal;
+			float3 product         = localRadiance * bsdfVal;
 			float localRadianceAvg = (localRadiance.x + localRadiance.y + localRadiance.z) / 3.0f;
-			float productAvg = (product.x + product.y + product.z) / 3.0f;
+			float productAvg       = (product.x + product.y + product.z) / 3.0f;
 			DTreeRecord rec{ rayDirection,localRadianceAvg ,productAvg,woPdf,bsdfPdf,dTreePdf,statisticalWeight,isDelta };
 			Impl<sFilter>::Record<dFilter>(*this, sTree, rec);
 		}

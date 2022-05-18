@@ -6,6 +6,8 @@
 #include <RTLib/math/Random.h>
 #include <RTLib/math/VectorFunction.h>
 #include <RTLib/math/Math.h>
+#include <RTLib/math/Hash.h>
+#include <RTLib/core/Payload.h>
 #include <RayTraceConfig.h>
 #include <PathGuiding.h>
 //#define RAY_GUIDING_SAMPLE_BY_UNIFORM_SPHERE
@@ -145,7 +147,7 @@ namespace test24_wrs2_guide
         unsigned int maxTraceDepth;
         unsigned int numCandidates;
         OptixTraversableHandle gasHandle;
-        STree sdTree;
+        STree2 sdTree;
         MeshLightList light;
         bool isBuilt;
         bool isFinal;
@@ -163,7 +165,7 @@ namespace test24_wrs2_guide
         unsigned int width;
         unsigned int height;
         OptixTraversableHandle gasHandle;
-        STree sdTree;
+        STree2 sdTree;
         MeshLightList light;
     };
     struct RayGenData

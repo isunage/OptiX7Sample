@@ -606,5 +606,13 @@ namespace rtlib {
         return std::bitset<32>(ui32).count();
 #endif
     }
+    RTLIB_INLINE RTLIB_DEVICE float to_average_rgb(const float3& rgb)
+    {
+        return (rgb.x + rgb.y + rgb.z) / 3.0f;
+    }
+    RTLIB_INLINE RTLIB_DEVICE float to_luminance(const float3& rgb)
+    {
+        return 0.2126f * rgb.x + 0.7152f * rgb.y + 0.0722f * rgb.z;
+    }
 }
 #endif

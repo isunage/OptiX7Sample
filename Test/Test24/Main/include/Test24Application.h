@@ -17,18 +17,18 @@
 class Test24Application : public test::RTApplication
 {
 private:
-    using TracerMap = std::unordered_map<std::string, std::shared_ptr<test::RTTracer>>;
-    using ContextPtr = std::shared_ptr<test::RTContext>;
-    using RendererPtr= std::unique_ptr<rtlib::ext::RectRenderer>;
-    using FramebufferPtr = std::shared_ptr<test::RTFramebuffer>;
-    using GuiDelegatePtr = std::unique_ptr<test::RTAppGuiDelegate>;
-    using CameraControllerPtr = std::shared_ptr<rtlib::ext::CameraController>;
-    using GuiPtr = std::shared_ptr<test::RTGui>;
+    using TracerMap               = std::unordered_map<std::string, std::shared_ptr<test::RTTracer>>;
+    using ContextPtr              = std::shared_ptr<test::RTContext>;
+    using RendererPtr             = std::unique_ptr<rtlib::ext::RectRenderer>;
+    using FramebufferPtr          = std::shared_ptr<test::RTFramebuffer>;
+    using GuiDelegatePtr          = std::unique_ptr<test::RTAppGuiDelegate>;
+    using CameraControllerPtr     = std::shared_ptr<rtlib::ext::CameraController>;
+    using GuiPtr                  = std::shared_ptr<test::RTGui>;
     using ObjModelAssetManagerPtr = std::shared_ptr<test::RTObjModelAssetManager>;
-    using TextureAssetManagerPtr = std::shared_ptr<test::RTTextureAssetManager>;
-    using GeometryASMap = std::unordered_map<std::string, rtlib::ext::GASHandlePtr>;
-    using InstanceASMap = std::unordered_map<std::string, rtlib::ext::IASHandlePtr>;
-    using TracerVariableMap = std::unordered_map<std::string, std::shared_ptr<rtlib::ext::VariableMap>>;
+    using TextureAssetManagerPtr  = std::shared_ptr<test::RTTextureAssetManager>;
+    using GeometryASMap           = std::unordered_map<std::string, rtlib::ext::GASHandlePtr>;
+    using InstanceASMap           = std::unordered_map<std::string, rtlib::ext::IASHandlePtr>;
+    using TracerVariableMap       = std::unordered_map<std::string, std::shared_ptr<rtlib::ext::VariableMap>>;
 private:
     Test24Application(int fbWidth, int fbHeight, std::string name) noexcept;
 public:
@@ -65,23 +65,23 @@ private:
     void UpdateCamera();
     void UpdateFrameTime();
 private:
-    ContextPtr m_Context;
-    RendererPtr m_Renderer;
-    FramebufferPtr m_Framebuffer;
-    CameraControllerPtr m_CameraController;
-    GuiDelegatePtr m_GuiDelegate;
-    GLFWwindow *m_Window;
-    TracerMap m_Tracers;
-    ObjModelAssetManagerPtr m_ObjModelManager;
-    TextureAssetManagerPtr m_TextureManager;
+    ContextPtr               m_Context;
+    RendererPtr              m_Renderer;
+    FramebufferPtr           m_Framebuffer;
+    CameraControllerPtr      m_CameraController;
+    GuiDelegatePtr           m_GuiDelegate;
+    GLFWwindow *             m_Window;
+    TracerMap                m_Tracers;
+    ObjModelAssetManagerPtr  m_ObjModelManager;
+    TextureAssetManagerPtr   m_TextureManager;
     std::vector<rtlib::ext::VariableMap> m_Materials;
-    GeometryASMap m_GASHandles = {};
-    InstanceASMap m_IASHandles = {};
-    float3 m_BgLightColor = {};
-    unsigned int m_NumRayType;
-    int m_FbWidth;
-    int m_FbHeight;
-    float m_FovY;
+    GeometryASMap            m_GASHandles = {};
+    InstanceASMap            m_IASHandles = {};
+    float3                   m_BgLightColor = {};
+    unsigned int             m_NumRayType;
+    int                      m_FbWidth;
+    int                      m_FbHeight;
+    float                    m_FovY;
     unsigned int             m_SamplePerAll;
     unsigned int             m_SamplePerLaunch;
     unsigned int             m_MaxTraceDepth;

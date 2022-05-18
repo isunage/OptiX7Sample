@@ -4,6 +4,7 @@
 #include <RayTrace.h>
 #include <fstream>
 #include <random>
+#include <chrono>
 using namespace std::string_literals;
 using namespace test24_nee_guide;
 using RayGRecord = rtlib::SBTRecord<RayGenData>;
@@ -135,10 +136,13 @@ void Test24GuideNEEOPXTracer::Launch(int width, int height, void* pdata)
 	if (width != this->m_Impl->m_Framebuffer.lock()->GetWidth() || height != this->m_Impl->m_Framebuffer.lock()->GetHeight()) {
 		return;
 	}
-	if (this->OnLaunchBegin  (width, height, pUserData)) {
+	auto begin = std::chrono::system_clock::now();
+	if (this->OnLaunchBegin(width, height, pUserData)) {
 		this->OnLaunchExecute(width, height, pUserData);
-		this->OnLaunchEnd(    width, height, pUserData);
+		this->OnLaunchEnd(width, height, pUserData);
 	}
+	auto end = std::chrono::system_clock::now();
+	std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << "ms" << std::endl;
 }
 
 void Test24GuideNEEOPXTracer::CleanUp()
