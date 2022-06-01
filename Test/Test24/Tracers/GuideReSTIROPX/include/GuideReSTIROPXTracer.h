@@ -13,65 +13,54 @@
 #include <RTLib/ext/Resources.h>
 #include <RTLib/ext/Resources/GL.h>
 #include <RTLib/ext/Resources/CUDA.h>
-#include <Test24GuideReSTIROPXConfig.h>
 #include <Test24Share.h>
 #include <memory>
-//SimpleTracer
-// GuideTracer
+// ReSTIRTracer
 class Test24GuideReSTIROPXTracer : public test::RTTracer
 {
+private:
+    using ContextPtr           = std::shared_ptr<test::RTContext>;
+    using FramebufferSharedPtr = std::shared_ptr<test::RTFramebuffer>;
+    using FramebufferUniquePtr = std::unique_ptr<test::RTFramebuffer>;
+    using CameraControllerPtr  = std::shared_ptr<rtlib::ext::CameraController>;
+    using TextureAssetManager  = std::shared_ptr<test::RTTextureAssetManager>;
 public:
     struct UserData
     {
-        bool         finished;
-        bool         isSync;
-        CUstream     stream;
+        bool     finished;
+        bool     isSync;
+        CUstream stream;
     };
-private:
-    using ContextPtr          = std::shared_ptr<test::RTContext>;
-    using FramebufferPtr      = std::shared_ptr<test::RTFramebuffer>;
-    using CameraControllerPtr = std::shared_ptr<rtlib::ext::CameraController>;
-    using TextureAssetManager = std::shared_ptr<test::RTTextureAssetManager>;
-    using Pipeline            = rtlib::OPXPipeline;
-    using ModuleMap           = std::unordered_map<std::string, rtlib::OPXModule>;
-    using RGProgramGroupMap   = std::unordered_map<std::string, rtlib::OPXRaygenPG>;
-    using MSProgramGroupMap   = std::unordered_map<std::string, rtlib::OPXMissPG>;
-    using HGProgramGroupMap   = std::unordered_map<std::string, rtlib::OPXHitgroupPG>;
+
 public:
-    Test24GuideReSTIROPXTracer(
-        ContextPtr context,
-        FramebufferPtr framebuffer,
-        CameraControllerPtr cameraController,
-        TextureAssetManager textureManager,
-        rtlib::ext::IASHandlePtr topLevelAS,
-        const std::vector<rtlib::ext::VariableMap>& materials,
-        const float3& bgLightColor,
+    Test24GuideReSTIROPXTracer(ContextPtr Context,
+        FramebufferSharedPtr Framebuffer,
+        CameraControllerPtr CameraController,
+        TextureAssetManager TextureManager,
+        rtlib::ext::IASHandlePtr TopLevelAS,
+        const std::vector<rtlib::ext::VariableMap>& Materials,
+        const float3& BgLightColor,
         const unsigned int& eventFlags,
         const unsigned int& maxTraceDepth);
-    // RTTracer
+    // RTTracer 
     virtual void Initialize() override;
-    virtual void Launch(int width, int height, void* pUserData) override;
+    virtual void Launch(int width, int height, void* userData) override;
     virtual void CleanUp() override;
     virtual void Update() override;
-    virtual bool ShouldLock()const noexcept;
     virtual ~Test24GuideReSTIROPXTracer();
 
 private:
-    void InitLight();
-    void FreeLight();
-    void InitSdTree();
-    void FreeSdTree();
     void InitFrameResources();
-    void FreeFrameResources();
     void InitPipeline();
-    void FreePipeline();
     void InitShaderBindingTable();
-    void FreeShaderBindingTable();
+    void InitLight();
     void InitLaunchParams();
+
+    void FreeFrameResources();
+    void FreePipeline();
+    void FreeShaderBindingTable();
+    void FreeLight();
     void FreeLaunchParams();
-    bool OnLaunchBegin(  int width, int height, UserData* pUserData);
-    void OnLaunchExecute(int width, int height, UserData* pUserData);
-    void OnLaunchEnd(    int width, int height, UserData* pUserData);
 private:
     struct Impl;
     std::unique_ptr<Impl> m_Impl;

@@ -1217,31 +1217,16 @@ class  GuideReSTIRTraceConfigGuiWindow : public TraceConfigGuiWindow
 private:
     using TracerVariableMap = std::unordered_map < std::string, std::shared_ptr<rtlib::ext::VariableMap>>;
 public:
-    GuideReSTIRTraceConfigGuiWindow(const TracerVariableMap& tracerVariables_, const std::shared_ptr<test::RTFramebuffer>& framebuffer_, unsigned int& eventFlags_)noexcept : TraceConfigGuiWindow("GuideReSTIROPX", tracerVariables_, framebuffer_, eventFlags_), m_FilePath{}{}
+    GuideReSTIRTraceConfigGuiWindow(const TracerVariableMap& tracerVariables_, const std::shared_ptr<test::RTFramebuffer>& framebuffer_, unsigned int& eventFlags_)noexcept : TraceConfigGuiWindow("GuideReSTIROPX", tracerVariables_, framebuffer_, eventFlags_) {}
     virtual void DrawGui()override {
         auto variable = GetVariable();
         if (variable) {
             int sampleForBudget = variable->GetUInt32("SampleForBudget");
-            int samplePerLaunch = variable->GetUInt32("SamplePerLaunch");
-            auto ratioForBudget = variable->GetFloat1("RatioForBudget");
-            int iterationForBuilt = variable->GetUInt32("IterationForBuilt");
             int numCandidates = variable->GetUInt32("NumCandidates");
 
             if (!HasEvent(TEST24_EVENT_FLAG_BIT_LOCK)) {
                 if (ImGui::InputInt("SampleForBudget", &sampleForBudget)) {
                     variable->SetUInt32("SampleForBudget", sampleForBudget);
-                    SetEvent(TEST24_EVENT_FLAG_CHANGE_TRACE);
-                }
-                if (ImGui::SliderInt("SamplePerLaunch", &samplePerLaunch, 1, 100)) {
-                    variable->SetUInt32("SamplePerLaunch", samplePerLaunch);
-                    SetEvent(TEST24_EVENT_FLAG_CHANGE_TRACE);
-                }
-                if (ImGui::SliderInt("IterationForBuilt", &iterationForBuilt, 1, 10)) {
-                    variable->SetUInt32("IterationForBuilt", iterationForBuilt);
-                    SetEvent(TEST24_EVENT_FLAG_CHANGE_TRACE);
-                }
-                if (ImGui::InputFloat("RatioForBudget", &ratioForBudget)) {
-                    variable->SetFloat1("RatioForBudget", ratioForBudget);
                     SetEvent(TEST24_EVENT_FLAG_CHANGE_TRACE);
                 }
                 if (ImGui::SliderInt("NumCandidates", &numCandidates, 1, 64)) {
@@ -1250,26 +1235,67 @@ public:
                 }
             }
             else {
-                ImGui::Text("  SamplePerBudget: %d", sampleForBudget);
-                ImGui::Text("  SamplePerLaunch: %d", samplePerLaunch);
-                ImGui::Text("   RatioForBudget: %f", ratioForBudget);
-                ImGui::Text("IterationForBuilt: %f", iterationForBuilt);
-                ImGui::Text("    NumCandidates: %d", numCandidates);
+                ImGui::Text("SampleForBudget: %d", sampleForBudget);
+                ImGui::Text("  NumCandidates: %d", numCandidates);
+            }
+
+            bool temporalReuse = variable->GetBool("ReuseTemporal");
+            if (!HasEvent(TEST24_EVENT_FLAG_BIT_LOCK)) {
+                if (ImGui::Checkbox("Temporal Reuse", &temporalReuse))
+                {
+                    variable->SetBool("ReuseTemporal", temporalReuse);
+                    SetEvent(TEST24_EVENT_FLAG_CHANGE_TRACE);
+                }
+            }
+            else {
+                ImGui::Text("Temporal Reuse: %s", temporalReuse ? "ON" : "OFF");
+            }
+
+
+            bool  spatialReuse = variable->GetBool("ReuseSpatial");
+
+            int iter = variable->GetUInt32("IterationSpatial");
+            int range = variable->GetUInt32("RangeSpatial");
+            int sample = variable->GetUInt32("SampleSpatial");
+
+            if (!HasEvent(TEST24_EVENT_FLAG_BIT_LOCK)) {
+                if (ImGui::Checkbox("Spatial Reuse", &spatialReuse))
+                {
+                    variable->SetBool("ReuseSpatial", spatialReuse);
+                    SetEvent(TEST24_EVENT_FLAG_CHANGE_TRACE);
+                }
+                if (spatialReuse) {
+                    if (ImGui::SliderInt("Iteration", &iter, 1, 10)) {
+                        variable->SetUInt32("IterationSpatial", iter);
+                        SetEvent(TEST24_EVENT_FLAG_CHANGE_TRACE);
+                    }
+                    if (ImGui::SliderInt("Range", &range, 1, 100)) {
+                        variable->SetUInt32("RangeSpatial", range);
+                        SetEvent(TEST24_EVENT_FLAG_CHANGE_TRACE);
+                    }
+                    if (ImGui::SliderInt("Sample", &sample, 1, 10)) {
+                        variable->SetUInt32("SampleSpatial", sample);
+                        SetEvent(TEST24_EVENT_FLAG_CHANGE_TRACE);
+                    }
+                }
+            }
+            else {
+                if (spatialReuse) {
+                    ImGui::Text("Iteration: %d", iter);
+                    ImGui::Text("    Range: %d", range);
+                    ImGui::Text("   Sample: %d", sample);
+                }
             }
 
             int samplePerAll = variable->GetUInt32("SamplePerAll");
-            int curIteration = variable->GetUInt32("CurIteration");
-            int samplePerTmp = variable->GetUInt32("SamplePerTmp");
-
             ImGui::Text("SamplePerAll: %d", samplePerAll);
-            ImGui::Text("CurIteration: %d", curIteration);
-            ImGui::Text("SamplePerTmp: %d", samplePerTmp);
 
             char saveFilePath[256];
             std::strncpy(saveFilePath, m_FilePath.c_str(), sizeof(saveFilePath) - 1);
             if (ImGui::InputText("SaveFilepath", saveFilePath, sizeof(saveFilePath))) {
                 m_FilePath = std::string(saveFilePath);
             }
+
             int samplePerSave = m_SamplePerSave;
             if (ImGui::InputInt("SamplePerSave", &samplePerSave)) {
                 m_SamplePerSave = std::max(1, samplePerSave);
@@ -1289,7 +1315,7 @@ public:
             }
             bool saveIter = isLaunched && samplePerAll && ((samplePerAll % m_SamplePerSave) == 0);
             if (pushSave || saveIter) {
-                std::string filePathBase = std::string(TEST_TEST24_GUIDE_RESTIR_OPX_RSLT_PATH) + "/" + saveFilePath + "result_guide_restir_" + std::to_string(samplePerAll);
+                std::string filePathBase = std::string(TEST_TEST24_GUIDE_RESTIR_OPX_RSLT_PATH) + "/" + saveFilePath + "result_restir_" + std::to_string(samplePerAll);
                 std::string filePathPng = filePathBase + ".png";
                 auto rTexture = GetFramebuffer()->GetComponent<test::RTGLTextureFBComponent<uchar4>>("RTexture");
                 if (test::SavePngImgFromGL(filePathPng.c_str(), rTexture->GetHandle())) {
@@ -1306,7 +1332,7 @@ public:
     virtual ~GuideReSTIRTraceConfigGuiWindow()noexcept {}
 private:
     unsigned int m_SamplePerSave = 1000;
-    std::string  m_FilePath;
+    std::string m_FilePath;
 };
 void  Test24GuiDelegate::Initialize()
 {
